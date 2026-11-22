@@ -53,6 +53,7 @@ public class FieldSourcePanel extends JPanel {
         INFOBOX_ROW_LINKS("Loaded target instances linked from a rendered infobox row"),
         TABLE_COLUMN_LINKS(
                 "Loaded target instances linked from one article table column"),
+        TABLE_ROW_INSTANCES("One target instance per configured article table row"),
         ARTICLE_PASSAGES("Bounded passages from the full article"),
         ARTICLE_PASSAGE_INSTANCES(
                 "One target instance per bounded article passage");
@@ -69,6 +70,10 @@ public class FieldSourcePanel extends JPanel {
     private final JTextField tableEvidenceColumnField = new JTextField(24);
     private final JComboBox<String> passageTextFieldBox = new JComboBox<>();
     private final JComboBox<String> passageSourceFieldBox = new JComboBox<>();
+    private final JComboBox<String> tableRowTargetClassBox = new JComboBox<>();
+    private final JComboBox<String> tableRowDetailsFieldBox = new JComboBox<>();
+    private final JComboBox<String> tableRowSourceFieldBox = new JComboBox<>();
+    private final JComboBox<String> tableRowReferencesFieldBox = new JComboBox<>();
     private final JButton examplesButton = new JButton("Examples…");
     private final JLabel applyStatusLabel = new JLabel(" ");
 
@@ -96,6 +101,11 @@ public class FieldSourcePanel extends JPanel {
     private FormRow tableEvidenceSectionRow;
     private FormRow tableEvidenceNameRow;
     private FormRow tableEvidenceColumnRow;
+    private FormRow tableRowTargetClassRow;
+    private FormRow tableRowDetailsFieldRow;
+    private FormRow tableRowSourceFieldRow;
+    private FormRow tableRowReferencesFieldRow;
+    private boolean updatingTableRowFields;
 
     private Consumer<GeneratedFieldModel> afterApplyField = f -> {};
     private Consumer<String> onReloadField = key -> {};
@@ -314,6 +324,9 @@ public class FieldSourcePanel extends JPanel {
 
         candidateEvidenceBox.addActionListener(e ->
                 refreshCandidateEvidenceApplicability());
+        tableRowTargetClassBox.addActionListener(event -> {
+            if (!updatingTableRowFields) refreshTableRowTargetFields(null);
+        });
 
         qualifierPidField.getDocument().addDocumentListener(
                 new javax.swing.event.DocumentListener() {
@@ -695,6 +708,22 @@ public class FieldSourcePanel extends JPanel {
         return passageSourceFieldBox;
     }
 
+    javax.swing.JComboBox<String> tableRowTargetClassBox() {
+        return tableRowTargetClassBox;
+    }
+
+    javax.swing.JComboBox<String> tableRowDetailsFieldBox() {
+        return tableRowDetailsFieldBox;
+    }
+
+    javax.swing.JComboBox<String> tableRowSourceFieldBox() {
+        return tableRowSourceFieldBox;
+    }
+
+    javax.swing.JComboBox<String> tableRowReferencesFieldBox() {
+        return tableRowReferencesFieldBox;
+    }
+
     public void edit(GeneratedFieldModel field) {
         OwnedComponentSite previousSite = this.field == field
                 ? selectedSourceSite() : null;
@@ -1026,6 +1055,9 @@ public class FieldSourcePanel extends JPanel {
         datasource.wikipedia.WikipediaDatasourceProvider.ArticleTableColumnLinkSpec
                 tableSpec = datasource.wikipedia.WikipediaDatasourceProvider
                         .articleTableColumnLinks(binding);
+        datasource.wikipedia.WikipediaDatasourceProvider.ArticleTableRowInstanceSpec
+                tableRowSpec = datasource.wikipedia.WikipediaDatasourceProvider
+                        .articleTableRowInstances(binding);
         CandidateEvidenceChoice choice =
                 datasource.wikipedia.WikipediaDatasourceProvider
                         .articleIntroductionMentions(binding)
@@ -1037,6 +1069,9 @@ public class FieldSourcePanel extends JPanel {
                         .articleTableColumnLinkOperation(binding)
                 ? CandidateEvidenceChoice.TABLE_COLUMN_LINKS
                 : datasource.wikipedia.WikipediaDatasourceProvider
+                        .articleTableRowInstanceOperation(binding)
+                ? CandidateEvidenceChoice.TABLE_ROW_INSTANCES
+                : datasource.wikipedia.WikipediaDatasourceProvider
                         .articlePassageInstanceOperation(binding)
                 ? CandidateEvidenceChoice.ARTICLE_PASSAGE_INSTANCES
                 : datasource.wikipedia.WikipediaDatasourceProvider
@@ -1045,10 +1080,14 @@ public class FieldSourcePanel extends JPanel {
                 : CandidateEvidenceChoice.NONE;
         infoboxEvidenceKeyField.setText(choice == CandidateEvidenceChoice.INFOBOX_ROW_LINKS
                 && binding != null ? binding.recipe().parameter("property") : "");
-        tableEvidenceSectionField.setText(tableSpec == null ? "" : tableSpec.sectionPath());
-        tableEvidenceNameField.setText(tableSpec == null ? "" : tableSpec.table());
-        tableEvidenceColumnField.setText(tableSpec == null ? "" : tableSpec.column());
+        tableEvidenceSectionField.setText(tableRowSpec != null ? tableRowSpec.sectionPath()
+                : tableSpec == null ? "" : tableSpec.sectionPath());
+        tableEvidenceNameField.setText(tableRowSpec != null ? tableRowSpec.table()
+                : tableSpec == null ? "" : tableSpec.table());
+        tableEvidenceColumnField.setText(tableRowSpec != null ? tableRowSpec.displayColumn()
+                : tableSpec == null ? "" : tableSpec.column());
         refreshPassageInstanceFields(passageSpec);
+        refreshTableRowInstanceFields(tableRowSpec);
         candidateEvidenceBox.setSelectedItem(choice);
         refreshCandidateEvidenceApplicability();
     }
@@ -1085,6 +1124,65 @@ public class FieldSourcePanel extends JPanel {
         }
     }
 
+    private void refreshTableRowInstanceFields(
+            datasource.wikipedia.WikipediaDatasourceProvider.ArticleTableRowInstanceSpec
+                    selected) {
+        updatingTableRowFields = true;
+        tableRowTargetClassBox.removeAllItems();
+        FieldDefinition definition = fieldDefinitionPanel.definition();
+        String base = definition == null ? "" : definition.entityClassName();
+        if (projectModel != null && base != null && !base.isBlank()) {
+            projectModel.classes().stream().filter(java.util.Objects::nonNull)
+                    .map(GeneratedClassModel::className)
+                    .filter(candidate -> projectModel.isSameOrSubclass(candidate, base))
+                    .sorted().forEach(tableRowTargetClassBox::addItem);
+        }
+        if (selected != null) tableRowTargetClassBox.setSelectedItem(selected.targetClass());
+        else if (tableRowTargetClassBox.getItemCount() > 0) {
+            tableRowTargetClassBox.setSelectedItem(base);
+        }
+        updatingTableRowFields = false;
+        refreshTableRowTargetFields(selected);
+    }
+
+    private void refreshTableRowTargetFields(
+            datasource.wikipedia.WikipediaDatasourceProvider.ArticleTableRowInstanceSpec
+                    selected) {
+        updatingTableRowFields = true;
+        tableRowDetailsFieldBox.removeAllItems();
+        tableRowSourceFieldBox.removeAllItems();
+        tableRowReferencesFieldBox.removeAllItems();
+        tableRowDetailsFieldBox.addItem("");
+        tableRowSourceFieldBox.addItem("");
+        tableRowReferencesFieldBox.addItem("");
+        String targetName = selectedText(tableRowTargetClassBox);
+        GeneratedClassModel target = projectModel == null
+                ? null : projectModel.findClass(targetName);
+        GeneratedClassModel owner = ownerClass();
+        if (target != null) {
+            for (GeneratedFieldModel candidate : target.effectiveFields(projectModel)) {
+                if (candidate.type() == FieldType.TEXT
+                        && candidate.cardinality() == FieldCardinality.COLLECTION) {
+                    tableRowDetailsFieldBox.addItem(candidate.name());
+                }
+                if (candidate.type() == FieldType.ENTITY
+                        && candidate.cardinality() == FieldCardinality.COLLECTION) {
+                    tableRowReferencesFieldBox.addItem(candidate.name());
+                    if (owner != null && projectModel.isSameOrSubclass(
+                            owner.className(), candidate.entityClassName())) {
+                        tableRowSourceFieldBox.addItem(candidate.name());
+                    }
+                }
+            }
+        }
+        if (selected != null && selected.targetClass().equals(targetName)) {
+            tableRowDetailsFieldBox.setSelectedItem(selected.detailsField());
+            tableRowSourceFieldBox.setSelectedItem(selected.sourceField());
+            tableRowReferencesFieldBox.setSelectedItem(selected.referencesField());
+        }
+        updatingTableRowFields = false;
+    }
+
     private void refreshCandidateEvidenceApplicability() {
         FieldDefinition definition = fieldDefinitionPanel.definition();
         boolean referenceCollection = definition != null
@@ -1111,10 +1209,16 @@ public class FieldSourcePanel extends JPanel {
                 == CandidateEvidenceChoice.ARTICLE_PASSAGE_INSTANCES;
         applicable(infoboxEvidenceKeyRow,
                 selected == CandidateEvidenceChoice.INFOBOX_ROW_LINKS);
-        boolean tableColumn = selected == CandidateEvidenceChoice.TABLE_COLUMN_LINKS;
-        applicable(tableEvidenceSectionRow, tableColumn);
-        applicable(tableEvidenceNameRow, tableColumn);
-        applicable(tableEvidenceColumnRow, tableColumn);
+        boolean table = selected == CandidateEvidenceChoice.TABLE_COLUMN_LINKS
+                || selected == CandidateEvidenceChoice.TABLE_ROW_INSTANCES;
+        boolean tableRows = selected == CandidateEvidenceChoice.TABLE_ROW_INSTANCES;
+        applicable(tableEvidenceSectionRow, table);
+        applicable(tableEvidenceNameRow, table);
+        applicable(tableEvidenceColumnRow, table);
+        applicable(tableRowTargetClassRow, tableRows);
+        applicable(tableRowDetailsFieldRow, tableRows);
+        applicable(tableRowSourceFieldRow, tableRows);
+        applicable(tableRowReferencesFieldRow, tableRows);
         applicable(passageTextFieldRow, passageInstances);
         applicable(passageSourceFieldRow, passageInstances);
         passageTextFieldBox.setEnabled(referenceCollection);
@@ -1135,6 +1239,8 @@ public class FieldSourcePanel extends JPanel {
                 || datasource.wikipedia.WikipediaDatasourceProvider
                         .articleTableColumnLinkOperation(existing)
                 || datasource.wikipedia.WikipediaDatasourceProvider
+                        .articleTableRowInstanceOperation(existing)
+                || datasource.wikipedia.WikipediaDatasourceProvider
                         .articlePassages(existing)
                 || datasource.wikipedia.WikipediaDatasourceProvider
                         .articlePassageInstanceOperation(existing);
@@ -1150,6 +1256,9 @@ public class FieldSourcePanel extends JPanel {
             case TABLE_COLUMN_LINKS ->
                     datasource.wikipedia.WikipediaDatasourceProvider
                             .ARTICLE_TABLE_COLUMN_LINKS;
+            case TABLE_ROW_INSTANCES ->
+                    datasource.wikipedia.WikipediaDatasourceProvider
+                            .ARTICLE_TABLE_ROW_INSTANCES;
             case ARTICLE_PASSAGES ->
                     datasource.wikipedia.WikipediaDatasourceProvider
                             .ARTICLE_PASSAGES;
@@ -1176,6 +1285,22 @@ public class FieldSourcePanel extends JPanel {
                         tableEvidenceNameField.getText().trim(),
                         datasource.wikipedia.WikipediaDatasourceProvider.TABLE_COLUMN,
                         tableEvidenceColumnField.getText().trim())
+                : selected == CandidateEvidenceChoice.TABLE_ROW_INSTANCES
+                ? java.util.Map.of(
+                        datasource.wikipedia.WikipediaDatasourceProvider.TABLE_SECTION,
+                        tableEvidenceSectionField.getText().trim(),
+                        datasource.wikipedia.WikipediaDatasourceProvider.TABLE_NAME,
+                        tableEvidenceNameField.getText().trim(),
+                        datasource.wikipedia.WikipediaDatasourceProvider.TABLE_COLUMN,
+                        tableEvidenceColumnField.getText().trim(),
+                        datasource.wikipedia.WikipediaDatasourceProvider.TABLE_ROW_TARGET_CLASS,
+                        selectedText(tableRowTargetClassBox),
+                        datasource.wikipedia.WikipediaDatasourceProvider.TABLE_ROW_DETAILS_FIELD,
+                        selectedText(tableRowDetailsFieldBox),
+                        datasource.wikipedia.WikipediaDatasourceProvider.TABLE_ROW_SOURCE_FIELD,
+                        selectedText(tableRowSourceFieldBox),
+                        datasource.wikipedia.WikipediaDatasourceProvider.TABLE_ROW_REFERENCES_FIELD,
+                        selectedText(tableRowReferencesFieldBox))
                 : java.util.Map.of();
         String existingOperation = existing == null ? "" : existing.recipe().operationId();
         java.util.Map<String, String> existingParameters = existing == null
@@ -1482,6 +1607,14 @@ public class FieldSourcePanel extends JPanel {
                 "Table caption/name:", tableEvidenceNameField);
         tableEvidenceColumnRow = FormRow.add(form, c, y++,
                 "Table column:", tableEvidenceColumnField);
+        tableRowTargetClassRow = FormRow.add(form, c, y++,
+                "Row instance class:", tableRowTargetClassBox);
+        tableRowDetailsFieldRow = FormRow.add(form, c, y++,
+                "Row cells go into:", tableRowDetailsFieldBox);
+        tableRowSourceFieldRow = FormRow.add(form, c, y++,
+                "Source instance goes into:", tableRowSourceFieldBox);
+        tableRowReferencesFieldRow = FormRow.add(form, c, y++,
+                "Resolved links go into:", tableRowReferencesFieldBox);
         passageTextFieldRow = FormRow.add(form, c, y++,
                 "Passage goes into:", passageTextFieldBox);
         passageSourceFieldRow = FormRow.add(form, c, y++,

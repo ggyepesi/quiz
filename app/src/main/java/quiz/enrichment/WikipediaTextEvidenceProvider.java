@@ -31,6 +31,7 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
         NONE,
         LOADED_INTRODUCTION_MENTIONS,
         INFOBOX_ROW_LINKS,
+        ARTICLE_TABLE_ROW_INSTANCES,
         ARTICLE_PASSAGES,
         ARTICLE_PASSAGE_INSTANCES
     }
@@ -297,7 +298,7 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
                 List<MentionHit> candidates = switch (candidateEvidenceMode) {
                     case LOADED_INTRODUCTION_MENTIONS ->
                             mentionedCandidates(article, context);
-                    case NONE, INFOBOX_ROW_LINKS, ARTICLE_PASSAGES,
+                    case NONE, INFOBOX_ROW_LINKS, ARTICLE_TABLE_ROW_INSTANCES, ARTICLE_PASSAGES,
                             ARTICLE_PASSAGE_INSTANCES -> List.of();
                 };
                 return proposal(request, article, categoryValues, categoryRule, candidates,

@@ -242,7 +242,8 @@ public record EnrichmentProposal(
             String displayName,
             List<InstanceField> fields,
             SourceRef source,
-            List<ExtractedClaim> evidence) {
+            List<ExtractedClaim> evidence,
+            boolean bulkSafe) {
         public InstanceCandidate {
             candidateId = required(candidateId,
                     "Instance candidate identifier is required");
@@ -253,6 +254,18 @@ public record EnrichmentProposal(
             source = Objects.requireNonNull(source,
                     "Instance candidate source is required");
             evidence = copy(evidence);
+        }
+
+        /** Source prose still needs one decision per proposed interpretation. */
+        public InstanceCandidate(
+                String candidateId,
+                String type,
+                String id,
+                String displayName,
+                List<InstanceField> fields,
+                SourceRef source,
+                List<ExtractedClaim> evidence) {
+            this(candidateId, type, id, displayName, fields, source, evidence, false);
         }
     }
 

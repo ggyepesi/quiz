@@ -36,9 +36,17 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     public static final String ARTICLE_TABLE_COLUMN_LINKS = "article-table-column-links";
     public static final String FAMILY_ARTICLE_TABLE_COLUMN_LINKS =
             "wikipedia-article-table-column-links";
+    /** Typed model instances proposed from the data rows of one retained article table. */
+    public static final String ARTICLE_TABLE_ROW_INSTANCES = "article-table-row-instances";
+    public static final String FAMILY_ARTICLE_TABLE_ROW_INSTANCES =
+            "wikipedia-article-table-row-instances";
     public static final String TABLE_SECTION = "section";
     public static final String TABLE_NAME = "table";
     public static final String TABLE_COLUMN = "column";
+    public static final String TABLE_ROW_TARGET_CLASS = "rowTargetClass";
+    public static final String TABLE_ROW_DETAILS_FIELD = "rowDetailsField";
+    public static final String TABLE_ROW_SOURCE_FIELD = "rowSourceField";
+    public static final String TABLE_ROW_REFERENCES_FIELD = "rowReferencesField";
     /** The article's lead text, without later sections. */
     public static final String ARTICLE_INTRODUCTION = "article-introduction";
     public static final String ARTICLE_TEXT_PROJECTION = "projection";
@@ -67,6 +75,7 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
             new InfoboxParameter(),
             new InfoboxRowLinks(),
             new ArticleTableColumnLinks(),
+            new ArticleTableRowInstances(),
             new ArticleIntroduction(),
             new ArticleIntroductionMentions(),
             new ArticlePassages(),
@@ -206,6 +215,95 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
             return "section ‘" + sectionPath + "’"
                     + (table.isBlank() ? "" : ", table ‘" + table + "’")
                     + ", column ‘" + column + "’";
+        }
+    }
+
+    /** One explicitly selected table row becomes one reviewable typed instance. */
+    private record ArticleTableRowInstances() implements DatasourceOperation {
+        @Override public String id() { return ARTICLE_TABLE_ROW_INSTANCES; }
+        @Override public String displayName() { return "Article table-row instances"; }
+        @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
+        @Override public List<ParameterDescriptor> parameters() {
+            return List.of(
+                    new ParameterDescriptor(TABLE_SECTION, "Section path",
+                            ParameterDescriptor.Kind.TEXT, true, "", List.of(),
+                            "Exact heading path shown by Wikipedia Discovery, separated by >."),
+                    new ParameterDescriptor(TABLE_NAME, "Table caption or name",
+                            ParameterDescriptor.Kind.TEXT, false, "", List.of(),
+                            "Optional exact table caption/name."),
+                    new ParameterDescriptor(TABLE_COLUMN, "Display column",
+                            ParameterDescriptor.Kind.TEXT, true, "", List.of(),
+                            "Exact header whose cell labels each proposed row instance."),
+                    new ParameterDescriptor(TABLE_ROW_TARGET_CLASS, "Concrete row class",
+                            ParameterDescriptor.Kind.TEXT, true, "", List.of(),
+                            "The field target class or one of its subclasses."),
+                    new ParameterDescriptor(TABLE_ROW_DETAILS_FIELD, "Row details field",
+                            ParameterDescriptor.Kind.TEXT, true, "", List.of(),
+                            "Text-list field receiving every non-empty column as Header: value."),
+                    new ParameterDescriptor(TABLE_ROW_SOURCE_FIELD, "Source instance field",
+                            ParameterDescriptor.Kind.TEXT, true, "", List.of(),
+                            "Reference-list field receiving the instance whose article owns the row."),
+                    new ParameterDescriptor(TABLE_ROW_REFERENCES_FIELD,
+                            "Resolved references field", ParameterDescriptor.Kind.TEXT,
+                            false, "", List.of(),
+                            "Optional reference-list field receiving loaded instances linked from the display cell."));
+        }
+        @Override public SourceValueSchema outputSchema() {
+            return SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE, "model");
+        }
+        @Override public PreparedSourceOperation prepare(SourceBinding binding) {
+            ArticleTableRowInstanceSpec spec = new ArticleTableRowInstanceSpec(
+                    binding.recipe().parameter(TABLE_SECTION),
+                    binding.recipe().parameter(TABLE_NAME),
+                    binding.recipe().parameter(TABLE_COLUMN),
+                    binding.recipe().parameter(TABLE_ROW_TARGET_CLASS),
+                    binding.recipe().parameter(TABLE_ROW_DETAILS_FIELD),
+                    binding.recipe().parameter(TABLE_ROW_SOURCE_FIELD),
+                    binding.recipe().parameter(TABLE_ROW_REFERENCES_FIELD));
+            return new PreparedSourceOperation(FAMILY_ARTICLE_TABLE_ROW_INSTANCES,
+                    "Wikipedia article table-row instances",
+                    PreparedSourceOperation.Execution.RETAIN,
+                    binding.target().className() + "." + binding.target().fieldPath()
+                            + " — review one " + spec.targetClass() + " per row from "
+                            + spec.description(),
+                    java.util.Map.of(
+                            "input", "One retained versioned structured Wikipedia article per selected member",
+                            "operation", "Select configured data rows without reparsing flattened text",
+                            "output", "Create " + spec.targetClass() + " instances, fill "
+                                    + spec.detailsField() + " and " + spec.sourceField()
+                                    + (spec.referencesField().isBlank() ? ""
+                                    : ", and resolve display-cell links into "
+                                            + spec.referencesField())),
+                    spec, articleCorrespondence());
+        }
+    }
+
+    public record ArticleTableRowInstanceSpec(
+            String sectionPath,
+            String table,
+            String displayColumn,
+            String targetClass,
+            String detailsField,
+            String sourceField,
+            String referencesField) {
+        public ArticleTableRowInstanceSpec {
+            sectionPath = clean(sectionPath);
+            table = clean(table);
+            displayColumn = clean(displayColumn);
+            targetClass = clean(targetClass);
+            detailsField = clean(detailsField);
+            sourceField = clean(sourceField);
+            referencesField = clean(referencesField);
+        }
+        public boolean configured() {
+            return !sectionPath.isBlank() && !displayColumn.isBlank()
+                    && !targetClass.isBlank() && !detailsField.isBlank()
+                    && !sourceField.isBlank();
+        }
+        public String description() {
+            return "section ‘" + sectionPath + "’"
+                    + (table.isBlank() ? "" : ", table ‘" + table + "’")
+                    + ", display column ‘" + displayColumn + "’";
         }
     }
 
@@ -441,6 +539,31 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         return spec.configured() ? spec : null;
     }
 
+    public static ArticleTableRowInstanceSpec articleTableRowInstances(
+            SourceBinding binding) {
+        if (!articleTableRowInstanceOperation(binding)) return null;
+        SourceRecipe recipe = binding.recipe();
+        ArticleTableRowInstanceSpec spec = new ArticleTableRowInstanceSpec(
+                recipe.parameter(TABLE_SECTION), recipe.parameter(TABLE_NAME),
+                recipe.parameter(TABLE_COLUMN), recipe.parameter(TABLE_ROW_TARGET_CLASS),
+                recipe.parameter(TABLE_ROW_DETAILS_FIELD),
+                recipe.parameter(TABLE_ROW_SOURCE_FIELD),
+                recipe.parameter(TABLE_ROW_REFERENCES_FIELD));
+        return spec.configured() ? spec : null;
+    }
+
+    /** Whether this is the operation, including an incomplete recipe the editor shows. */
+    public static boolean articleTableRowInstanceOperation(SourceBinding binding) {
+        if (binding == null || binding.target() == null
+                || binding.target().scope() != BindingScope.FIELD_VALUE
+                || binding.target().slot() != SourceBindingSlot.CANDIDATE_EVIDENCE) {
+            return false;
+        }
+        SourceRecipe recipe = binding.recipe();
+        return recipe != null && ID.equals(recipe.providerId())
+                && ARTICLE_TABLE_ROW_INSTANCES.equals(recipe.operationId());
+    }
+
     /** Whether this is the operation, including an incomplete recipe the editor shows. */
     public static boolean articleTableColumnLinkOperation(SourceBinding binding) {
         if (binding == null || binding.target() == null
@@ -451,6 +574,10 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         SourceRecipe recipe = binding.recipe();
         return recipe != null && ID.equals(recipe.providerId())
                 && ARTICLE_TABLE_COLUMN_LINKS.equals(recipe.operationId());
+    }
+
+    private static String clean(String value) {
+        return value == null ? "" : value.trim();
     }
 
     public static boolean articleIntroduction(SourceBinding binding) {

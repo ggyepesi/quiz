@@ -19,17 +19,20 @@ class DeityGroupSavedModelsTest {
 
     @Test
     void egyptianGroupsAreBoundedAndReferenceEgyptianDeities() throws Exception {
-        assertDeityGroup("egyptiangods", "EgyptianDeity",
+        // Members are typed by the shared base, so a group can hold both deities and the
+        // table-row AssessorOfMaat instances; the graph still starts from deities.
+        assertDeityGroup("egyptiangods", "DeityGroupMember", "EgyptianDeity",
                 "Category:Groups of Egyptian deities");
     }
 
     @Test
     void greekGroupsAreBoundedAndReferenceMythologicalCharacters() throws Exception {
-        assertDeityGroup("mythology", "Character", "");
+        assertDeityGroup("mythology", "Character", "Character", "");
     }
 
     private static void assertDeityGroup(
-            String projectName, String memberClassName, String category)
+            String projectName, String memberClassName, String deityClassName,
+            String category)
             throws Exception {
         GeneratedProjectModel project = new GeneratedProjectModelStore().load(
                 new File("../data/wikidata/" + projectName + "/"
@@ -63,6 +66,8 @@ class DeityGroupSavedModelsTest {
                 .filter(field -> "members".equals(field.name()))
                 .findFirst().orElseThrow();
         assertEquals(memberClassName, members.entityClassName());
+        assertTrue(project.isSameOrSubclass(deityClassName, memberClassName),
+                deityClassName + " instances must be accepted as group members");
         assertEquals(FieldCardinality.COLLECTION, members.cardinality());
         assertEquals(FieldRenderMode.REFERENCE, members.renderMode());
         assertEquals(EdgeMembershipMode.INHERIT, members.edgeMembership());
@@ -85,7 +90,7 @@ class DeityGroupSavedModelsTest {
         assertNotNull(discovery);
         GraphDiscoveryConfiguration graph = discovery.graphSource()
                 .configurationFor(discovery.className());
-        assertEquals(memberClassName, graph.startNode().qidSourceClass());
+        assertEquals(deityClassName, graph.startNode().qidSourceClass());
         GraphDiscoveryConfiguration.NextNode output = graph.nextNodes().getFirst();
         assertEquals("DeityGroup", output.populationClass());
         assertEquals(GraphDiscoveryConfiguration.PopulationOperation.ADD,

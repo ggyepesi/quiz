@@ -80,9 +80,14 @@ public final class FindDataBatchReviewPanel {
             cards.add(card);
             if (decision != null) {
                 applicable.put(id, decision);
-                // Creating a new instance is a semantic admission decision, never a
-                // bulk-safe fill. It remains available through Stage selected card.
-                if (!overwrite && decision.instances().isEmpty()) safeDefaults.add(decision);
+                // Creating a new instance is a semantic admission decision and is not a
+                // bulk-safe fill, except where its provider marks the candidate bulk-safe
+                // (a configured structural table row). Others remain available through
+                // Stage selected card.
+                if (!overwrite && decision.instances().stream()
+                        .allMatch(EnrichmentProposal.InstanceCandidate::bulkSafe)) {
+                    safeDefaults.add(decision);
+                }
             }
         }
 

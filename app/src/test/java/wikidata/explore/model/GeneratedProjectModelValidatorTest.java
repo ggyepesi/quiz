@@ -829,6 +829,53 @@ class GeneratedProjectModelValidatorTest {
                 GeneratedProjectModelValidator.validate(project).format());
     }
 
+    @Test void tableRowInstanceMappingMustUseACompatibleConcreteClass() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel group = new GeneratedClassModel("DeityGroup");
+        GeneratedClassModel member = new GeneratedClassModel("DeityGroupMember");
+        GeneratedClassModel deity = new GeneratedClassModel("EgyptianDeity");
+        deity.baseClassName("DeityGroupMember");
+        GeneratedClassModel assessor = new GeneratedClassModel("AssessorOfMaat");
+        assessor.baseClassName("DeityGroupMember");
+        GeneratedFieldModel members = group.addField(
+                "members", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        members.entityClassName("DeityGroupMember");
+        assessor.addField("rowDetails", FieldType.TEXT, FieldCardinality.COLLECTION);
+        GeneratedFieldModel groups = assessor.addField(
+                "groups", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        groups.entityClassName("DeityGroup");
+        GeneratedFieldModel deities = assessor.addField(
+                "deities", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        deities.entityClassName("EgyptianDeity");
+        project.rootClass(group);
+        project.addClass(member);
+        project.addClass(deity);
+        project.addClass(assessor);
+        datasource.api.SourceBindingTarget target = new datasource.api.SourceBindingTarget(
+                datasource.api.BindingScope.FIELD_VALUE, "DeityGroup", "members",
+                datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE,
+                group.declarationId());
+        FieldSourceBindings.put(members, new datasource.api.SourceBinding(target,
+                new datasource.api.SourceRecipe("wikipedia",
+                        "article-table-row-instances", java.util.Map.of(
+                        "section", "Description > List of names",
+                        "table", "",
+                        "column", "Name of the deity",
+                        "rowTargetClass", "AssessorOfMaat",
+                        "rowDetailsField", "rowDetails",
+                        "rowSourceField", "groups",
+                        "rowReferencesField", "deities"))));
+
+        assertTrue(GeneratedProjectModelValidator.validate(project).valid(),
+                GeneratedProjectModelValidator.validate(project).format());
+
+        assessor.baseClassName("");
+        ValidationResult invalid = GeneratedProjectModelValidator.validate(project);
+        assertFalse(invalid.valid());
+        assertTrue(invalid.format().contains(
+                "must be DeityGroupMember or one of its subclasses"), invalid.format());
+    }
+
     @Test void infoboxLinkEvidenceRequiresARenderedKeyAndTypedEntityList() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel deity = new GeneratedClassModel("EgyptianDeity");

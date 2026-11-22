@@ -118,16 +118,23 @@ class EgyptianGodsSavedModelTest {
         assertTrue(preview.contains("schema:about"), preview);
 
         GeneratedClassModel deityGroup = model.findClass("DeityGroup");
+        assertEquals("DeityGroupMember", deity.baseClassName());
+        assertEquals("DeityGroupMember",
+                model.findClass("AssessorOfMaat").baseClassName());
         GeneratedFieldModel members = deityGroup.fields().stream()
                 .filter(value -> value.name().equals("members"))
                 .findFirst().orElseThrow();
         var tableEvidence = FieldSourceBindings.binding(
                 members, SourceBindingSlot.CANDIDATE_EVIDENCE);
         var tableSpec = datasource.wikipedia.WikipediaDatasourceProvider
-                .articleTableColumnLinks(tableEvidence);
+                .articleTableRowInstances(tableEvidence);
         assertEquals("Description > List of names, provenances and tasks (Wilkinson et al)",
                 tableSpec.sectionPath());
         assertEquals("", tableSpec.table());
-        assertEquals("Name of the deity", tableSpec.column());
+        assertEquals("Name of the deity", tableSpec.displayColumn());
+        assertEquals("AssessorOfMaat", tableSpec.targetClass());
+        assertEquals("rowDetails", tableSpec.detailsField());
+        assertEquals("groups", tableSpec.sourceField());
+        assertEquals("deities", tableSpec.referencesField());
     }
 }

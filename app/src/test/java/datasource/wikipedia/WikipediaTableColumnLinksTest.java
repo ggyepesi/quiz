@@ -58,4 +58,28 @@ class WikipediaTableColumnLinksTest {
         assertEquals(List.of(), result.links());
         assertEquals(0, result.matchingSections());
     }
+
+    @Test void theSharedRowProjectionRetainsEveryCellNotOnlyLinkedOnes() {
+        var parsed = wikipedia.WikipediaArticleClient.parseArticleText("""
+                <h2>Description</h2><table><caption>Assessors</caption>
+                <tr><th>Name</th><th>Provenance</th><th>Task</th></tr>
+                <tr><td><a href='/wiki/Ra'>Ra</a></td><td>Memphis</td><td>truth</td></tr>
+                </table>
+                """);
+        WikipediaArticle article = new WikipediaArticle(
+                wikipedia.WikipediaArticleClient.sourceDocument(
+                        "Assessors of Maat", "1", parsed.text(), List.of(), parsed.links()),
+                parsed.text(), List.of(), parsed.structuredSections());
+
+        WikipediaTableRows.Selection result = WikipediaTableRows.select(
+                article, "Description", "Assessors", "Name");
+
+        assertEquals(1, result.rows().size());
+        assertEquals(List.of("Name", "Provenance", "Task"),
+                result.rows().getFirst().cells().stream()
+                        .map(WikipediaTableRows.SelectedCell::column).toList());
+        assertEquals(List.of("Ra", "Memphis", "truth"),
+                result.rows().getFirst().cells().stream()
+                        .map(WikipediaTableRows.SelectedCell::text).toList());
+    }
 }

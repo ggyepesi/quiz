@@ -111,6 +111,34 @@ This operation is additive evidence beside the field's primary source. For examp
 column of the Assessors of Maat article proposes additional loaded `EgyptianDeity` members.
 The two sources are not merged into an order-dependent primary-source rule.
 
+## Configured table-row instances
+
+Some authored tables contain real modeled records rather than merely references to objects
+that are already loaded. A reference-list field may therefore configure
+`article-table-row-instances` in its candidate-evidence slot. The recipe names:
+
+- the exact retained section path, optional table caption/name and display column;
+- one concrete target class accepted by the reference field;
+- a Text-list field on that class for the header-labelled row cells;
+- a reference-list field on that class for the source/owner instance; and
+- optionally, another reference-list field for links in the display cell that resolve to
+  already-loaded compatible instances.
+
+Execution proposes one stable typed instance for every data row. Its identity comes from the
+owner, target field, configured section/table/display column, the display cell's text and the
+row's occurrence among rows with that same display text. An article edit to another cell
+therefore keeps the already-accepted instance, while two rows sharing a display label stay
+separate instances. Renaming the display cell makes a new row. These literal row projections are safe to stage together,
+but staging is still an explicit review action. Links enrich the row instance only when they
+resolve against the loaded target pool; red links, redirects without a loaded target and other
+unresolved links create no entity. If a resolved target is already a member of the owner field,
+that richer domain instance represents the row and no duplicate row-wrapper member is proposed.
+
+The Egyptian Gods model uses this operation for the Assessors of Maat table. Each row becomes an
+`AssessorOfMaat`, keeps all cells as evidence, refers back to its `DeityGroup`, and may point at an
+already-loaded `EgyptianDeity`. It does not misrepresent all 42 named assessors as already-known
+EgyptianDeity entities.
+
 ## Boundary
 
 - No article-link crawl.

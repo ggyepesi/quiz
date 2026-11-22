@@ -220,6 +220,52 @@ class FieldSourcePanelRowsTest {
         assertEquals("characters", reopened.passageSourceFieldBox().getSelectedItem());
     }
 
+    @Test void aReferenceListMapsConfiguredTableRowsOntoAConcreteTargetSubclass() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel group = project.rootClass();
+        group.className("DeityGroup");
+        GeneratedFieldModel members = group.addField(
+                "members", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        members.entityClassName("DeityGroupMember");
+        GeneratedClassModel base = new GeneratedClassModel("DeityGroupMember");
+        GeneratedClassModel assessor = new GeneratedClassModel("AssessorOfMaat");
+        assessor.baseClassName("DeityGroupMember");
+        assessor.addField("rowDetails", FieldType.TEXT, FieldCardinality.COLLECTION);
+        GeneratedFieldModel groups = assessor.addField(
+                "groups", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        groups.entityClassName("DeityGroup");
+        GeneratedFieldModel deities = assessor.addField(
+                "deities", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        deities.entityClassName("EgyptianDeity");
+        project.addClass(base);
+        project.addClass(assessor);
+        project.addClass(new GeneratedClassModel("EgyptianDeity"));
+        FieldSourcePanel panel = new FieldSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(members);
+
+        JComboBox<?> evidence = comboContainingLabel(panel,
+                "One target instance per configured article table row");
+        selectLabel(evidence, "One target instance per configured article table row");
+        panel.tableEvidenceSectionField().setText("Description > List of names");
+        panel.tableEvidenceNameField().setText("Assessors");
+        panel.tableEvidenceColumnField().setText("Name of the deity");
+        panel.tableRowTargetClassBox().setSelectedItem("AssessorOfMaat");
+        panel.tableRowDetailsFieldBox().setSelectedItem("rowDetails");
+        panel.tableRowSourceFieldBox().setSelectedItem("groups");
+        panel.tableRowReferencesFieldBox().setSelectedItem("deities");
+        button(panel, "Apply field source").doClick();
+
+        var binding = wikidata.explore.model.FieldSourceBindings.binding(members,
+                datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+        var spec = datasource.wikipedia.WikipediaDatasourceProvider
+                .articleTableRowInstances(binding);
+        assertEquals("AssessorOfMaat", spec.targetClass());
+        assertEquals("rowDetails", spec.detailsField());
+        assertEquals("groups", spec.sourceField());
+        assertEquals("deities", spec.referencesField());
+    }
+
     @Test void ownedFieldListsOwnerSitesAndOnlyApplyCreatesAnOverride() {
         GeneratedProjectModel project = new GeneratedProjectModel();
         GeneratedClassModel person = new GeneratedClassModel("Person");

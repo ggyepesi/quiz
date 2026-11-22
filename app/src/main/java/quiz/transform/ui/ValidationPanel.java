@@ -1454,6 +1454,10 @@ public final class ValidationPanel extends JPanel {
      *  execution so the button cannot promise a mode the action then fails to run. */
     private quiz.enrichment.WikipediaTextEvidenceProvider.CandidateEvidenceMode
             configuredCandidateEvidence(String ownerType, String field) {
+        if (configuredArticleTableRowInstances(ownerType, field) != null) {
+            return quiz.enrichment.WikipediaTextEvidenceProvider.CandidateEvidenceMode
+                    .ARTICLE_TABLE_ROW_INSTANCES;
+        }
         if (configuredArticlePassageInstances(ownerType, field) != null) {
             return quiz.enrichment.WikipediaTextEvidenceProvider.CandidateEvidenceMode
                     .ARTICLE_PASSAGE_INSTANCES;
@@ -1499,6 +1503,17 @@ public final class ValidationPanel extends JPanel {
                         datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
         return datasource.wikipedia.WikipediaDatasourceProvider
                 .articleTableColumnLinks(binding);
+    }
+
+    private datasource.wikipedia.WikipediaDatasourceProvider.ArticleTableRowInstanceSpec
+            configuredArticleTableRowInstances(String ownerType, String field) {
+        quiz.curation.FieldRulePromoter ruleModel =
+                domain.capability(quiz.curation.FieldRulePromoter.class);
+        datasource.api.SourceBinding binding = ruleModel == null ? null
+                : ruleModel.declaredBinding(ownerType, field,
+                        datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+        return datasource.wikipedia.WikipediaDatasourceProvider
+                .articleTableRowInstances(binding);
     }
 
     private datasource.wikipedia.WikipediaDatasourceProvider.ArticlePassageInstanceSpec
@@ -1548,6 +1563,9 @@ public final class ValidationPanel extends JPanel {
         boolean articlePassageInstances = candidateMode
                 == quiz.enrichment.WikipediaTextEvidenceProvider.CandidateEvidenceMode
                         .ARTICLE_PASSAGE_INSTANCES;
+        boolean articleTableRowInstances = candidateMode
+                == quiz.enrichment.WikipediaTextEvidenceProvider.CandidateEvidenceMode
+                        .ARTICLE_TABLE_ROW_INSTANCES;
         boolean infoboxRowLinks = candidateMode
                 == quiz.enrichment.WikipediaTextEvidenceProvider.CandidateEvidenceMode
                         .INFOBOX_ROW_LINKS;
@@ -1556,6 +1574,9 @@ public final class ValidationPanel extends JPanel {
                 tableColumnSpec = configuredArticleTableColumnLinks(
                         selectedFieldType, path);
         boolean tableColumnLinks = tableColumnSpec != null;
+        datasource.wikipedia.WikipediaDatasourceProvider.ArticleTableRowInstanceSpec
+                tableRowSpec = configuredArticleTableRowInstances(
+                        selectedFieldType, path);
         datasource.wikipedia.WikipediaDatasourceProvider.ArticlePassageInstanceSpec
                 passageInstanceSpec = configuredArticlePassageInstances(
                         selectedFieldType, path);
@@ -1572,6 +1593,15 @@ public final class ValidationPanel extends JPanel {
                 || fieldSchema.targetType().isBlank())) {
             JOptionPane.showMessageDialog(this,
                     "Article passage instances require a reference list with a declared "
+                            + "target class. " + selectedFieldType + "." + path
+                            + " does not have that field shape.");
+            return;
+        }
+        if (articleTableRowInstances && (fieldSchema == null
+                || !fieldSchema.reference() || !fieldSchema.collection()
+                || fieldSchema.targetType().isBlank())) {
+            JOptionPane.showMessageDialog(this,
+                    "Article table-row instances require a reference list with a declared "
                             + "target class. " + selectedFieldType + "." + path
                             + " does not have that field shape.");
             return;
@@ -1604,7 +1634,18 @@ public final class ValidationPanel extends JPanel {
                 && fieldSchema.reference() && !fieldSchema.targetType().isBlank();
         List<Viewable> mentionCandidates = !mentionTargetConfigured
                 ? List.of() : domain.instancesOf(fieldSchema.targetType());
-        quiz.enrichment.EnrichmentProvider provider = tableColumnLinks
+        objectview.field.FieldRef rowReferencesSchema = !articleTableRowInstances
+                || tableRowSpec.referencesField().isBlank() ? null
+                : DomainSchemas.resolve(domain, tableRowSpec.targetClass(),
+                        tableRowSpec.referencesField());
+        List<Viewable> rowReferenceCandidates = rowReferencesSchema == null
+                || rowReferencesSchema.targetType().isBlank() ? List.of()
+                : domain.instancesOf(rowReferencesSchema.targetType());
+        quiz.enrichment.EnrichmentProvider provider = articleTableRowInstances
+                ? new quiz.enrichment.WikipediaTableRowInstanceEvidenceProvider(
+                        tableRowSpec, rowReferenceCandidates,
+                        rowReferencesSchema == null ? "" : rowReferencesSchema.targetType())
+                : tableColumnLinks
                 ? new quiz.enrichment.WikipediaTableReferenceEvidenceProvider(
                         tableColumnSpec, mentionCandidates)
                 : infoboxRowLinks
@@ -1640,7 +1681,9 @@ public final class ValidationPanel extends JPanel {
                                     && !entry.getValue().links().isEmpty());
             boolean hasCurrentValue = current != null
                     && (!(current instanceof Collection<?> values) || !values.isEmpty());
-            boolean usableEvidence = tableColumnLinks
+            boolean usableEvidence = articleTableRowInstances
+                    ? true
+                    : tableColumnLinks
                     ? !mentionCandidates.isEmpty()
                     : infoboxRowLinks ? hasInfoboxCandidates
                     : hasCurrentValue || hasCategories || hasIntroductionCandidates
@@ -1669,7 +1712,9 @@ public final class ValidationPanel extends JPanel {
         }
         if (jobs.isEmpty()) {
             JOptionPane.showMessageDialog(this,
-                    tableColumnLinks
+                    articleTableRowInstances
+                            ? "No selected group has a Wikidata identity."
+                    : tableColumnLinks
                             ? "No member in this scope has a Wikidata identity, or there are "
                                     + "no loaded instances of the field's target class."
                             : infoboxRowLinks
@@ -1679,7 +1724,19 @@ public final class ValidationPanel extends JPanel {
                                     + "retained article evidence, or a Wikidata identity.");
             return;
         }
-        String mentionExplanation = articlePassageInstances
+        String mentionExplanation = articleTableRowInstances
+                ? "Each selected group's retained structured article is read once. Every "
+                        + "data row in <b>" + tableRowSpec.description()
+                        + "</b> that is not already represented by a current linked member "
+                        + "proposes one " + tableRowSpec.targetClass() + ". The row "
+                        + "fills " + tableRowSpec.detailsField() + ", its selected group "
+                        + "fills " + tableRowSpec.sourceField()
+                        + (tableRowSpec.referencesField().isBlank() ? ""
+                        : ", and loaded links from the display cell fill "
+                                + tableRowSpec.referencesField())
+                        + ". Unresolved links create no entity. These exact configured rows "
+                        + "are included in Stage all safe results.<br>"
+                : articlePassageInstances
                 ? "Each selected member's full article is read once. Every bounded content "
                         + "passage becomes a separate review card proposing one "
                         + fieldSchema.targetType() + "; accepting that card fills "
@@ -1736,18 +1793,21 @@ public final class ValidationPanel extends JPanel {
                 + selectedFieldType + "."
                 + path + "</b><br><br>Eligible members: <b>" + jobs.size() + "</b><br>"
                 + "Skipped: <b>" + skipped + "</b> ("
-                + (tableColumnLinks
+                + (articleTableRowInstances
+                        ? "no Wikidata identity"
+                        : tableColumnLinks
                         ? "no configured table-column candidates or no identity"
                         : infoboxRowLinks
                         ? "no retained links in the configured row or no identity"
                         : "no usable value/category evidence or identity")
                 + ")<br><br>"
-                + (infoboxRowLinks || tableColumnLinks ? ""
+                + (infoboxRowLinks || tableColumnLinks || articleTableRowInstances ? ""
                         : "Existing values are checked against article text. Configured category "
                                 + "relations can also propose new values from memberships acquired "
                                 + "by ModelBuilder. ")
                 + mentionExplanation
-                + (articlePassages || articlePassageInstances || infoboxRowLinks
+                + (articlePassages || articlePassageInstances || articleTableRowInstances
+                        || infoboxRowLinks
                         || tableColumnLinks
                         || referentKind == null ? ""
                         : "Typed candidates must be a " + fieldSchema.targetType()
@@ -1756,7 +1816,8 @@ public final class ValidationPanel extends JPanel {
                 + "Every result retains its article revision and exact source evidence; "
                 + "nothing is saved until you stage it.</div></html>";
         if (JOptionPane.showConfirmDialog(this, new JLabel(message),
-                tableColumnLinks ? "Find Wikipedia table-column link evidence"
+                articleTableRowInstances ? "Find Wikipedia table-row instances"
+                        : tableColumnLinks ? "Find Wikipedia table-column link evidence"
                         : infoboxRowLinks ? "Find Wikipedia infobox link evidence"
                         : "Find Wikipedia text evidence", JOptionPane.OK_CANCEL_OPTION,
                 JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return;
@@ -1770,7 +1831,10 @@ public final class ValidationPanel extends JPanel {
                                 .stream().map(quiz.enrichment.FindDataResult::proposal).toList();
                         quiz.enrichment.ui.FindDataBatchReviewPanel.showModeless(this,
                                 "Review Wikipedia evidence — " + path,
-                                tableColumnLinks
+                                articleTableRowInstances
+                                        ? "Review modeled instances produced from "
+                                                + tableRowSpec.description() + "."
+                                        : tableColumnLinks
                                         ? "Review loaded target instances linked from "
                                                 + tableColumnSpec.description() + "."
                                         : infoboxRowLinks

@@ -6,7 +6,7 @@
     "@class" : "wikidata.explore.model.GeneratedClassModel",
     "declarationId" : "decl:147b94be-885e-455d-a798-4d15ce600b3a",
     "className" : "EgyptianDeity",
-    "baseClassName" : "",
+    "baseClassName" : "DeityGroupMember",
     "discriminatorPid" : "",
     "discriminatorQid" : "",
     "subclassCondition" : {
@@ -1289,7 +1289,7 @@
     "@class" : "wikidata.explore.model.GeneratedClassModel",
     "declarationId" : "decl:147b94be-885e-455d-a798-4d15ce600b3a",
     "className" : "EgyptianDeity",
-    "baseClassName" : "",
+    "baseClassName" : "DeityGroupMember",
     "discriminatorPid" : "",
     "discriminatorQid" : "",
     "subclassCondition" : {
@@ -2568,6 +2568,64 @@
     }
   }, {
     "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "declarationId" : "decl:9c9d0e36-e22b-40fc-9cbe-c92aac509ea0",
+    "className" : "DeityGroupMember",
+    "baseClassName" : "",
+    "classKind" : "SOURCE",
+    "generationDepth" : 0,
+    "membership" : {
+      "kind" : "UNBOUNDED",
+      "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+      "relationPid" : "",
+      "selectionName" : "",
+      "selectionId" : "",
+      "includeDescendants" : false
+    },
+    "fields" : [ "java.util.ArrayList", [ ] ],
+    "seedQids" : [ "java.util.ArrayList", [ ] ],
+    "sourceBindings" : [ "java.util.ArrayList", [ ] ]
+  }, {
+    "@class" : "wikidata.explore.model.GeneratedClassModel",
+    "declarationId" : "decl:67e3acb9-98d5-43b2-bbd2-748d22ffd758",
+    "className" : "AssessorOfMaat",
+    "baseClassName" : "DeityGroupMember",
+    "classKind" : "SOURCE",
+    "generationDepth" : 0,
+    "membership" : {
+      "kind" : "UNBOUNDED",
+      "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+      "relationPid" : "",
+      "selectionName" : "",
+      "selectionId" : "",
+      "includeDescendants" : false
+    },
+    "fields" : [ "java.util.ArrayList", [ {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "rowDetails",
+      "type" : "TEXT",
+      "cardinality" : "COLLECTION",
+      "renderMode" : "INLINE"
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "groups",
+      "type" : "ENTITY",
+      "entityClassName" : "DeityGroup",
+      "entityDeclarationId" : "decl:6184ac84-21fa-4382-86ee-220f84220e21",
+      "cardinality" : "COLLECTION",
+      "renderMode" : "REFERENCE"
+    }, {
+      "@class" : "wikidata.explore.model.GeneratedFieldModel",
+      "name" : "deities",
+      "type" : "ENTITY",
+      "entityClassName" : "EgyptianDeity",
+      "entityDeclarationId" : "decl:147b94be-885e-455d-a798-4d15ce600b3a",
+      "cardinality" : "COLLECTION",
+      "renderMode" : "REFERENCE"
+    } ] ],
+    "seedQids" : [ "java.util.ArrayList", [ ] ],
+    "sourceBindings" : [ "java.util.ArrayList", [ ] ]
+  }, {
+    "@class" : "wikidata.explore.model.GeneratedClassModel",
     "declarationId" : "decl:6184ac84-21fa-4382-86ee-220f84220e21",
     "className" : "DeityGroup",
     "baseClassName" : "",
@@ -2624,8 +2682,8 @@
       "@class" : "wikidata.explore.model.GeneratedFieldModel",
       "name" : "members",
       "type" : "ENTITY",
-      "entityClassName" : "EgyptianDeity",
-      "entityDeclarationId" : "decl:147b94be-885e-455d-a798-4d15ce600b3a",
+      "entityClassName" : "DeityGroupMember",
+      "entityDeclarationId" : "decl:9c9d0e36-e22b-40fc-9cbe-c92aac509ea0",
       "unclassedEntity" : false,
       "cardinality" : "COLLECTION",
       "renderMode" : "REFERENCE",
@@ -2695,12 +2753,16 @@
         },
         "recipe" : {
           "providerId" : "wikipedia",
-          "operationId" : "article-table-column-links",
+          "operationId" : "article-table-row-instances",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
             "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
             "table" : "",
-            "column" : "Name of the deity"
+            "column" : "Name of the deity",
+            "rowTargetClass" : "AssessorOfMaat",
+            "rowDetailsField" : "rowDetails",
+            "rowSourceField" : "groups",
+            "rowReferencesField" : "deities"
           }
         }
       } ] ],

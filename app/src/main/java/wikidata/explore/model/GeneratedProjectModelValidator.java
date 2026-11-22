@@ -63,6 +63,7 @@ public final class GeneratedProjectModelValidator {
             validateValueLanguages(clazz, problems);
             validateQualifierConditions(clazz, problems);
             validateArticlePassageInstances(project, clazz, problems);
+            validateArticleTableRowInstances(project, clazz, problems);
             validateInfoboxRowLinks(clazz, problems);
             validateAggregateClass(project, clazz, problems);
             validateGraphClass(project, clazz, problems);
@@ -546,6 +547,79 @@ public final class GeneratedProjectModelValidator {
                 problems.add(Problem.error(where, "Source instance target '"
                         + target.className() + "." + spec.sourceField()
                         + "' must be an ENTITY list that accepts " + owner.className() + "."));
+            }
+        }
+    }
+
+    private static void validateArticleTableRowInstances(
+            GeneratedProjectModel project,
+            GeneratedClassModel owner,
+            List<Problem> problems) {
+        for (GeneratedFieldModel field : owner.fields()) {
+            if (field == null) continue;
+            datasource.api.SourceBinding binding = FieldSourceBindings.binding(
+                    field, datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+            if (!datasource.wikipedia.WikipediaDatasourceProvider
+                    .articleTableRowInstanceOperation(binding)) continue;
+            String where = path(owner, field);
+            if (field.type() != FieldType.ENTITY
+                    || field.cardinality() != FieldCardinality.COLLECTION
+                    || field.entityClassName().isBlank()) {
+                problems.add(Problem.error(where, "Article table-row instances require a "
+                        + "list-valued ENTITY field with a declared target class."));
+                continue;
+            }
+            var spec = datasource.wikipedia.WikipediaDatasourceProvider
+                    .articleTableRowInstances(binding);
+            if (spec == null) {
+                problems.add(Problem.error(where, "Article table-row instances require a "
+                        + "section, display column, concrete row class, row-details field "
+                        + "and source-instance field."));
+                continue;
+            }
+            GeneratedClassModel target = project.findClass(spec.targetClass());
+            if (target == null) {
+                problems.add(Problem.error(where, "Table-row target class '"
+                        + spec.targetClass() + "' does not exist."));
+                continue;
+            }
+            if (!project.isSameOrSubclass(
+                    target.className(), field.entityClassName())) {
+                problems.add(Problem.error(where, "Table-row target class '"
+                        + target.className() + "' must be " + field.entityClassName()
+                        + " or one of its subclasses."));
+            }
+            GeneratedFieldModel details = target.effectiveFields(project).stream()
+                    .filter(candidate -> spec.detailsField().equals(candidate.name()))
+                    .findFirst().orElse(null);
+            if (details == null || details.type() != FieldType.TEXT
+                    || details.cardinality() != FieldCardinality.COLLECTION) {
+                problems.add(Problem.error(where, "Row details target '"
+                        + target.className() + "." + spec.detailsField()
+                        + "' must be a Text list."));
+            }
+            GeneratedFieldModel source = target.effectiveFields(project).stream()
+                    .filter(candidate -> spec.sourceField().equals(candidate.name()))
+                    .findFirst().orElse(null);
+            if (source == null || source.type() != FieldType.ENTITY
+                    || source.cardinality() != FieldCardinality.COLLECTION
+                    || !project.isSameOrSubclass(
+                            owner.className(), source.entityClassName())) {
+                problems.add(Problem.error(where, "Source instance target '"
+                        + target.className() + "." + spec.sourceField()
+                        + "' must be an ENTITY list that accepts " + owner.className() + "."));
+            }
+            if (!spec.referencesField().isBlank()) {
+                GeneratedFieldModel references = target.effectiveFields(project).stream()
+                        .filter(candidate -> spec.referencesField().equals(candidate.name()))
+                        .findFirst().orElse(null);
+                if (references == null || references.type() != FieldType.ENTITY
+                        || references.cardinality() != FieldCardinality.COLLECTION
+                        || references.entityClassName().isBlank()) {
+                    problems.add(Problem.error(where, "Resolved references target '"
+                            + target.className() + "." + spec.referencesField()
+                            + "' must be an ENTITY list with a declared target class."));
+                }
             }
         }
     }

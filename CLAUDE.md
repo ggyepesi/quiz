@@ -167,6 +167,18 @@ construct per thing produced:
    only when the model explicitly maps the passage text and source instance into fields of
    that target class. Each proposed instance is an independent review decision, is never in
    bulk-safe acceptance, and enters the ordinary typed object graph only after acceptance.
+   A configured table-row instance operation is the corresponding structural recipe: it
+   names the exact retained section, table and display column, a concrete target class, the
+   target fields for the row cells and source instance, and an optional field for resolved
+   links. The target must be the field's declared target class or a subclass. One stable
+   instance is proposed per row; its identity is the owner, field, configured table and
+   display cell plus its occurrence among rows sharing that display cell, so an edit to
+   another cell keeps the accepted instance. Those literal structural rows may be staged
+   together. A row link may fill the optional
+   reference field only when it resolves to an already-loaded compatible instance; an
+   unresolved link never invents an entity. When that resolved instance is already a
+   member of the owner field, it represents the row directly and no duplicate row-wrapper
+   member is proposed.
    An unlinked label may nominate a candidate only when it identifies one loaded target;
    when loaded targets share the label, retained source links must resolve the identity.
 10. **Inspection is not an action.** Selecting, highlighting, hovering or navigating may change

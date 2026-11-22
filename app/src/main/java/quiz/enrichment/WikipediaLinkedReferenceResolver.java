@@ -30,6 +30,17 @@ final class WikipediaLinkedReferenceResolver {
         }
     }
 
+    record LinkResolution(
+            Map<Link, Viewable> matches,
+            int resolvedLinks,
+            List<Link> unresolvedLinks) {
+        LinkResolution {
+            matches = matches == null ? Map.of() : Map.copyOf(matches);
+            unresolvedLinks = unresolvedLinks == null
+                    ? List.of() : List.copyOf(unresolvedLinks);
+        }
+    }
+
     private final Map<String, List<Viewable>> byArticleTitle;
     private final Map<String, Viewable> byQid;
 
@@ -74,13 +85,31 @@ final class WikipediaLinkedReferenceResolver {
             List<Link> links, WikimediaEntityLookup lookup, QueryContext context,
             java.util.function.BiPredicate<Link, Viewable> admissible)
             throws Exception {
+        LinkResolution each = resolveEachDetailed(links, lookup, context, admissible);
+        LinkedHashMap<String, Match> matches = new LinkedHashMap<>();
+        each.matches().forEach((link, candidate) -> matches.putIfAbsent(
+                candidate.getIdentifier(), new Match(candidate, link)));
+        return new Resolution(List.copyOf(matches.values()), each.resolvedLinks(),
+                each.unresolvedLinks());
+    }
+
+    LinkResolution resolveEachDetailed(
+            List<Link> links, WikimediaEntityLookup lookup, QueryContext context)
+            throws Exception {
+        return resolveEachDetailed(links, lookup, context, (link, candidate) -> true);
+    }
+
+    private LinkResolution resolveEachDetailed(
+            List<Link> links, WikimediaEntityLookup lookup, QueryContext context,
+            java.util.function.BiPredicate<Link, Viewable> admissible)
+            throws Exception {
         if (links == null || links.isEmpty() || byQid.isEmpty()) {
-            return new Resolution(List.of(), 0,
+            return new LinkResolution(Map.of(), 0,
                     links == null ? List.of() : links);
         }
         java.util.function.BiPredicate<Link, Viewable> accepts = admissible == null
                 ? (link, candidate) -> true : admissible;
-        LinkedHashMap<String, Match> matches = new LinkedHashMap<>();
+        LinkedHashMap<Link, Viewable> matches = new LinkedHashMap<>();
         LinkedHashMap<Link, Viewable> directMatches = new LinkedHashMap<>();
         java.util.ArrayList<Link> unresolved = new java.util.ArrayList<>();
         for (Link link : links) {
@@ -106,12 +135,12 @@ final class WikipediaLinkedReferenceResolver {
             }
             if (candidate != null) {
                 resolvedLinks++;
-                matches.putIfAbsent(candidate.getIdentifier(), new Match(candidate, link));
+                matches.putIfAbsent(link, candidate);
             } else {
                 unresolvedLinks.add(link);
             }
         }
-        return new Resolution(List.copyOf(matches.values()), resolvedLinks,
+        return new LinkResolution(matches, resolvedLinks,
                 List.copyOf(unresolvedLinks));
     }
 
