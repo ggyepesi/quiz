@@ -1,4 +1,4 @@
-package wikidata.explore.demo;
+package quiz.ocr.cli;
 
 import quiz.ocr.ChartTextBlurrer;
 import domain.runtime.WikidataDynamicObject;
@@ -17,9 +17,9 @@ import java.util.List;
  * server always has a local file to serve.
  *
  * <p>Run once after (re)generating the snapshot:
- * {@code mvn -o exec:java -Dexec.mainClass=wikidata.explore.demo.ChartBlurTool}
+ * {@code mvn -o exec:java -Dexec.mainClass=quiz.ocr.cli.ChartBlurMain}
  */
-public final class ChartBlurTool {
+public final class ChartBlurMain {
 
     public static void main(String[] args) throws Exception {
         File snapshot = new File(aux.Constants.constellationsDataDirectory
@@ -97,5 +97,5 @@ public final class ChartBlurTool {
         }
     }
 
-    private ChartBlurTool() {}
+    private ChartBlurMain() {}
 }

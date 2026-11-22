@@ -1,4 +1,4 @@
-package domain.workbench.ui;
+package process.swing;
 
 import org.junit.jupiter.api.Test;
 
@@ -22,7 +22,7 @@ class DialogsTest {
     }
 
     @Test void persistenceSuccessIsRaisedBeforeItBlocksItsOwner() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/domain/workbench/ui/Dialogs.java"));
+        String source = Files.readString(Path.of("src/main/java/process/swing/Dialogs.java"));
         int success = source.indexOf("public static void showPersistenceSuccess(");
         int afterSuccess = source.indexOf("\n    static ", success);
         String successBody = source.substring(success, afterSuccess);

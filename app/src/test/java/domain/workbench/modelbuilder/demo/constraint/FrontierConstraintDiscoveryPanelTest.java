@@ -1,4 +1,4 @@
-package wikidata.explore.demo.constraint;
+package domain.workbench.modelbuilder.demo.constraint;
 
 import org.junit.jupiter.api.Test;
 import domain.workbench.modelbuilder.ui.CachedPropertyViewablePanel;

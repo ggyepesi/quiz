@@ -23,6 +23,7 @@ import domain.enrichment.EnrichmentProposal;
 import domain.enrichment.EnrichmentProvider;
 import domain.enrichment.EnrichmentRequest;
 import domain.enrichment.EnrichmentRoute;
+import process.swing.Dialogs;
 import domain.enrichment.EnrichmentSources;
 import domain.enrichment.FindDataBatchProcess;
 import domain.enrichment.FindDataBatchResult;
@@ -56,7 +57,6 @@ import domain.transform.DynamicViewable;
 import domain.workbench.ui.AdditionalSourcePicker;
 import domain.workbench.ui.ExploreByExamplePanel;
 import domain.workbench.ui.WikipediaCategoryRuleEditor;
-import domain.workbench.ui.Dialogs;
 
 import domain.workbench.execution.ui.SwingQueryRunner;
 import wikidata.ui.IdentityChip;

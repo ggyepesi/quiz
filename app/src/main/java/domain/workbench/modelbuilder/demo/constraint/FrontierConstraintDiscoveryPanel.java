@@ -1,4 +1,4 @@
-package wikidata.explore.demo.constraint;
+package domain.workbench.modelbuilder.demo.constraint;
 
 import objectview.Viewable;
 import objectview.ViewableAdapter;
@@ -6,8 +6,8 @@ import objectview.annotations.DisplayField;
 import objectview.render.RenderingMode;
 import objectview.view.SearchableView;
 import wikidata.WikidataSparqlClient;
-import wikidata.explore.demo.constraint.FrontierConstraintDiscovery.Constraint;
-import wikidata.explore.demo.constraint.FrontierConstraintDiscovery.Edge;
+import domain.workbench.modelbuilder.demo.constraint.FrontierConstraintDiscovery.Constraint;
+import domain.workbench.modelbuilder.demo.constraint.FrontierConstraintDiscovery.Edge;
 import domain.workbench.modelbuilder.ui.CachedPropertyViewablePanel;
 import domain.workbench.modelbuilder.ui.WikidataPropertyViewable;
 import wikidata.ui.WikidataLinks;

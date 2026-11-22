@@ -1,4 +1,4 @@
-package wikidata.explore.demo.constraint;
+package domain.workbench.modelbuilder.demo.constraint;
 
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
@@ -6,8 +6,8 @@ import javax.swing.UIManager;
 import java.awt.Dimension;
 
 /** Window for the controlled, one-frontier-at-a-time constraint discovery demo. */
-public final class FrontierConstraintDiscoveryFrame extends JFrame {
-    public FrontierConstraintDiscoveryFrame() {
+public final class FrontierConstraintDiscoveryDemo extends JFrame {
+    public FrontierConstraintDiscoveryDemo() {
         super("Constrained shared-population discovery");
         setContentPane(new FrontierConstraintDiscoveryPanel());
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -23,7 +23,7 @@ public final class FrontierConstraintDiscoveryFrame extends JFrame {
             } catch (Exception ignored) {
                 // The platform-independent look and feel remains usable.
             }
-            new FrontierConstraintDiscoveryFrame().setVisible(true);
+            new FrontierConstraintDiscoveryDemo().setVisible(true);
         });
     }
 }

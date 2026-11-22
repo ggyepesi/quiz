@@ -1,4 +1,4 @@
-package wikidata.explore.demo.constraint;
+package domain.workbench.modelbuilder.demo.constraint;
 
 import wikidata.WikidataBinding;
 import wikidata.WikidataIds;

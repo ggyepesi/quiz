@@ -44,9 +44,9 @@ class ModelBuilderCloseGuardTest {
         int afterSave = source.indexOf("\n    private ", save + 1);
         String saveBody = source.substring(save, afterSave);
 
-        assertTrue(saveBody.contains("Window dialogOwner = domain.workbench.ui.Dialogs.owner(this);"));
+        assertTrue(saveBody.contains("Window dialogOwner = process.swing.Dialogs.owner(this);"));
         assertTrue(saveBody.contains("JOptionPane.showConfirmDialog(dialogOwner"));
-        assertTrue(saveBody.contains("domain.workbench.ui.Dialogs.showPersistenceSuccess(dialogOwner"));
+        assertTrue(saveBody.contains("process.swing.Dialogs.showPersistenceSuccess(dialogOwner"));
         assertFalse(saveBody.contains("JOptionPane.showConfirmDialog(this"));
         assertFalse(saveBody.contains("JOptionPane.showMessageDialog(this"));
     }

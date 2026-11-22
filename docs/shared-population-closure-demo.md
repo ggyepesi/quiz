@@ -3,7 +3,7 @@
 Run the Swing UI:
 
 ```text
-wikidata.explore.demo.constraint.FrontierConstraintDiscoveryFrame
+domain.workbench.modelbuilder.demo.constraint.FrontierConstraintDiscoveryDemo
 ```
 
 This frame provides the controlled frontier workflow: preview one bounded step, inspect

@@ -24,6 +24,9 @@ wikidata / wikipedia / ...   low-level protocol clients and parsers only
 batch / process / work       shared execution infrastructure
 ```
 
+Generic Swing process and dialog lifecycle helpers live under `process.swing`; domain
+workbenches and quiz presentation both depend on that neutral implementation.
+
 Discovery is a datasource capability. Shared discovery contracts and UI live below
 `domain.datasource.discovery`; provider implementations live below their provider, for
 example `domain.datasource.wikipedia.discovery`. A discovery result changes nothing until

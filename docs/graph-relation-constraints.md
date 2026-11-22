@@ -497,7 +497,7 @@ action naming the population or graph plan it will change.
 
 ## Controlled discovery demo
 
-`FrontierConstraintDiscoveryFrame` is the demo entry point. It is separate from the
+`FrontierConstraintDiscoveryDemo` is the demo entry point. It is separate from the
 console closure engine, and each iteration is deliberately separated:
 
 1. Select the incoming and outgoing relations from the same downloaded-property

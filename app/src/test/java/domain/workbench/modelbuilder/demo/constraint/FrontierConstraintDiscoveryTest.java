@@ -1,9 +1,9 @@
-package wikidata.explore.demo.constraint;
+package domain.workbench.modelbuilder.demo.constraint;
 
 import org.junit.jupiter.api.Test;
-import wikidata.explore.demo.constraint.FrontierConstraintDiscovery.Constraint;
-import wikidata.explore.demo.constraint.FrontierConstraintDiscovery.Edge;
-import wikidata.explore.demo.constraint.FrontierConstraintDiscovery.Scope;
+import domain.workbench.modelbuilder.demo.constraint.FrontierConstraintDiscovery.Constraint;
+import domain.workbench.modelbuilder.demo.constraint.FrontierConstraintDiscovery.Edge;
+import domain.workbench.modelbuilder.demo.constraint.FrontierConstraintDiscovery.Scope;
 
 import java.util.List;
 

@@ -516,14 +516,14 @@ final class SubclassDiscoveryPanel extends JPanel {
     private void acceptPreview(MembershipTypePreview result) {
         SwingUtilities.invokeLater(() -> {
             status.setText(previewSummary(result));
-            JDialog dialog = new JDialog(domain.workbench.ui.Dialogs.owner(this),
+            JDialog dialog = new JDialog(process.swing.Dialogs.owner(this),
                     "Membership preview — " + typeName(result),
                     Dialog.ModalityType.MODELESS);
             dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
             dialog.add(previewView(result));
             dialog.setSize(900, 650);
             dialog.setLocationRelativeTo(this);
-            domain.workbench.ui.Dialogs.raiseOnOpen(dialog);
+            process.swing.Dialogs.raiseOnOpen(dialog);
             dialog.setVisible(true);
         });
     }
@@ -756,7 +756,7 @@ final class SubclassDiscoveryPanel extends JPanel {
             String message = failure == null || failure.getMessage() == null
                     ? String.valueOf(failure) : failure.getMessage();
             status.setText(title + ": " + message);
-            JOptionPane.showMessageDialog(this, domain.workbench.ui.Dialogs.wrapped(message), title,
+            JOptionPane.showMessageDialog(this, process.swing.Dialogs.wrapped(message), title,
                     JOptionPane.ERROR_MESSAGE);
         });
     }

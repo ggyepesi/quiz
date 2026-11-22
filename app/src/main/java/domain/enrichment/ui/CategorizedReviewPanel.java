@@ -301,15 +301,15 @@ public final class CategorizedReviewPanel<T> extends JPanel {
             Component owner, String title, String prompt,
             List<Section<T>> sections, List<FooterAction> extraActions, String applyLabel,
             Dimension size, Consumer<List<T>> onAccepted, Dialog.ModalityType modality) {
-        Window window = domain.workbench.ui.Dialogs.owner(owner);
+        Window window = process.swing.Dialogs.owner(owner);
         JDialog dialog = new JDialog(window, title, modality);
-        domain.workbench.ui.Dialogs.raiseOnOpen(dialog);
-        Consumer<List<T>> finish = domain.workbench.ui.Dialogs.completion(dialog, onAccepted);
+        process.swing.Dialogs.raiseOnOpen(dialog);
+        Consumer<List<T>> finish = process.swing.Dialogs.completion(dialog, onAccepted);
         CategorizedReviewPanel<T> panel = new CategorizedReviewPanel<>(
                 prompt, sections, extraActions, applyLabel, finish);
         dialog.add(panel);
         dialog.getRootPane().putClientProperty(PANEL_KEY, panel);
-        domain.workbench.ui.Dialogs.completeOnClose(dialog, finish, List::of);
+        process.swing.Dialogs.completeOnClose(dialog, finish, List::of);
         dialog.setSize(size);
         dialog.setLocationRelativeTo(owner);
         return dialog;

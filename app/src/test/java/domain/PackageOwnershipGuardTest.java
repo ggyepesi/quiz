@@ -64,6 +64,26 @@ class PackageOwnershipGuardTest {
                 "domain owns its runtime and operations; quiz is a consumer");
     }
 
+    /** Two demos under wikidata.explore once built on ModelBuilder UI and quiz OCR; a demo
+     *  belongs to the owner of what it demonstrates, not to the protocol client it calls. */
+    @Test void lowLevelRootsKnowNeitherDomainWorkbenchUiNorQuiz() throws IOException {
+        List<String> roots = List.of("wikidata", "wikipedia", "batch", "process", "work");
+        Pattern forbidden = Pattern.compile(
+                "\\b(domain(\\.[a-z]+)*\\.(ui|app)\\.|domain\\.workbench\\.|quiz\\.)");
+        List<String> violations = new ArrayList<>();
+        for (Source source : sources()) {
+            String name = source.packageName();
+            if (roots.stream().noneMatch(root -> name.equals(root) || name.startsWith(root + "."))) {
+                continue;
+            }
+            if (forbidden.matcher(source.text()).find()) {
+                violations.add(source.relative() + " depends on domain workbench UI or quiz");
+            }
+        }
+        assertEquals(List.of(), violations,
+                "low-level clients expose protocols; UI and quiz depend on them, never back");
+    }
+
     @Test void domainEntryPointsUseOneConvention() throws IOException {
         List<String> violations = new ArrayList<>();
         for (Source source : sources()) {

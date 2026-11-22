@@ -170,7 +170,7 @@ final class SourceDiscoveryPicker {
                     use.setEnabled(choice != null);
                 }).build();
         cards.setPreferredSize(new Dimension(720, 480));
-        JDialog dialog = new JDialog(domain.workbench.ui.Dialogs.owner(parent), spec.title(),
+        JDialog dialog = new JDialog(process.swing.Dialogs.owner(parent), spec.title(),
                 Dialog.ModalityType.APPLICATION_MODAL);
         dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         dialog.setLayout(new BorderLayout(0, 6));

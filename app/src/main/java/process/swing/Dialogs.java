@@ -1,4 +1,4 @@
-package domain.workbench.ui;
+package process.swing;
 
 import javax.swing.JDialog;
 import javax.swing.JOptionPane;

@@ -14,7 +14,7 @@ import objectview.view.SearchableView;
 import domain.provenance.WikipediaSource;
 import domain.transform.ui.BoundedInstanceSelection;
 import domain.transform.ui.TransformController;
-import domain.workbench.ui.Dialogs;
+import process.swing.Dialogs;
 import domain.runtime.WikidataDynamicObject;
 import domain.workbench.execution.ui.SwingQueryRunner;
 import domain.workbench.execution.ui.SwingQuerySession;

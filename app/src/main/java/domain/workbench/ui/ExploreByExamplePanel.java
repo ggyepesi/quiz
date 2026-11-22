@@ -282,10 +282,10 @@ public class ExploreByExamplePanel extends JPanel {
             Component parent, SwingQueryRunner runner,
             String seedQid, String seedLabel,
             BiConsumer<String, String> onSelected) {
-        Window owner = domain.workbench.ui.Dialogs.owner(parent);
+        Window owner = process.swing.Dialogs.owner(parent);
         JDialog dialog = new JDialog(owner, "Find Wikidata property",
                 Dialog.ModalityType.APPLICATION_MODAL);
-        domain.workbench.ui.Dialogs.raiseOnOpen(dialog);
+        process.swing.Dialogs.raiseOnOpen(dialog);
         ExploreByExamplePanel explorer = new ExploreByExamplePanel();
         explorer.setQueryRunner(runner);
         explorer.propertyPicker("Use selected property");
@@ -307,10 +307,10 @@ public class ExploreByExamplePanel extends JPanel {
             Component parent, SwingQueryRunner runner, String initialName,
             boolean relationPanelNeeded,
             BiConsumer<String, String> onSelected) {
-        Window owner = domain.workbench.ui.Dialogs.owner(parent);
+        Window owner = process.swing.Dialogs.owner(parent);
         JDialog dialog = new JDialog(owner, "Find Wikidata entity",
                 Dialog.ModalityType.APPLICATION_MODAL);
-        domain.workbench.ui.Dialogs.raiseOnOpen(dialog);
+        process.swing.Dialogs.raiseOnOpen(dialog);
         ExploreByExamplePanel explorer = new ExploreByExamplePanel();
         explorer.setQueryRunner(runner);
         explorer.entityPicker("Use selected entity", relationPanelNeeded);

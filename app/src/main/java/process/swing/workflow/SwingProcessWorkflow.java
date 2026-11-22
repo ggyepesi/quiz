@@ -10,6 +10,7 @@ import objectview.view.SearchableView;
 import process.ProcessOutcome;
 import process.ProcessStatus;
 import process.swing.SwingCancellationConfirmation;
+import process.swing.Dialogs;
 import process.swing.SwingProcessRunner;
 
 import javax.swing.JButton;
@@ -545,7 +546,7 @@ public final class SwingProcessWorkflow {
         void applyDecision(D decision, boolean wholeResult, String confirmation) {
             if (decision == null) return;
             if (wholeResult && confirmation != null && !confirmation.isBlank()) {
-                if (!domain.workbench.ui.Dialogs.confirmPersistence(owner, applyVerb, confirmation)) return;
+                if (!Dialogs.confirmPersistence(owner, applyVerb, confirmation)) return;
             }
             applyDecisions(List.of(decision), wholeResult);
         }

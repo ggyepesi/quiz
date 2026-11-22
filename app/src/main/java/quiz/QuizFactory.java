@@ -12,7 +12,7 @@ import domain.persistence.DatasetRegistry;
 import domain.transform.app.DomainCatalog;
 import domain.transform.FacetGroup;
 import domain.transform.ui.DomainEntry;
-import domain.workbench.ui.Dialogs;
+import process.swing.Dialogs;
 
 import java.awt.*;
 import java.awt.event.WindowAdapter;

@@ -626,11 +626,11 @@ public class ModelBuilderFrame extends JFrame {
                         ? " will write them after the project is first saved."
                         : " will write the changed instances to\n"
                                 + destination.getPath() + ".");
-        if (domain.workbench.ui.Dialogs.confirmPersistence(this, action, description)) {
+        if (process.swing.Dialogs.confirmPersistence(this, action, description)) {
             try {
                 applyGraphResult(result);
             } catch (Exception refused) {
-                JOptionPane.showMessageDialog(this, domain.workbench.ui.Dialogs.wrapped(
+                JOptionPane.showMessageDialog(this, process.swing.Dialogs.wrapped(
                         refused.getMessage() == null ? refused.toString() : refused.getMessage()),
                         action, JOptionPane.WARNING_MESSAGE);
             }
@@ -699,7 +699,7 @@ public class ModelBuilderFrame extends JFrame {
                 + qids.size() + " shown " + className + " instances.\n\n"
                 + "Save " + (projectModel.isModel() ? "model" : "domain")
                 + " will write it to\n" + modelFile().getPath() + ".";
-        if (!domain.workbench.ui.Dialogs.confirmPersistence(
+        if (!process.swing.Dialogs.confirmPersistence(
                 this, "Create population selection", description)) return;
         PopulationSelection population = new PopulationSelection(name);
         population.className(className);
@@ -1148,7 +1148,7 @@ public class ModelBuilderFrame extends JFrame {
                             "Cancel"};
                     int choice = JOptionPane.showOptionDialog(
                             this,
-                            domain.workbench.ui.Dialogs.wrapped(
+                            process.swing.Dialogs.wrapped(
                             "A finalized graph from the interrupted run is saved at:\n"
                                     + recovery.snapshotFile().getPath()
                                     + "\n\nResume materialization loads that file and maps its "
@@ -1640,7 +1640,7 @@ public class ModelBuilderFrame extends JFrame {
         }
         String kind = projectModel.isModel() ? "model" : "domain";
         if (!unsaved.isEmpty()) {
-            JOptionPane.showMessageDialog(this, domain.workbench.ui.Dialogs.wrapped(
+            JOptionPane.showMessageDialog(this, process.swing.Dialogs.wrapped(
                     "Build runs the saved project, the same build as the command line, and "
                             + String.join(" and ", unsaved) + ". Use \"Save " + kind
                             + "\" first, then build."),
@@ -1657,7 +1657,7 @@ public class ModelBuilderFrame extends JFrame {
             return;
         }
         if (saved.buildOperations().isEmpty()) {
-            JOptionPane.showMessageDialog(this, domain.workbench.ui.Dialogs.wrapped("\"" + saved.name()
+            JOptionPane.showMessageDialog(this, process.swing.Dialogs.wrapped("\"" + saved.name()
                             + "\" has no build. Add its steps under Build in the project "
                             + "overview, then save the " + kind + "."),
                     "Build project", JOptionPane.INFORMATION_MESSAGE);
@@ -2791,7 +2791,7 @@ public class ModelBuilderFrame extends JFrame {
 
         SwingUtilities.invokeLater(() ->
                                            JOptionPane.showMessageDialog(
-                                                   domain.workbench.ui.Dialogs.owner(this), body,
+                                                   process.swing.Dialogs.owner(this), body,
                                                    "Generation failed",
                                                    JOptionPane.ERROR_MESSAGE));
     }
@@ -3302,7 +3302,7 @@ public class ModelBuilderFrame extends JFrame {
                 + "; mapped " + loaded.run().instances().size()
                 + " instance(s).");
         if (loaded.stale()) {
-            JOptionPane.showMessageDialog(this, domain.workbench.ui.Dialogs.wrapped(loaded.staleWarning()),
+            JOptionPane.showMessageDialog(this, process.swing.Dialogs.wrapped(loaded.staleWarning()),
                     "Instances may be stale", JOptionPane.WARNING_MESSAGE);
         }
     }
@@ -3490,7 +3490,7 @@ public class ModelBuilderFrame extends JFrame {
 
     /** @return true only when every requested durable write completed. */
     private boolean saveEverything(boolean closingAfterSave) {
-        Window dialogOwner = domain.workbench.ui.Dialogs.owner(this);
+        Window dialogOwner = process.swing.Dialogs.owner(this);
         String projectKind = projectModel.isModel() ? "model" : "domain";
         GeneratedProjectModel modelToSave = projectModel;
         boolean recoverCompletedRun = false;
@@ -3552,7 +3552,7 @@ public class ModelBuilderFrame extends JFrame {
             boolean stale = warning.kind()
                     == domain.build.ProjectSave.Warning.Kind.STALE_INSTANCES;
             int d = JOptionPane.showConfirmDialog(dialogOwner,
-                    domain.workbench.ui.Dialogs.wrapped(warning.message() + "\n\n" + (stale
+                    process.swing.Dialogs.wrapped(warning.message() + "\n\n" + (stale
                             ? "Regenerate (Cancel, then \"Generate class instances\") "
                                     + "before saving, or save anyway?"
                             : "Use \"Generate domain\" to keep every class. Save anyway?")),
@@ -3567,7 +3567,7 @@ public class ModelBuilderFrame extends JFrame {
             String plan = "Save the " + projectKind + " \"" + modelToSave.name()
                     + "\" — write these files?\n\n" + String.join("\n", save.planLines());
             int choice = JOptionPane.showConfirmDialog(
-                    dialogOwner, domain.workbench.ui.Dialogs.wrapped(plan), "Save " + projectKind,
+                    dialogOwner, process.swing.Dialogs.wrapped(plan), "Save " + projectKind,
                     JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
             if (choice != JOptionPane.OK_OPTION) {
                 return false;
@@ -3588,7 +3588,7 @@ public class ModelBuilderFrame extends JFrame {
             if (!closingAfterSave) {
                 String hint = instanceCountHint(result.instancesWritten() == 0
                         ? -1 : result.instancesWritten());
-                domain.workbench.ui.Dialogs.showPersistenceSuccess(dialogOwner,
+                process.swing.Dialogs.showPersistenceSuccess(dialogOwner,
                         "Save " + projectKind, projectModel.name(),
                         report + (hint.isBlank() ? "" : "\n" + hint));
             }

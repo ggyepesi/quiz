@@ -88,7 +88,7 @@ public final class DomainNavigator {
                 existing.requestFocus();
                 return;
             }
-            if (!domain.workbench.ui.Dialogs.confirmPersistence(
+            if (!process.swing.Dialogs.confirmPersistence(
                     list, "Load domain", e.loadDescription())) return;
             open.setEnabled(false);
             status.setText("Loading \"" + e.name() + "\"…");

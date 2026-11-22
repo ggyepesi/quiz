@@ -2120,7 +2120,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         panel.add(new JLabel("Select the starting " + option.entityField()
                 + " instance or instances:"), BorderLayout.NORTH);
         panel.add(view, BorderLayout.CENTER);
-        int answer = domain.workbench.ui.Dialogs.confirmResizable(this, panel,
+        int answer = process.swing.Dialogs.confirmResizable(this, panel,
                 "Select relation-closure seed", relationClosureSeedDialogSize(),
                 relationClosureSeedDialogMinimumSize());
         if (answer != JOptionPane.OK_OPTION) return List.of();
@@ -2420,10 +2420,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (name == null || name.isBlank()) {
             return;
         }
-        if (!domain.workbench.ui.Dialogs.confirmPersistence(
+        if (!process.swing.Dialogs.confirmPersistence(
                 this, "Save " + kind, controller.describeSaveAsDomain(name))) return;
         try {
-            domain.workbench.ui.Dialogs.showPersistenceSuccess(this,
+            process.swing.Dialogs.showPersistenceSuccess(this,
                     "Save " + kind, name, controller.saveAsDomain(name));
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Save failed: " + ex.getMessage(),
