@@ -277,7 +277,7 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
             if (!(source instanceof domain.runtime.WikidataDynamicObject o)) {
                 return null;
             }
-            String title = o.enwikiTitle();
+            String title = domain.provenance.WikipediaCorrespondence.title(o);
             return title.isBlank() ? null
                     : new domain.provenance.WikipediaSource(title, o.wikipediaArticle());
         }

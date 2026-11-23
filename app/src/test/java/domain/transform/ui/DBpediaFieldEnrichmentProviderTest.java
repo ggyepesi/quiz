@@ -32,7 +32,8 @@ class DBpediaFieldEnrichmentProviderTest {
 
     @Test
     void supportsADBpediaSourcedFieldWithAQid() {
-        assertTrue(new DBpediaFieldEnrichmentProvider(dbpediaSource("longName"))
+        assertTrue(new DBpediaFieldEnrichmentProvider(
+                dbpediaSource("longName"), new ReflectionDomain(List.of()))
                            .supports(request("Q142")));
     }
 
@@ -41,12 +42,14 @@ class DBpediaFieldEnrichmentProviderTest {
         FieldSourceMapping sparql = new FieldSourceMapping();
         sparql.sourceType(FieldSourceType.SPARQL);
         sparql.propertyPid("P1448");
-        assertFalse(new DBpediaFieldEnrichmentProvider(sparql).supports(request("Q142")));
+        assertFalse(new DBpediaFieldEnrichmentProvider(
+                sparql, new ReflectionDomain(List.of())).supports(request("Q142")));
     }
 
     @Test
     void rejectsWhenTheSubjectHasNoQid() {
-        assertFalse(new DBpediaFieldEnrichmentProvider(dbpediaSource("longName"))
+        assertFalse(new DBpediaFieldEnrichmentProvider(
+                dbpediaSource("longName"), new ReflectionDomain(List.of()))
                             .supports(request(null)));
     }
 

@@ -8,6 +8,7 @@ import domain.datasource.evidence.ArticleIntroduction;
 import domain.datasource.evidence.InfoboxParameters;
 import domain.datasource.evidence.WikipediaArticle;
 import domain.datasource.wikipedia.WikipediaDatasourceProvider;
+import domain.datasource.wikipedia.WikipediaTableRows;
 
 import objectview.Viewable;
 import objectview.field.FieldPath;
@@ -57,6 +58,7 @@ import domain.transform.DynamicViewable;
 import domain.workbench.ui.AdditionalSourcePicker;
 import domain.workbench.ui.ExploreByExamplePanel;
 import domain.workbench.ui.WikipediaCategoryRuleEditor;
+import domain.workbench.ui.WorkbenchActionList;
 
 import domain.workbench.execution.ui.SwingQueryRunner;
 import wikidata.ui.IdentityChip;
@@ -84,6 +86,8 @@ import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -196,6 +200,7 @@ public final class ValidationPanel extends JPanel {
     // when the pool has none. Rebuilt per drill so it sees the current pool.
     private DomainReferenceResolver referenceResolver;
     private long identityLabelRequest;
+    private boolean wikipediaEvidenceOnly;
 
     /** The concrete member used to discover a field source. Keep its readable name beside
      *  the QID so Explore makes the probe target unambiguous. */
@@ -414,6 +419,13 @@ public final class ValidationPanel extends JPanel {
         add(instancesHolder, BorderLayout.CENTER);
         revalidate();
         repaint();
+    }
+
+    /** Present only the configured Wikipedia evidence operation. DataSourceApp uses
+     * this when the reusable action tree has already selected the Wikipedia source, so
+     * the detail pane does not repeat Wikidata and mixed-source actions under it. */
+    public void showWikipediaEvidenceOnly() {
+        wikipediaEvidenceOnly = true;
     }
 
     /** Curate the provenance-declared identity: select the type, apply the scope filter, show the
@@ -747,26 +759,58 @@ public final class ValidationPanel extends JPanel {
         boolean sourceActions = purpose.showsDatasourceActions();
         boolean localActions = purpose.showsTransformActions();
 
+        WikipediaTextEvidenceProvider.CandidateEvidenceMode candidateMode =
+                configuredCandidateEvidence(selectedFieldType, selectedFieldPath);
+        WikipediaDatasourceProvider.ArticleTableColumnLinkSpec tableColumnSpec =
+                configuredArticleTableColumnLinks(selectedFieldType, selectedFieldPath);
+        WikipediaDatasourceProvider.ArticleTableRowInstanceSpec tableRowSpec =
+                configuredArticleTableRowInstances(selectedFieldType, selectedFieldPath);
+        boolean configuredEvidence = candidateMode
+                != WikipediaTextEvidenceProvider.CandidateEvidenceMode.NONE
+                || tableColumnSpec != null;
+        boolean articlePassages = candidateMode
+                == WikipediaTextEvidenceProvider.CandidateEvidenceMode.ARTICLE_PASSAGES;
+        boolean articlePassageInstances = candidateMode
+                == WikipediaTextEvidenceProvider.CandidateEvidenceMode.ARTICLE_PASSAGE_INSTANCES;
+        boolean articleTableRowInstances = candidateMode
+                == WikipediaTextEvidenceProvider.CandidateEvidenceMode
+                        .ARTICLE_TABLE_ROW_INSTANCES;
+        boolean infoboxRowLinks = candidateMode
+                == WikipediaTextEvidenceProvider.CandidateEvidenceMode.INFOBOX_ROW_LINKS;
+        boolean tableColumnLinks = tableColumnSpec != null;
+
+        List<WorkbenchActionList.Item> actions = new ArrayList<>();
+        JPanel actionListHolder = new JPanel(new BorderLayout());
+        actionListHolder.setAlignmentX(LEFT_ALIGNMENT);
+
         batchTargetLabel.setToolTipText(
                 "Click one card, or Ctrl/Cmd-click several cards, to limit batch actions");
-        if (sourceActions) target.add(headerLine(batchTargetLabel));
+        if (sourceActions) {
+            target.add(headerLine(batchTargetLabel));
+            // Reserve the first block for the complete action list. The actions are
+            // collected while the source descriptions below are assembled, but they
+            // remain visible before those details rather than being buried after them.
+            target.add(actionListHolder);
+        }
 
         // Wikidata: identity is datasource-dependent, so it sits with the Wikidata source;
         // the property is what yields this field's value.
         JPanel wikidata = titledBlock("Wikidata");
-        if (identityResolver != null) {
+        if (!wikipediaEvidenceOnly && identityResolver != null) {
             resolveMissingButton.setText("Identities…");
             resolveMissingButton.setToolTipText(
                     "Resolve or change the Wikidata identity of these instances "
                             + "(needed before a value can be fetched)");
-            wikidata.add(headerLine(new JLabel("Identity"), resolveMissingButton));
+            wikidata.add(headerLine(new JLabel("Identity: resolved separately when needed")));
+            actions.add(new WorkbenchActionList.Item(resolveMissingButton,
+                    "Resolve or change the Wikidata identity used by datasource operations."));
         }
-        if (!media) {
+        if (!wikipediaEvidenceOnly && !media) {
             updateFieldSourceButton();   // "Source: population (P1082)…" or "Choose Wikidata source…"
             makeSourceBindingsReadOnly();
             wikidata.add(headerLine(new JLabel("Property"), fieldSourceButton));
         }
-        if (sourceActions) target.add(wikidata);
+        if (sourceActions && !wikipediaEvidenceOnly) target.add(wikidata);
 
         if (sourceActions && !media) {
             // Wikipedia (DBpedia) fallback: consulted only where Wikidata has no value.
@@ -780,30 +824,19 @@ public final class ValidationPanel extends JPanel {
                     + "for members Wikidata leaves empty.</html>");
             why.setEnabled(false);
             fallback.add(headerLine(why));
-            target.add(fallback);
+            if (!wikipediaEvidenceOnly) target.add(fallback);
 
             JPanel articleEvidence = titledBlock("Wikipedia article evidence");
             makeCategoryRelationReadOnly();
             articleEvidence.add(headerLine(new JLabel("Category relation"),
                     categoryRelationLabel));
-            WikipediaTextEvidenceProvider.CandidateEvidenceMode candidateMode =
-                    configuredCandidateEvidence(selectedFieldType, selectedFieldPath);
-            WikipediaDatasourceProvider.ArticleTableColumnLinkSpec
-                    tableColumnSpec = configuredArticleTableColumnLinks(
-                            selectedFieldType, selectedFieldPath);
-            boolean configuredEvidence = candidateMode
-                    != WikipediaTextEvidenceProvider.CandidateEvidenceMode.NONE
-                    || tableColumnSpec != null;
-            boolean articlePassages = candidateMode
-                    == WikipediaTextEvidenceProvider.CandidateEvidenceMode
-                            .ARTICLE_PASSAGES;
-            boolean articlePassageInstances = candidateMode
-                    == WikipediaTextEvidenceProvider.CandidateEvidenceMode
-                            .ARTICLE_PASSAGE_INSTANCES;
-            boolean infoboxRowLinks = candidateMode
-                    == WikipediaTextEvidenceProvider.CandidateEvidenceMode
-                            .INFOBOX_ROW_LINKS;
-            boolean tableColumnLinks = tableColumnSpec != null;
+            wikipediaEvidenceButton.setText(articleTableRowInstances
+                    ? "Find table-row instances…"
+                    : articlePassageInstances ? "Find passage instances…"
+                    : articlePassages ? "Find article passages…"
+                    : infoboxRowLinks ? "Find infobox link evidence…"
+                    : tableColumnLinks ? "Find table-column link evidence…"
+                    : "Find text evidence…");
             wikipediaEvidenceButton.setToolTipText(
                     configuredEvidence
                             ? "Find configured Wikipedia evidence; every result keeps the "
@@ -811,17 +844,28 @@ public final class ValidationPanel extends JPanel {
                             : "Find exact mentions supporting values already present in this "
                                     + "field; results keep the article revision and excerpt "
                                     + "for review");
-            articleEvidence.add(headerLine(new JLabel(articlePassageInstances
+            articleEvidence.add(headerLine(new JLabel(articleTableRowInstances
+                            ? "Proposed " + tableRowSpec.targetClass()
+                                    + " instances from configured article table rows"
+                            : articlePassageInstances
                             ? "Proposed instances from bounded article passages"
                             : articlePassages ? "Bounded article passages"
                             : infoboxRowLinks ? "Loaded targets linked from an infobox row"
                             : tableColumnLinks
                             ? "Loaded targets linked from an article table column"
                             : configuredEvidence ? "Existing values and loaded candidates"
-                            : "Existing values"),
-                    wikipediaEvidenceButton));
+                            : "Existing values")));
+            TableRowEvidenceSummary tableSummary = articleTableRowInstances
+                    ? tableRowEvidenceSummary(actionInstances(), selectedFieldPath, tableRowSpec)
+                    : TableRowEvidenceSummary.EMPTY;
             JLabel evidenceWhy = new JLabel(
-                    articlePassageInstances
+                    articleTableRowInstances
+                            ? "<html>" + tableSummary.description(tableRowSpec)
+                                    + " Existing linked members remain; every unrepresented "
+                                    + "row proposes one <b>" + tableRowSpec.targetClass()
+                                    + "</b>, including a row whose display cell has no "
+                                    + "Wikipedia link.</html>"
+                            : articlePassageInstances
                             ? "<html>Reads each selected member's full article and proposes one "
                                     + "target-class instance per bounded passage. Each passage "
                                     + "is reviewed separately; none is bulk-accepted.</html>"
@@ -847,7 +891,17 @@ public final class ValidationPanel extends JPanel {
                                     + "It does not infer arbitrary missing fields.</html>");
             evidenceWhy.setEnabled(false);
             articleEvidence.add(headerLine(evidenceWhy));
-            target.add(articleEvidence);
+            // The full curation editor shows the source/configuration block. In the
+            // embedded datasource action view the action list above already names the
+            // exact operation, scope and effect; repeating this block below it turns the
+            // compact action pane into a clipped copy of the full editor.
+            if (!wikipediaEvidenceOnly) target.add(articleEvidence);
+
+            actions.add(new WorkbenchActionList.Item(wikipediaEvidenceButton,
+                    articleTableRowInstances
+                            ? tableSummary.actionDescription(tableRowSpec)
+                            : "Run the configured Wikipedia evidence operation and review its "
+                                    + "proposals before staging them."));
         }
 
         // Repairing a reference's NAME is not the same job as filling the field: the
@@ -855,7 +909,7 @@ public final class ValidationPanel extends JPanel {
         // wherever the selected field HAS such references — gating it behind the
         // matching scope hid the cure from the column that reports the disease.
         int repairable = unnamedTargets().size();
-        if (sourceActions && repairable > 0) {
+        if (sourceActions && !wikipediaEvidenceOnly && repairable > 0) {
             JPanel names = titledBlock("Names");
             resolveNamesButton.setText("Resolve " + repairable + " name"
                                                + (repairable == 1 ? "" : "s") + "…");
@@ -870,10 +924,12 @@ public final class ValidationPanel extends JPanel {
                     "Drill the members whose " + selectedFieldPath + " shows a QID");
             showThese.addActionListener(e ->
                     showUnnamedReferences(FieldPath.parse(selectedFieldPath)));
-            names.add(headerLine(
-                    new JLabel("References showing a QID instead of a name:"),
-                    showThese, resolveNamesButton));
+            names.add(headerLine(new JLabel(
+                    "References showing a QID instead of a name:"), showThese));
             target.add(names);
+            actions.add(new WorkbenchActionList.Item(resolveNamesButton,
+                    "Fetch labels for the " + repairable
+                            + " referenced member" + (repairable == 1 ? "" : "s") + "."));
         }
 
         // Load is available for MEDIA too: findData fetches images per entity from their
@@ -882,7 +938,14 @@ public final class ValidationPanel extends JPanel {
         checkButton.setToolTipText(media
                 ? "Fetch images for these members from Wikidata (P18) / Wikimedia Commons"
                 : "Fetch values for these members from the configured source(s)");
-        if (sourceActions) target.add(headerLine(checkButton));
+        if (sourceActions && !wikipediaEvidenceOnly) {
+            actions.add(new WorkbenchActionList.Item(checkButton, media
+                    ? "Fetch images from Wikidata (P18) and Wikimedia Commons."
+                    : "Fetch this field from its configured primary and fallback sources."));
+        }
+        if (sourceActions) {
+            actionListHolder.add(new WorkbenchActionList(actions), BorderLayout.CENTER);
+        }
 
         // The by-hand path, kept visually separate from the source-driven load.
         if (localActions) {
@@ -898,6 +961,59 @@ public final class ValidationPanel extends JPanel {
 
         target.revalidate();
         target.repaint();
+    }
+
+    record TableRowEvidenceSummary(int rows, int currentMembers, int retainedArticles) {
+        static final TableRowEvidenceSummary EMPTY = new TableRowEvidenceSummary(0, 0, 0);
+
+        String description(WikipediaDatasourceProvider.ArticleTableRowInstanceSpec spec) {
+            if (retainedArticles == 0) {
+                return "Reads every data row in <b>" + spec.description()
+                        + "</b>. The field currently has <b>" + currentMembers + " member"
+                        + (currentMembers == 1 ? "" : "s") + "</b>. The structured article "
+                        + "is not retained yet and will be fetched by the run.";
+            }
+            return "The retained article contains <b>" + rows
+                    + " configured table row" + (rows == 1 ? "" : "s") + "</b>; the field "
+                    + "currently has <b>" + currentMembers + " member"
+                    + (currentMembers == 1 ? "" : "s") + "</b>.";
+        }
+
+        String actionDescription(WikipediaDatasourceProvider.ArticleTableRowInstanceSpec spec) {
+            if (retainedArticles == 0) {
+                return "Read every data row in " + spec.description()
+                        + "; keep the " + currentMembers + " current member"
+                        + (currentMembers == 1 ? "" : "s")
+                        + " and propose each unrepresented row for review.";
+            }
+            return "Read " + rows + " configured table row" + (rows == 1 ? "" : "s")
+                    + "; keep the " + currentMembers + " current member"
+                    + (currentMembers == 1 ? "" : "s")
+                    + " and propose every unrepresented row for review.";
+        }
+    }
+
+    static TableRowEvidenceSummary tableRowEvidenceSummary(
+            Collection<? extends Viewable> owners,
+            String field,
+            WikipediaDatasourceProvider.ArticleTableRowInstanceSpec spec) {
+        if (spec == null || !spec.configured()) return TableRowEvidenceSummary.EMPTY;
+        int rows = 0;
+        int members = 0;
+        int articles = 0;
+        for (Viewable owner : owners == null ? List.<Viewable>of() : owners) {
+            Object current = objectview.field.FieldAccess.getPath(owner, field);
+            if (current instanceof Collection<?> values) members += values.size();
+            else if (current != null) members++;
+            WikipediaArticle article = owner instanceof
+                    domain.runtime.WikidataDynamicObject wikidata
+                    ? wikidata.wikipediaArticle() : null;
+            if (article == null) continue;
+            articles++;
+            rows += WikipediaTableRows.select(article, spec.sectionPath(), spec.table(),
+                    spec.displayColumn()).rows().size();
+        }
+        return new TableRowEvidenceSummary(rows, members, articles);
     }
 
     private static JPanel titledBlock(String title) {
@@ -1430,7 +1546,7 @@ public final class ValidationPanel extends JPanel {
         int skipped = 0;
         for (Viewable member : actionInstances()) {
             if (!domain.isInstanceOf(member, selectedFieldType)) continue;
-            String memberType = concreteType(member);
+            String memberType = fieldContextType(domain, member, selectedFieldType);
             List<SourceRef> sources =
                     EnrichmentSources.collect(member, memberType, curation);
             String qid = resolvedQid(member, sources);
@@ -1462,28 +1578,59 @@ public final class ValidationPanel extends JPanel {
             return;
         }
 
-        findDataRunner.run(
-                new FindDataBatchProcess(jobs, skipped, path),
+        runReviewBatch(jobs, skipped, path,
+                "Review found data" + (path.isBlank() ? "" : " — " + path),
+                "Review the values found for these members.", "Lookup failed");
+    }
+
+    /** One execution and result-presentation path for every field acquisition action.
+     *  The caller chooses the configured providers and honest wording only; batching,
+     *  logging, failure handling, review and decision application stay identical. */
+    private void runReviewBatch(
+            List<FindDataProcess> jobs, int skipped, String path,
+            String reviewTitle, String reviewPrompt, String failureTitle) {
+        findDataRunner.run(new FindDataBatchProcess(jobs, skipped, path),
                 outcome -> SwingUtilities.invokeLater(() -> {
                     FindDataBatchResult result = outcome.result();
                     ManualCuration store = curationStore();
                     if (result != null && store != null) {
-                        List<EnrichmentProposal> proposals = result.results()
-                                .stream().map(FindDataResult::proposal).toList();
-                        FindDataBatchReviewPanel.showModeless(
-                                this,
-                                "Review found data" + (path.isBlank() ? "" : " — " + path),
-                                "Review the values found for these members.", proposals,
-                                SourceYieldCards.of(result.sourceYields()),
-                                reviewed -> applyDecisions(store, reviewed.accepted()));
+                        List<EnrichmentProposal> proposals = result.results().stream()
+                                .map(FindDataResult::proposal).toList();
+                        showReview(reviewTitle, reviewPrompt, proposals,
+                                SourceYieldCards.of(result.sourceYields()), store);
                     }
                     if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
-                        JOptionPane.showMessageDialog(ValidationPanel.this,
-                                                      "Lookup failed: " + outcome.error().getMessage());
+                        JOptionPane.showMessageDialog(this,
+                                failureTitle + ": " + outcome.error().getMessage());
                     }
-                }),
-                ex -> JOptionPane.showMessageDialog(ValidationPanel.this,
-                                                    "Lookup failed: " + ex.getMessage()));
+                }), ex -> JOptionPane.showMessageDialog(this,
+                        failureTitle + ": " + ex.getMessage()));
+    }
+
+    /** The action is not finished while its review result is still open. Keep every
+     * field-acquisition trigger owned by this runner disabled until that result closes,
+     * so the same request cannot be started again behind the review window. */
+    private void showReview(String title, String prompt,
+            List<EnrichmentProposal> proposals, List<Viewable> sourceReport,
+            ManualCuration store) {
+        SwingProcessRunner.RunButtonHold hold = findDataRunner.holdRunButtons();
+        JDialog dialog;
+        try {
+            dialog = FindDataBatchReviewPanel.showModeless(
+                    this, title, prompt, proposals, sourceReport,
+                    reviewed -> applyDecisions(store, reviewed.accepted()));
+        } catch (RuntimeException error) {
+            hold.close();
+            throw error;
+        }
+        dialog.addWindowListener(new WindowAdapter() {
+            @Override public void windowClosed(WindowEvent event) {
+                hold.close();
+            }
+        });
+        // A modeless dialog returns immediately. This check also covers a custom host
+        // which disposed it synchronously before the listener could be installed.
+        if (!dialog.isDisplayable()) hold.close();
     }
 
     private domain.config.WikipediaCategoryRule effectiveWikipediaCategoryRule(
@@ -1682,10 +1829,23 @@ public final class ValidationPanel extends JPanel {
         List<Viewable> rowReferenceCandidates = rowReferencesSchema == null
                 || rowReferencesSchema.targetType().isBlank() ? List.of()
                 : domain.instancesOf(rowReferencesSchema.targetType());
+        List<Viewable> rowCandidates = new ArrayList<>(
+                domain.instancesOf(fieldSchema.targetType()));
+        java.util.Set<String> rowCandidateIdentities = rowCandidates.stream()
+                .map(value -> value.typeName() + '\0' + value.getIdentifier())
+                .collect(java.util.stream.Collectors.toCollection(
+                        java.util.LinkedHashSet::new));
+        for (Viewable candidate : rowReferenceCandidates) {
+            if (rowCandidateIdentities.add(
+                    candidate.typeName() + '\0' + candidate.getIdentifier())) {
+                rowCandidates.add(candidate);
+            }
+        }
         EnrichmentProvider provider = articleTableRowInstances
                 ? new WikipediaTableRowInstanceEvidenceProvider(
-                        tableRowSpec, rowReferenceCandidates,
-                        rowReferencesSchema == null ? "" : rowReferencesSchema.targetType())
+                        tableRowSpec, rowCandidates,
+                        rowReferencesSchema == null ? "" : rowReferencesSchema.targetType(),
+                        domain)
                 : tableColumnLinks
                 ? new WikipediaTableReferenceEvidenceProvider(
                         tableColumnSpec, mentionCandidates)
@@ -1733,7 +1893,7 @@ public final class ValidationPanel extends JPanel {
                 skipped++;
                 continue;
             }
-            String memberType = concreteType(member);
+            String memberType = fieldContextType(domain, member, selectedFieldType);
             List<SourceRef> sources = EnrichmentSources.collect(member, memberType, curation);
             String qid = resolvedQid(member, sources);
             if (!isQid(qid)) {
@@ -1748,8 +1908,13 @@ public final class ValidationPanel extends JPanel {
                     member instanceof domain.runtime.WikidataDynamicObject wikidata
                             ? wikidata.categoryMemberships() : List.of(),
                     introduction, retainedArticle, infobox);
-            jobs.add(new FindDataProcess(request,
-                    EnrichmentRoute.all(List.of(provider)), false));
+            EnrichmentRoute route = EnrichmentRoute.all(List.of(provider))
+                    .applicableTo(request);
+            if (route.isEmpty()) {
+                skipped++;
+                continue;
+            }
+            jobs.add(new FindDataProcess(request, route, false));
         }
         if (jobs.isEmpty()) {
             JOptionPane.showMessageDialog(this,
@@ -1863,35 +2028,18 @@ public final class ValidationPanel extends JPanel {
                         : "Find Wikipedia text evidence", JOptionPane.OK_CANCEL_OPTION,
                 JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return;
 
-        findDataRunner.run(new FindDataBatchProcess(jobs, skipped, path),
-                outcome -> SwingUtilities.invokeLater(() -> {
-                    FindDataBatchResult result = outcome.result();
-                    ManualCuration store = curationStore();
-                    if (result != null && store != null) {
-                        List<EnrichmentProposal> proposals = result.results()
-                                .stream().map(FindDataResult::proposal).toList();
-                        FindDataBatchReviewPanel.showModeless(this,
-                                "Review Wikipedia evidence — " + path,
-                                articleTableRowInstances
-                                        ? "Review modeled instances produced from "
-                                                + tableRowSpec.description() + "."
-                                        : tableColumnLinks
-                                        ? "Review loaded target instances linked from "
-                                                + tableColumnSpec.description() + "."
-                                        : infoboxRowLinks
-                                        ? "Review loaded target instances linked from "
-                                                + infoboxRowKey + "."
-                                        : "Review exact article mentions and configured "
-                                                + "category relations.",
-                                proposals, SourceYieldCards.of(result.sourceYields()),
-                                reviewed -> applyDecisions(store, reviewed.accepted()));
-                    }
-                    if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
-                        JOptionPane.showMessageDialog(this,
-                                "Wikipedia lookup failed: " + outcome.error().getMessage());
-                    }
-                }), ex -> JOptionPane.showMessageDialog(this,
-                        "Wikipedia lookup failed: " + ex.getMessage()));
+        runReviewBatch(jobs, skipped, path, "Review Wikipedia evidence — " + path,
+                articleTableRowInstances
+                        ? "Review modeled instances produced from "
+                                + tableRowSpec.description() + "."
+                        : tableColumnLinks
+                        ? "Review loaded target instances linked from "
+                                + tableColumnSpec.description() + "."
+                        : infoboxRowLinks
+                        ? "Review loaded target instances linked from "
+                                + infoboxRowKey + "."
+                        : "Review exact article mentions and configured category relations.",
+                "Wikipedia lookup failed");
     }
 
     private EnrichmentRoute routeFor(
@@ -1899,7 +2047,7 @@ public final class ValidationPanel extends JPanel {
         if (!media) {
             FieldKey key = new FieldKey(selectedFieldType, path);
             return FieldEnrichmentRoutes.from(
-                    sourceFor(key), fallbackSourceFor(key), referenceResolver);
+                    domain, sourceFor(key), fallbackSourceFor(key), referenceResolver);
         }
         List<EnrichmentProvider> providers = new ArrayList<>();
         providers.add(new WikimediaImageEnrichmentProvider());
@@ -2183,6 +2331,22 @@ public final class ValidationPanel extends JPanel {
         }
         return member != null && member.typeName() != null
                 && !member.typeName().isBlank() ? member.typeName() : type;
+    }
+
+    /**
+     * The configured field chooses the class context for an operation. A value may also
+     * carry an unrelated direct class with a deeper hierarchy (the Assessors of Maat
+     * entity is both {@code DeityGroup} and {@code EgyptianDeity}); that unrelated stamp
+     * must not make {@code DeityGroup.members} look absent. A real subtype of the chosen
+     * class keeps its subtype context so inherited-field corrections still address its
+     * concrete instance identity.
+     */
+    static String fieldContextType(
+            domain.DomainModel domain, Viewable member, String selectedType) {
+        String concrete = domain == null || member == null
+                ? null : domain.mostSpecificClass(member);
+        return concrete != null && domain.isSubclassOf(concrete, selectedType)
+                ? concrete : selectedType;
     }
 
     /** The Wikidata QID to enrich from: the member's own identifier if it IS a QID, else

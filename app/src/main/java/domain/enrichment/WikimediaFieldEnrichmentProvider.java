@@ -33,11 +33,12 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
     private final RuleDirection direction;
     // Supplied by whoever owns the pool; null keeps the old value-only behaviour.
     private final ReferenceResolver references;
+    private final domain.DomainModel domain;
 
     /** Read the property chosen from the sample entity's claims. */
     public WikimediaFieldEnrichmentProvider(String propertyPid) {
         this(propertyPid, null, RuleDirection.ROOT_TO_ITEM,
-                WikimediaEntityLookup.defaultFetcher());
+                WikimediaEntityLookup.defaultFetcher(), null, null);
     }
 
     /** Execute the same source-rule representation used by ModelBuilder. Only a Wikidata
@@ -52,28 +53,36 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
      *  it behaves exactly as before. */
     public WikimediaFieldEnrichmentProvider(
             FieldSourceMapping source, ReferenceResolver references) {
+        this(source, references, null);
+    }
+
+    public WikimediaFieldEnrichmentProvider(
+            FieldSourceMapping source, ReferenceResolver references,
+            domain.DomainModel domain) {
         this(source == null || source.sourceType() != FieldSourceType.SPARQL
                         ? null : source.propertyPid(),
                 source == null ? null : source.propertyLabel(),
                 source == null ? RuleDirection.ROOT_TO_ITEM : source.direction(),
-                WikimediaEntityLookup.defaultFetcher(), references);
+                WikimediaEntityLookup.defaultFetcher(), references, domain);
     }
 
     WikimediaFieldEnrichmentProvider(
             String propertyPid, WikimediaEntityLookup.JsonFetcher fetcher) {
-        this(propertyPid, null, RuleDirection.ROOT_TO_ITEM, fetcher, null);
+        this(propertyPid, null, RuleDirection.ROOT_TO_ITEM, fetcher, null, null);
     }
 
     WikimediaFieldEnrichmentProvider(
             String propertyPid, String propertyLabel, RuleDirection direction,
             WikimediaEntityLookup.JsonFetcher fetcher) {
-        this(propertyPid, propertyLabel, direction, fetcher, null);
+        this(propertyPid, propertyLabel, direction, fetcher, null, null);
     }
 
     WikimediaFieldEnrichmentProvider(
             String propertyPid, String propertyLabel, RuleDirection direction,
-            WikimediaEntityLookup.JsonFetcher fetcher, ReferenceResolver references) {
+            WikimediaEntityLookup.JsonFetcher fetcher, ReferenceResolver references,
+            domain.DomainModel domain) {
         this.references = references;
+        this.domain = domain;
         this.propertyPid = propertyPid == null || propertyPid.isBlank()
                 ? null : propertyPid.trim();
         this.propertyLabel = propertyLabel == null ? "" : propertyLabel.trim();
@@ -162,7 +171,7 @@ public final class WikimediaFieldEnrichmentProvider implements EnrichmentProvide
                 }
                 if (value != null) {
                     String incompatibility = FieldValueCompatibility.problem(
-                            request.targetSchema(), value);
+                            domain, request.targetSchema(), value);
                     fields.add(new EnrichmentProposal.FieldCandidate(
                             "wikidata-" + property.toLowerCase(Locale.ROOT),
                             identityId,

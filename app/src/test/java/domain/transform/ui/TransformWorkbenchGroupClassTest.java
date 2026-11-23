@@ -3,6 +3,7 @@ package domain.transform.ui;
 import domain.datasource.schema.FieldType;
 import objectview.Viewable;
 import objectview.render.GroupMembersView;
+import objectview.view.SearchableView;
 import org.junit.jupiter.api.Test;
 import domain.transform.app.ConfiguredGroups;
 import domain.transform.app.ProductClass;
@@ -16,8 +17,13 @@ import domain.config.GeneratedProjectModel;
 import domain.config.GroupClassSpec;
 
 import javax.swing.JComboBox;
+import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JSplitPane;
+import javax.swing.JTree;
 import javax.swing.SwingUtilities;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.TreePath;
 import java.awt.Component;
 import java.awt.Container;
 import java.util.List;
@@ -41,7 +47,7 @@ class TransformWorkbenchGroupClassTest {
             classes.setSelectedItem("DeityGroup");
         });
 
-        GroupMembersView groups = await(panel[0], GroupMembersView.class);
+        GroupMembersView groups = awaitGroup(panel[0], "Ennead");
         assertNotNull(groups, "the group class must render through the shared group tree");
         SwingUtilities.invokeAndWait(() ->
                 groups.groups().getTree().setSelectionRows(new int[] {1, 2}));
@@ -50,6 +56,134 @@ class TransformWorkbenchGroupClassTest {
         assertNotNull(status);
         assertTrue(status.getText().contains("DeityGroup · 2 shown"), status.getText());
         assertEquals(2, groups.groups().selectedGroups().size());
+
+        BoundedInstanceSelection selection = field(
+                panel[0], "datasourceSelection", BoundedInstanceSelection.class);
+        assertEquals(2, selection.size(),
+                "the selected group nodes are immediately the datasource input");
+
+        SearchableView memberCards = all(panel[0], SearchableView.class).stream()
+                .filter(view -> view.cardList() != null
+                        && view.cardList().getVirtualList().items().stream()
+                                .anyMatch(value -> "Deity".equals(value.typeName())))
+                .findFirst().orElseThrow();
+        Viewable inspectedMember = memberCards.cardList()
+                .getVirtualList().items().getFirst();
+        SwingUtilities.invokeAndWait(() ->
+                memberCards.renderContext().select(inspectedMember));
+        assertEquals(2, selection.size(),
+                "member-card inspection must not replace the selected group nodes");
+        assertTrue(all(panel[0], JButton.class).stream()
+                        .anyMatch(button -> "Fetch 2 selected articles"
+                                .equals(button.getText())),
+                "the datasource action must still read the two selected group nodes");
+        JTree actions = named(panel[0], "workbench.action-result.tree", JTree.class);
+        assertNotNull(actions);
+        assertTrue(children(child(root(actions), "Wikipedia")).contains(
+                        "Find configured field evidence (including table rows)"),
+                "datasources and their actions are visible without opening another window");
+        assertTrue(named(panel[0], "domain.datasource.wikipedia", JButton.class) == null,
+                "there is no second Wikipedia launcher beside the action tree");
+        JSplitPane content = named(panel[0], "workbench.fields-and-content",
+                JSplitPane.class);
+        JSplitPane datasource = named(panel[0], "datasource.scope-actions-results",
+                JSplitPane.class);
+        assertEquals(320, content.getDividerLocation(),
+                "DataSourceApp keeps the field chooser compact for the result pane");
+        assertEquals(JSplitPane.VERTICAL_SPLIT, datasource.getOrientation(),
+                "selected instances belong above the action tree and result");
+        assertEquals(360, datasource.getDividerLocation(),
+                "the upper instance scope starts at a useful inspection height");
+        assertEquals(0.43, datasource.getResizeWeight(),
+                "additional height remains shared between context and action result");
+        assertNotNull(named((Container) datasource.getTopComponent(),
+                "instance.scope.status", JLabel.class),
+                "the selected instance scope is the top panel");
+        assertNotNull(named((Container) datasource.getBottomComponent(),
+                "workbench.action-result.tree", JTree.class),
+                "the action tree and its right-hand detail occupy the lower panel");
+    }
+
+    @Test void selectedGroupOffersItsConfiguredMembersActionWithoutASecondFieldChoice()
+            throws Exception {
+        TransformWorkbenchPanel[] panel = new TransformWorkbenchPanel[1];
+        SwingUtilities.invokeAndWait(() -> {
+            panel[0] = new TransformWorkbenchPanel(
+                    fixture(), null, "Egyptian Gods", WorkbenchPurpose.DATASOURCE);
+            JComboBox<?> classes = named(panel[0], "view.class", JComboBox.class);
+            assertNotNull(classes);
+            classes.setSelectedItem("DeityGroup");
+        });
+
+        GroupMembersView groups = awaitGroup(panel[0], "Ennead");
+        assertNotNull(groups);
+        JTree actions = named(panel[0], "workbench.action-result.tree", JTree.class);
+        DefaultMutableTreeNode wikipedia = child(root(actions), "Wikipedia");
+        DefaultMutableTreeNode configured = child(wikipedia,
+                "Find configured field evidence (including table rows)");
+        SwingUtilities.invokeAndWait(() ->
+                actions.setSelectionPath(new TreePath(configured.getPath())));
+
+        ValidationPanel actionPanel = await(panel[0], ValidationPanel.class);
+        assertNotNull(actionPanel,
+                "the Wikipedia tree action must reveal the existing configured "
+                        + "field-action panel");
+        assertTrue(labels(actionPanel).stream().anyMatch(
+                        text -> text.contains("DeityGroup.members")),
+                labels(actionPanel).toString());
+        assertTrue(all(actionPanel, JButton.class).stream().anyMatch(button ->
+                        button.getText().startsWith("Find ")),
+                "the compact action view keeps its explicit run action");
+        assertTrue(borderTitles(actionPanel).stream().noneMatch(
+                        "Wikipedia article evidence"::equals),
+                "the compact action view must not repeat the full editor's evidence block");
+    }
+
+    @Test void groupClassTreeSurvivesAnAbstractMemberBaseWithNoDirectInstances()
+            throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.rootClass().className("DeityGroupMember");
+        GeneratedClassModel deity = new GeneratedClassModel("EgyptianDeity");
+        deity.baseClassName("DeityGroupMember");
+        model.addClass(deity);
+        GeneratedClassModel groupClass = new GeneratedClassModel("DeityGroup");
+        model.addClass(groupClass);
+        groupClass.addField("members", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .entityClassName("DeityGroupMember");
+        groupClass.groupSpec(new GroupClassSpec("members"));
+
+        WikidataDynamicObject member = value("Q1", "EgyptianDeity", "Ra");
+        WikidataDynamicObject group = value("Q2", "DeityGroup", "Ennead");
+        group.put("members", List.of(member));
+        List<Viewable> pool = List.of(group, member);
+        ProductDomain domain = new ProductDomain(new ProductSchema(List.of(
+                new ProductClass("DeityGroupMember", "DeityGroupMember", null,
+                        true, List.of()),
+                new ProductClass("EgyptianDeity", "EgyptianDeity",
+                        "DeityGroupMember", true, List.of()),
+                new ProductClass("DeityGroup", "DeityGroup", List.of(
+                        new ProductField("members", "List<DeityGroupMember>", true,
+                                true, "DeityGroupMember", false)))),
+                // The abstract base deliberately is not a member class.
+                List.of("EgyptianDeity", "DeityGroup")),
+                pool, Viewable.class, null, java.util.Map.of(),
+                ConfiguredGroups.rootBindings(model, pool));
+
+        TransformWorkbenchPanel[] panel = new TransformWorkbenchPanel[1];
+        SwingUtilities.invokeAndWait(() -> {
+            panel[0] = new TransformWorkbenchPanel(
+                    domain, null, "Egyptian Gods", WorkbenchPurpose.DATASOURCE);
+            JComboBox<?> classes = named(panel[0], "view.class", JComboBox.class);
+            assertNotNull(classes);
+            classes.setSelectedItem("DeityGroup");
+        });
+
+        GroupMembersView groups = awaitGroup(panel[0], "Ennead");
+        assertNotNull(groups);
+        assertEquals(List.of("Ennead"), groups.groups().getRootGroup().getChildren()
+                .stream().map(objectview.group.ViewableGroup::getDisplayName).toList(),
+                "DeityGroup instances remain group nodes even when their member base "
+                        + "has no direct instances");
     }
 
     private static ProductDomain fixture() {
@@ -82,6 +216,7 @@ class TransformWorkbenchGroupClassTest {
         WikidataDynamicObject value = new WikidataDynamicObject(id, label);
         value.type(type);
         value.directClasses(java.util.Set.of(type));
+        value.enwikiTitle(label);
         return value;
     }
 
@@ -89,6 +224,19 @@ class TransformWorkbenchGroupClassTest {
         for (int attempt = 0; attempt < 60; attempt++) {
             T found = find(root, type);
             if (found != null) return found;
+            Thread.sleep(50);
+            SwingUtilities.invokeAndWait(() -> { });
+        }
+        return null;
+    }
+
+    private static GroupMembersView awaitGroup(Container root, String child)
+            throws Exception {
+        for (int attempt = 0; attempt < 80; attempt++) {
+            for (GroupMembersView view : all(root, GroupMembersView.class)) {
+                if (view.groups().getRootGroup().getChildren().stream()
+                        .anyMatch(group -> child.equals(group.getDisplayName()))) return view;
+            }
             Thread.sleep(50);
             SwingUtilities.invokeAndWait(() -> { });
         }
@@ -118,5 +266,63 @@ class TransformWorkbenchGroupClassTest {
             }
         }
         return null;
+    }
+
+    private static <T> List<T> all(Container root, Class<T> type) {
+        java.util.ArrayList<T> result = new java.util.ArrayList<>();
+        if (type.isInstance(root)) result.add(type.cast(root));
+        for (Component child : root.getComponents()) {
+            if (type.isInstance(child)) result.add(type.cast(child));
+            if (child instanceof Container nested) result.addAll(all(nested, type));
+        }
+        return result;
+    }
+
+    private static DefaultMutableTreeNode root(JTree tree) {
+        return (DefaultMutableTreeNode) tree.getModel().getRoot();
+    }
+
+    private static DefaultMutableTreeNode child(
+            DefaultMutableTreeNode parent, String label) {
+        return java.util.stream.IntStream.range(0, parent.getChildCount())
+                .mapToObj(index -> (DefaultMutableTreeNode) parent.getChildAt(index))
+                .filter(node -> label.equals(node.toString())).findFirst().orElseThrow();
+    }
+
+    private static List<String> children(DefaultMutableTreeNode parent) {
+        return java.util.stream.IntStream.range(0, parent.getChildCount())
+                .mapToObj(parent::getChildAt).map(Object::toString).toList();
+    }
+
+    private static <T> T field(Object target, String name, Class<T> type) {
+        try {
+            java.lang.reflect.Field field = target.getClass().getDeclaredField(name);
+            field.setAccessible(true);
+            return type.cast(field.get(target));
+        } catch (ReflectiveOperationException exception) {
+            throw new AssertionError(exception);
+        }
+    }
+
+    private static List<String> labels(Container root) {
+        java.util.ArrayList<String> result = new java.util.ArrayList<>();
+        for (Component child : root.getComponents()) {
+            if (child instanceof JLabel label) result.add(label.getText());
+            if (child instanceof Container nested) result.addAll(labels(nested));
+        }
+        return result;
+    }
+
+    private static List<String> borderTitles(Container root) {
+        java.util.ArrayList<String> result = new java.util.ArrayList<>();
+        for (Component child : root.getComponents()) {
+            if (child instanceof javax.swing.JComponent component
+                    && component.getBorder() instanceof
+                            javax.swing.border.TitledBorder titled) {
+                result.add(titled.getTitle());
+            }
+            if (child instanceof Container nested) result.addAll(borderTitles(nested));
+        }
+        return result;
     }
 }

@@ -16,6 +16,7 @@ import domain.transform.ui.TransformController;
 import domain.runtime.WikidataDynamicObject;
 import domain.workbench.execution.ui.SwingQueryRunner;
 import domain.workbench.execution.ui.SwingQuerySession;
+import domain.datasource.discovery.ui.DiscoveryResultListener;
 import work.QueryContext;
 
 import javax.swing.*;
@@ -30,6 +31,7 @@ import java.util.Map;
  * a completed discovery never changes the loaded model or its saved snapshots.
  */
 public final class CommonsDiscoveryPanel extends JPanel implements AutoCloseable {
+    public static final String FETCH_DEPICTIONS = "commons.fetch-depictions";
     private final TransformController domain;
     private final CommonsStructuredDataClient commons;
     private final SwingQuerySession queries = new SwingQuerySession(new QueryContext());
@@ -44,8 +46,10 @@ public final class CommonsDiscoveryPanel extends JPanel implements AutoCloseable
     private final JLabel resultStatus = new JLabel(
             "Select exact entities, then fetch their structured Commons depictions.");
 
-    private final JTabbedPane resultTabs = new JTabbedPane();
+    private final JTabbedPane resultTabs =
+            new domain.workbench.ui.WorkbenchResultViews();
     private final BoundedInstanceSelection selection;
+    private DiscoveryResultListener resultListener = DiscoveryResultListener.NONE;
     private boolean closed;
 
     public CommonsDiscoveryPanel(TransformController domain,
@@ -210,6 +214,7 @@ public final class CommonsDiscoveryPanel extends JPanel implements AutoCloseable
                 + " Results are read-only.");
         selectionStatus.setText("Commons discovery completed. Query logs show every "
                 + "request, limit, elapsed time, and failure.");
+        resultListener.published(FETCH_DEPICTIONS, resultTabs, 0);
         updateActions();
     }
 
@@ -339,6 +344,11 @@ public final class CommonsDiscoveryPanel extends JPanel implements AutoCloseable
     private void invalidateResults(String message) {
         emptyResults();
         resultStatus.setText(message);
+        resultListener.invalidated(FETCH_DEPICTIONS);
+    }
+
+    public void setResultListener(DiscoveryResultListener listener) {
+        resultListener = listener == null ? DiscoveryResultListener.NONE : listener;
     }
 
     private void updateActions() {

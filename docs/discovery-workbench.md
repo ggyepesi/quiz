@@ -3,15 +3,30 @@
 `domain.datasource.discovery.app.DiscoveryApp` opens one bounded workbench over a saved project. It answers
 "what could this source add to these instances?" before anything is configured.
 
-## One selection, one tab per source
+## One selection, one source/action/result navigator
 
 The instances are selected once, on the left, through the shared
 `BoundedInstanceSelection`: a class, a random starting sample, and ObjectView panels to
 add and remove exact instances. It admits instances with a Wikidata QID, the identity
-every source starts from. Each source is a tab on the right that reads exactly that
-selection:
+every source starts from.
 
-| Tab | Reads | Per-run bound |
+The remaining area uses the shared `WorkbenchActionResultNavigator`:
+
+```
+selection | source/action/result tree | selected action or result view
+```
+
+The tree is workflow navigation, not a `ViewableGroup` tree: its nodes do not claim domain
+membership. Selecting a source, action or result only reveals it. The explicit verb-labelled
+button in the action panel is the only thing that starts work. When the action completes, its
+existing `JTabbedPane` remains the result-view deck and selection model, but its horizontal tab
+strip is hidden. The navigator mirrors those exact view titles as result children and is the one
+visible result navigator. A new run replaces that action's result children; query logs retain run
+history.
+
+Each action reads exactly the shared selection:
+
+| Source / action | Reads | Per-run bound |
 |---|---|---|
 | Wikipedia articles | retained or fetched article structure and infobox (`docs/wikipedia-structure-discovery.md`) | 50 articles |
 | Commons depictions | Structured Data on Commons depiction scenes (`docs/commons-structured-data-discovery.md`) | 20 QIDs |
@@ -25,24 +40,45 @@ selection larger than a source's bound disables that source's run and names how 
 remove. While any source runs, the selection is locked; one source finishing does not
 unlock it under another that is still running.
 
-Moving between tabs never asks for the instances again and inspecting results never changes
-the project. An explicit promotion offered by a source tab may add its reusable finding to
+Moving between actions never asks for the instances again and inspecting results never changes
+the project. An explicit promotion offered by a source action may add its reusable finding to
 the working ModelBuilder configuration; its separate Save action states the project file that
 will be written.
-DataSourceApp's Wikidata and Wikipedia discovery actions open this same workbench on the
-corresponding source tab. The available cards are exactly the instances currently shown in
-DataSourceApp. Its currently selected cards are handed over as the initial selection; with no
-cards selected the workbench starts at **Selected entities — 0**, and the ordinary **Add
-selection**, **Remove selection**, selected-count and random-sample controls remain available.
+DataSourceApp embeds this same source/action/result tree below its existing instance scope; it
+does not show datasource launcher buttons or open a second selection window. Its selected
+instances span the upper work area. The lower area uses the navigator's ordinary tree/detail
+layout, so the selected action or result receives the full right-hand width instead of becoming a
+fourth narrow column. The datasource roots and their actions are visible before any instance is
+selected. With no explicit card or modeled-group selection, an action reads every currently shown
+eligible instance. Selecting cards or modeled groups narrows that input immediately. Only the
+explicit Run control applies the action's bound and may therefore be disabled; navigating the
+datasource and action tree never is.
 
-The Wikipedia, Commons, Pageviews and Wikidata tabs are code-backed source workflows. Further
-bounded related-record tabs are
-discovered from the datasource registry. Their result records, source fields and limits come
-from checked-in datasource configuration; the workbench does not name or branch on Met.
+The Wikipedia source also contains the current field's configured evidence action. For a modeled
+group it automatically targets the declared members field. Thus selecting **Assessors of Maat**
+and then **Wikipedia → Find configured field evidence (including table rows)** reveals the ordinary
+**Find table-row instances…** action: its current linked members remain; a row with one loaded
+linked instance proposes that ordinary domain instance, while a row without one proposes a
+configured row instance even when its display name has no Wikipedia link. This delegates to the
+same `ValidationPanel` acquisition and review path used everywhere else.
+
+The Wikipedia, Commons, Pageviews and Wikidata actions are code-backed source workflows. Further
+bounded related-record actions are discovered from the datasource registry and grouped under
+their provider source node. Their result records, source fields and limits come from checked-in
+datasource configuration; the workbench does not name or branch on Met.
+
+## Reuse by other workbenches
+
+`WorkbenchActionResultNavigator` owns only stable source/action/result identities, navigation,
+the detail-card host and tree ↔ tab synchronization. A host supplies its action component and
+publishes the exact result tabs that component already produced. The navigator does not own
+selection, execution, fetching, persistence, result construction or domain grouping. This is
+the seam Configuration, Transform and other action/result-heavy workbenches can reuse without
+depending on DataSourceApp.
 
 ## Pageviews
 
-The tab reads, per selected article, monthly views by human readers (`agent=user`) over
+The action reads, per selected article, monthly views by human readers (`agent=user`) over
 the chosen number of complete months ending last month, summed. The article title is the
 one retained Wikidata sitelink correspondence. The Pageviews service does not follow
 redirects and answers 404 when it holds nothing for a title in the window; the row then
@@ -61,10 +97,10 @@ A field source is a `DatasourceProvider` registered in `Datasources.standard()` 
 (`StandardExternalSourceFamilies.create()`). Its operations and their
 `ParameterDescriptor`s are offered by the field editor's **Datasource operation** choice
 without a new `FieldSourceType` constant; the stored binding is the field's whole
-configuration. A discovery view for it is one more tab registered on the workbench's
-shared selection.
+configuration. A discovery view for it is one more action registered under its source and
+reading the workbench's shared selection.
 
 A bounded JSON REST related-record source may instead be installed entirely through
 `data/datasources/*.datasource.json`. It compiles into the same registry as a code-backed
 provider, executes through the shared batch/query-log path and renders through the generic
-related-record ObjectView tab. See `docs/configured-rest-datasources.md`.
+related-record ObjectView result tabs. See `docs/configured-rest-datasources.md`.

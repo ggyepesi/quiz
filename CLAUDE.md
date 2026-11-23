@@ -197,9 +197,10 @@ construct per thing produced:
    another cell keeps the accepted instance. Those literal structural rows may be staged
    together. A row link may fill the optional
    reference field only when it resolves to an already-loaded compatible instance; an
-   unresolved link never invents an entity. When that resolved instance is already a
-   member of the owner field, it represents the row directly and no duplicate row-wrapper
-   member is proposed.
+   unresolved link never invents an entity. One resolved loaded instance represents the
+   row directly and is proposed for the owner field in its ordinary domain representation;
+   if it is already a member, nothing is proposed. A row-wrapper instance is created only
+   when the display cell does not identify one loaded instance.
    An unlinked label may nominate a candidate only when it identifies one loaded target;
    when loaded targets share the label, retained source links must resolve the identity.
 10. **Inspection is not an action.** Selecting, highlighting, hovering or navigating may change
@@ -291,6 +292,19 @@ construct per thing produced:
    run results. Closing a result does not secretly apply or save it.
    *(Trigger: introducing a special result renderer, inferred substitute schema, or a
    workflow verb that differs from the operation it performs.)*
+
+   Workbenches render available operations through shared action components. An entry delegates
+   to the operation's existing acquisition/execution process, logging and result/review
+   presentation; an application may supply the current scope, but must not copy the fetch or
+   invent another result path. An action-heavy workbench uses the neutral shared
+   source/context → explicit action → latest result-view navigator. Selection stays separate;
+   the action's existing component and result-view deck stay on the right, but its horizontal
+   tab strip is hidden. Result nodes mirror those exact views and are the one visible result
+   navigator. Selecting a
+   source, action or result only reveals it — it never executes the action. Workflow nodes are
+   not domain `ViewableGroup`s and carry no domain membership semantics. DataSourceApp is the
+   first consumer; configuration, transform and other action-heavy workbenches reuse the same
+   navigator rather than rebuilding its tree.
 
    Save and Load are concepts, not local button implementations. Every save/load entry
    point uses the shared persistence confirmation UI and names the domain, instances,
@@ -651,7 +665,14 @@ construct per thing produced:
   A group outline is a compact `JTree` navigation over those same objects, not a separate
   group-card renderer: its row keeps the group's own-member count and native keyboard
   navigation, while an explicit disclosure renders the selected group's ordinary ObjectView
-  fields in one shared details area. A modeled group class explicitly names the ordinary
+  fields in one shared details area. `GroupMembersView` is the sole production composition
+  of that outline and its member content; applications and compatibility facades supply the
+  member view and selected-node actions to it rather than constructing another group tree or
+  flattening groups into instance cards. Selecting a modeled group node is already an explicit
+  selection of that group instance: a discovery or field-action handoff preserves it and never
+  asks the reader to select and add the same group again. Source inspection and configured field
+  acquisition remain distinct named actions; both enter their existing shared workbench rather
+  than adding a group-specific fetch path. A modeled group class explicitly names the ordinary
   collection field that holds its members; neither a class name nor the mere presence of a
   collection implies group semantics. That declaration changes presentation only—the class's
   normal configured population producer still decides which group instances exist.

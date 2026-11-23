@@ -515,7 +515,19 @@ public final class WorkingDomain extends DelegatingDomainModel
 
     @Override
     public List<objectview.viewconfig.DomainGroupRoot> groupRootBindings() {
-        return types().stream()
+        // A configured group may name an abstract member base whose concrete
+        // subclasses are the only selectable/member classes (Egyptian Gods:
+        // DeityGroupMember <- EgyptianDeity).  Restricting bindings to types() then
+        // dropped the only tree that still carries the modeled group-class nodes, so
+        // selecting DeityGroup fell back to "All DeityGroup" instance cards.  The
+        // base's declared binding is semantic configuration even when its member type
+        // has no direct instances; keep it in the working domain.
+        java.util.LinkedHashSet<String> memberTypes = base.groupRootBindings().stream()
+                .map(objectview.viewconfig.DomainGroupRoot::memberType)
+                .collect(java.util.stream.Collectors.toCollection(
+                        java.util.LinkedHashSet::new));
+        memberTypes.addAll(types());
+        return memberTypes.stream()
                 .map(type -> new objectview.viewconfig.DomainGroupRoot(
                         type, editableGroupRoot(type)))
                 .toList();

@@ -25,24 +25,27 @@ SwingQuerySession                     background execution, cancellation and que
 SearchableView                        every instance and discovery-result view
 ```
 
-The retained `WikipediaArticle` remains the one source-evidence artifact. Discovery reads
-it; it does not fetch or store another interpretation of the article. A fetch makes one
-`action=parse` request per article, and the structured article and its infobox are both
-read from that response, so they always describe the same revision (#461).
+The retained `WikipediaArticle` remains the one source-evidence artifact. **Analyze retained
+articles** reads the artifact already stored in the loaded snapshot. Generation/Build stores
+that artifact when a configured Wikipedia datasource requires article structure. **Fetch
+selected articles** is bounded inspection only: it does not persist the fetched page into the
+domain. It makes one `action=parse` request per article, and the structured article and its
+infobox are both read from that response, so they always describe the same revision (#461).
 
 ## First bounded workflow
 
 1. Run `domain.datasource.discovery.app.DiscoveryApp` and open one saved project through the shared domain
-   chooser, or press DataSourceApp's Wikipedia discovery action, which hands over its
-   selected instances and opens this tab.
+   chooser, or use DataSourceApp's embedded **Wikipedia** source node over the instances
+   currently shown there.
 2. Choose a class whose loaded instances have Wikidata QIDs.
 3. Start with a random selection of at most 50 instances.
 4. Add or remove instances through the workbench's ObjectView instance panels. Selected
    instances without an English Wikipedia article correspondence are counted and not
    read.
-5. Either analyze the structured articles already retained in the snapshot or explicitly
-   fetch exactly the selected articles and their infoboxes.
-6. Inspect ObjectView result tabs for:
+5. Either analyze the structured articles already retained by Generation/Build in the
+   snapshot, or explicitly fetch exactly the selected articles and their infoboxes for this
+   inspection session only.
+6. Inspect the ObjectView result views listed under the completed action in the tree:
    - a visible **Structural groups** browser, using the same group-tree plus ObjectView
      member panel as TransformApp. Its section, infobox, category, link, table-header and
      HTML-element groups are read-only views of the exact selected domain instances. The
@@ -128,16 +131,18 @@ Execution proposes one stable typed instance for every data row. Its identity co
 owner, target field, configured section/table/display column, the display cell's text and the
 row's occurrence among rows with that same display text. An article edit to another cell
 therefore keeps the already-accepted instance, while two rows sharing a display label stay
-separate instances. Renaming the display cell makes a new row. These literal row projections are safe to stage together,
-but staging is still an explicit review action. Links enrich the row instance only when they
-resolve against the loaded target pool; red links, redirects without a loaded target and other
-unresolved links create no entity. If a resolved target is already a member of the owner field,
-that richer domain instance represents the row and no duplicate row-wrapper member is proposed.
+separate instances. Renaming the display cell makes a new row. These literal row projections are
+safe to stage together, but staging is still an explicit review action. A display cell that
+resolves to exactly one already-loaded compatible instance proposes that ordinary domain instance
+directly; if it is already a member, nothing is proposed. Red links, redirects without a loaded
+target and other unresolved links create no entity. Only a row without one resolved loaded
+instance becomes a row-wrapper member.
 
-The Egyptian Gods model uses this operation for the Assessors of Maat table. Each row becomes an
-`AssessorOfMaat`, keeps all cells as evidence, refers back to its `DeityGroup`, and may point at an
-already-loaded `EgyptianDeity`. It does not misrepresent all 42 named assessors as already-known
-EgyptianDeity entities.
+The Egyptian Gods model uses this operation for the Assessors of Maat table. A row becomes an
+`AssessorOfMaat`, keeps all cells as evidence and refers back to its `DeityGroup`, unless its
+display-cell link identifies an already-loaded `EgyptianDeity`; that ordinary deity becomes the
+member directly. It does not misrepresent unlinked assessors as already-known EgyptianDeity
+entities.
 
 ## Boundary
 

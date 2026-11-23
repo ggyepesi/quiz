@@ -1,6 +1,7 @@
 package domain.transform.ui;
 
 import domain.datasource.schema.FieldType;
+import domain.datasource.discovery.ui.DiscoveryWorkbench;
 
 import objectview.demo.MultiView;
 import objectview.render.GroupTreeView;
@@ -44,6 +45,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private static final int FIELDS_PANE_MINIMUM_WIDTH = 280;
     private static final int INSTANCES_PANE_MINIMUM_WIDTH = 420;
     private static final int INITIAL_FIELDS_PANE_WIDTH = 420;
+    private static final int DATASOURCE_FIELDS_PANE_WIDTH = 320;
+    private static final int DATASOURCE_INSTANCES_PANE_HEIGHT = 360;
 
     private final TransformController controller;
     private final WorkbenchPurpose purpose;
@@ -62,16 +65,21 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private final JButton identitiesButton = new JButton("Identities…");
     private final JButton saveIdentitiesButton = new JButton("Save staged identities");
     private final JButton forgetIdentitiesButton = new JButton("Forget staged");
-    private final JButton wikidataDiscoveryButton =
-            new JButton("Wikidata discovery…");
-    private final JButton wikipediaDiscoveryButton =
-            new JButton("Wikipedia discovery…");
+    private final BoundedInstanceSelection datasourceSelection;
+    private final DiscoveryWorkbench datasourceWorkbench;
+    private final JPanel wikidataFieldActions = datasourceActionPlaceholder(
+            "Choose a field or modeled group to see its configured Wikidata actions.");
+    private final JPanel wikipediaFieldActions = datasourceActionPlaceholder(
+            "Choose a field or modeled group to see its configured Wikipedia actions.");
     private final JButton analyzeRelationsButton =
             new JButton("Analyze relations…");
     private final JButton showClosurePathButton =
             new JButton("Show path to selected instance…");
     private List<Viewable> selectedInstances = List.of();
-    private domain.datasource.discovery.ui.DiscoveryWorkbench.OpenedWindow discoveryWindow;
+    private String datasourceScopeType = "";
+    private List<domain.runtime.WikidataDynamicObject> datasourceAvailable = List.of();
+    private List<domain.runtime.WikidataDynamicObject> datasourceTargets = List.of();
+    private boolean syncingDatasourceSelection;
     private JPanel instanceScopeHeader;
     private domain.transform.EditableGroup selectedGroup;
     // The group changes the instance scope, not the user's field choices. Dynamic
@@ -151,6 +159,38 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         this.controller = new TransformController(domain, writer);
         this.domainName = domainName;
         this.purpose = purpose == null ? WorkbenchPurpose.TRANSFORM : purpose;
+        if (this.purpose.showsDatasourceActions()) {
+            datasourceSelection = new BoundedInstanceSelection(controller,
+                    new BoundedInstanceSelection.Host() {
+                        @Override public void selectionChanged(String reason) { }
+                        @Override public void updateActions() {
+                            if (!syncingDatasourceSelection) {
+                                SwingUtilities.invokeLater(
+                                        TransformWorkbenchPanel.this::syncDatasourceSelection);
+                            }
+                        }
+                    }, 50, 12, "entities",
+                    value -> wikidata.WikidataIds.isQid(value.qid()),
+                    "have Wikidata QIDs");
+            datasourceWorkbench =
+                    new DiscoveryWorkbench(
+                            controller, datasourceSelection);
+            datasourceWorkbench.addContextAction(
+                    DiscoveryWorkbench.Source.WIKIDATA,
+                    "configured-field-wikidata",
+                    "Load the current configured field",
+                    wikidataFieldActions,
+                    () -> showConfiguredFieldActions(wikidataFieldActions, false));
+            datasourceWorkbench.addContextAction(
+                    DiscoveryWorkbench.Source.WIKIPEDIA,
+                    "configured-field-wikipedia",
+                    "Find configured field evidence (including table rows)",
+                    wikipediaFieldActions,
+                    () -> showConfiguredFieldActions(wikipediaFieldActions, true));
+        } else {
+            datasourceSelection = null;
+            datasourceWorkbench = null;
+        }
         scopeStatus.setName("instance.scope.status");
         setLayout(new BorderLayout(8, 8));
 
@@ -161,7 +201,16 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         // Analyze relations appear broken only for the initially selected class.
         JComponent right = buildRight();
         JComponent left = buildLeft();
-        add(workspaceSplit(left, right), BorderLayout.CENTER);
+        JSplitPane workspace = workspaceSplit(left, right);
+        workspace.setName("workbench.fields-and-content");
+        if (this.purpose.showsDatasourceActions()) {
+            // DataSourceApp has a second navigation/detail split on the right. Give
+            // that actual action/result work area the width which the ordinary
+            // two-pane TransformApp layout does not need to reserve.
+            workspace.setDividerLocation(DATASOURCE_FIELDS_PANE_WIDTH);
+            workspace.setResizeWeight(0.0);
+        }
+        add(workspace, BorderLayout.CENTER);
 
         // ViewStepsPanel seeds the controller (and mirrors it into its controls);
         // render the seeded result once the panel is wired.
@@ -276,14 +325,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 "Discard the staged identities — nothing has been written yet");
         forgetIdentitiesButton.addActionListener(e -> forgetStagedIdentities());
         forgetIdentitiesButton.setVisible(false);
-        wikidataDiscoveryButton.setEnabled(false);
-        wikidataDiscoveryButton.setName("domain.datasource.wikidata");
-        wikidataDiscoveryButton.addActionListener(e -> openDiscovery(
-                domain.datasource.discovery.ui.DiscoveryWorkbench.Source.WIKIDATA));
-        wikipediaDiscoveryButton.setEnabled(false);
-        wikipediaDiscoveryButton.setName("domain.datasource.wikipedia");
-        wikipediaDiscoveryButton.addActionListener(e -> openDiscovery(
-                domain.datasource.discovery.ui.DiscoveryWorkbench.Source.WIKIPEDIA));
         analyzeRelationsButton.setToolTipText(
                 "Measure self-referencing fields over the instances currently shown");
         analyzeRelationsButton.setName("transform.analyzeRelations");
@@ -309,17 +350,34 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         // actually needs, so every instance action is visible on the default layout.
         JPanel instanceActions = new JPanel(
                 instanceActionsLayout());
-        if (purpose.showsDatasourceActions()) {
-            instanceActions.add(wikidataDiscoveryButton);
-            instanceActions.add(wikipediaDiscoveryButton);
-        } else {
+        if (!purpose.showsDatasourceActions()) {
             instanceActions.add(analyzeRelationsButton);
         }
         instanceActions.add(showClosurePathButton);
         scope.add(instanceActions, BorderLayout.SOUTH);
         instanceScopeHeader = scope;
         right.add(renderHolder, BorderLayout.CENTER);
-        return right;
+        if (!purpose.showsDatasourceActions()) return right;
+        // Selection is the context for every datasource action, so show it once across
+        // the whole upper work area. Below it the reusable action tree and its detail
+        // retain their ordinary left/right tree-detail layout. This avoids four narrow
+        // columns (fields | instances | actions | detail) while keeping all three
+        // concepts visible together.
+        JSplitPane workbench = new JSplitPane(
+                JSplitPane.VERTICAL_SPLIT, right, datasourceWorkbench);
+        workbench.setName("datasource.scope-actions-results");
+        workbench.setContinuousLayout(true);
+        workbench.setOneTouchExpandable(true);
+        workbench.setResizeWeight(0.43);
+        workbench.setDividerLocation(DATASOURCE_INSTANCES_PANE_HEIGHT);
+        return workbench;
+    }
+
+    private static JPanel datasourceActionPlaceholder(String text) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(BorderFactory.createEmptyBorder(16, 18, 16, 18));
+        panel.add(new JLabel("<html>" + text + "</html>"), BorderLayout.NORTH);
+        return panel;
     }
 
     private JButton button(String text, Runnable action) {
@@ -624,12 +682,11 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
      * Keeping the window open is the default; discarding is an explicit choice that names
      * each edit it loses.
      */
-    /** Whether an open Discovery window may close with this workbench. Its
-     *  running fetch is kept unless the user confirms stopping it. */
+    /** Whether the embedded datasource workbench may close. Its running fetch is kept
+     * unless the user confirms stopping it. */
     boolean confirmCloseDiscovery() {
-        var opened = discoveryWindow;
-        return opened == null || !opened.window().isDisplayable()
-                || opened.workbench().requestStopRun(this);
+        return datasourceWorkbench == null
+                || datasourceWorkbench.requestStopRun(this);
     }
 
     boolean confirmCloseWithUnsavedModelChanges() {
@@ -660,6 +717,13 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
      *  scope, so this never re-asks class/field/scope. */
     private void openFieldCuration() {
         DomainField field = selectedField;
+        openFieldCuration(field);
+    }
+
+    /** Open the existing field-action workbench for a target established by another
+     *  view. A modeled group already declares which field contains its members, so its
+     *  selected-node action must not make the reader find and select that field again. */
+    private void openFieldCuration(DomainField field) {
         RenderedScope scope = renderedScope;
         if (field == null) {
             JOptionPane.showMessageDialog(this, "Select a field on the left.");
@@ -679,7 +743,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 this::openScopedIdentities, purpose);
         String scopeLabel = scope.visibleMembers().size() + " selected "
                 + (scope.visibleMembers().size() == 1 ? "instance" : "instances")
-                + " · " + fieldScope;
+                + " from the current scope";
         panel.useFixedTarget(field.type(), field.field(), scopeLabel);
 
         JButton back = new JButton("← Back to cards");
@@ -695,6 +759,63 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         rightMode = RightMode.CURATING_FIELD;
         renderHolder.revalidate();
         renderHolder.repaint();
+    }
+
+    /** Reveal the ordinary configured-field workbench under its datasource tree node.
+     * The modeled-group members field is already declared by the model, so selecting a
+     * DeityGroup such as Assessors of Maat targets DeityGroup.members without asking the
+     * reader to select that same field again. Revealing this panel performs no request. */
+    private void showConfiguredFieldActions(JPanel host, boolean wikipedia) {
+        RenderedScope scope = renderedScope;
+        DomainField field = datasourceTargetField(scope);
+        host.removeAll();
+        if (scope == null) {
+            host.add(new JLabel("Wait for the current instance scope to finish rendering."),
+                    BorderLayout.NORTH);
+        } else if (field == null) {
+            host.add(new JLabel("<html>Select a field on the left. For a modeled group, "
+                    + "select one of its group nodes; its declared members field is used "
+                    + "automatically.</html>"), BorderLayout.NORTH);
+        } else if (scope.visibleMembers().isEmpty()) {
+            host.add(new JLabel("The current scope contains no instances."),
+                    BorderLayout.NORTH);
+        } else {
+            ValidationPanel panel = new ValidationPanel(
+                    controller.domain(), scope.visibleMembers(), queries.runner(),
+                    () -> { if (viewStepsPanel != null) viewStepsPanel.refreshWorkingSet(); },
+                    this::openScopedIdentities, purpose);
+            if (wikipedia) panel.showWikipediaEvidenceOnly();
+            String scopeLabel = scope.visibleMembers().size() + " "
+                    + scope.selectedType() + " instance"
+                    + (scope.visibleMembers().size() == 1 ? "" : "s")
+                    + " currently shown in DataSourceApp";
+            panel.useFixedTarget(field.type(), field.field(), scopeLabel);
+            JLabel title = new JLabel("<html><b>" + (wikipedia ? "Wikipedia" : "Wikidata")
+                    + " actions for " + field.displayPath() + "</b><br>"
+                    + (wikipedia
+                    ? "For a configured table-row field this includes the existing linked "
+                            + "members and proposes rows whose names have no Wikipedia link."
+                    : "Load uses this field's configured source; selecting this action has "
+                            + "not started a request.") + "</html>");
+            title.setBorder(BorderFactory.createEmptyBorder(3, 5, 5, 5));
+            host.add(title, BorderLayout.NORTH);
+            host.add(panel, BorderLayout.CENTER);
+        }
+        host.revalidate();
+        host.repaint();
+    }
+
+    private DomainField datasourceTargetField(RenderedScope scope) {
+        if (scope != null) {
+            domain.transform.app.ConfiguredGroups.Binding binding =
+                    domain.transform.app.ConfiguredGroups.bindingForGroupClass(
+                            controller.domain().groupRootBindings(), scope.selectedType());
+            if (binding != null && activeGroup != null && activeGroup.getKeyRef() != null) {
+                DomainField members = groupMembersField(binding);
+                if (members != null) return members;
+            }
+        }
+        return selectedField;
     }
 
     /** Open the merge panel: fold a duplicate instance into a primary. Re-render after. */
@@ -737,12 +858,22 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         final String type = controller.selectedType();
         rightMode = RightMode.CARDS;
         renderedScope = null;
+        if (datasourceSelection != null && !datasourceSelection.isRunning()) {
+            datasourceScopeType = "";
+            datasourceAvailable = List.of();
+            datasourceTargets = List.of();
+            syncingDatasourceSelection = true;
+            try {
+                datasourceSelection.clearScopedSelection(
+                        "Wait for the current DataSourceApp instance scope to render.");
+            } finally {
+                syncingDatasourceSelection = false;
+            }
+        }
         // A running resolve reports itself in its own workflow window, so this line is free
         // to describe the render.
         scopeStatus.setText("Rendering " + (type == null ? "view" : type) + "…");
         identitiesButton.setEnabled(false);
-        wikidataDiscoveryButton.setEnabled(false);
-        wikipediaDiscoveryButton.setEnabled(false);
         analyzeRelationsButton.setEnabled(false);
 
         renderHolder.removeAll();
@@ -860,8 +991,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         if (scope == null) {
             curateFieldButton.setEnabled(false);
             identitiesButton.setEnabled(false);
-            wikidataDiscoveryButton.setEnabled(false);
-            wikipediaDiscoveryButton.setEnabled(false);
             analyzeRelationsButton.setEnabled(false);
             return;
         }
@@ -905,43 +1034,51 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         // it stay available even when the scope is empty (they act on what is already staged).
         boolean hasResolvable = !identitySubjects.resolvable().isEmpty();
         identitiesButton.setEnabled(curation != null && hasResolvable);
-        updateDiscoveryActions();
+        syncDatasourceSelection();
         analyzeRelationsButton.setEnabled(!relationsFor(scope.selectedType()).isEmpty());
     }
 
-    private void updateDiscoveryActions() {
+    /** The main cards/group tree are DataSourceApp's one selection surface. With no
+     * explicit card selection, the currently shown scope is the datasource input; an
+     * explicit selection narrows it. Source/action navigation remains available either
+     * way, and only the existing Run buttons enforce each operation's bound. */
+    private void syncDatasourceSelection() {
+        if (datasourceSelection == null || datasourceSelection.isRunning()) return;
         RenderedScope scope = renderedScope;
-        String wikidataUnavailable = scope == null
-                ? "Wait for the current instance scope to finish rendering"
-                : discoveryUnavailable(scope.selectedType(), scope.visibleMembers());
-        wikidataDiscoveryButton.setEnabled(wikidataUnavailable == null);
-        wikidataDiscoveryButton.setToolTipText(wikidataUnavailable == null
-                ? discoveryTooltip(scope, "Wikidata statements and qualifiers")
-                : wikidataUnavailable);
-        wikipediaDiscoveryButton.setEnabled(wikidataUnavailable == null);
-        wikipediaDiscoveryButton.setToolTipText(wikidataUnavailable == null
-                ? discoveryTooltip(scope, "Wikipedia articles")
-                : wikidataUnavailable);
-    }
-
-    private String discoveryTooltip(RenderedScope scope, String source) {
-        java.util.Set<domain.runtime.WikidataDynamicObject> eligible =
+        if (scope == null || scope.selectedType() == null
+                || TransformController.ALL_ENTITIES.equals(scope.selectedType())) return;
+        List<domain.runtime.WikidataDynamicObject> available =
                 scope.visibleMembers().stream()
-                .filter(domain.runtime.WikidataDynamicObject.class::isInstance)
-                .map(domain.runtime.WikidataDynamicObject.class::cast)
-                .filter(value -> !value.qid().isBlank())
-                .collect(java.util.stream.Collectors.toCollection(
-                        java.util.LinkedHashSet::new));
-        long selected = selectedInstances.stream()
-                .filter(domain.runtime.WikidataDynamicObject.class::isInstance)
-                .map(domain.runtime.WikidataDynamicObject.class::cast)
-                .filter(eligible::contains)
-                .count();
-        return "Open the shared Discovery workbench for " + source + " with "
-                + eligible.size() + " currently shown " + scope.selectedType()
-                + " instance(s) available and " + selected
-                + " currently selected. Add selection, Remove selection and the selected "
-                + "count are the same controls used by DiscoveryApp.";
+                        .filter(domain.runtime.WikidataDynamicObject.class::isInstance)
+                        .map(domain.runtime.WikidataDynamicObject.class::cast)
+                        .filter(value -> wikidata.WikidataIds.isQid(value.qid()))
+                        .distinct().toList();
+        java.util.Set<domain.runtime.WikidataDynamicObject> availableSet =
+                new java.util.LinkedHashSet<>(available);
+        List<domain.runtime.WikidataDynamicObject> targets = selectedInstances.isEmpty()
+                ? available
+                : selectedInstances.stream()
+                        .filter(domain.runtime.WikidataDynamicObject.class::isInstance)
+                        .map(domain.runtime.WikidataDynamicObject.class::cast)
+                        .filter(availableSet::contains).distinct().toList();
+        if (scope.selectedType().equals(datasourceScopeType)
+                && available.equals(datasourceAvailable)
+                && targets.equals(datasourceTargets)) return;
+
+        datasourceScopeType = scope.selectedType();
+        datasourceAvailable = available;
+        datasourceTargets = targets;
+        syncingDatasourceSelection = true;
+        try {
+            if (datasourceSelection.populateScoped(scope.selectedType(), available)) {
+                datasourceSelection.seed(targets,
+                        selectedInstances.isEmpty()
+                                ? "DataSourceApp uses every currently shown instance."
+                                : "DataSourceApp uses the explicitly selected instances.");
+            }
+        } finally {
+            syncingDatasourceSelection = false;
+        }
     }
 
     static String discoveryUnavailable(String selectedType, List<Viewable> visible) {
@@ -954,64 +1091,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 .map(domain.runtime.WikidataDynamicObject.class::cast)
                 .anyMatch(value -> !value.qid().isBlank());
         return any ? null : "No currently shown instance has a Wikidata QID";
-    }
-
-    /** Opens the one Discovery workbench over the exact scope this workbench shows.
-     *  The source choice changes only the active tab; selection, counts and Add/Remove
-     *  controls are all owned by {@link BoundedInstanceSelection}. */
-    private void openDiscovery(domain.datasource.discovery.ui.DiscoveryWorkbench.Source sourceTab) {
-        RenderedScope scope = renderedScope;
-        String unavailable = scope == null ? "No rendered instance scope."
-                : discoveryUnavailable(scope.selectedType(), scope.visibleMembers());
-        if (unavailable != null) {
-            JOptionPane.showMessageDialog(this, unavailable,
-                    "Discovery", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        if (discoveryWindow != null && discoveryWindow.window().isDisplayable()) {
-            // Its model edits are this workbench's own pending changes, kept and guarded
-            // here; replacing the window loses only a running fetch.
-            if (!discoveryWindow.workbench().requestStopRun(this)) {
-                discoveryWindow.window().toFront();
-                discoveryWindow.window().requestFocus();
-                return;
-            }
-            discoveryWindow.window().dispose();
-            discoveryWindow = null;
-        }
-        List<domain.runtime.WikidataDynamicObject> available =
-                scope.visibleMembers().stream()
-                        .filter(domain.runtime.WikidataDynamicObject.class::isInstance)
-                        .map(domain.runtime.WikidataDynamicObject.class::cast)
-                        .filter(value -> !value.qid().isBlank()).distinct().toList();
-        java.util.Set<domain.runtime.WikidataDynamicObject> availableSet =
-                new java.util.LinkedHashSet<>(available);
-        List<domain.runtime.WikidataDynamicObject> selection = selectedInstances.stream()
-                .filter(domain.runtime.WikidataDynamicObject.class::isInstance)
-                .map(domain.runtime.WikidataDynamicObject.class::cast)
-                .filter(availableSet::contains).distinct().toList();
-        String source = "DataSourceApp";
-        if (selectedField != null && fieldScope != ScopeFilter.ALL) {
-            source += " — " + selectedField.displayPath() + " "
-                    + (fieldScope == ScopeFilter.MISSING ? "missing" : "present");
-        } else if (activeGroup != null) {
-            source += " — " + activeGroup.getDisplayName();
-        }
-        ProjectBacking project = controller.domain().capability(ProjectBacking.class);
-        String title = project != null && project.projectName() != null
-                && !project.projectName().isBlank() ? project.projectName()
-                : domainName == null || domainName.isBlank()
-                        ? scope.selectedType() : domainName;
-        var initial = new domain.datasource.discovery.ui.DiscoveryWorkbench.InitialSelection(
-                scope.selectedType(), available, selection, source);
-        discoveryWindow = domain.datasource.discovery.ui.DiscoveryWorkbench.openWindow(
-                controller.domain(), title, initial, this, sourceTab);
-        var opened = discoveryWindow;
-        opened.window().addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override public void windowClosed(java.awt.event.WindowEvent event) {
-                if (discoveryWindow == opened) discoveryWindow = null;
-            }
-        });
     }
 
     /**
@@ -1470,7 +1549,18 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             List<Viewable> members,
             String type,
             objectview.render.RenderContext renderContext) {
-        java.util.function.Consumer<List<Viewable>> selectionListener = this::selectInstances;
+        return flatView(members, type, renderContext, this::selectInstances);
+    }
+
+    /** One rendering path for ordinary and inspection-only instance cards. The caller
+     * owns what card selection means; a modeled group's member cards deliberately use a
+     * no-op because the selected group nodes—not their differently typed members—are the
+     * datasource input. */
+    private JComponent flatView(
+            List<Viewable> members,
+            String type,
+            objectview.render.RenderContext renderContext,
+            java.util.function.Consumer<List<Viewable>> selectionListener) {
         java.util.function.Function<Viewable, JComponent> cardDecorator = ignored -> null;
         boolean oneHierarchy = type != null && members.stream()
                 .allMatch(member -> controller.isInstanceOf(member, type));
@@ -1641,13 +1731,16 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                             + "apply to");
         });
         grouped.setSelectionSetHandler(selected -> {
-            selectInstances(List.of());
             List<Viewable> groupInstances = selected.stream()
                     .map(objectview.group.ViewableGroup::getKeyRef)
                     .filter(Viewable.class::isInstance)
                     .map(Viewable.class::cast)
                     .filter(value -> controller.isInstanceOf(value, selectedType))
                     .distinct().toList();
+            // A modeled group node is itself the domain instance. Preserve that explicit
+            // tree selection as the ordinary instance selection handed to Discovery;
+            // asking for the same group a second time in Discovery is not another choice.
+            selectInstances(groupInstances);
             List<Viewable> shown = applyFieldScope(groupInstances);
             renderedScope = new RenderedScope(
                     generation, selectedType, groupInstances, shown);
@@ -1673,6 +1766,13 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         }
         panel.add(grouped, BorderLayout.CENTER);
         return panel;
+    }
+
+    private DomainField groupMembersField(
+            domain.transform.app.ConfiguredGroups.Binding binding) {
+        return controller.domain().fields(binding.groupClass()).stream()
+                .filter(field -> binding.membersField().equals(field.field()))
+                .findFirst().orElse(null);
     }
 
     private static String selectedGroupStatus(
@@ -1725,7 +1825,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private void selectInstances(List<Viewable> values) {
         selectedInstances = values == null ? List.of() : List.copyOf(values);
         updateClosurePathAction();
-        updateDiscoveryActions();
+        syncDatasourceSelection();
     }
 
     /** Why the path cannot be shown for this selection, or null when it can. A disabled
@@ -1963,7 +2063,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             objectview.render.RenderContext renderContext) {
         JPanel panel = new JPanel(new BorderLayout(4, 4));
         panel.setBorder(BorderFactory.createTitledBorder(scope + " · " + members.size()));
-        panel.add(flatView(members, type, renderContext), BorderLayout.CENTER);
+        panel.add(flatView(members, type, renderContext, ignored -> { }),
+                BorderLayout.CENTER);
         return panel;
     }
 
@@ -2501,7 +2602,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 panel.close();
             }
         });
-        f.setSize(1400, 900);
+        f.setSize(purpose.showsDatasourceActions() ? 1800 : 1400, 900);
         f.setLocationRelativeTo(null);
         f.setVisible(true);
         return f;
@@ -2515,11 +2616,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         closed = true;
         queries.runner().cancel();
         resolveRunner.cancel();
-        if (discoveryWindow != null) {
-            discoveryWindow.window().dispose();
-            discoveryWindow.workbench().close();
-            discoveryWindow = null;
-        }
+        if (datasourceWorkbench != null) datasourceWorkbench.close();
         requestClient.close();
         queryFactory.close();
     }

@@ -1,5 +1,6 @@
 package domain.datasource.pageviews.discovery.ui;
 
+import domain.datasource.discovery.ui.DiscoveryResultListener;
 import domain.datasource.pageviews.PageviewsClient;
 import domain.datasource.pageviews.discovery.ArticleViews;
 import domain.datasource.pageviews.discovery.PageviewsDiscoveryQuery;
@@ -22,6 +23,7 @@ import java.util.List;
  * from obscure instances before anyone binds it to a field; nothing here changes the model.
  */
 public final class PageviewsDiscoveryPanel extends JPanel implements AutoCloseable {
+    public static final String READ_VIEWS = "pageviews.read-views";
     private static final int DEFAULT_MONTHS = 12;
 
     private final BoundedInstanceSelection selection;
@@ -38,7 +40,9 @@ public final class PageviewsDiscoveryPanel extends JPanel implements AutoCloseab
     private final JLabel status = new JLabel(" ");
     private final JLabel resultStatus = new JLabel(
             "Select instances, then read how often their Wikipedia articles were viewed.");
-    private final JPanel results = new JPanel(new BorderLayout());
+    private final JTabbedPane resultTabs =
+            new domain.workbench.ui.WorkbenchResultViews();
+    private DiscoveryResultListener resultListener = DiscoveryResultListener.NONE;
     private boolean closed;
 
     public PageviewsDiscoveryPanel(BoundedInstanceSelection selection) {
@@ -52,14 +56,17 @@ public final class PageviewsDiscoveryPanel extends JPanel implements AutoCloseab
         this.client = java.util.Objects.requireNonNull(client);
         this.clock = java.util.Objects.requireNonNull(clock);
         selection.addHost(new BoundedInstanceSelection.Host() {
-            @Override public void selectionChanged(String reason) { showRows(List.of(), reason); }
+            @Override public void selectionChanged(String reason) {
+                showRows(List.of(), reason, false);
+                resultListener.invalidated(READ_VIEWS);
+            }
             @Override public void updateActions() {
                 PageviewsDiscoveryPanel.this.updateActions();
             }
         });
         build();
         wire();
-        showRows(List.of(), resultStatus.getText());
+        showRows(List.of(), resultStatus.getText(), false);
         updateActions();
     }
 
@@ -75,7 +82,7 @@ public final class PageviewsDiscoveryPanel extends JPanel implements AutoCloseab
         north.add(status, BorderLayout.SOUTH);
         JPanel center = new JPanel(new BorderLayout(4, 4));
         center.add(resultStatus, BorderLayout.NORTH);
-        center.add(results, BorderLayout.CENTER);
+        center.add(resultTabs, BorderLayout.CENTER);
         north.setBorder(BorderFactory.createEmptyBorder(4, 4, 0, 4));
         center.setBorder(BorderFactory.createEmptyBorder(0, 4, 4, 4));
         add(north, BorderLayout.NORTH);
@@ -101,7 +108,8 @@ public final class PageviewsDiscoveryPanel extends JPanel implements AutoCloseab
     /** The selected instances with an English Wikipedia article; others are counted. */
     private List<WikidataDynamicObject> articles() {
         return selection.selected().stream()
-                .filter(value -> !value.enwikiTitle().isBlank()).toList();
+                .filter(value -> !domain.provenance.WikipediaCorrespondence
+                        .title(value).isBlank()).toList();
     }
 
     private String description() {
@@ -125,7 +133,7 @@ public final class PageviewsDiscoveryPanel extends JPanel implements AutoCloseab
                 rows -> SwingUtilities.invokeLater(() -> showRows(rows,
                         query.summary(rows) + ", " + window()
                                 + ", most read first. An article without a record has no "
-                                + "value, not zero.")),
+                                + "value, not zero.", true)),
                 failure -> SwingUtilities.invokeLater(() -> {
                     String message = failure == null || failure.getMessage() == null
                             ? "Pageviews discovery failed." : failure.getMessage();
@@ -135,17 +143,20 @@ public final class PageviewsDiscoveryPanel extends JPanel implements AutoCloseab
                 }));
     }
 
-    private void showRows(List<ArticleViews> rows, String message) {
-        results.removeAll();
-        results.add(SearchableView.builder(rows)
+    private void showRows(List<ArticleViews> rows, String message, boolean publish) {
+        resultTabs.removeAll();
+        resultTabs.addTab("Article views — " + rows.size(), SearchableView.builder(rows)
                 .type(ArticleViews.class)
                 .mode(RenderingMode.TABLE)
                 .valueLinker(wikidata.ui.WikidataLinks.valueLinker())
                 .emptyMessage("No Pageviews request has run for this selection.")
-                .build(), BorderLayout.CENTER);
-        results.revalidate();
-        results.repaint();
+                .build());
         resultStatus.setText(message);
+        if (publish) resultListener.published(READ_VIEWS, resultTabs, 0);
+    }
+
+    public void setResultListener(DiscoveryResultListener listener) {
+        resultListener = listener == null ? DiscoveryResultListener.NONE : listener;
     }
 
     private void updateActions() {

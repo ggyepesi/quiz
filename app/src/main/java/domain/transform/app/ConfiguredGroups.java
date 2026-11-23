@@ -30,6 +30,7 @@ public final class ConfiguredGroups {
     public record Binding(
             String groupClass,
             String memberClass,
+            String membersField,
             ViewableGroup<?> root) { }
 
     private ConfiguredGroups() { }
@@ -66,9 +67,11 @@ public final class ConfiguredGroups {
             String identity = groupClass.declarationId().isBlank()
                     ? groupClass.className() : groupClass.declarationId();
             result.add(new Binding(groupClass.className(), memberField.entityClassName(),
+                    spec.membersField(),
                     new ConfiguredClassGroup(
                             identity, rootName(groupClass), groupClass.className(),
-                            memberField.entityClassName(), groups, allMembers)));
+                            memberField.entityClassName(), spec.membersField(), groups,
+                            allMembers)));
         }
         return List.copyOf(result);
     }
@@ -95,7 +98,8 @@ public final class ConfiguredGroups {
         if (group == null || !seen.add(group)) return null;
         if (group instanceof ConfiguredClassGroup configured
                 && groupClass.equals(configured.groupClass)) {
-            return new Binding(configured.groupClass, configured.memberClass, configured);
+            return new Binding(configured.groupClass, configured.memberClass,
+                    configured.membersField, configured);
         }
         for (ViewableGroup<?> child : group.getChildren()) {
             Binding found = findBinding(child, groupClass, seen);
@@ -249,16 +253,19 @@ public final class ConfiguredGroups {
         private final String label;
         private final String groupClass;
         private final String memberClass;
+        private final String membersField;
         private final List<ViewableGroup<Viewable>> groups;
         private final List<Viewable> members;
 
         private ConfiguredClassGroup(
                 String identity, String label, String groupClass, String memberClass,
+                String membersField,
                 List<ViewableGroup<Viewable>> groups, List<Viewable> members) {
             this.identity = identity;
             this.label = label;
             this.groupClass = groupClass;
             this.memberClass = memberClass;
+            this.membersField = membersField;
             this.groups = List.copyOf(groups);
             this.members = List.copyOf(members);
         }

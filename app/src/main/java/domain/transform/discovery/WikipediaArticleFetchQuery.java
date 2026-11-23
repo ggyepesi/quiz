@@ -45,7 +45,7 @@ public final class WikipediaArticleFetchQuery
     @Override public List<Result> execute(QueryContext context) throws Exception {
         java.util.ArrayList<Result> results = new java.util.ArrayList<>();
         for (WikidataDynamicObject instance : instances) {
-            String title = instance.enwikiTitle();
+            String title = domain.provenance.WikipediaCorrespondence.title(instance);
             if (title.isBlank()) {
                 results.add(new Result(instance, "", null,
                         "No English Wikipedia article is retained for this instance."));

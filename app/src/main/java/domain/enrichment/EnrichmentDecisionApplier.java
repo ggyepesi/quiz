@@ -140,7 +140,8 @@ public final class EnrichmentDecisionApplier {
                 throw new IllegalArgumentException("Cannot add to " + candidate.field()
                         + ": the target field is not a collection.");
             }
-            String problem = FieldValueCompatibility.problem(schema, candidate.proposedValue());
+            String problem = FieldValueCompatibility.problem(
+                    domain, schema, candidate.proposedValue());
             if (problem != null) throw new IllegalArgumentException("Cannot apply "
                     + candidate.field() + ": " + problem);
             Object value = approvedValue(candidate, fieldDecision.action());

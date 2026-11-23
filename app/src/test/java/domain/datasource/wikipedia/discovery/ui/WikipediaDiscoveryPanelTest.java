@@ -72,6 +72,12 @@ class WikipediaDiscoveryPanelTest {
             WikipediaDiscoveryPanel panel = panel(domain(maat));
             try {
                 JTabbedPane results = field(panel, "resultTabs", JTabbedPane.class);
+                assertTrue(results instanceof domain.workbench.ui.WorkbenchResultViews,
+                        "the action/result tree, not a second horizontal strip, navigates "
+                                + "the result views");
+                assertEquals(JTabbedPane.TOP, results.getTabPlacement());
+                assertEquals(JTabbedPane.WRAP_TAB_LAYOUT,
+                        results.getTabLayoutPolicy());
                 assertEquals(List.of("Structural groups — 0", "Articles — 0", "Sections — 0",
                                 "Section contents — 0", "List items — 0",
                                 "Table rows — 0", "Table headers — 0",
@@ -79,6 +85,40 @@ class WikipediaDiscoveryPanelTest {
                                 "Categories — 0", "Links by section — 0", "HTML elements — 0"),
                         java.util.stream.IntStream.range(0, results.getTabCount())
                                 .mapToObj(results::getTitleAt).toList());
+            } finally {
+                panel.close();
+            }
+        });
+    }
+
+    @Test void wikipediaActionsExplainCorrespondenceAndSnapshotRetention()
+            throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            WikidataDynamicObject group = new WikidataDynamicObject("Q233458", "Ennead");
+            group.type("DeityGroup");
+            WikipediaDiscoveryPanel panel = panel(domain(List.of(group),
+                    List.of("DeityGroup")));
+            try {
+                Object selection = field(panel, "selection", Object.class);
+                invoke(selection, "seed", new Class<?>[]{List.class, String.class},
+                        List.of(group), "DataSourceApp uses the selected group.");
+                JButton fetch = field(panel, "fetch", JButton.class);
+                JButton retained = field(panel, "retained", JButton.class);
+
+                assertEquals("Fetch 0 articles from 1 selected instance", fetch.getText());
+                assertFalse(fetch.isEnabled());
+                assertTrue(fetch.getToolTipText().contains(
+                        "no English Wikipedia correspondence"));
+                assertEquals("Analyze 0 retained articles", retained.getText());
+                assertFalse(retained.isEnabled());
+                assertTrue(retained.getToolTipText().contains("Generate/Build retains"));
+
+                invoke(panel, "selectAction", new Class<?>[]{String.class},
+                        WikipediaDiscoveryPanel.ANALYZE_RETAINED);
+                JLabel source = field(panel, "sourceStatus", JLabel.class);
+                assertTrue(source.getText().contains("loaded snapshot"), source.getText());
+                assertTrue(source.getText().contains("Generate/Build retains"),
+                        source.getText());
             } finally {
                 panel.close();
             }
@@ -139,6 +179,8 @@ class WikipediaDiscoveryPanelTest {
                         result, "test");
 
                 JTabbedPane tabs = field(panel, "resultTabs", JTabbedPane.class);
+                assertEquals("Articles — 0", tabs.getTitleAt(tabs.getSelectedIndex()),
+                        "the fetched article list is shown before derived comparisons");
                 tabs.setSelectedIndex(7);
                 SearchableView infoboxes = (SearchableView) tabs.getComponentAt(7);
                 JButton configure = field(panel, "configureInfobox", JButton.class);

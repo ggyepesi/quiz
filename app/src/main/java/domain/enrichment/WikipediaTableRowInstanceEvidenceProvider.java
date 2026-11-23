@@ -41,12 +41,13 @@ public final class WikipediaTableRowInstanceEvidenceProvider
     private final String linkedReferenceType;
     private final WikimediaEntityLookup lookup;
     private final wikipedia.WikipediaArticleClient articles;
+    private final domain.DomainModel domain;
 
     public WikipediaTableRowInstanceEvidenceProvider(
             WikipediaDatasourceProvider.ArticleTableRowInstanceSpec spec,
             Collection<? extends Viewable> loadedReferenceCandidates,
-            String linkedReferenceType) {
-        this(spec, loadedReferenceCandidates, linkedReferenceType,
+            String linkedReferenceType, domain.DomainModel domain) {
+        this(spec, loadedReferenceCandidates, linkedReferenceType, domain,
                 WikimediaEntityLookup.defaultFetcher());
     }
 
@@ -54,10 +55,12 @@ public final class WikipediaTableRowInstanceEvidenceProvider
             WikipediaDatasourceProvider.ArticleTableRowInstanceSpec spec,
             Collection<? extends Viewable> loadedReferenceCandidates,
             String linkedReferenceType,
+            domain.DomainModel domain,
             WikimediaEntityLookup.JsonFetcher fetcher) {
         this.spec = java.util.Objects.requireNonNull(spec);
         linkedCandidates = new WikipediaLinkedReferenceResolver(loadedReferenceCandidates);
         this.linkedReferenceType = clean(linkedReferenceType);
+        this.domain = java.util.Objects.requireNonNull(domain);
         lookup = new WikimediaEntityLookup(fetcher);
         articles = new wikipedia.WikipediaArticleClient(fetcher::fetch);
     }
@@ -84,6 +87,7 @@ public final class WikipediaTableRowInstanceEvidenceProvider
             private int resolvedLinks;
             private int unresolvedLinks;
             private int alreadyRepresentedRows;
+            private int linkedMembersProposed;
 
             @Override public String purpose() {
                 return "Build typed instances from one Wikipedia table";
@@ -128,20 +132,26 @@ public final class WikipediaTableRowInstanceEvidenceProvider
                     int occurrence = occurrences.merge(rowKey(row), 1, Integer::sum);
                     String instanceId = rowInstanceId(request, row, occurrence);
                     if (current.contains(instanceId)) continue;
-                    List<EnrichmentProposal.TypedReference> linked = linkedReferences(
+                    List<Viewable> resolvedMembers = linkedMembers(
                             row, resolution.matches());
-                    // A current group member is the richer representation of this row.
-                    // Keep it instead of adding a second row-wrapper member for the same
-                    // linked entity. Rows with no current resolved member retain their
-                    // structural instance, and may link to a loaded entity for inspection.
-                    if (linked.stream().anyMatch(reference ->
-                            current.contains(reference.id()))) {
-                        alreadyRepresentedRows++;
-                        continue;
-                    }
                     SourceRef source = source(article, request, row);
                     EvidenceFragment fragment = EvidenceFragment.excerpt(
                             article.document(), row.sectionPath(), rowEvidence(row));
+                    if (resolvedMembers.size() == 1
+                            && FieldValueCompatibility.problem(domain,
+                                    request.targetSchema(), resolvedMembers.getFirst()) == null) {
+                        Viewable member = resolvedMembers.getFirst();
+                        if (current.contains(member.getIdentifier())) {
+                            alreadyRepresentedRows++;
+                        } else {
+                            fields.add(linkedMemberCandidate(
+                                    request, member, source, fragment));
+                            linkedMembersProposed++;
+                        }
+                        continue;
+                    }
+                    List<EnrichmentProposal.TypedReference> linked = linkedReferences(
+                            row, resolution.matches());
                     ExtractedClaim contentClaim = new ExtractedClaim(subjectRef(request),
                             semanticProperty(request.targetField()), rowEvidence(row), null,
                             List.of(fragment), "configured Wikipedia table data row",
@@ -199,12 +209,50 @@ public final class WikipediaTableRowInstanceEvidenceProvider
                         + selection.rows().size() + " data row(s); "
                         + resolvedLinks + " display-cell link(s) resolved, "
                         + unresolvedLinks + " unresolved; " + rowCount(result)
-                        + " instance(s) proposed"
+                        + " member(s) proposed (" + linkedMembersProposed
+                        + " loaded linked member(s), "
+                        + (result == null ? 0 : result.instances().size())
+                        + " table-row instance(s))"
                         + (alreadyRepresentedRows == 0 ? "" : "; "
                                 + alreadyRepresentedRows
                                 + " row(s) already represented by current members");
             }
         };
+    }
+
+    private static EnrichmentProposal.FieldCandidate linkedMemberCandidate(
+            EnrichmentRequest request, Viewable member, SourceRef source,
+            EvidenceFragment fragment) {
+        String semantic = semanticProperty(request.targetField());
+        String memberId = member.getIdentifier();
+        EntityRef entity = WikidataIds.isQid(memberId)
+                ? EntityRef.wikidata(memberId)
+                : new EntityRef("domain:" + member.typeName().toLowerCase(Locale.ROOT),
+                        memberId);
+        ExtractedClaim claim = new ExtractedClaim(subjectRef(request), semantic, null,
+                entity, List.of(fragment),
+                "linked target in configured Wikipedia table row", RECIPE_VERSION, "",
+                0.95, List.of("The configured display-cell link identifies an already-"
+                        + "loaded compatible instance; that instance represents the row."));
+        return new EnrichmentProposal.FieldCandidate(
+                "table-row-linked-member:" + request.subject().targetId() + ':'
+                        + request.targetField() + ':' + memberId,
+                "", request.targetField(), request.currentValue(), member, source,
+                EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION,
+                null, true, List.of(claim));
+    }
+
+    private static List<Viewable> linkedMembers(
+            WikipediaTableRows.SelectedRow row,
+            Map<WikipediaLinkedReferenceResolver.Link, Viewable> matches) {
+        LinkedHashMap<String, Viewable> result = new LinkedHashMap<>();
+        for (WikipediaLinkedReferenceResolver.Link link :
+                WikipediaLinkedReferenceResolver.fragmentLinks(row.displayLinks())) {
+            Viewable value = matches.get(link);
+            if (value == null || value.getIdentifier() == null) continue;
+            result.putIfAbsent(value.typeName() + '\0' + value.getIdentifier(), value);
+        }
+        return List.copyOf(result.values());
     }
 
     private List<EnrichmentProposal.TypedReference> linkedReferences(

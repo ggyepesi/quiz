@@ -221,6 +221,34 @@ public final class BoundedInstanceSelection {
 
     public int maximum() { return maximum; }
 
+    /** Whether a datasource is currently reading this selection. Context owners use
+     * this to keep the run's input stable until that run finishes. */
+    public boolean isRunning() { return !running.isEmpty(); }
+
+    /** Remove a contextual caller's old scope while it is computing a replacement.
+     * The datasource tree remains navigable, but every Run action sees zero selected
+     * instances until the new scope is supplied. */
+    public void clearScopedSelection(String reason) {
+        if (isRunning()) return;
+        scopedClass = "";
+        scopedMembers = List.of();
+        type.removeAllItems();
+        classMembers = List.of();
+        selected.clear();
+        selectedInClass = List.of();
+        selectedInSample = List.of();
+        configuredGroupClass = null;
+        instancesView = null;
+        selectedView = null;
+        replace(instancesHolder, new JLabel("   Wait for the instance scope to render."));
+        replace(selectedHolder, new JLabel("   No entities selected."));
+        tabs.setTitleAt(1, selectedTitle());
+        host.selectionChanged(reason);
+        host.status(reason);
+        updateControls();
+        host.updateActions();
+    }
+
     /** An ObjectView of instances of {@code className}, rendered with its schema. */
     public SearchableView instanceView(List<? extends Viewable> values, String className,
             java.util.function.Consumer<List<Viewable>> selection) {

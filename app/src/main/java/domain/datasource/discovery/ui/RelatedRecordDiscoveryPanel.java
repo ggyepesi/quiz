@@ -37,7 +37,9 @@ final class RelatedRecordDiscoveryPanel extends JPanel implements AutoCloseable 
     private final JLabel availability = new JLabel(" ");
     private final JLabel status = new JLabel(" ");
     private final JLabel resultStatus = new JLabel("Select exact instances, then fetch records.");
-    private final JTabbedPane resultTabs = new JTabbedPane();
+    private final JTabbedPane resultTabs =
+            new domain.workbench.ui.WorkbenchResultViews();
+    private DiscoveryResultListener resultListener = DiscoveryResultListener.NONE;
     private boolean closed;
 
     RelatedRecordDiscoveryPanel(TransformController domain,
@@ -63,6 +65,10 @@ final class RelatedRecordDiscoveryPanel extends JPanel implements AutoCloseable 
     }
 
     String title() { return provider.displayName() + " — " + operation.displayName(); }
+    String sourceId() { return "configured." + provider.id(); }
+    String sourceTitle() { return provider.displayName(); }
+    String actionId() { return sourceId() + "." + operation.id(); }
+    String actionTitle() { return operation.displayName(); }
 
     private void build() {
         JPanel controls = new JPanel(new WrapLayout(FlowLayout.LEFT, 6, 2));
@@ -184,13 +190,19 @@ final class RelatedRecordDiscoveryPanel extends JPanel implements AutoCloseable 
                 + " Results are read-only.");
         status.setText(title() + " completed"
                 + (result.partial() ? " with unavailable records." : "."));
+        resultListener.published(actionId(), resultTabs, 0);
         updateActions();
     }
 
     private void invalidateResults(String reason) {
         emptyResults();
         resultStatus.setText(reason);
+        resultListener.invalidated(actionId());
         updateActions();
+    }
+
+    void setResultListener(DiscoveryResultListener listener) {
+        resultListener = listener == null ? DiscoveryResultListener.NONE : listener;
     }
 
     private void emptyResults() {

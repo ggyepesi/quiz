@@ -24,6 +24,7 @@ import java.util.List;
  */
 public final class WikidataStatementDiscoveryPanel extends JPanel
         implements AutoCloseable {
+    public static final String FETCH_STATEMENTS = "wikidata.fetch-statements";
     private static final String USER_AGENT =
             "quiz-discovery/1.0 (ggyepesi@gmail.com)";
 
@@ -43,7 +44,9 @@ public final class WikidataStatementDiscoveryPanel extends JPanel
     private final JButton logs = new JButton("Query logs");
     private final JLabel status = new JLabel(
             "Select exact instances, then fetch their Wikidata statements and qualifiers.");
-    private final JPanel results = new JPanel(new BorderLayout());
+    private final JTabbedPane resultTabs =
+            new domain.workbench.ui.WorkbenchResultViews();
+    private DiscoveryResultListener resultListener = DiscoveryResultListener.NONE;
     private boolean closed;
 
     public WikidataStatementDiscoveryPanel(
@@ -53,7 +56,8 @@ public final class WikidataStatementDiscoveryPanel extends JPanel
         this.selection = java.util.Objects.requireNonNull(selection);
         selection.addHost(new BoundedInstanceSelection.Host() {
             @Override public void selectionChanged(String reason) {
-                showValues(List.of(), reason);
+                showValues(List.of(), reason, false);
+                resultListener.invalidated(FETCH_STATEMENTS);
             }
 
             @Override public void updateActions() {
@@ -62,7 +66,7 @@ public final class WikidataStatementDiscoveryPanel extends JPanel
         });
         build();
         wire();
-        showValues(List.of(), status.getText());
+        showValues(List.of(), status.getText(), false);
         updateActions();
     }
 
@@ -76,9 +80,9 @@ public final class WikidataStatementDiscoveryPanel extends JPanel
         north.add(controls, BorderLayout.NORTH);
         north.add(status, BorderLayout.SOUTH);
         north.setBorder(BorderFactory.createEmptyBorder(4, 4, 0, 4));
-        results.setBorder(BorderFactory.createEmptyBorder(0, 4, 4, 4));
+        resultTabs.setBorder(BorderFactory.createEmptyBorder(0, 4, 4, 4));
         add(north, BorderLayout.NORTH);
-        add(results, BorderLayout.CENTER);
+        add(resultTabs, BorderLayout.CENTER);
     }
 
     private void wire() {
@@ -114,7 +118,8 @@ public final class WikidataStatementDiscoveryPanel extends JPanel
                             WikidataStatementDiscoveryResult.materialize(
                                     summaries, loaded);
                     showValues(values, query.summary(summaries)
-                            + ". Results are read-only; no project value was changed.");
+                            + ". Results are read-only; no project value was changed.",
+                            true);
                 }),
                 failure -> SwingUtilities.invokeLater(() -> {
                     String message = failure == null || failure.getMessage() == null
@@ -127,17 +132,22 @@ public final class WikidataStatementDiscoveryPanel extends JPanel
                 }));
     }
 
-    private void showValues(List<WikidataDynamicObject> values, String message) {
-        results.removeAll();
-        results.add(SearchableView.builder(values)
+    private void showValues(List<WikidataDynamicObject> values, String message,
+            boolean publish) {
+        resultTabs.removeAll();
+        resultTabs.addTab("Statements and qualifiers — " + values.size(),
+                SearchableView.builder(values)
                 .sample(WikidataStatementDiscoveryResult.unionSample(values))
                 .valueLinker(wikidata.ui.WikidataLinks.valueLinker())
                 .collapsible(true)
                 .emptyMessage("No Wikidata statement discovery has run for this selection.")
-                .build(), BorderLayout.CENTER);
-        results.revalidate();
-        results.repaint();
+                .build());
         status.setText(message);
+        if (publish) resultListener.published(FETCH_STATEMENTS, resultTabs, 0);
+    }
+
+    public void setResultListener(DiscoveryResultListener listener) {
+        resultListener = listener == null ? DiscoveryResultListener.NONE : listener;
     }
 
     private void updateActions() {

@@ -27,7 +27,8 @@ public final class PageviewsDiscoveryQuery implements Query<List<ArticleViews>> 
             PageviewsClient.Window window, PageviewsClient client) {
         this.instances = instances == null ? List.of() : instances.stream()
                 .filter(java.util.Objects::nonNull)
-                .filter(value -> !value.enwikiTitle().isBlank()).distinct().toList();
+                .filter(value -> !domain.provenance.WikipediaCorrespondence
+                        .title(value).isBlank()).distinct().toList();
         this.window = java.util.Objects.requireNonNull(window);
         this.client = java.util.Objects.requireNonNull(client);
     }
@@ -58,7 +59,7 @@ public final class PageviewsDiscoveryQuery implements Query<List<ArticleViews>> 
                         "Pageviews discovery was cancelled after " + rows.size()
                                 + " of " + instances.size() + " article(s)");
             }
-            String title = instance.enwikiTitle();
+            String title = domain.provenance.WikipediaCorrespondence.title(instance);
             batch.WorkUnit<Long> work = PageviewsWork.article(title, window, client);
             String url = work.request();
             rows.add(context.step("Views of " + title, queryType(), skeleton(),

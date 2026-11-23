@@ -21,8 +21,11 @@ import java.util.Map;
 final class WikipediaInfoboxEnrichmentProvider implements EnrichmentProvider {
     private final String key;
     private final String label;
+    private final domain.DomainModel domain;
 
-    WikipediaInfoboxEnrichmentProvider(FieldSourceMapping source) {
+    WikipediaInfoboxEnrichmentProvider(
+            FieldSourceMapping source, domain.DomainModel domain) {
+        this.domain = java.util.Objects.requireNonNull(domain);
         key = source != null && source.sourceType() == FieldSourceType.WIKIPEDIA_INFOBOX
                 ? source.propertyPid() : "";
         label = source == null ? "" : source.propertyLabel();
@@ -76,7 +79,8 @@ final class WikipediaInfoboxEnrichmentProvider implements EnrichmentProvider {
                 request.subject().displayName(), List.of(), "Native Wikipedia infobox",
                 source, 0.85, List.of("Read from " + key));
         Object value = DBpediaFieldEnrichmentProvider.typedValue(request, lexical);
-        String incompatibility = FieldValueCompatibility.problem(request.targetSchema(), value);
+        String incompatibility = FieldValueCompatibility.problem(
+                domain, request.targetSchema(), value);
         var action = incompatibility != null ? EnrichmentProposal.ReviewAction.IGNORE
                 : request.collection() ? EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION
                 : request.currentValue() == null ? EnrichmentProposal.ReviewAction.FILL_IF_EMPTY

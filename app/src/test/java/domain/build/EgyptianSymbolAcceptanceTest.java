@@ -73,7 +73,7 @@ class EgyptianSymbolAcceptanceTest {
                 WikipediaInfoboxAcquisition.OutcomeState.ANSWERED_EMPTY));
         assertEquals(0, acquired.count(WikipediaInfoboxAcquisition.OutcomeState.FAILED));
         assertTrue(log.infoboxGroupSeen);
-        assertEquals(2, log.childRequests,
+        assertEquals(2, log.childRequests.get(),
                 "the article requests belong to the one infobox acquisition log group");
 
         Path snapshot = directory.resolve("egyptian-symbol.instances.json");
@@ -203,8 +203,9 @@ class EgyptianSymbolAcceptanceTest {
     }
 
     private static final class RecordingLog implements GenerationLog {
-        private boolean infoboxGroupSeen;
-        private int childRequests;
+        private volatile boolean infoboxGroupSeen;
+        private final java.util.concurrent.atomic.AtomicInteger childRequests =
+                new java.util.concurrent.atomic.AtomicInteger();
 
         @Override public void message(String text) { }
         @Override public void subquery(String title, String request, String summary) { }
@@ -218,7 +219,7 @@ class EgyptianSymbolAcceptanceTest {
                 @Override public void subquery(
                         String title, String request, String summary) { }
                 @Override public Running subqueryStarted(String title, String request) {
-                    childRequests++;
+                    childRequests.incrementAndGet();
                     return new Running() {
                         @Override public void done(String summary) { }
                         @Override public void failed(String error) { }

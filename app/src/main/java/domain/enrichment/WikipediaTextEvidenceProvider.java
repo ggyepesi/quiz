@@ -156,7 +156,7 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
             index.computeIfAbsent(first.toLowerCase(Locale.ROOT), ignored -> new ArrayList<>())
                     .add(new MentionTerm(candidate, phrase,
                             candidate instanceof domain.runtime.WikidataDynamicObject w
-                                    ? clean(w.enwikiTitle()) : ""));
+                                    ? domain.provenance.WikipediaCorrespondence.title(w) : ""));
         }
         java.util.LinkedHashMap<String, List<MentionTerm>> immutable =
                 new java.util.LinkedHashMap<>();

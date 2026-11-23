@@ -12,12 +12,14 @@ import objectview.render.RenderContext;
 import objectview.render.RenderingMode;
 import objectview.view.SearchableView;
 import domain.provenance.WikipediaSource;
+import domain.provenance.WikipediaCorrespondence;
 import domain.transform.ui.BoundedInstanceSelection;
 import domain.transform.ui.TransformController;
 import process.swing.Dialogs;
 import domain.runtime.WikidataDynamicObject;
 import domain.workbench.execution.ui.SwingQueryRunner;
 import domain.workbench.execution.ui.SwingQuerySession;
+import domain.datasource.discovery.ui.DiscoveryResultListener;
 import work.QueryContext;
 
 import javax.swing.*;
@@ -45,6 +47,8 @@ import domain.config.FieldSourceType;
  * boundary.
  */
 public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseable {
+    public static final String ANALYZE_RETAINED = "wikipedia.analyze-retained";
+    public static final String FETCH_ARTICLES = "wikipedia.fetch-articles";
     private final TransformController domain;
     private final SwingQuerySession queries = new SwingQuerySession(new QueryContext());
     private final SwingQueryRunner runner = queries.runner();
@@ -56,11 +60,13 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     private final JButton configureInfobox =
             new JButton("Configure selected infobox value…");
     private final JButton saveModel = new JButton("Save model…");
-    private final JLabel sourceStatus = new JLabel(" ");
+    private final JLabel sourceStatus = new JLabel(
+            "Wikipedia articles — choose an operation; nothing has been requested.");
     private final JLabel resultStatus = new JLabel(
             "Select instances, then analyze retained articles or fetch them from Wikipedia.");
 
-    private final JTabbedPane resultTabs = new JTabbedPane();
+    private final JTabbedPane resultTabs =
+            new domain.workbench.ui.WorkbenchResultViews();
     private final ProjectBacking project;
     private final FieldRulePromoter promoter;
     private final BoundedInstanceSelection selection;
@@ -70,6 +76,10 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     private WikipediaDiscoveryRows.InfoboxPattern selectedInfobox;
     /** The Infobox values tab, the only one whose selection the configure action reads. */
     private SearchableView infoboxView;
+    private DiscoveryResultListener resultListener = DiscoveryResultListener.NONE;
+    private String activeAction = FETCH_ARTICLES;
+    private String publishedAction = "";
+    private String publishedStatus = "";
     private boolean closed;
 
     public WikipediaDiscoveryPanel(TransformController domain,
@@ -96,7 +106,14 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
      *  article correspondence. The others are counted, never silently dropped. */
     private List<WikidataDynamicObject> articles() {
         return selection.selected().stream()
-                .filter(value -> !value.enwikiTitle().isBlank()).toList();
+                .filter(value -> !WikipediaCorrespondence.title(value).isBlank()).toList();
+    }
+
+    /** Structured articles already carried by the loaded snapshot. Fetching in this
+     * discovery view is inspection only; generation/build is what persists them. */
+    private List<WikidataDynamicObject> retainedArticles() {
+        return articles().stream()
+                .filter(value -> value.wikipediaArticle() != null).toList();
     }
 
     private String withoutArticles() {
@@ -117,8 +134,13 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         controls.add(saveModel);
 
         JPanel north = new JPanel(new BorderLayout(4, 3));
-        north.add(controls, BorderLayout.NORTH);
-        north.add(sourceStatus, BorderLayout.SOUTH);
+        JLabel sourceTitle = new JLabel("Wikipedia articles");
+        sourceTitle.setFont(sourceTitle.getFont().deriveFont(Font.BOLD));
+        north.add(sourceTitle, BorderLayout.NORTH);
+        JPanel operation = new JPanel(new BorderLayout(4, 2));
+        operation.add(controls, BorderLayout.NORTH);
+        operation.add(sourceStatus, BorderLayout.SOUTH);
+        north.add(operation, BorderLayout.CENTER);
 
         JPanel results = new JPanel(new BorderLayout(4, 4));
         JPanel resultHeader = new JPanel(new BorderLayout(4, 2));
@@ -127,6 +149,7 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         resultActions.add(configureInfobox);
         resultHeader.add(resultActions, BorderLayout.EAST);
         results.add(resultHeader, BorderLayout.NORTH);
+        resultTabs.setName("wikipedia.discovery.results");
         results.add(resultTabs, BorderLayout.CENTER);
         emptyResults();
 
@@ -134,6 +157,7 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         results.setBorder(BorderFactory.createEmptyBorder(0, 4, 4, 4));
         add(north, BorderLayout.NORTH);
         add(results, BorderLayout.CENTER);
+        selectAction(FETCH_ARTICLES);
     }
 
     private void wire() {
@@ -356,7 +380,8 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     private void analyzeRetained() {
         List<WikipediaDiscoveryQuery.Article> values = WikipediaDiscoveryQuery.retained(
                 articles());
-        showAnalysis(WikipediaStructureAnalysis.analyze(values), "retained");
+        showAnalysis(WikipediaStructureAnalysis.analyze(values), "retained",
+                ANALYZE_RETAINED);
     }
 
     private void fetchSelected() {
@@ -366,7 +391,8 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
                 + " selected structured article(s), each with its infobox in the "
                 + "same request." + withoutArticles());
         runner.run(new WikipediaDiscoveryQuery(values), result -> SwingUtilities.invokeLater(() -> {
-            showAnalysis(WikipediaStructureAnalysis.analyze(result), "fetched");
+            showAnalysis(WikipediaStructureAnalysis.analyze(result), "fetched",
+                    FETCH_ARTICLES);
             sourceStatus.setText("Fetched and compared " + result.stream()
                     .filter(WikipediaDiscoveryQuery.Article::available).count() + " of "
                     + result.size() + " selected article(s). Query logs contain every request."
@@ -381,10 +407,17 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     }
 
     private void showAnalysis(WikipediaStructureAnalysis.Result analysis, String source) {
+        showAnalysis(analysis, source, activeAction);
+    }
+
+    private void showAnalysis(WikipediaStructureAnalysis.Result analysis, String source,
+            String actionId) {
+        publishedAction = actionId;
         selectedInfobox = null;
         resultTabs.removeAll();
         addStructuralGroups(analysis);
-        addResultTab("Articles", analysis.articles(), WikipediaSource.class,
+        SearchableView articles = addResultTab(
+                "Articles", analysis.articles(), WikipediaSource.class,
                 RenderingMode.CARD, "No structured articles are available.");
         addResultTab("Sections", analysis.sections(),
                 WikipediaDiscoveryRows.SectionPattern.class, RenderingMode.CARD,
@@ -428,7 +461,13 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
                     WikipediaDiscoveryRows.UnavailableArticle.class, RenderingMode.CARD,
                     "Every selected article was available.");
         }
-        resultStatus.setText("Compared " + analysis.availableArticles() + " of "
+        // Fetch/Analyze acts on articles. Show the objects just fetched first; structural
+        // comparison is an explicit next navigation choice, not a hidden default.
+        resultTabs.setSelectedComponent(articles);
+        resultTabs.setVisible(activeAction.equals(publishedAction));
+        resultListener.published(actionId, resultTabs,
+                resultTabs.getSelectedIndex());
+        publishedStatus = "Compared " + analysis.availableArticles() + " of "
                 + analysis.selectedArticles() + " selected " + source + " article(s): "
                 + analysis.sections().size() + " section heading(s), "
                 + analysis.contents().size() + " content block(s), "
@@ -440,7 +479,8 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
                 + analysis.links().size() + " section/link pattern(s), and "
                 + (analysis.blockKindsAvailable()
                         ? analysis.blockKinds().size() + " HTML element outcome(s)."
-                        : "no HTML-element inventory (retained articles)."));
+                        : "no HTML-element inventory (retained articles).");
+        resultStatus.setText(publishedStatus);
     }
 
     private <T extends Viewable> SearchableView addResultTab(String title, List<T> values,
@@ -500,8 +540,54 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     }
 
     private void invalidateAnalysis(String message) {
+        publishedAction = "";
+        publishedStatus = "";
         emptyResults();
         resultStatus.setText(message);
+        resultListener.invalidated(ANALYZE_RETAINED, FETCH_ARTICLES);
+    }
+
+    /** The action tree owns which operation is being inspected. Selection reveals only
+     *  that operation's explicit Run button; it never starts the operation. */
+    public void selectAction(String actionId) {
+        activeAction = ANALYZE_RETAINED.equals(actionId)
+                ? ANALYZE_RETAINED : FETCH_ARTICLES;
+        retained.setVisible(ANALYZE_RETAINED.equals(activeAction));
+        fetch.setVisible(FETCH_ARTICLES.equals(activeAction));
+        resultTabs.setVisible(activeAction.equals(publishedAction));
+        resultStatus.setText(activeAction.equals(publishedAction)
+                ? publishedStatus
+                : "This action has not produced a result for the current selection.");
+        sourceStatus.setText(ANALYZE_RETAINED.equals(activeAction)
+                ? retainedStatus()
+                : fetchStatus());
+        revalidate();
+        repaint();
+    }
+
+    private String retainedStatus() {
+        int selected = selection.size();
+        int retainedCount = retainedArticles().size();
+        return retainedCount + " of " + selected + " selected instance"
+                + (selected == 1 ? " has" : "s have")
+                + " a structured Wikipedia article retained in the loaded snapshot. "
+                + "Generate/Build retains one when the model has a configured Wikipedia "
+                + "datasource that requires article structure. Analyze makes no request.";
+    }
+
+    private String fetchStatus() {
+        int selected = selection.size();
+        int fetchable = articles().size();
+        return selected + " instance" + (selected == 1 ? " is" : "s are")
+                + " selected; " + fetchable + " "
+                + (fetchable == 1 ? "has" : "have")
+                + " an English Wikipedia correspondence and can be fetched. "
+                + "Fetch inspects the current pages but does not persist them into the "
+                + "domain.";
+    }
+
+    public void setResultListener(DiscoveryResultListener listener) {
+        resultListener = listener == null ? DiscoveryResultListener.NONE : listener;
     }
 
     private void configureSelectedInfobox() {
@@ -746,16 +832,35 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
 
     private void updateActions() {
         boolean running = runner.isRunning();
+        int selectedInstances = selection == null ? 0 : selection.size();
         int selectedCount = selection == null ? 0 : articles().size();
+        int retainedCount = selection == null ? 0 : retainedArticles().size();
         boolean hasSelection = selectedCount > 0;
         boolean bounded = selectedCount <= WikipediaDiscoveryQuery.MAX_ARTICLES;
-        retained.setEnabled(!running && hasSelection);
+        retained.setText("Analyze " + retainedCount + " retained article"
+                + (retainedCount == 1 ? "" : "s"));
+        retained.setEnabled(!running && retainedCount > 0);
+        retained.setToolTipText(retainedCount > 0
+                ? "Analyze the structured articles stored in the loaded snapshot; no "
+                        + "request is made."
+                : "No selected instance has a structured article in the loaded snapshot. "
+                        + "Generate/Build retains it when a configured Wikipedia datasource "
+                        + "requires article structure.");
         fetch.setEnabled(!running && hasSelection && bounded);
         fetch.setText(running ? "Fetching selected articles…"
-                : "Fetch " + selectedCount + " selected article"
-                        + (selectedCount == 1 ? "" : "s"));
+                : selectedCount == selectedInstances
+                ? "Fetch " + selectedCount + " selected article"
+                        + (selectedCount == 1 ? "" : "s")
+                : "Fetch " + selectedCount + " article"
+                        + (selectedCount == 1 ? "" : "s") + " from "
+                        + selectedInstances + " selected instance"
+                        + (selectedInstances == 1 ? "" : "s"));
         fetch.setToolTipText(!hasSelection
-                ? "Select at least one instance with an English Wikipedia article."
+                ? selectedInstances == 0
+                        ? "Select at least one instance."
+                        : selectedInstances + " selected instance"
+                                + (selectedInstances == 1 ? " has" : "s have")
+                                + " no English Wikipedia correspondence."
                 : bounded ? null : "One run is bounded to "
                         + WikipediaDiscoveryQuery.MAX_ARTICLES + " articles; remove "
                         + (selectedCount - WikipediaDiscoveryQuery.MAX_ARTICLES)

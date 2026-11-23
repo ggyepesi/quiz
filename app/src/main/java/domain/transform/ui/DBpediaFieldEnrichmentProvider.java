@@ -34,8 +34,11 @@ final class DBpediaFieldEnrichmentProvider implements EnrichmentProvider {
 
     private final String propertyName;   // a DBpedia dbo:/dbp: property, e.g. "longName"
     private final String propertyLabel;
+    private final domain.DomainModel domain;
 
-    DBpediaFieldEnrichmentProvider(FieldSourceMapping source) {
+    DBpediaFieldEnrichmentProvider(
+            FieldSourceMapping source, domain.DomainModel domain) {
+        this.domain = java.util.Objects.requireNonNull(domain);
         this.propertyName = source == null || source.sourceType() != FieldSourceType.DBPEDIA
                 ? null : source.propertyPid();
         this.propertyLabel = source == null || source.propertyLabel() == null
@@ -96,7 +99,8 @@ final class DBpediaFieldEnrichmentProvider implements EnrichmentProvider {
         String lexical = values == null || values.isEmpty() ? null : values.get(0);
         if (lexical != null && !lexical.isBlank()) {
             Object value = typedValue(request, lexical);
-            String incompatibility = FieldValueCompatibility.problem(request.targetSchema(), value);
+            String incompatibility = FieldValueCompatibility.problem(
+                    domain, request.targetSchema(), value);
             fields.add(new EnrichmentProposal.FieldCandidate(
                     "dbpedia-" + propertyName.toLowerCase(Locale.ROOT),
                     identityId,

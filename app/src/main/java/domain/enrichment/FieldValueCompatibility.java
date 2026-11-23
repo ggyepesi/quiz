@@ -1,5 +1,6 @@
 package domain.enrichment;
 
+import domain.DomainModel;
 import objectview.Viewable;
 import objectview.field.FieldKind;
 import objectview.field.FieldRef;
@@ -12,23 +13,24 @@ import java.util.Collection;
 public final class FieldValueCompatibility {
     private FieldValueCompatibility() {}
 
-    /** Null when compatible; otherwise a user-facing explanation. */
-    public static String problem(FieldRef target, Object proposed) {
+    /** Null when compatible in the owning domain's declared class hierarchy. */
+    public static String problem(DomainModel domain, FieldRef target, Object proposed) {
         if (target == null || proposed == null) return null;
         if (!target.collection() && proposed instanceof Collection<?>) {
             return sourceShape(proposed) + " cannot populate scalar " + target.typeLabel();
         }
         if (target.collection() && proposed instanceof Collection<?> values) {
             for (Object value : values) {
-                String problem = scalarProblem(target, value);
+                String problem = scalarProblem(domain, target, value);
                 if (problem != null) return problem;
             }
             return null;
         }
-        return scalarProblem(target, proposed);
+        return scalarProblem(domain, target, proposed);
     }
 
-    private static String scalarProblem(FieldRef target, Object value) {
+    private static String scalarProblem(
+            DomainModel domain, FieldRef target, Object value) {
         if (value == null) return null;
         FieldKind expected = target.collection() ? target.valueKind() : target.kind();
         boolean compatible = switch (expected) {
@@ -45,7 +47,7 @@ public final class FieldValueCompatibility {
         if (compatible && expected == FieldKind.REFERENCE
                 && target.targetType() != null && !target.targetType().isBlank()
                 && value instanceof Viewable viewable
-                && !target.targetType().equals(viewable.typeName())) {
+                && !accepts(domain, target.targetType(), viewable)) {
             return "Reference " + viewable.typeName() + " is not a " + target.targetType();
         }
         if (compatible) return null;
@@ -53,6 +55,12 @@ public final class FieldValueCompatibility {
                 ? "element of " + target.typeLabel() : target.typeLabel();
         return sourceShape(value) + " is incompatible with " + expectedLabel
                 + " (expected " + expected + ")";
+    }
+
+    private static boolean accepts(
+            DomainModel domain, String targetType, Viewable value) {
+        return domain == null ? targetType.equals(value.typeName())
+                : domain.isInstanceOf(value, targetType);
     }
 
     private static String sourceShape(Object value) {

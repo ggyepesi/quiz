@@ -70,8 +70,6 @@
   box: Members of All State · 1
     button: Load field…  (disabled)
     button: Identities…  (disabled)
-    button: Wikidata discovery…  (disabled)
-    button: Wikipedia discovery…  (disabled)
     label: ▼ Search / sort / view
     button: ← Back  (disabled)
     button: Search Config...
@@ -85,12 +83,18 @@
   button: Show group rule  (disabled)
   button: Show type spec
   button: Show instances
+  box: Actions and results
 
 == DATASOURCE field pane - State.name ==
   label: Loading:
   label: State.name
   button: Save staged changes  (disabled)
   button: Cancel Find Data  (disabled)
+  box: Available actions
+    button: Find text evidence…
+    label: Run the configured Wikipedia evidence operation and review its proposals before staging them.
+    button: Load values ↗
+    label: Fetch this field from its configured primary and fallback sources.
   box: Wikidata
     label: Property
     button: Not configured in ModelBuilder  (disabled)
@@ -100,9 +104,6 @@
   box: Wikipedia article evidence
     label: Category relation
     label: No category relation configured
-    label: Existing values
-    button: Find text evidence…
-  button: Load values ↗
   label: ▼ Search / sort / view
   button: ← Back  (disabled)
   button: Search Config...

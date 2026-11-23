@@ -33,12 +33,17 @@ reader, review model or apply path is duplicated.
 2. Load a saved model or domain through the shared project chooser.
 3. Select a class, optional named selection or group, and a field.
 4. Choose All, Present or Missing to state the exact instance scope.
-5. Press **Load field…** to inspect the configured sources and start the explicit load.
+5. In the always-visible datasource/action/result tree, choose the source and action. For a
+   modeled group the configured-field action uses its declared members field automatically.
+   Choosing the node only shows the action; press its explicit Run button to start work.
 6. Review and apply proposals through the existing process result UI.
 7. Use **Save model/domain** to persist the applied values and project state.
 
-Identity resolution and both discovery actions are also scoped to the currently shown
-instances. Wikidata and Wikipedia discovery open the same Discovery workbench used by
-DiscoveryApp, with the same Add selection, Remove selection, selected-count and random-sample
-controls. Merely selecting a field, group or instance never starts a request or changes the
-project.
+Identity resolution and discovery actions are scoped to the currently shown instances. The
+Discovery workbench's reusable source/action/result navigator is embedded below DataSourceApp's
+existing instance view, so there is no second datasource launcher or instance chooser. The
+instance scope spans the upper work area. Beneath it, the action/result tree stays on the left and
+the selected action or result occupies the wide right-hand detail area. With no explicit card
+selection it uses all currently shown eligible instances; selecting cards or modeled-group nodes
+narrows the input. Merely selecting a field, group, instance, source or action never starts a
+request or changes the project.

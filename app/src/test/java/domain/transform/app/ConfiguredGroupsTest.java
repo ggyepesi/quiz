@@ -39,6 +39,7 @@ class ConfiguredGroupsTest {
 
         assertEquals("DeityGroup", binding.groupClass());
         assertEquals("Deity", binding.memberClass());
+        assertEquals("members", binding.membersField());
         assertEquals(List.of(fixture.member()), List.copyOf(binding.root().getMembers()));
     }
 

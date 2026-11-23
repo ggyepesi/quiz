@@ -12,36 +12,33 @@ public final class FieldEnrichmentRoutes {
 
     private FieldEnrichmentRoutes() { }
 
-    public static EnrichmentRoute from(
-            FieldSourceMapping primary,
-            FieldSourceMapping fallback) {
-        return from(primary, fallback, null);
-    }
-
     /** With a resolver, an entity-valued property fills a reference field: the claim's
      *  QID becomes the instance the field points at. Without one the route behaves
      *  exactly as before, so callers that curate only values are unaffected. */
     public static EnrichmentRoute from(
+            domain.DomainModel domain,
             FieldSourceMapping primary,
             FieldSourceMapping fallback,
             domain.enrichment.ReferenceResolver references) {
-        EnrichmentProvider primaryProvider = provider(primary, references);
-        EnrichmentProvider fallbackProvider = provider(fallback, references);
+        EnrichmentProvider primaryProvider = provider(domain, primary, references);
+        EnrichmentProvider fallbackProvider = provider(domain, fallback, references);
         return EnrichmentRoute.of(
                 primaryProvider == null ? List.of() : List.of(primaryProvider),
                 fallbackProvider == null ? List.of() : List.of(fallbackProvider));
     }
 
     private static EnrichmentProvider provider(
-            FieldSourceMapping source, domain.enrichment.ReferenceResolver references) {
+            domain.DomainModel domain, FieldSourceMapping source,
+            domain.enrichment.ReferenceResolver references) {
         if (source == null || source.propertyPid().isBlank()) {
             return null;
         }
         return switch (source.sourceType()) {
             case SPARQL ->
-                    new domain.enrichment.WikimediaFieldEnrichmentProvider(source, references);
-            case DBPEDIA -> new DBpediaFieldEnrichmentProvider(source);
-            case WIKIPEDIA_INFOBOX -> new WikipediaInfoboxEnrichmentProvider(source);
+                    new domain.enrichment.WikimediaFieldEnrichmentProvider(
+                            source, references, domain);
+            case DBPEDIA -> new DBpediaFieldEnrichmentProvider(source, domain);
+            case WIKIPEDIA_INFOBOX -> new WikipediaInfoboxEnrichmentProvider(source, domain);
             default -> null;
         };
     }

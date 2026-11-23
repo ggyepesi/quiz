@@ -124,6 +124,7 @@ public final class FindDataBatchReviewPanel {
         footer.add(close); footer.add(selected); footer.add(all);
         panel.add(footer, BorderLayout.SOUTH);
         JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(owner), title, modality);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.setContentPane(panel); dialog.setSize(new Dimension(900, 680));
         dialog.setLocationRelativeTo(owner);
         close.addActionListener(e -> dialog.dispose());

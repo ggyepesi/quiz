@@ -78,7 +78,8 @@ public final class WikipediaDiscoveryQuery
     /** Builds the same comparison input from evidence already retained in a snapshot. */
     public static List<Article> retained(List<WikidataDynamicObject> instances) {
         return selected(instances).stream()
-                .map(value -> new Article(value, value.enwikiTitle(),
+                .map(value -> new Article(value,
+                        domain.provenance.WikipediaCorrespondence.title(value),
                         value.wikipediaArticle(), value.infoboxParameters(),
                         value.wikipediaArticle() == null
                                 ? "No structured Wikipedia article is retained." : ""))

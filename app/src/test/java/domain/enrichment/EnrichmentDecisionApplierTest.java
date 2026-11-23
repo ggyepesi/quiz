@@ -19,6 +19,11 @@ import domain.curation.CorrectionPolicy;
 import domain.DomainField;
 import domain.DomainModel;
 import domain.runtime.WikidataDynamicObject;
+import domain.transform.DynamicViewable;
+import domain.transform.app.ProductClass;
+import domain.transform.app.ProductDomain;
+import domain.transform.app.ProductField;
+import domain.transform.app.ProductSchema;
 import objectview.media.MediaValue;
 
 import java.io.File;
@@ -223,6 +228,55 @@ class EnrichmentDecisionApplierTest {
                 () -> EnrichmentDecisionApplier.stageAll(
                         domain, staging, List.of(first, second)));
         assertEquals(0, staging.size(), "a rejected batch must stage no prefix");
+    }
+
+    /** Assessors of Maat are configured as AssessorOfMaat, a subclass of the type
+     * accepted by DeityGroup.members. Staging used to compare the two class names
+     * literally and reject the valid reviewed row as "not a DeityGroupMember". */
+    @Test void aReferenceFieldAcceptsAConfiguredSubclassAndStillRejectsAnUnrelatedType(
+            @TempDir Path dir) {
+        DynamicViewable group = new DynamicViewable("Q9133532", "Assessors of Maat");
+        group.type("DeityGroup");
+        DynamicViewable assessor = new DynamicViewable("row-1", "First assessor");
+        assessor.type("AssessorOfMaat");
+        DynamicViewable unrelated = new DynamicViewable("Q5", "human");
+        unrelated.type("Person");
+        ProductDomain domain = new ProductDomain(new ProductSchema(List.of(
+                new ProductClass("DeityGroup", "DeityGroup", List.of(
+                        new ProductField("members", "List<DeityGroupMember>",
+                                true, true, "DeityGroupMember", false))),
+                new ProductClass("DeityGroupMember", "DeityGroupMember", List.of()),
+                new ProductClass("AssessorOfMaat", "AssessorOfMaat",
+                        "DeityGroupMember", List.of()),
+                new ProductClass("Person", "Person", List.of())),
+                List.of("DeityGroup", "AssessorOfMaat", "Person")),
+                List.of(group), Viewable.class, null);
+        SourceRef source = new SourceRef(
+                "Wikipedia", "Assessors_of_Maat", "url", "members");
+        CurationStaging staging = CurationStaging.forCuration(new ManualCuration(
+                dir.resolve("assessors.curation.json").toFile()));
+
+        assertEquals(1, EnrichmentDecisionApplier.stage(
+                domain, staging, referenceDecision(group, assessor, source)));
+        IllegalArgumentException rejected = assertThrows(IllegalArgumentException.class,
+                () -> EnrichmentDecisionApplier.stage(
+                        domain, staging, referenceDecision(group, unrelated, source)));
+        assertEquals("Cannot apply members: Reference Person is not a DeityGroupMember",
+                rejected.getMessage());
+    }
+
+    private static EnrichmentDecision referenceDecision(
+            DynamicViewable owner, DynamicViewable member, SourceRef source) {
+        EnrichmentProposal.FieldCandidate candidate =
+                new EnrichmentProposal.FieldCandidate(
+                        "member-" + member.getIdentifier(), "", "members", List.of(),
+                        member, source, EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION,
+                        null, true, List.of());
+        return new EnrichmentDecision(new EnrichmentProposal.Subject(
+                owner.typeName(), owner.getIdentifier(), owner.getIdentifier(),
+                owner.getDisplayName()), List.of(),
+                List.of(new EnrichmentDecision.FieldDecision(
+                        candidate, candidate.suggestedAction())), null);
     }
 
     private static DomainModel domain(WikidataDynamicObject person) {

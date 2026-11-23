@@ -51,10 +51,12 @@ final class WikipediaLinkedReferenceResolver {
             for (Viewable candidate : candidates) {
                 if (candidate == null || !WikidataIds.isQid(candidate.getIdentifier())) continue;
                 qids.putIfAbsent(candidate.getIdentifier(), candidate);
-                if (candidate instanceof WikidataDynamicObject wikidata
-                        && !clean(wikidata.enwikiTitle()).isBlank()) {
-                    titles.computeIfAbsent(key(wikidata.enwikiTitle()), ignored ->
-                            new java.util.ArrayList<>()).add(candidate);
+                if (candidate instanceof WikidataDynamicObject wikidata) {
+                    String title = domain.provenance.WikipediaCorrespondence.title(wikidata);
+                    if (!title.isBlank()) {
+                        titles.computeIfAbsent(key(title), ignored ->
+                                new java.util.ArrayList<>()).add(candidate);
+                    }
                 }
             }
         }

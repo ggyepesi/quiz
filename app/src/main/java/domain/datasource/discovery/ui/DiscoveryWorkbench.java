@@ -9,6 +9,7 @@ import domain.datasource.api.DatasourceRegistry;
 import domain.datasource.api.SourceReferenceSchema;
 import domain.datasource.api.discovery.RelatedRecordDiscoveryOperation;
 import domain.DomainModel;
+import domain.workbench.ui.WorkbenchActionResultNavigator;
 import objectview.utils.swing.WrapLayout;
 import domain.datasource.pageviews.discovery.ui.PageviewsDiscoveryPanel;
 import domain.transform.ui.BoundedInstanceSelection;
@@ -19,12 +20,17 @@ import domain.datasource.wikipedia.discovery.ui.WikipediaDiscoveryPanel;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * One workbench for every discovery source. The instances are selected once, here, and
- * each source is a tab that reads exactly that selection: a new source adds a tab, not
- * an application, and moving between sources never asks for the instances again.
+ * One workbench for every discovery source. The instance selection is supplied once —
+ * by this standalone workbench or its embedding application — and each source and action
+ * reads exactly that selection. The reusable action/result
+ * navigator shows source → explicit action → latest result views; navigating never runs
+ * an action and moving between sources never asks for the instances again.
  *
  * <p>The selection admits instances with a Wikidata QID, the identity every source
  * starts from. A source that needs more — an English Wikipedia article — counts the
@@ -36,15 +42,20 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
     private static final int MAXIMUM = 50;
     static final String NOT_AVAILABLE = "Configured datasources — not available";
 
-    /** The source tabs, in the order they are shown. */
+    /** Built-in sources in the order they are shown. */
     public enum Source {
-        WIKIPEDIA("Wikipedia articles"),
-        COMMONS("Commons depictions"),
-        PAGEVIEWS("Wikipedia pageviews"),
-        WIKIDATA("Wikidata statements and qualifiers");
+        WIKIPEDIA("wikipedia", "Wikipedia"),
+        COMMONS("commons", "Commons"),
+        PAGEVIEWS("pageviews", "Wikipedia pageviews"),
+        WIKIDATA("wikidata", "Wikidata");
 
+        private final String id;
         private final String title;
-        Source(String title) { this.title = title; }
+        Source(String id, String title) {
+            this.id = id;
+            this.title = title;
+        }
+        public String id() { return id; }
         public String title() { return title; }
     }
 
@@ -57,7 +68,14 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
             new java.util.ArrayList<>();
     private final List<String> catalogProblems;
     private final List<String> unavailableOperations;
-    private final JTabbedPane sources = new JTabbedPane();
+    private final WorkbenchActionResultNavigator navigator =
+            new WorkbenchActionResultNavigator();
+    private final Map<Source, WorkbenchActionResultNavigator.Source> sourceNodes =
+            new EnumMap<>(Source.class);
+    private final Map<Source, WorkbenchActionResultNavigator.Action> defaultActions =
+            new EnumMap<>(Source.class);
+    private final Map<String, WorkbenchActionResultNavigator.Action> actionNodes =
+            new LinkedHashMap<>();
     private final JLabel selectionStatus = new JLabel(" ");
     private boolean closed;
 
@@ -92,10 +110,37 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
         commons = new CommonsDiscoveryPanel(domain, selection);
         pageviews = new PageviewsDiscoveryPanel(selection);
         wikidata = new WikidataStatementDiscoveryPanel(domain, selection);
+        installRelatedRecordActions(domain, datasources, unavailable);
+        this.unavailableOperations = List.copyOf(unavailable);
+        build(true);
+        populate(initialSelection);
+    }
+
+    /**
+     * Embed the source/action/result workbench beside an application's existing instance
+     * selection. The supplied selection remains the one input every source reads; this
+     * panel contributes no second chooser and navigation is available immediately.
+     */
+    public DiscoveryWorkbench(TransformController domain,
+            BoundedInstanceSelection selection) {
+        super(new BorderLayout(6, 6));
+        this.catalogProblems = List.copyOf(Datasources.configured().problems());
+        this.selection = java.util.Objects.requireNonNull(selection);
+        List<String> unavailable = new java.util.ArrayList<>();
+        wikipedia = new WikipediaDiscoveryPanel(domain, selection);
+        commons = new CommonsDiscoveryPanel(domain, selection);
+        pageviews = new PageviewsDiscoveryPanel(selection);
+        wikidata = new WikidataStatementDiscoveryPanel(domain, selection);
+        installRelatedRecordActions(domain, Datasources.standard(), unavailable);
+        this.unavailableOperations = List.copyOf(unavailable);
+        build(false);
+    }
+
+    private void installRelatedRecordActions(TransformController domain,
+            DatasourceRegistry datasources, List<String> unavailable) {
         for (DatasourceProvider provider : datasources.providers()) {
             for (DatasourceOperation operation : provider.operations()) {
-                if (!(operation instanceof RelatedRecordDiscoveryOperation
-                        related)) continue;
+                if (!(operation instanceof RelatedRecordDiscoveryOperation related)) continue;
                 // The selection admits instances by Wikidata QID; an operation that needs
                 // another namespace could only fail at Fetch, so it is not offered.
                 List<String> namespaces = related.inputReferences().stream()
@@ -111,24 +156,12 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
                         domain, selection, provider, related));
             }
         }
-        this.unavailableOperations = List.copyOf(unavailable);
-        build();
-        populate(initialSelection);
     }
 
-    private void build() {
-        JPanel controls = new JPanel(new WrapLayout(FlowLayout.LEFT, 6, 2));
-        selection.addControls(controls);
-        JPanel north = new JPanel(new BorderLayout(4, 3));
-        north.add(controls, BorderLayout.NORTH);
-        north.add(selectionStatus, BorderLayout.SOUTH);
-        north.setBorder(BorderFactory.createEmptyBorder(4, 4, 0, 4));
+    private void build(boolean showSelection) {
 
-        sources.addTab(Source.WIKIPEDIA.title(), wikipedia);
-        sources.addTab(Source.COMMONS.title(), commons);
-        sources.addTab(Source.PAGEVIEWS.title(), pageviews);
-        sources.addTab(Source.WIKIDATA.title(), wikidata);
-        relatedRecords.forEach(panel -> sources.addTab(panel.title(), panel));
+        addBuiltInActions();
+        addConfiguredActions();
         if (!catalogProblems.isEmpty() || !unavailableOperations.isEmpty()) {
             List<String> sections = new java.util.ArrayList<>();
             if (!catalogProblems.isEmpty()) {
@@ -147,16 +180,110 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
             problems.setEditable(false);
             problems.setLineWrap(true);
             problems.setWrapStyleWord(true);
-            sources.addTab(NOT_AVAILABLE, new JScrollPane(problems));
+            navigator.addSource("unavailable", NOT_AVAILABLE,
+                    new JScrollPane(problems));
         }
+        wireResultNavigation();
+        navigator.expandSources();
 
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
-                selection.tabs(), sources);
-        split.setResizeWeight(0.36);
-        split.setContinuousLayout(true);
-        split.setBorder(BorderFactory.createEmptyBorder(0, 4, 4, 4));
-        add(north, BorderLayout.NORTH);
-        add(split, BorderLayout.CENTER);
+        if (showSelection) {
+            JPanel controls = new JPanel(new WrapLayout(FlowLayout.LEFT, 6, 2));
+            selection.addControls(controls);
+            JPanel north = new JPanel(new BorderLayout(4, 3));
+            north.add(controls, BorderLayout.NORTH);
+            north.add(selectionStatus, BorderLayout.SOUTH);
+            north.setBorder(BorderFactory.createEmptyBorder(4, 4, 0, 4));
+            JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
+                    selection.tabs(), navigator);
+            split.setResizeWeight(0.30);
+            split.setContinuousLayout(true);
+            split.setBorder(BorderFactory.createEmptyBorder(0, 4, 4, 4));
+            add(north, BorderLayout.NORTH);
+            add(split, BorderLayout.CENTER);
+        } else {
+            add(navigator, BorderLayout.CENTER);
+        }
+    }
+
+    private void addBuiltInActions() {
+        var wikipediaSource = addSource(Source.WIKIPEDIA);
+        addAction(Source.WIKIPEDIA, wikipediaSource,
+                WikipediaDiscoveryPanel.ANALYZE_RETAINED,
+                "Analyze retained articles", wikipedia,
+                () -> wikipedia.selectAction(WikipediaDiscoveryPanel.ANALYZE_RETAINED));
+        addAction(Source.WIKIPEDIA, wikipediaSource,
+                WikipediaDiscoveryPanel.FETCH_ARTICLES,
+                "Fetch selected articles", wikipedia,
+                () -> wikipedia.selectAction(WikipediaDiscoveryPanel.FETCH_ARTICLES));
+
+        var commonsSource = addSource(Source.COMMONS);
+        addAction(Source.COMMONS, commonsSource,
+                CommonsDiscoveryPanel.FETCH_DEPICTIONS,
+                "Fetch structured depictions", commons, null);
+
+        var pageviewsSource = addSource(Source.PAGEVIEWS);
+        addAction(Source.PAGEVIEWS, pageviewsSource,
+                PageviewsDiscoveryPanel.READ_VIEWS,
+                "Read article views", pageviews, null);
+
+        var wikidataSource = addSource(Source.WIKIDATA);
+        addAction(Source.WIKIDATA, wikidataSource,
+                WikidataStatementDiscoveryPanel.FETCH_STATEMENTS,
+                "Fetch statements and qualifiers", wikidata, null);
+    }
+
+    private WorkbenchActionResultNavigator.Source addSource(Source source) {
+        WorkbenchActionResultNavigator.Source node = navigator.addSource(
+                source.id(), source.title(), null);
+        sourceNodes.put(source, node);
+        return node;
+    }
+
+    private void addAction(Source source,
+            WorkbenchActionResultNavigator.Source parent, String id, String label,
+            JComponent detail, Runnable reveal) {
+        WorkbenchActionResultNavigator.Action action = navigator.addAction(
+                parent, id, label, detail, reveal);
+        actionNodes.put(id, action);
+        defaultActions.putIfAbsent(source, action);
+    }
+
+    private void addConfiguredActions() {
+        Map<String, WorkbenchActionResultNavigator.Source> configuredSources =
+                new LinkedHashMap<>();
+        for (RelatedRecordDiscoveryPanel panel : relatedRecords) {
+            WorkbenchActionResultNavigator.Source source = configuredSources.computeIfAbsent(
+                    panel.sourceId(), id -> navigator.addSource(
+                            id, panel.sourceTitle(), null));
+            WorkbenchActionResultNavigator.Action action = navigator.addAction(
+                    source, panel.actionId(), panel.actionTitle(), panel, null);
+            actionNodes.put(panel.actionId(), action);
+        }
+    }
+
+    private void wireResultNavigation() {
+        DiscoveryResultListener listener = new DiscoveryResultListener() {
+            @Override public void published(String actionId, JTabbedPane tabs,
+                    int primaryTab) {
+                WorkbenchActionResultNavigator.Action action = actionNodes.get(actionId);
+                if (action == null) {
+                    throw new IllegalArgumentException(
+                            "No action navigator node for " + actionId);
+                }
+                navigator.publishResults(action, tabs, primaryTab);
+            }
+
+            @Override public void invalidated(String... actionIds) {
+                for (String actionId : actionIds) {
+                    navigator.clearResults(actionNodes.get(actionId));
+                }
+            }
+        };
+        wikipedia.setResultListener(listener);
+        commons.setResultListener(listener);
+        pageviews.setResultListener(listener);
+        wikidata.setResultListener(listener);
+        relatedRecords.forEach(panel -> panel.setResultListener(listener));
     }
 
     private void populate(InitialSelection initial) {
@@ -190,7 +317,21 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
     }
 
     public void showSource(Source source) {
-        sources.setSelectedIndex(source.ordinal());
+        WorkbenchActionResultNavigator.Action action = defaultActions.get(source);
+        if (action != null) navigator.selectAction(action);
+        else navigator.selectSource(sourceNodes.get(source));
+    }
+
+    /** Add one application-context action beneath an existing datasource source. */
+    public WorkbenchActionResultNavigator.Action addContextAction(
+            Source source, String id, String label, JComponent detail, Runnable reveal) {
+        WorkbenchActionResultNavigator.Source parent = sourceNodes.get(source);
+        if (parent == null) throw new IllegalArgumentException("Unknown source " + source);
+        WorkbenchActionResultNavigator.Action action = navigator.addAction(
+                parent, id, label, detail, reveal);
+        actionNodes.put(id, action);
+        navigator.expandSources();
+        return action;
     }
 
     public BoundedInstanceSelection selection() { return selection; }
@@ -198,6 +339,7 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
     public CommonsDiscoveryPanel commons() { return commons; }
     public PageviewsDiscoveryPanel pageviews() { return pageviews; }
     public WikidataStatementDiscoveryPanel wikidata() { return wikidata; }
+    WorkbenchActionResultNavigator navigator() { return navigator; }
     List<RelatedRecordDiscoveryPanel> relatedRecords() {
         return List.copyOf(relatedRecords);
     }

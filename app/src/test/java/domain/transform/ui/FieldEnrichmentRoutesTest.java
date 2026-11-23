@@ -22,7 +22,8 @@ class FieldEnrichmentRoutesTest {
         dbpedia.sourceType(FieldSourceType.DBPEDIA);
         dbpedia.propertyPid("populationTotal");
 
-        EnrichmentRoute route = FieldEnrichmentRoutes.from(wikidata, dbpedia);
+        EnrichmentRoute route = FieldEnrichmentRoutes.from(
+                new ReflectionDomain(java.util.List.of()), wikidata, dbpedia, null);
 
         assertEquals(1, route.primary().size());
         assertEquals(1, route.fallback().size());
@@ -38,7 +39,8 @@ class FieldEnrichmentRoutesTest {
         manual.sourceType(FieldSourceType.MANUAL);
         manual.propertyPid("population");
 
-        EnrichmentRoute route = FieldEnrichmentRoutes.from(manual, null);
+        EnrichmentRoute route = FieldEnrichmentRoutes.from(
+                new ReflectionDomain(java.util.List.of()), manual, null, null);
 
         assertEquals(0, route.allProviders().size());
     }

@@ -8,8 +8,12 @@ import domain.runtime.WikidataDynamicObject;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JTree;
 import javax.swing.SwingUtilities;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.TreePath;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.List;
 
@@ -20,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Wikipedia and Commons discovery were separate applications, each selecting its own
  * instances: moving between sources meant choosing the same instances again. One
- * workbench now holds the selection and every source tab reads it, counting the selected
+ * workbench now holds the selection and every source action reads it, counting the selected
  * instances it cannot read rather than refusing them for everyone.
  */
 class DiscoveryWorkbenchTest {
@@ -34,9 +38,10 @@ class DiscoveryWorkbenchTest {
                     "EgyptianDeity", List.of(maat, withoutArticle), "a test"));
             try {
                 assertEquals(2, workbench.selection().size());
-                assertEquals("Fetch 1 selected article",
+                assertEquals("Fetch 1 article from 2 selected instances",
                         field(workbench.wikipedia(), "fetch", JButton.class).getText(),
-                        "the Wikipedia tab reads only instances with an article");
+                        "the Wikipedia action names both the shared selection and the "
+                                + "subset with an article correspondence");
                 assertEquals("Fetch 2 selected entities",
                         field(workbench.commons(), "fetch", JButton.class).getText(),
                         "Commons reads every selected QID");
@@ -52,6 +57,57 @@ class DiscoveryWorkbenchTest {
                         met.getText());
                 assertTrue(met.getToolTipText().contains("at most 20 search result(s)"));
                 assertTrue(met.getToolTipText().contains("project is not changed"));
+            } finally {
+                workbench.close();
+            }
+        });
+    }
+
+    @Test void sourcesActionsAndLatestResultsUseOneVisibleNavigationTree()
+            throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            DiscoveryWorkbench workbench = workbench(
+                    domain(deity("Q170471", "Maat", "Maat")), null);
+            try {
+                JTree tree = workbench.navigator().tree();
+                assertEquals("workbench.action-result.tree", tree.getName());
+                assertEquals(List.of("Wikipedia", "Commons", "Wikipedia pageviews",
+                                "Wikidata", "Metropolitan Museum of Art Collection"),
+                        children(tree, root(tree)));
+                DefaultMutableTreeNode wikipedia = child(root(tree), "Wikipedia");
+                assertEquals(List.of("Analyze retained articles",
+                                "Fetch selected articles"),
+                        children(tree, wikipedia));
+                assertEquals(0, child(wikipedia, "Fetch selected articles").getChildCount(),
+                        "result views appear only after the explicit action completes");
+            } finally {
+                workbench.close();
+            }
+        });
+    }
+
+    @Test void aCompletedActionPublishesItsExistingResultTabsBelowThatAction()
+            throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            DiscoveryWorkbench workbench = workbench(
+                    domain(deity("Q170471", "Maat", "Maat")), null);
+            try {
+                var result = new domain.datasource.wikipedia.discovery
+                        .WikipediaStructureAnalysis.Result(
+                        List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                        List.of(), List.of(), List.of(), List.of(), false, List.of(), 1, 1);
+                invoke(workbench.wikipedia(), "showAnalysis",
+                        new Class<?>[]{result.getClass(), String.class}, result, "test");
+
+                JTree tree = workbench.navigator().tree();
+                DefaultMutableTreeNode fetch = child(
+                        child(root(tree), "Wikipedia"), "Fetch selected articles");
+                assertEquals("Articles — 0",
+                        tree.getLastSelectedPathComponent().toString());
+                assertTrue(children(tree, fetch).contains("Sections — 0"));
+                javax.swing.JTabbedPane tabs = field(workbench.wikipedia(),
+                        "resultTabs", javax.swing.JTabbedPane.class);
+                assertEquals("Articles — 0", tabs.getTitleAt(tabs.getSelectedIndex()));
             } finally {
                 workbench.close();
             }
@@ -131,8 +187,8 @@ class DiscoveryWorkbenchTest {
         });
     }
 
-    /** A configured provider that is not installed leaves the other tabs working and
-     *  says, where its tab would be, which file and why. */
+    /** A configured provider that is not installed leaves the other sources working and
+     *  says, where its source node would be, which file and why. */
     @Test void aDatasourceThatIsNotInstalledIsNamedWhereItsTabWouldBe() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
             WikidataDynamicObject maat = deity("Q170471", "Maat", "Maat");
@@ -141,20 +197,15 @@ class DiscoveryWorkbenchTest {
             DiscoveryWorkbench workbench = new DiscoveryWorkbench(domain(maat), null,
                     domain.datasource.Datasources.standard(), List.of(problem));
             try {
-                javax.swing.JTabbedPane sources = field(workbench, "sources",
-                        javax.swing.JTabbedPane.class);
-                int tab = sources.indexOfTab(DiscoveryWorkbench.NOT_AVAILABLE);
-                assertTrue(tab >= 0);
-                javax.swing.JScrollPane scroll = (javax.swing.JScrollPane)
-                        sources.getComponentAt(tab);
-                String text = ((javax.swing.JTextArea) scroll.getViewport().getView())
-                        .getText();
+                JTree tree = workbench.navigator().tree();
+                select(tree, child(root(tree), DiscoveryWorkbench.NOT_AVAILABLE));
+                String text = textArea(workbench.navigator()).getText();
                 assertTrue(text.startsWith("Not installed:\n\n" + problem), text);
                 assertTrue(text.contains("Correct the listed installation problem and "
                         + "restart the application"), text);
                 assertTrue(text.contains("other sources are unaffected"), text);
-                assertEquals(DiscoveryWorkbench.Source.PAGEVIEWS.title(),
-                        sources.getTitleAt(DiscoveryWorkbench.Source.PAGEVIEWS.ordinal()));
+                assertTrue(children(tree, root(tree)).contains(
+                        DiscoveryWorkbench.Source.PAGEVIEWS.title()));
             } finally {
                 workbench.close();
             }
@@ -181,13 +232,9 @@ class DiscoveryWorkbenchTest {
                     new domain.datasource.api.DatasourceRegistry(providers), List.of());
             try {
                 assertEquals(List.of(), workbench.relatedRecords());
-                javax.swing.JTabbedPane sources = field(workbench, "sources",
-                        javax.swing.JTabbedPane.class);
-                javax.swing.JScrollPane scroll = (javax.swing.JScrollPane)
-                        sources.getComponentAt(
-                                sources.indexOfTab(DiscoveryWorkbench.NOT_AVAILABLE));
-                String text = ((javax.swing.JTextArea) scroll.getViewport().getView())
-                        .getText();
+                JTree tree = workbench.navigator().tree();
+                select(tree, child(root(tree), DiscoveryWorkbench.NOT_AVAILABLE));
+                String text = textArea(workbench.navigator()).getText();
                 assertTrue(text.startsWith("Installed, but not offered by this workbench:\n\n"
                         + "Metropolitan Museum of Art Collection — "
                         + "Artifacts tagged with selected entities is not offered: it needs "
@@ -245,5 +292,52 @@ class DiscoveryWorkbenchTest {
         } catch (ReflectiveOperationException failure) {
             throw new AssertionError(failure);
         }
+    }
+
+    private static Object invoke(Object owner, String name, Class<?>[] types,
+            Object... arguments) {
+        try {
+            Method method = owner.getClass().getDeclaredMethod(name, types);
+            method.setAccessible(true);
+            return method.invoke(owner, arguments);
+        } catch (ReflectiveOperationException failure) {
+            throw new AssertionError(failure);
+        }
+    }
+
+    private static DefaultMutableTreeNode root(JTree tree) {
+        return (DefaultMutableTreeNode) tree.getModel().getRoot();
+    }
+
+    private static List<String> children(
+            JTree tree, DefaultMutableTreeNode parent) {
+        return java.util.stream.IntStream.range(0, parent.getChildCount())
+                .mapToObj(parent::getChildAt)
+                .map(Object::toString).toList();
+    }
+
+    private static DefaultMutableTreeNode child(
+            DefaultMutableTreeNode parent, String label) {
+        return java.util.stream.IntStream.range(0, parent.getChildCount())
+                .mapToObj(index -> (DefaultMutableTreeNode) parent.getChildAt(index))
+                .filter(node -> label.equals(node.toString())).findFirst()
+                .orElseThrow(() -> new AssertionError(
+                        "Missing '" + label + "' under " + parent));
+    }
+
+    private static void select(JTree tree, DefaultMutableTreeNode node) {
+        tree.setSelectionPath(new TreePath(node.getPath()));
+    }
+
+    private static javax.swing.JTextArea textArea(java.awt.Container root) {
+        for (java.awt.Component component : root.getComponents()) {
+            if (component instanceof javax.swing.JTextArea text) return text;
+            if (component instanceof java.awt.Container child) {
+                try {
+                    return textArea(child);
+                } catch (AssertionError ignored) { }
+            }
+        }
+        throw new AssertionError("No text area in " + root.getClass().getName());
     }
 }

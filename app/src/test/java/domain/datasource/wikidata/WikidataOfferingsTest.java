@@ -93,6 +93,24 @@ class WikidataOfferingsTest {
         });
     }
 
+    @Test void retainedArticleSuppliesTheConfiguredWikipediaSourceWithoutASitelink() {
+        var value = new domain.runtime.WikidataDynamicObject("Q2831", "Ra");
+        var parsed = wikipedia.WikipediaArticleClient.parseArticleText("<p>Ra</p>");
+        value.wikipediaArticleEvidence(new domain.datasource.evidence.WikipediaArticle(
+                wikipedia.WikipediaArticleClient.sourceDocument(
+                        "Ra", "1", parsed.text(), List.of(), parsed.links()),
+                parsed.text(), List.of(), parsed.structuredSections()), true);
+        SourceBinding binding = new SourceBinding(
+                SourceBindingTarget.sourceCorrespondence(
+                        "Deity", SourceBindingSlot.ARTICLE_CORRESPONDENCE),
+                new SourceRecipe("wikidata", WikidataDatasourceProvider.SITELINK,
+                        Map.of("wiki", "enwiki")));
+
+        Object source = WIKIDATA.instanceFields(binding).getFirst().value(value);
+
+        assertEquals("Ra", ((domain.provenance.WikipediaSource) source).title());
+    }
+
     @Test void populationOfferingsExposeTheLogicalSelectionGenerationConsumes() {
         ClassPopulationOperation membership = (ClassPopulationOperation)
                 offering(WikidataDatasourceProvider.STATEMENT_MEMBERSHIP);
