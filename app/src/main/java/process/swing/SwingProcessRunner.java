@@ -15,28 +15,16 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 /** Swing host for Process; cancellation belongs to the running process, not its UI button. */
 public final class SwingProcessRunner {
-    /**
-     * Extends the disabled lifetime of this runner's actions beyond request execution.
-     * A result-review window is still part of the action: closing this handle says that
-     * the reader has finished with that result and the action may be offered again.
-     */
-    public interface RunButtonHold extends AutoCloseable {
-        @Override void close();
-    }
-
     private final QueryContext queries;
     private final LogListener logs;
     private final ProcessInputHandler inputs;
     private final List<AbstractButton> runButtons = new CopyOnWriteArrayList<>();
     private final List<AbstractButton> cancelButtons = new CopyOnWriteArrayList<>();
     private final List<Consumer<Boolean>> runningListeners = new CopyOnWriteArrayList<>();
-    private final AtomicInteger runButtonHolds = new AtomicInteger();
     private volatile SwingWorker<?, ?> worker;
     private volatile Thread workerThread;
     private volatile CancellationToken cancellation;
@@ -51,28 +39,8 @@ public final class SwingProcessRunner {
     public void registerRunButton(AbstractButton button) {
         if (button != null && !runButtons.contains(button)) {
             runButtons.add(button);
-            button.setEnabled(runButtonsEnabled());
+            button.setEnabled(!isRunning());
         }
-    }
-
-    /**
-     * Keep every action registered with this runner disabled after its process has
-     * completed. Holds compose: the actions become available only after the process is
-     * idle and every hold has been closed.
-     */
-    public RunButtonHold holdRunButtons() {
-        runButtonHolds.incrementAndGet();
-        refreshButtons();
-        AtomicBoolean closed = new AtomicBoolean();
-        return () -> {
-            if (!closed.compareAndSet(false, true)) return;
-            int remaining = runButtonHolds.decrementAndGet();
-            if (remaining < 0) {
-                runButtonHolds.set(0);
-                throw new IllegalStateException("Run-button hold released more than once");
-            }
-            refreshButtons();
-        };
     }
 
     public void registerCancelButton(AbstractButton button) {
@@ -148,20 +116,10 @@ public final class SwingProcessRunner {
 
     private void setRunning(boolean running) {
         onEdt(() -> {
-            runButtons.forEach(button -> button.setEnabled(
-                    !running && runButtonHolds.get() == 0));
+            runButtons.forEach(button -> button.setEnabled(!running));
             cancelButtons.forEach(button -> button.setEnabled(running));
             runningListeners.forEach(listener -> listener.accept(running));
         });
-    }
-
-    private boolean runButtonsEnabled() {
-        return !isRunning() && runButtonHolds.get() == 0;
-    }
-
-    private void refreshButtons() {
-        onEdt(() -> runButtons.forEach(
-                button -> button.setEnabled(runButtonsEnabled())));
     }
 
     private static void onEdt(Runnable action) {

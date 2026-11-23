@@ -25,7 +25,7 @@ class CuratableDomainSourceSelectionTest {
                 CorrectionPolicy.ADD_TO_COLLECTION,
                 new ValueSource("Wikipedia (English)", "Blood Diamond",
                         "field:location", "", "", "https://en.wikipedia.org/wiki/Blood_Diamond",
-                        List.of()));
+                        List.of()), "Location");
         CuratableDomain domain = new CuratableDomain(new SnapshotDomain(List.of(movie)), curation);
         String selection = "Source / Wikipedia (English) / Movie.location";
 

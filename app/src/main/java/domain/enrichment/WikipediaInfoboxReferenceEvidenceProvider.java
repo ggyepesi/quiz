@@ -13,7 +13,6 @@ import work.Query;
 import work.QueryContext;
 
 import java.util.Collection;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -31,17 +30,22 @@ public final class WikipediaInfoboxReferenceEvidenceProvider
     private final InfoboxParameters.Key key;
     private final WikipediaLinkedReferenceResolver candidates;
     private final WikimediaEntityLookup lookup;
+    private final domain.DomainModel domain;
 
     public WikipediaInfoboxReferenceEvidenceProvider(String configuredKey,
-            Collection<? extends Viewable> loadedCandidates) {
-        this(configuredKey, loadedCandidates, WikimediaEntityLookup.defaultFetcher());
+            Collection<? extends Viewable> loadedCandidates,
+            domain.DomainModel domain) {
+        this(configuredKey, loadedCandidates, domain,
+                WikimediaEntityLookup.defaultFetcher());
     }
 
     WikipediaInfoboxReferenceEvidenceProvider(String configuredKey,
             Collection<? extends Viewable> loadedCandidates,
+            domain.DomainModel domain,
             WikimediaEntityLookup.JsonFetcher fetcher) {
         key = InfoboxParameters.Key.parse(configuredKey);
         candidates = new WikipediaLinkedReferenceResolver(loadedCandidates);
+        this.domain = domain;
         lookup = new WikimediaEntityLookup(fetcher);
     }
 
@@ -95,7 +99,8 @@ public final class WikipediaInfoboxReferenceEvidenceProvider
                                 lookup, context);
                 List<WikipediaLinkedReferenceResolver.Match> matches =
                         resolution.matches();
-                Set<String> current = currentIds(request.currentValue());
+                Set<String> current = FieldValueCompatibility.compatibleReferenceIds(
+                        domain, request.targetSchema(), request.currentValue());
                 List<EnrichmentProposal.FieldCandidate> fields = matches.stream()
                         .filter(match -> !current.contains(match.candidate().getIdentifier()))
                         .map(match -> candidate(request, row, match))
@@ -152,20 +157,6 @@ public final class WikipediaInfoboxReferenceEvidenceProvider
         return parameters.structuredValues().entrySet().stream()
                 .filter(entry -> entry.getKey().toString().equalsIgnoreCase(key.toString()))
                 .map(Map.Entry::getValue).findFirst().orElse(null);
-    }
-
-    private static Set<String> currentIds(Object currentValue) {
-        Collection<?> values = currentValue instanceof Collection<?> collection
-                ? collection : currentValue == null ? List.of() : List.of(currentValue);
-        LinkedHashSet<String> ids = new LinkedHashSet<>();
-        for (Object value : values) {
-            if (value instanceof Viewable viewable && viewable.getIdentifier() != null) {
-                ids.add(viewable.getIdentifier());
-            } else if (value instanceof String id) {
-                ids.add(id);
-            }
-        }
-        return Set.copyOf(ids);
     }
 
     private static EntityRef subjectRef(EnrichmentRequest request) {

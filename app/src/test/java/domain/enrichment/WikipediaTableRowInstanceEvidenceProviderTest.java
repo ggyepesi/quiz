@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** A configured table row is a typed, reviewable instance rather than an invented QID. */
 class WikipediaTableRowInstanceEvidenceProviderTest {
 
-    @Test void aLoadedLinkedRowUsesTheDomainInstanceAndAnUnresolvedRowBecomesTyped()
+    @Test void everyRowBecomesTheConfiguredRoleAndResolvedLinksFillItsReference()
             throws Exception {
         WikidataDynamicObject ra = new WikidataDynamicObject("Q2831", "Ra");
         ra.type("EgyptianDeity");
@@ -33,12 +33,13 @@ class WikipediaTableRowInstanceEvidenceProviderTest {
         EnrichmentProposal result = provider.discover(request(article()))
                 .execute(new QueryContext());
 
-        assertEquals(1, result.instances().size());
+        assertEquals(2, result.instances().size());
         assertEquals(2, result.fields().size(),
-                "the linked member and the new row instance both enter the owner field");
-        EnrichmentProposal.InstanceCandidate first = result.instances().getFirst();
+                "each structural row enters the owner field exactly once");
+        EnrichmentProposal.InstanceCandidate first = result.instances().stream()
+                .filter(candidate -> candidate.displayName().equals("Unknown deity"))
+                .findFirst().orElseThrow();
         assertEquals("AssessorOfMaat", first.type());
-        assertEquals("Unknown deity", first.displayName());
         assertTrue(first.bulkSafe(), "the exact configured rows can be staged together");
         assertEquals(List.of("Name of the deity: Unknown deity", "Task: judgement"),
                 first.fields().get(0).value());
@@ -46,13 +47,43 @@ class WikipediaTableRowInstanceEvidenceProviderTest {
                 first.fields().get(1).references().getFirst());
         assertEquals(2, first.fields().size(),
                 "an unresolved display-cell link creates no deity reference");
-        assertEquals(ra, result.fields().getFirst().proposedValue(),
-                "a resolved loaded deity is proposed in its ordinary representation");
+        EnrichmentProposal.InstanceCandidate linked = result.instances().stream()
+                .filter(candidate -> candidate.displayName().equals("Ra"))
+                .findFirst().orElseThrow();
+        assertEquals(List.of(new EnrichmentProposal.TypedReference(
+                        "EgyptianDeity", "Q2831")),
+                linked.fields().stream().filter(field -> field.field().equals("deities"))
+                        .findFirst().orElseThrow().references(),
+                "the loaded deity identifies the role's configured reference; it does "
+                        + "not replace that role");
         assertTrue(result.instances().stream().map(EnrichmentProposal.InstanceCandidate::id)
                 .allMatch(id -> id.startsWith("wikipedia-table-row:")));
     }
 
-    @Test void aRowLinkedToAnExistingMemberDoesNotCreateADuplicateWrapper()
+    /** The row's authored links travel on its evidence fragment, so a review can show
+     *  the unresolved "Unknown deity" link the page shows instead of plain text. */
+    @Test void aRowsAuthoredLinksStayOnItsEvidence() throws Exception {
+        var spec = new WikipediaDatasourceProvider.ArticleTableRowInstanceSpec(
+                "Description > List of names", "Assessors", "Name of the deity",
+                "AssessorOfMaat", "rowDetails", "groups", "");
+        var provider = new WikipediaTableRowInstanceEvidenceProvider(
+                spec, List.of(), "", domain(), uri -> "{\"query\":{\"pages\":[]}}");
+
+        EnrichmentProposal result = provider.discover(request(article()))
+                .execute(new QueryContext());
+
+        EnrichmentProposal.FieldCandidate unknown = result.fields().stream()
+                .filter(field -> ((objectview.Viewable) field.proposedValue())
+                        .getDisplayName().equals("Unknown deity"))
+                .findFirst().orElseThrow();
+        var links = unknown.evidence().getFirst().evidence().getFirst().links();
+        assertEquals(List.of(new domain.datasource.evidence.EvidenceFragment.Link(
+                        "Unknown deity", "https://en.wikipedia.org/wiki/Unknown_deity",
+                        true)),
+                links);
+    }
+
+    @Test void anExistingLinkedDeityDoesNotReplaceTheConfiguredRole()
             throws Exception {
         WikidataDynamicObject ra = new WikidataDynamicObject("Q2831", "Ra");
         ra.type("EgyptianDeity");
@@ -68,9 +99,36 @@ class WikipediaTableRowInstanceEvidenceProviderTest {
         EnrichmentProposal result = provider.discover(request(article(), List.of(ra)))
                 .execute(new QueryContext());
 
-        assertEquals(1, result.instances().size());
-        assertEquals("Unknown deity", result.instances().getFirst().displayName());
-        assertEquals(1, result.fields().size());
+        assertEquals(2, result.instances().size());
+        assertEquals(2, result.fields().size());
+        assertTrue(result.instances().stream().anyMatch(candidate ->
+                candidate.displayName().equals("Ra")
+                        && candidate.fields().stream().anyMatch(field ->
+                                field.field().equals("deities")
+                                        && field.references().equals(List.of(
+                                                new EnrichmentProposal.TypedReference(
+                                                        "EgyptianDeity", "Q2831"))))));
+    }
+
+    @Test void anIncompatibleStaleRowDoesNotSuppressTheTypedProposal()
+            throws Exception {
+        var spec = new WikipediaDatasourceProvider.ArticleTableRowInstanceSpec(
+                "Description > List of names", "Assessors", "Name of the deity",
+                "AssessorOfMaat", "rowDetails", "groups", "");
+        var provider = new WikipediaTableRowInstanceEvidenceProvider(
+                spec, List.of(), "", domain(),
+                uri -> "{\"query\":{\"pages\":[]}}");
+        EnrichmentProposal first = provider.discover(request(article()))
+                .execute(new QueryContext());
+        String rowId = first.instances().getFirst().id();
+        domain.transform.DynamicViewable stale =
+                new domain.transform.DynamicViewable(rowId, rowId);
+
+        EnrichmentProposal repeated = provider.discover(request(article(), List.of(stale)))
+                .execute(new QueryContext());
+
+        assertTrue(repeated.instances().stream().anyMatch(row -> row.id().equals(rowId)),
+                "a generic same-ID snapshot remnant is not an AssessorOfMaat member");
     }
 
     @Test void aLinkedInstanceIncompatibleWithTheOwnerFieldKeepsTheRowWrapper()
@@ -88,9 +146,7 @@ class WikipediaTableRowInstanceEvidenceProviderTest {
         EnrichmentProposal result = provider.discover(request(linkedArticle("Ra")))
                 .execute(new QueryContext());
 
-        assertEquals(1, result.instances().size(),
-                "the linked deity may fill the row's deities field but cannot replace "
-                        + "a DeityGroupMember");
+        assertEquals(1, result.instances().size());
         assertTrue(((objectview.Viewable) result.fields().getFirst().proposedValue())
                 .getIdentifier().startsWith("wikipedia-table-row:"));
     }
@@ -101,16 +157,21 @@ class WikipediaTableRowInstanceEvidenceProviderTest {
         ra.wikipediaArticleEvidence(retainedArticle("Ra"), true);
         var spec = new WikipediaDatasourceProvider.ArticleTableRowInstanceSpec(
                 "Description > List of names", "Assessors", "Name of the deity",
-                "AssessorOfMaat", "rowDetails", "groups", "");
+                "AssessorOfMaat", "rowDetails", "groups", "deities");
         var provider = new WikipediaTableRowInstanceEvidenceProvider(
-                spec, List.of(ra), "", domain(),
+                spec, List.of(ra), "EgyptianDeity", domain(),
                 uri -> "{\"query\":{\"pages\":[{\"title\":\"Ra\",\"missing\":true}]}}");
 
         EnrichmentProposal result = provider.discover(request(linkedArticle("Ra")))
                 .execute(new QueryContext());
 
-        assertEquals(List.of(), result.instances());
-        assertEquals(ra, result.fields().getFirst().proposedValue());
+        assertEquals(1, result.instances().size());
+        assertEquals("AssessorOfMaat", result.instances().getFirst().type());
+        assertEquals(List.of(new EnrichmentProposal.TypedReference(
+                        "EgyptianDeity", "Q2831")),
+                result.instances().getFirst().fields().stream()
+                        .filter(field -> field.field().equals("deities"))
+                        .findFirst().orElseThrow().references());
     }
 
     /** An edit to another cell of an accepted row once proposed a second instance beside

@@ -36,6 +36,7 @@ public final class DomainSaver implements DomainWriter {
                 + (count == 1 ? "" : "s") + ", types "
                 + (schema == null ? List.of() : schema.servedTypes())
                 + ", and their model to " + files + "."
+                + pendingCurationMessage(schema)
                 + (changes.isEmpty() ? ""
                         : "\nUnsaved model changes written by this save:\n  - "
                                 + String.join("\n  - ", changes));
@@ -47,6 +48,13 @@ public final class DomainSaver implements DomainWriter {
         String key = sanitize(name);
         if (schema == null) {
             throw new IllegalArgumentException("A domain schema is required");
+        }
+        int pending = pendingCurationCount(schema);
+        if (pending > 0) {
+            throw new IllegalStateException(pending + " staged change"
+                    + (pending == 1 ? " is" : "s are")
+                    + " not saved. Use \"Save staged changes\" in this workbench first. "
+                    + "Save domain wrote neither the model nor the snapshot.");
         }
         ProjectBacking backing = backingFor(name, schema);
         // The working model, with this session's edits — not a fresh read of the file,
@@ -122,6 +130,20 @@ public final class DomainSaver implements DomainWriter {
     static boolean serves(
             domain.config.GeneratedProjectModel.ProjectKind kind) {
         return kind == domain.config.GeneratedProjectModel.ProjectKind.DOMAIN;
+    }
+
+    private static String pendingCurationMessage(DomainModel schema) {
+        int pending = pendingCurationCount(schema);
+        return pending == 0 ? "" : "\nNot ready to save: " + pending + " staged change"
+                + (pending == 1 ? " is" : "s are")
+                + " not saved. Use \"Save staged changes\" in this workbench first.";
+    }
+
+    private static int pendingCurationCount(DomainModel schema) {
+        domain.curation.Curatable curatable = schema == null ? null
+                : schema.capability(domain.curation.Curatable.class);
+        return curatable == null ? 0
+                : domain.curation.CurationStaging.pendingCount(curatable.curation());
     }
 
     private static ProjectBacking backingFor(String name, DomainModel schema) {

@@ -353,4 +353,40 @@ class ValidationPanelTest {
             return PromotionPreview.ineligible("Test domain is read-only.");
         }
     }
+
+    /** Reported: "Stage selected card seemingly does nothing". The review closes as it
+     *  stages, so its own status line was never seen; the workbench now names the
+     *  outcome, counted like the review, and says when nothing changed the instances. */
+    @Test void stagingNamesItsOutcomeAndAnEmptyEffectIsNotSilent() {
+        domain.datasource.SourceRef source = new domain.datasource.SourceRef(
+                "Wikipedia (English)", "Assessors of Maat", "https://example.test/A");
+        domain.transform.DynamicViewable row = new domain.transform.DynamicViewable(
+                "row-1", "Usekh-nemmet");
+        row.type("AssessorOfMaat");
+        domain.enrichment.EnrichmentProposal.FieldCandidate member =
+                new domain.enrichment.EnrichmentProposal.FieldCandidate(
+                        "row-1", "", "members", List.of(), row, source,
+                        domain.enrichment.EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION,
+                        null, true, List.of());
+        domain.enrichment.EnrichmentProposal.InstanceCandidate instance =
+                new domain.enrichment.EnrichmentProposal.InstanceCandidate(
+                        "row-1", "AssessorOfMaat", "row-1", "Usekh-nemmet",
+                        List.of(), source, List.of(), true);
+        domain.enrichment.EnrichmentDecision decision =
+                new domain.enrichment.EnrichmentDecision(
+                        new domain.enrichment.EnrichmentProposal.Subject(
+                                "DeityGroup", "Q9133532", "Q9133532", "Assessors of Maat"),
+                        List.of(), List.of(new domain.enrichment.EnrichmentDecision
+                                .FieldDecision(member, member.suggestedAction())),
+                        null, List.of(instance));
+
+        assertEquals("Staged 1 change (1 new instance); Save staged changes keeps them.",
+                ValidationPanel.stageOutcomeText(List.of(decision),
+                        new domain.enrichment.EnrichmentDecisionApplier.StagedPreview(
+                                2, 1, List.of())));
+        assertTrue(ValidationPanel.stageOutcomeText(List.of(decision),
+                        new domain.enrichment.EnrichmentDecisionApplier.StagedPreview(
+                                2, 0, List.of()))
+                .contains("none changed the loaded instances"));
+    }
 }

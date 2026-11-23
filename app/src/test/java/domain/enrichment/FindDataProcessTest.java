@@ -142,6 +142,30 @@ class FindDataProcessTest {
         assertEquals(List.of(candidate), outcome.result().proposal().media());
     }
 
+    @Test void keepsProposedInstancesThroughTheSharedFindDataProcess() {
+        EnrichmentRequest request = new EnrichmentRequest(
+                new EnrichmentProposal.Subject(
+                        "DeityGroup", "Q9133532", "Q9133532", "Assessors of Maat"),
+                "members", true, List.of());
+        SourceRef source = new SourceRef(
+                "Wikipedia", "Assessors of Maat", "https://example.test/assessors");
+        EnrichmentProposal.InstanceCandidate instance =
+                new EnrichmentProposal.InstanceCandidate(
+                        "row-candidate", "AssessorOfMaat", "row-1", "First assessor",
+                        List.of(), source, List.of(), true);
+        EnrichmentProvider provider = provider("Wikipedia table rows", context ->
+                new EnrichmentProposal(request.subject(), List.of(), List.of(), List.of(),
+                        List.of(instance)));
+
+        ProcessOutcome<FindDataResult> outcome = run(
+                request, EnrichmentRoute.all(List.of(provider)));
+
+        assertEquals(List.of(instance), outcome.result().proposal().instances(),
+                "the process must not rebuild a field/media-only proposal");
+        assertEquals(List.of(instance),
+                outcome.result().sourceYields().getFirst().usableInstances());
+    }
+
     @Test
     void batchKeepsEarlierMemberWhenLaterMemberFails() {
         EnrichmentRequest firstRequest = new EnrichmentRequest(
@@ -295,7 +319,8 @@ class FindDataProcessTest {
                         return discovery.run(context);
                     }
                     public int rowCount(EnrichmentProposal result) {
-                        return result.media().size();
+                        return result.fields().size() + result.media().size()
+                                + result.instances().size();
                     }
                 };
             }

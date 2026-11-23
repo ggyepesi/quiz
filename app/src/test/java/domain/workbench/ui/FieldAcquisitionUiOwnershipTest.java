@@ -17,7 +17,7 @@ class FieldAcquisitionUiOwnershipTest {
         assertEquals(1, occurrences(validation,
                 "findDataRunner.run(new FindDataBatchProcess("));
         assertEquals(1, occurrences(validation,
-                "FindDataBatchReviewPanel.showModeless("));
+                "FindDataBatchReviewPanel.showReview("));
     }
 
     @Test void theSharedActionListOnlyPresentsSuppliedActions() throws Exception {

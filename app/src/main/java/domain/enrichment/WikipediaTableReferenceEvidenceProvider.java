@@ -16,7 +16,6 @@ import work.QueryContext;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -33,19 +32,23 @@ public final class WikipediaTableReferenceEvidenceProvider implements Enrichment
     private final WikipediaLinkedReferenceResolver candidates;
     private final WikimediaEntityLookup lookup;
     private final wikipedia.WikipediaArticleClient articles;
+    private final domain.DomainModel domain;
 
     public WikipediaTableReferenceEvidenceProvider(
             WikipediaDatasourceProvider.ArticleTableColumnLinkSpec spec,
-            Collection<? extends Viewable> loadedCandidates) {
-        this(spec, loadedCandidates, WikimediaEntityLookup.defaultFetcher());
+            Collection<? extends Viewable> loadedCandidates,
+            domain.DomainModel domain) {
+        this(spec, loadedCandidates, domain, WikimediaEntityLookup.defaultFetcher());
     }
 
     WikipediaTableReferenceEvidenceProvider(
             WikipediaDatasourceProvider.ArticleTableColumnLinkSpec spec,
             Collection<? extends Viewable> loadedCandidates,
+            domain.DomainModel domain,
             WikimediaEntityLookup.JsonFetcher fetcher) {
         this.spec = java.util.Objects.requireNonNull(spec);
         candidates = new WikipediaLinkedReferenceResolver(loadedCandidates);
+        this.domain = domain;
         lookup = new WikimediaEntityLookup(fetcher);
         articles = new wikipedia.WikipediaArticleClient(fetcher::fetch);
     }
@@ -114,7 +117,8 @@ public final class WikipediaTableReferenceEvidenceProvider implements Enrichment
                         .map(value -> value.cellText().isBlank()
                                 ? value.link().text() : value.cellText())
                         .filter(value -> !value.isBlank()).distinct().limit(8).toList();
-                Set<String> current = currentIds(request.currentValue());
+                Set<String> current = FieldValueCompatibility.compatibleReferenceIds(
+                        domain, request.targetSchema(), request.currentValue());
                 List<EnrichmentProposal.FieldCandidate> fields = resolution.matches().stream()
                         .filter(match -> !current.contains(match.candidate().getIdentifier()))
                         .map(match -> candidate(request, article,
@@ -182,20 +186,6 @@ public final class WikipediaTableReferenceEvidenceProvider implements Enrichment
                 "", request.targetField(), request.currentValue(), value, source,
                 EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION,
                 null, true, List.of(claim));
-    }
-
-    private static Set<String> currentIds(Object currentValue) {
-        Collection<?> values = currentValue instanceof Collection<?> collection
-                ? collection : currentValue == null ? List.of() : List.of(currentValue);
-        LinkedHashSet<String> ids = new LinkedHashSet<>();
-        for (Object value : values) {
-            if (value instanceof Viewable viewable && viewable.getIdentifier() != null) {
-                ids.add(viewable.getIdentifier());
-            } else if (value instanceof String id) {
-                ids.add(id);
-            }
-        }
-        return Set.copyOf(ids);
     }
 
     private static EntityRef subjectRef(EnrichmentRequest request) {

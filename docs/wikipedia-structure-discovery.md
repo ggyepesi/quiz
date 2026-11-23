@@ -132,17 +132,19 @@ owner, target field, configured section/table/display column, the display cell's
 row's occurrence among rows with that same display text. An article edit to another cell
 therefore keeps the already-accepted instance, while two rows sharing a display label stay
 separate instances. Renaming the display cell makes a new row. These literal row projections are
-safe to stage together, but staging is still an explicit review action. A display cell that
-resolves to exactly one already-loaded compatible instance proposes that ordinary domain instance
-directly; if it is already a member, nothing is proposed. Red links, redirects without a loaded
-target and other unresolved links create no entity. Only a row without one resolved loaded
-instance becomes a row-wrapper member.
+safe to stage together, but staging is still an explicit review action. Every row is represented
+by its configured target-class instance. A display-cell link that resolves to an already-loaded
+compatible instance fills the row's optional reference field; it never replaces the row with the
+linked instance, so facts that belong to the row stay on the role the source describes. Red
+links, redirects without a loaded target and other unresolved links create no entity. The row's
+evidence keeps the links the article authored in its cells, marking those in the display column,
+so review shows the member's name as the link the page shows.
 
-The Egyptian Gods model uses this operation for the Assessors of Maat table. A row becomes an
-`AssessorOfMaat`, keeps all cells as evidence and refers back to its `DeityGroup`, unless its
-display-cell link identifies an already-loaded `EgyptianDeity`; that ordinary deity becomes the
-member directly. It does not misrepresent unlinked assessors as already-known EgyptianDeity
-entities.
+The Egyptian Gods model uses this operation for the Assessors of Maat table. Every row becomes an
+`AssessorOfMaat`, keeps all cells as evidence and refers back to its `DeityGroup`. When its
+display-cell link identifies an already-loaded `EgyptianDeity`, that deity fills the row's
+`deities` reference; the row itself remains the member. It does not misrepresent unlinked
+assessors as already-known EgyptianDeity entities.
 
 ## Boundary
 

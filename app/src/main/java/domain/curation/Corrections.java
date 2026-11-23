@@ -24,7 +24,7 @@ public final class Corrections {
 
     private Corrections() {}
 
-    /** Overlay {@code sources} onto {@code pool}; returns how many values were set. */
+    /** Overlay {@code sources} onto {@code pool}; returns how many values actually changed. */
     public static int apply(Collection<? extends Viewable> pool, List<CorrectionSource> sources) {
         if (pool == null || sources == null) {
             return 0;
@@ -36,12 +36,10 @@ public final class Corrections {
         // them — keeping only the first renamed one instance and left the other a bare
         // QID, picked by pool iteration order.
         Map<String, List<Viewable>> byQid = new HashMap<>();
-        Map<String, Viewable> firstByQid = new HashMap<>();
         for (Viewable q : pool) {
             if (q != null && q.getIdentifier() != null) {
                 byKey.putIfAbsent(new TargetKey(q.typeName(), q.getIdentifier()), q);
                 byQid.computeIfAbsent(q.getIdentifier(), k -> new ArrayList<>()).add(q);
-                firstByQid.putIfAbsent(q.getIdentifier(), q);
             }
         }
 
@@ -56,12 +54,10 @@ public final class Corrections {
         int applied = 0;
         Set<String> manualKeys = new HashSet<>();
 
-        // A reference correction stores a QID; it resolves against THIS pool, so a
-        // curated reference lands on the same instance every other field pointing at
-        // that entity already uses.
-        // A reference resolves to ONE instance — the value of a field is a single
-        // object — so the reference pool keeps first-wins.
-        REFERENCE_POOL.set(firstByQid);
+        // A reference correction stores ⟨class, identifier⟩ and resolves against THIS
+        // pool, so a curated reference lands on the same instance every other field
+        // pointing at that entity already uses.
+        REFERENCE_POOL.set(new ReferencePool(byKey));
         try {
 
         // Pass 1 — authoritative reviewed values override or extend the base.
@@ -75,8 +71,7 @@ public final class Corrections {
                 continue;
             }
             for (Viewable target : targets) {
-                applyCorrection(target, c, sampleByField.get(sampleKey(c)));
-                applied++;
+                if (applyCorrection(target, c, sampleByField.get(sampleKey(c)))) applied++;
             }
             manualKeys.add(key(c));
         }
@@ -95,8 +90,7 @@ public final class Corrections {
                         FieldAccess.getPath(target, c.field()))) {
                     continue;   // this instance already has a value; the next may not
                 }
-                applyCorrection(target, c, sampleByField.get(sampleKey(c)));
-                applied++;
+                if (applyCorrection(target, c, sampleByField.get(sampleKey(c)))) applied++;
             }
         }
 
@@ -106,8 +100,8 @@ public final class Corrections {
         }
     }
 
-    private static void applyCorrection(Viewable target, Correction correction,
-                                        Object sample) {
+    private static boolean applyCorrection(Viewable target, Correction correction,
+                                           Object sample) {
         // The display label is a COMPUTED field — projected from getDisplayName(), with
         // no setter to write through — so renaming an instance cannot go through
         // FieldAccess like an ordinary value. Keyed on the reserved DISPLAY role rather
@@ -116,10 +110,13 @@ public final class Corrections {
         if (objectview.field.ViewableContractFieldSet.DISPLAY_KEY.equals(correction.field())
                 && correction.value() instanceof String label && !label.isBlank()) {
             if (target instanceof WikidataDynamicObject wdo) {
+                String before = wdo.getDisplayName();
                 wdo.name(label);
+                return !java.util.Objects.equals(before, wdo.getDisplayName());
             }
-            return;
+            return false;
         }
+        Object before = FieldAccess.getPath(target, correction.field());
         Object reviewed = coerceCorrection(correction, target, sample);
         CorrectionPolicy policy = correction.effectivePolicy();
         if (policy == CorrectionPolicy.ADD_TO_COLLECTION) {
@@ -131,6 +128,8 @@ public final class Corrections {
         } else {
             FieldAccess.setPath(target, correction.field(), reviewed);
         }
+        Object after = FieldAccess.getPath(target, correction.field());
+        return !java.util.Objects.deepEquals(before, after);
     }
 
     private static void addDistinct(List<Object> target, Object value) {
@@ -221,17 +220,17 @@ public final class Corrections {
     /** The pool a reference correction resolves its QID against. Set for the duration of
      *  one apply, so a curated reference points at the SAME instance every other field
      *  referring to that entity does. */
-    private static final ThreadLocal<java.util.Map<String, Viewable>> REFERENCE_POOL =
+    private static final ThreadLocal<ReferencePool> REFERENCE_POOL =
             new ThreadLocal<>();
 
     private static Object coerceCorrection(Correction correction, Viewable target, Object sample) {
         if (correction.value() instanceof String qid
                 && (Correction.REFERENCE.equals(correction.valueKind())
                     || Correction.REFERENCE_COLLECTION.equals(correction.valueKind()))) {
-            Viewable referent = referent(qid);
+            Viewable referent = referent(correction.referenceType(), qid);
             boolean collection =
                     Correction.REFERENCE_COLLECTION.equals(correction.valueKind());
-            return collection ? List.of(referent) : referent;
+            return collection ? referent == null ? List.of() : List.of(referent) : referent;
         }
         if (sample == null && correction.value() instanceof String url
                 && (Correction.MEDIA.equals(correction.valueKind())
@@ -249,22 +248,16 @@ public final class Corrections {
     }
 
     /**
-     * The pooled instance for {@code qid}, or a stub named by the QID when the pool has
-     * none.
-     *
-     * <p>A stub rather than a dropped value: the decision was made and recorded, and
-     * losing it because the entity is not in this particular pool would be worse than
-     * showing it unnamed — which the UNNAMED_REFERENCE curation scope then lists for a
-     * label fill.
+     * The pooled instance of exactly {@code type} and {@code qid}, or null when that
+     * instance is not loaded. It never attaches an incompatible same-identifier object
+     * and never invents a member.
      */
-    private static Viewable referent(String qid) {
-        java.util.Map<String, Viewable> pool = REFERENCE_POOL.get();
-        Viewable pooled = pool == null ? null : pool.get(qid);
-        if (pooled != null) {
-            return pooled;
-        }
-        return new domain.transform.DynamicViewable(qid, qid);
+    private static Viewable referent(String type, String qid) {
+        ReferencePool pool = REFERENCE_POOL.get();
+        return pool == null ? null : pool.byKey().get(new TargetKey(type, qid));
     }
+
+    private record ReferencePool(Map<TargetKey, Viewable> byKey) { }
 
     /** A URL → a MediaValue matching {@code sample}'s shape: a single value when the
      *  field holds one, or a one-element collection when it holds a list of them; null

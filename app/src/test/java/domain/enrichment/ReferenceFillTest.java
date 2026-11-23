@@ -81,28 +81,31 @@ class ReferenceFillTest {
 
         Corrections.apply(List.of(film, place), List.of(source(new Correction(
                 "Movies", "Q1054", "locations", "Q1297", "wikidata",
-                Correction.REFERENCE_COLLECTION, CorrectionPolicy.ADD_TO_COLLECTION, null))));
+                Correction.REFERENCE_COLLECTION, CorrectionPolicy.ADD_TO_COLLECTION, null,
+                "Location"))));
 
         assertEquals(List.of(place), film.get("locations"));
         assertSame(place, ((List<?>) film.get("locations")).get(0));
     }
 
     /**
-     * A QID the pool does not contain still lands, as a stub named by its QID. Dropping
-     * the value would lose a decision that was made and recorded; a stub is visible, and
-     * the UNNAMED_REFERENCE scope lists it for a label fill.
+     * A reference whose exact ⟨class, identifier⟩ is not loaded attaches nothing. It used
+     * to land as an invented placeholder named by its QID, which put a member of no
+     * configured class into the field. The decision itself stays in the sidecar and lands
+     * once that instance is loaded.
      */
-    @Test void aReferenceToSomethingNotPooledLandsAsANamedGapNotALostValue() {
+    @Test void aReferenceToSomethingNotLoadedAttachesNothingAndInventsNoMember() {
         DynamicViewable film = new DynamicViewable("Q1054", "12 Monkeys");
         film.type("Movies");
 
         Corrections.apply(List.of(film), List.of(source(new Correction(
                 "Movies", "Q1054", "locations", "Q999999", "wikidata",
-                Correction.REFERENCE_COLLECTION, CorrectionPolicy.ADD_TO_COLLECTION, null))));
+                Correction.REFERENCE_COLLECTION, CorrectionPolicy.ADD_TO_COLLECTION, null,
+                "Location"))));
 
-        List<?> values = (List<?>) film.get("locations");
-        assertEquals(1, values.size(), "the decision is not silently dropped");
-        assertEquals("Q999999", ((Viewable) values.get(0)).getIdentifier());
+        Object values = film.get("locations");
+        assertTrue(values == null || ((List<?>) values).isEmpty(),
+                "no placeholder is invented for an instance that is not loaded");
     }
 
     private static CorrectionSource source(Correction correction) {

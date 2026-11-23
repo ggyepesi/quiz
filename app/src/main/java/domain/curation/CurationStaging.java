@@ -35,10 +35,22 @@ public final class CurationStaging implements CorrectionSource {
         return SESSIONS.computeIfAbsent(target, CurationStaging::new);
     }
 
+    /** Pending work for an already-open curation transaction, without creating a
+     * transaction merely because another action is checking whether it may save. */
+    public static synchronized int pendingCount(ManualCuration target) {
+        CurationStaging staging = target == null ? null : SESSIONS.get(target);
+        return staging == null ? 0 : staging.size();
+    }
+
     public synchronized void stage(Correction correction) {
         if (correction == null) return;
+        corrections.entrySet().removeIf(entry ->
+                correction.replacesExisting(entry.getValue()));
         corrections.put(new CorrectionKey(
-                correction.type(), correction.qid(), correction.field()), correction);
+                correction.type(), correction.qid(), correction.field(),
+                correction.additive() ? new AdditiveContribution(
+                        correction.value(), correction.valueKind(),
+                        correction.referenceType()) : null), correction);
         changed();
     }
 
@@ -103,7 +115,8 @@ public final class CurationStaging implements CorrectionSource {
             for (Correction correction : corrections.values()) {
                 target.put(correction.type(), correction.qid(), correction.field(),
                         correction.value(), correction.origin(), correction.valueKind(),
-                        correction.policy(), correction.source());
+                        correction.policy(), correction.source(),
+                        correction.referenceType());
             }
             for (IdentityLink link : identities.values()) target.putIdentityLink(link);
             for (CuratedInstance instance : instances.values()) target.putInstance(instance);
@@ -183,11 +196,7 @@ public final class CurationStaging implements CorrectionSource {
     }
 
     private static boolean sameCorrectionKey(Correction a, Correction b) {
-        // ManualCuration.put treats an unqualified legacy entry as the same slot as a
-        // fresh type-qualified correction; rollback must mirror that replacement rule.
-        return (a.type() == null || java.util.Objects.equals(a.type(), b.type()))
-                && java.util.Objects.equals(a.qid(), b.qid())
-                && java.util.Objects.equals(a.field(), b.field());
+        return a.sameTargetField(b);
     }
 
     private static boolean sameIdentityKey(IdentityLink a, IdentityLink b) {
@@ -196,7 +205,10 @@ public final class CurationStaging implements CorrectionSource {
                 && java.util.Objects.equals(a.sourceKind(), b.sourceKind());
     }
 
-    private record CorrectionKey(String type, String id, String field) { }
+    private record CorrectionKey(
+            String type, String id, String field, AdditiveContribution contribution) { }
+    private record AdditiveContribution(Object value, String valueKind,
+                                        String referenceType) { }
     private record IdentityKey(String type, String id, String sourceKind) { }
     private record InstanceKey(String type, String id) { }
 }

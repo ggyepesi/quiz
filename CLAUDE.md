@@ -197,10 +197,10 @@ construct per thing produced:
    another cell keeps the accepted instance. Those literal structural rows may be staged
    together. A row link may fill the optional
    reference field only when it resolves to an already-loaded compatible instance; an
-   unresolved link never invents an entity. One resolved loaded instance represents the
-   row directly and is proposed for the owner field in its ordinary domain representation;
-   if it is already a member, nothing is proposed. A row-wrapper instance is created only
-   when the display cell does not identify one loaded instance.
+   unresolved link never invents an entity. Every configured row is represented by its
+   configured target-class instance. A resolved display-cell link fills that row's
+   configured reference field; it never replaces the row with the linked instance. This
+   keeps row-dependent facts on the role the source actually describes.
    An unlinked label may nominate a candidate only when it identifies one loaded target;
    when loaded targets share the label, retained source links must resolve the identity.
 10. **Inspection is not an action.** Selecting, highlighting, hovering or navigating may change
@@ -467,6 +467,9 @@ construct per thing produced:
    local grouping, transformation and manual edits over the loaded object graph. DataSourceApp
    and TransformApp currently reuse the same class/group/field scope implementation by opening
    one purpose-parameterized workbench panel; that is not yet an extracted scope component.
+   A future unified workbench owns one live project configuration in memory. Its ModelBuilder,
+   discovery, datasource, transform and curation components edit only the declarations they own
+   on that same object; they do not load private copies or reconcile parallel configurations.
    They invoke the same headless processes; neither application drives the other and no
    acquisition or transformation runner is copied.
    Generation, graph run, graph-decision application, transformation, population publication
@@ -683,6 +686,10 @@ construct per thing produced:
 - **Guard application close.** Closing a workbench defaults to keeping it open when a process is
   running or configuration/generated results are unsaved. Cancelling work, saving, or discarding
   must be an explicit choice that names what will be lost.
+- **Own dialogs consistently.** A decision/review dialog is document-modal to the workbench that
+  opened it, is raised when opened, and blocks that workbench's mutating actions until it closes;
+  unrelated applications remain usable. Inspection-only windows may be modeless. Both use the
+  shared `Dialogs` lifecycle rather than choosing modality and focus locally.
 - **Name an open thread before switching.** If a new direction arrives while another is
   unfinished, say what is open and ask: finish, park, or run in parallel.
 - **File a GitHub issue for every non-trivial agreement** — a design decision, a deferred

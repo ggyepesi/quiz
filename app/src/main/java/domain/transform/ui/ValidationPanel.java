@@ -44,7 +44,6 @@ import domain.curation.Correction;
 import domain.curation.CorrectionPolicy;
 import domain.curation.Corrections;
 import domain.curation.Curatable;
-import domain.curation.CuratedInstanceSink;
 import domain.curation.CurationStaging;
 import domain.curation.FieldRulePromoter;
 import domain.curation.FieldSourceChoices;
@@ -76,7 +75,6 @@ import process.swing.SwingProcessRunner;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
-import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -86,8 +84,6 @@ import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -145,6 +141,9 @@ public final class ValidationPanel extends JPanel {
     private final JButton cancelProcessButton = new JButton("Cancel Find Data");
     private final JButton resolveMissingButton = new JButton("Resolve identities…");
     private final JButton applyButton = new JButton("Save staged changes");
+    /** What the last review staged, beside the one control that keeps it. A review
+     *  closes when it stages, so its own status line is never seen. */
+    private final JLabel stageOutcome = new JLabel(" ");
     private final JLabel selectedLabel = new JLabel("No instance selected");
     private final JLabel batchTargetLabel = new JLabel("Batch actions: current scope");
     private final JTextField manualValue = new JTextField(18);
@@ -340,6 +339,7 @@ public final class ValidationPanel extends JPanel {
         // field drill. Keep it reachable even when a filter has zero rows or the user
         // navigates to another type after staging an edit.
         bar.add(applyButton);
+        bar.add(stageOutcome);
         if (this.purpose.showsDatasourceActions()) bar.add(cancelProcessButton);
 
         JPanel top = new JPanel(new BorderLayout());
@@ -414,6 +414,7 @@ public final class ValidationPanel extends JPanel {
             summary.add(new JLabel("· " + scopeDescription));
         }
         summary.add(applyButton);
+        summary.add(stageOutcome);
         if (purpose.showsDatasourceActions()) summary.add(cancelProcessButton);
         add(summary, BorderLayout.NORTH);
         add(instancesHolder, BorderLayout.CENTER);
@@ -1607,30 +1608,15 @@ public final class ValidationPanel extends JPanel {
                         failureTitle + ": " + ex.getMessage()));
     }
 
-    /** The action is not finished while its review result is still open. Keep every
-     * field-acquisition trigger owned by this runner disabled until that result closes,
-     * so the same request cannot be started again behind the review window. */
+    /** The review is document-modal (Dialogs.reviewDialog): while it is open this
+     * workbench, including its run actions, cannot be used, so no second request can
+     * start behind it. */
     private void showReview(String title, String prompt,
             List<EnrichmentProposal> proposals, List<Viewable> sourceReport,
             ManualCuration store) {
-        SwingProcessRunner.RunButtonHold hold = findDataRunner.holdRunButtons();
-        JDialog dialog;
-        try {
-            dialog = FindDataBatchReviewPanel.showModeless(
-                    this, title, prompt, proposals, sourceReport,
-                    reviewed -> applyDecisions(store, reviewed.accepted()));
-        } catch (RuntimeException error) {
-            hold.close();
-            throw error;
-        }
-        dialog.addWindowListener(new WindowAdapter() {
-            @Override public void windowClosed(WindowEvent event) {
-                hold.close();
-            }
-        });
-        // A modeless dialog returns immediately. This check also covers a custom host
-        // which disposed it synchronously before the listener could be installed.
-        if (!dialog.isDisplayable()) hold.close();
+        FindDataBatchReviewPanel.showReview(
+                this, title, prompt, proposals, sourceReport,
+                reviewed -> applyDecisions(store, reviewed.accepted()));
     }
 
     private domain.config.WikipediaCategoryRule effectiveWikipediaCategoryRule(
@@ -1848,10 +1834,10 @@ public final class ValidationPanel extends JPanel {
                         domain)
                 : tableColumnLinks
                 ? new WikipediaTableReferenceEvidenceProvider(
-                        tableColumnSpec, mentionCandidates)
+                        tableColumnSpec, mentionCandidates, domain)
                 : infoboxRowLinks
                 ? new WikipediaInfoboxReferenceEvidenceProvider(
-                        infoboxRowKey, mentionCandidates)
+                        infoboxRowKey, mentionCandidates, domain)
                 : new WikipediaTextEvidenceProvider(
                         categoryRule, referentKind, mentionCandidates, candidateMode,
                         passageInstanceSpec);
@@ -2071,37 +2057,57 @@ public final class ValidationPanel extends JPanel {
             ManualCuration curation,
             List<EnrichmentDecision> decisions) {
         try {
-            CuratedInstanceSink instanceSink =
-                    domain.capability(CuratedInstanceSink.class);
-            boolean createsInstances = decisions != null && decisions.stream()
-                    .filter(java.util.Objects::nonNull)
-                    .anyMatch(decision -> !decision.instances().isEmpty());
-            if (createsInstances && instanceSink == null) {
-                throw new IllegalStateException(
-                        "This domain cannot add reviewed source-derived instances.");
+            EnrichmentDecisionApplier.StagedPreview preview =
+                    EnrichmentDecisionApplier.stageAndPreview(
+                            domain, staging, decisions);
+            if (!preview.unresolvedReferences().isEmpty()) {
+                Dialogs.showMessage(this,
+                        preview.unresolvedReferences().size()
+                                + " reference(s) of the staged instances name "
+                                + "nothing loaded, so they were left empty:\n"
+                                + String.join("\n", preview.unresolvedReferences()),
+                        "Unresolved references", JOptionPane.WARNING_MESSAGE);
             }
-            EnrichmentDecisionApplier.stageAll(domain, staging, decisions);
-            if (instanceSink != null) {
-                List<String> unresolved =
-                        instanceSink.materialize(staging.instances()).unresolved();
-                if (!unresolved.isEmpty()) {
-                    JOptionPane.showMessageDialog(this, Dialogs.wrapped(
-                            unresolved.size() + " reference(s) of the staged instances name "
-                                    + "nothing loaded, so they were left empty:\n"
-                                    + String.join("\n", unresolved)),
-                            "Unresolved references", JOptionPane.WARNING_MESSAGE);
-                }
-            }
-            Corrections.apply(domain.instances(), List.of(staging));
+            stageOutcome.setText(stageOutcomeText(decisions, preview));
             updateApplyButton();
             refreshCoverage();
             onCurated.run();
             renderFieldDrill();
             return true;
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Could not stage result: " + ex.getMessage());
+            Dialogs.showMessage(this, "Could not stage result: " + ex.getMessage(),
+                    "Could not stage result", JOptionPane.ERROR_MESSAGE);
             return false;
         }
+    }
+
+    /** Names what one reviewed staging did, counted by the same rule as the review
+     *  ({@link EnrichmentProposal#proposesInstance}), and says so when nothing changed. */
+    static String stageOutcomeText(List<EnrichmentDecision> decisions,
+            EnrichmentDecisionApplier.StagedPreview preview) {
+        int changes = 0;
+        int created = 0;
+        for (EnrichmentDecision decision : decisions == null
+                ? List.<EnrichmentDecision>of() : decisions) {
+            if (decision == null) continue;
+            List<EnrichmentProposal.FieldCandidate> fields = decision.fields().stream()
+                    .map(EnrichmentDecision.FieldDecision::candidate).toList();
+            changes += EnrichmentProposal.logicalChangeCount(
+                    fields,
+                    decision.media() == null ? List.of() : List.of(decision.media()),
+                    decision.instances());
+            created += decision.instances().size();
+        }
+        if (preview == null || preview.stagedRecords() == 0) {
+            return "Nothing was staged from that review.";
+        }
+        String what = "Staged " + changes + " change" + (changes == 1 ? "" : "s")
+                + (created == 0 ? "" : " (" + created + " new instance"
+                        + (created == 1 ? "" : "s") + ")");
+        return preview.appliedValues() == 0
+                ? what + ", but none changed the loaded instances — check the field and "
+                        + "its target class."
+                : what + "; Save staged changes keeps them.";
     }
 
     private void exploreIdentity() {
@@ -2186,6 +2192,7 @@ public final class ValidationPanel extends JPanel {
                                           "Save failed", JOptionPane.ERROR_MESSAGE);
             return;
         }
+        stageOutcome.setText(" ");
         updateApplyButton();
         refreshCoverage();
         onCurated.run();

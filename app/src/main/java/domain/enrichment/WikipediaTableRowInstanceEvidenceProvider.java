@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -86,8 +85,7 @@ public final class WikipediaTableRowInstanceEvidenceProvider
             private WikipediaTableRows.Selection selection;
             private int resolvedLinks;
             private int unresolvedLinks;
-            private int alreadyRepresentedRows;
-            private int linkedMembersProposed;
+            private int attachedReferences;
 
             @Override public String purpose() {
                 return "Build typed instances from one Wikipedia table";
@@ -123,8 +121,10 @@ public final class WikipediaTableRowInstanceEvidenceProvider
                         linkedCandidates.resolveEachDetailed(links, lookup, context);
                 resolvedLinks = resolution.resolvedLinks();
                 unresolvedLinks = resolution.unresolvedLinks().size();
+                attachedReferences = 0;
 
-                Set<String> current = currentIds(request.currentValue());
+                Set<String> current = FieldValueCompatibility.compatibleReferenceIds(
+                        domain, request.targetSchema(), request.currentValue());
                 List<EnrichmentProposal.InstanceCandidate> instances = new ArrayList<>();
                 List<EnrichmentProposal.FieldCandidate> fields = new ArrayList<>();
                 Map<String, Integer> occurrences = new java.util.HashMap<>();
@@ -132,24 +132,10 @@ public final class WikipediaTableRowInstanceEvidenceProvider
                     int occurrence = occurrences.merge(rowKey(row), 1, Integer::sum);
                     String instanceId = rowInstanceId(request, row, occurrence);
                     if (current.contains(instanceId)) continue;
-                    List<Viewable> resolvedMembers = linkedMembers(
-                            row, resolution.matches());
                     SourceRef source = source(article, request, row);
                     EvidenceFragment fragment = EvidenceFragment.excerpt(
-                            article.document(), row.sectionPath(), rowEvidence(row));
-                    if (resolvedMembers.size() == 1
-                            && FieldValueCompatibility.problem(domain,
-                                    request.targetSchema(), resolvedMembers.getFirst()) == null) {
-                        Viewable member = resolvedMembers.getFirst();
-                        if (current.contains(member.getIdentifier())) {
-                            alreadyRepresentedRows++;
-                        } else {
-                            fields.add(linkedMemberCandidate(
-                                    request, member, source, fragment));
-                            linkedMembersProposed++;
-                        }
-                        continue;
-                    }
+                            article.document(), row.sectionPath(), rowEvidence(row),
+                            rowLinks(row));
                     List<EnrichmentProposal.TypedReference> linked = linkedReferences(
                             row, resolution.matches());
                     ExtractedClaim contentClaim = new ExtractedClaim(subjectRef(request),
@@ -170,6 +156,7 @@ public final class WikipediaTableRowInstanceEvidenceProvider
                     if (!spec.referencesField().isBlank() && !linked.isEmpty()) {
                         instanceFields.add(EnrichmentProposal.InstanceField.references(
                                 spec.referencesField(), linked));
+                        attachedReferences += linked.size();
                     }
 
                     String label = row.displayText().isBlank()
@@ -199,7 +186,7 @@ public final class WikipediaTableRowInstanceEvidenceProvider
             }
 
             @Override public int rowCount(EnrichmentProposal result) {
-                return result == null ? 0 : result.instances().size();
+                return result == null ? 0 : result.logicalChangeCount();
             }
 
             @Override public String summary(EnrichmentProposal result) {
@@ -209,50 +196,11 @@ public final class WikipediaTableRowInstanceEvidenceProvider
                         + selection.rows().size() + " data row(s); "
                         + resolvedLinks + " display-cell link(s) resolved, "
                         + unresolvedLinks + " unresolved; " + rowCount(result)
-                        + " member(s) proposed (" + linkedMembersProposed
-                        + " loaded linked member(s), "
-                        + (result == null ? 0 : result.instances().size())
-                        + " table-row instance(s))"
-                        + (alreadyRepresentedRows == 0 ? "" : "; "
-                                + alreadyRepresentedRows
-                                + " row(s) already represented by current members");
+                        + " typed row member(s) proposed"
+                        + (attachedReferences == 0 ? "" : "; " + attachedReferences
+                                + " loaded reference(s) attached to those rows");
             }
         };
-    }
-
-    private static EnrichmentProposal.FieldCandidate linkedMemberCandidate(
-            EnrichmentRequest request, Viewable member, SourceRef source,
-            EvidenceFragment fragment) {
-        String semantic = semanticProperty(request.targetField());
-        String memberId = member.getIdentifier();
-        EntityRef entity = WikidataIds.isQid(memberId)
-                ? EntityRef.wikidata(memberId)
-                : new EntityRef("domain:" + member.typeName().toLowerCase(Locale.ROOT),
-                        memberId);
-        ExtractedClaim claim = new ExtractedClaim(subjectRef(request), semantic, null,
-                entity, List.of(fragment),
-                "linked target in configured Wikipedia table row", RECIPE_VERSION, "",
-                0.95, List.of("The configured display-cell link identifies an already-"
-                        + "loaded compatible instance; that instance represents the row."));
-        return new EnrichmentProposal.FieldCandidate(
-                "table-row-linked-member:" + request.subject().targetId() + ':'
-                        + request.targetField() + ':' + memberId,
-                "", request.targetField(), request.currentValue(), member, source,
-                EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION,
-                null, true, List.of(claim));
-    }
-
-    private static List<Viewable> linkedMembers(
-            WikipediaTableRows.SelectedRow row,
-            Map<WikipediaLinkedReferenceResolver.Link, Viewable> matches) {
-        LinkedHashMap<String, Viewable> result = new LinkedHashMap<>();
-        for (WikipediaLinkedReferenceResolver.Link link :
-                WikipediaLinkedReferenceResolver.fragmentLinks(row.displayLinks())) {
-            Viewable value = matches.get(link);
-            if (value == null || value.getIdentifier() == null) continue;
-            result.putIfAbsent(value.typeName() + '\0' + value.getIdentifier(), value);
-        }
-        return List.copyOf(result.values());
     }
 
     private List<EnrichmentProposal.TypedReference> linkedReferences(
@@ -323,24 +271,27 @@ public final class WikipediaTableRowInstanceEvidenceProvider
                 + '\0' + row.displayText();
     }
 
+    /** The links the article authored in this row's cells, in the excerpt's order. The
+     *  retained table keeps them; the review shows them as the page does. */
+    private static List<EvidenceFragment.Link> rowLinks(WikipediaTableRows.SelectedRow row) {
+        List<EvidenceFragment.Link> links = new ArrayList<>();
+        for (WikipediaTableRows.SelectedCell cell : row.cells()) {
+            if (cell.text().isBlank()) continue;
+            for (WikipediaArticle.ArticleLink link : cell.links()) {
+                String url = wikipedia.WikipediaArticleClient.pageUrl(link.targetTitle());
+                if (url != null && !url.isBlank()) {
+                    links.add(new EvidenceFragment.Link(link.text(), url,
+                            cell.column().equalsIgnoreCase(row.displayColumn())));
+                }
+            }
+        }
+        return List.copyOf(links);
+    }
+
     private static String rowEvidence(WikipediaTableRows.SelectedRow row) {
         return row.cells().stream().filter(cell -> !cell.text().isBlank())
                 .map(cell -> cell.column() + ": " + cell.text())
                 .collect(java.util.stream.Collectors.joining("\n"));
-    }
-
-    private static Set<String> currentIds(Object currentValue) {
-        Collection<?> values = currentValue instanceof Collection<?> collection
-                ? collection : currentValue == null ? List.of() : List.of(currentValue);
-        LinkedHashSet<String> ids = new LinkedHashSet<>();
-        for (Object value : values) {
-            if (value instanceof Viewable viewable && viewable.getIdentifier() != null) {
-                ids.add(viewable.getIdentifier());
-            } else if (value instanceof String id) {
-                ids.add(id);
-            }
-        }
-        return Set.copyOf(ids);
     }
 
     private static EntityRef subjectRef(EnrichmentRequest request) {

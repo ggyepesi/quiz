@@ -23,7 +23,7 @@ class WikipediaInfoboxReferenceEvidenceProviderTest {
         WikidataDynamicObject thoth = deity("Q146321", "Thoth", "Thoth");
         WikipediaInfoboxReferenceEvidenceProvider provider =
                 new WikipediaInfoboxReferenceEvidenceProvider(
-                        "Rendered.Parents", List.of(ra, thoth), uri -> """
+                        "Rendered.Parents", List.of(ra, thoth), null, uri -> """
                         {"entities":{"Q1308":{"id":"Q1308",
                         "labels":{"en":{"language":"en","value":"Hathor"}}}}}
                         """);
@@ -46,7 +46,7 @@ class WikipediaInfoboxReferenceEvidenceProviderTest {
         WikidataDynamicObject ra = deity("Q2831", "Ra", "Ra");
         WikipediaInfoboxReferenceEvidenceProvider provider =
                 new WikipediaInfoboxReferenceEvidenceProvider(
-                        "Rendered.Parents", List.of(ra), uri -> "{}");
+                        "Rendered.Parents", List.of(ra), null, uri -> "{}");
 
         EnrichmentProposal proposal = provider.discover(request(List.of(ra), infobox()))
                 .execute(new QueryContext());
@@ -64,7 +64,7 @@ class WikipediaInfoboxReferenceEvidenceProviderTest {
                 "Infobox deity", Map.of(), Map.of("Parents", row), "Maat", "43");
         WikipediaInfoboxReferenceEvidenceProvider provider =
                 new WikipediaInfoboxReferenceEvidenceProvider(
-                        "Rendered.Parents", List.of(osiris), uri -> """
+                        "Rendered.Parents", List.of(osiris), null, uri -> """
                         {"query":{"pages":[{"title":"Osiris",
                         "pageprops":{"wikibase_item":"Q46491"}}]}}
                         """);

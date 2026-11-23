@@ -47,6 +47,7 @@ public final class CompositeEnrichmentProvider implements EnrichmentProvider {
                 List<EnrichmentProposal.IdentityCandidate> identities = new ArrayList<>();
                 List<EnrichmentProposal.FieldCandidate> fields = new ArrayList<>();
                 List<EnrichmentProposal.MediaCandidate> media = new ArrayList<>();
+                List<EnrichmentProposal.InstanceCandidate> instances = new ArrayList<>();
                 Exception firstFailure = null;
                 int completed = 0;
                 for (EnrichmentProvider provider : applicable) {
@@ -55,6 +56,7 @@ public final class CompositeEnrichmentProvider implements EnrichmentProvider {
                         identities.addAll(result.identities());
                         fields.addAll(result.fields());
                         media.addAll(result.media());
+                        instances.addAll(result.instances());
                         completed++;
                     } catch (Exception ex) {
                         if (firstFailure == null) firstFailure = ex;
@@ -64,33 +66,13 @@ public final class CompositeEnrichmentProvider implements EnrichmentProvider {
                 if (completed == 0 && firstFailure != null) {
                     throw firstFailure;
                 }
-                return deduplicate(new EnrichmentProposal(
-                        request.subject(), identities, fields, media));
+                return EnrichmentProposals.deduplicate(new EnrichmentProposal(
+                        request.subject(), identities, fields, media, instances));
             }
 
             @Override public int rowCount(EnrichmentProposal result) {
-                return result == null ? 0
-                        : result.identities().size() + result.fields().size() + result.media().size();
+                return result == null ? 0 : result.logicalChangeCount();
             }
         };
-    }
-
-    private static EnrichmentProposal deduplicate(EnrichmentProposal proposal) {
-        Map<String, EnrichmentProposal.IdentityCandidate> identities = new LinkedHashMap<>();
-        for (EnrichmentProposal.IdentityCandidate identity : proposal.identities()) {
-            String key = identity.source().kind() + "\u0000"
-                    + identity.source().sourceId() + "\u0000"
-                    + identity.source().recordUrl();
-            identities.putIfAbsent(key, identity);
-        }
-        Map<String, EnrichmentProposal.MediaCandidate> media = new LinkedHashMap<>();
-        for (EnrichmentProposal.MediaCandidate candidate : proposal.media()) {
-            media.putIfAbsent(candidate.imageUrl(), candidate);
-        }
-        return new EnrichmentProposal(
-                proposal.subject(),
-                new ArrayList<>(identities.values()),
-                proposal.fields(),
-                new ArrayList<>(media.values()));
     }
 }

@@ -1,5 +1,6 @@
 package domain.curation;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.File;
@@ -35,7 +36,8 @@ public final class CorrectionsSidecar {
                 if (doc.corrections != null) {
                     for (Entry e : doc.corrections) {
                         out.add(new Correction(
-                                e.type, e.qid, e.field, e.value, e.origin, e.valueKind));
+                                e.type, e.qid, e.field, e.value, e.origin, e.valueKind,
+                                null, null, e.referenceType));
                     }
                 }
             } catch (IOException ignored) {
@@ -74,6 +76,8 @@ public final class CorrectionsSidecar {
         public Object value;
         public String origin;
         public String valueKind;
+        @JsonInclude(JsonInclude.Include.NON_EMPTY)
+        public String referenceType;
 
         Entry() { }
 
@@ -84,6 +88,7 @@ public final class CorrectionsSidecar {
             this.value = c.value();
             this.origin = c.origin();
             this.valueKind = c.valueKind();
+            this.referenceType = c.referenceType().isEmpty() ? null : c.referenceType();
         }
     }
 }

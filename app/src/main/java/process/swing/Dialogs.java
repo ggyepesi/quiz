@@ -6,6 +6,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.JTextArea;
 import javax.swing.JComponent;
 import java.awt.Component;
+import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.KeyboardFocusManager;
 import java.awt.Window;
@@ -71,6 +72,14 @@ public final class Dialogs {
         } finally {
             dialog.dispose();
         }
+    }
+
+    /** Show a short message above the currently active dialog belonging to this
+     * workbench. Use this from a review callback: a JOptionPane owned by the main frame
+     * sits behind the document-modal review and looks like no action happened. */
+    public static void showMessage(
+            Component parent, String message, String title, int messageType) {
+        showRaisedMessage(parent, wrapped(message), title, messageType);
     }
 
     static String persistenceSuccessMessage(
@@ -193,6 +202,23 @@ public final class Dialogs {
             }
         });
         return dialog;
+    }
+
+    /**
+     * Create a decision/review dialog owned by one workbench. It blocks mutations in
+     * that workbench until the reader closes the review, but leaves unrelated
+     * applications usable. Inspection-only windows may remain modeless; a review that
+     * can stage changes must use this boundary.
+     */
+    public static JDialog reviewDialog(Component parent, String title) {
+        Window dialogOwner = owner(parent);
+        JDialog dialog = new JDialog(dialogOwner, title, reviewModality());
+        raiseOnOpen(dialog);
+        return dialog;
+    }
+
+    static Dialog.ModalityType reviewModality() {
+        return Dialog.ModalityType.DOCUMENT_MODAL;
     }
 
     /** A dialog result can be submitted by a button or by closing the window, but its

@@ -2,6 +2,7 @@ package process.swing;
 
 import org.junit.jupiter.api.Test;
 
+import java.awt.Dialog;
 import java.awt.Dimension;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,6 +37,15 @@ class DialogsTest {
                 "the front/focus listener must be installed before the modal dialog opens");
     }
 
+    @Test void reviewCallbackMessagesUseTheRaisedDialogPath() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/process/swing/Dialogs.java"));
+        int message = source.indexOf("public static void showMessage(");
+        int after = source.indexOf("\n    static ", message + 1);
+        String body = source.substring(message, after);
+
+        assertTrue(body.contains("showRaisedMessage(parent,"));
+    }
+
     @Test void resizableDialogNeverStartsSmallerThanItsUsableMinimum() {
         assertEquals(new Dimension(720, 560), Dialogs.dialogSize(
                 new Dimension(600, 400), new Dimension(720, 560)));
@@ -52,6 +62,10 @@ class DialogsTest {
         assertTrue(area.getWrapStyleWord());
         assertEquals(64, area.getColumns());
         assertTrue(area.getRows() >= 2);
+    }
+
+    @Test void aReviewBlocksOnlyTheWorkbenchThatOwnsIt() {
+        assertEquals(Dialog.ModalityType.DOCUMENT_MODAL, Dialogs.reviewModality());
     }
 
     @Test void visibleModelessChildOwnsAModalPromptStartedFromItsMainFrame() {

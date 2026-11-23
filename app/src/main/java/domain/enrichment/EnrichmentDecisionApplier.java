@@ -30,6 +30,43 @@ public final class EnrichmentDecisionApplier {
 
     private EnrichmentDecisionApplier() { }
 
+    /** Result of one reviewed staging transaction as it appears in the live workbench. */
+    public record StagedPreview(int stagedRecords, int appliedValues,
+                                List<String> unresolvedReferences) {
+        public StagedPreview {
+            unresolvedReferences = unresolvedReferences == null
+                    ? List.of() : List.copyOf(unresolvedReferences);
+        }
+    }
+
+    /** Stage a reviewed batch, materialize its accepted typed instances, then replay the
+     * staged field corrections over that same live pool. Review UIs call this one method
+     * so "staged" cannot mean that the sidecar changed while the displayed group did not. */
+    public static StagedPreview stageAndPreview(
+            DomainModel domain, CurationStaging staging,
+            List<EnrichmentDecision> decisions) {
+        if (domain == null || staging == null) {
+            return new StagedPreview(0, 0, List.of());
+        }
+        List<EnrichmentDecision> accepted = decisions == null ? List.of()
+                : decisions.stream().filter(java.util.Objects::nonNull).toList();
+        boolean createsInstances = accepted.stream()
+                .anyMatch(decision -> !decision.instances().isEmpty());
+        domain.curation.CuratedInstanceSink sink =
+                domain.capability(domain.curation.CuratedInstanceSink.class);
+        if (createsInstances && sink == null) {
+            throw new IllegalStateException(
+                    "This domain cannot add reviewed source-derived instances.");
+        }
+        Prepared prepared = prepareAll(domain, accepted);
+        int staged = stage(staging, prepared);
+        List<String> unresolved = sink == null ? List.of()
+                : sink.materialize(prepared.instances()).unresolved();
+        int applied = Corrections.apply(domain.instances(),
+                List.of(() -> prepared.corrections()));
+        return new StagedPreview(staged, applied, unresolved);
+    }
+
     /** Put a reviewed decision into the shared curation transaction without crossing the
      * durable save boundary. The caller may preview the returned corrections immediately;
      * {@code Save staged changes} remains the one explicit commit action. */
@@ -48,17 +85,7 @@ public final class EnrichmentDecisionApplier {
         if (domain == null || staging == null || decisions == null || decisions.isEmpty()) {
             return 0;
         }
-        List<Prepared> prepared = decisions.stream()
-                .filter(java.util.Objects::nonNull)
-                .map(decision -> prepare(domain, decision))
-                .toList();
-        prepared.forEach(batch -> {
-            batch.identities().forEach(staging::stage);
-            batch.corrections().forEach(staging::stage);
-            batch.instances().forEach(staging::stage);
-        });
-        return prepared.stream().mapToInt(batch -> batch.corrections().size()
-                + batch.identities().size() + batch.instances().size()).sum();
+        return stage(staging, prepareAll(domain, decisions));
     }
 
     public static int apply(
@@ -96,7 +123,8 @@ public final class EnrichmentDecisionApplier {
             for (Correction correction : prepared.corrections()) {
                 curation.put(correction.type(), correction.qid(), correction.field(),
                         correction.value(), correction.origin(), correction.valueKind(),
-                        correction.policy(), correction.source());
+                        correction.policy(), correction.source(),
+                        correction.referenceType());
             }
             prepared.instances().forEach(curation::putInstance);
             curation.save();
@@ -153,7 +181,7 @@ public final class EnrichmentDecisionApplier {
                     ? Correction.REFERENCE_COLLECTION : Correction.REFERENCE;
             corrections.add(new Correction(type, targetId, candidate.field(), stored,
                     origin(candidateSource.kind()), valueKind, policy(fieldDecision.action()),
-                    source));
+                    source, referenceType(value)));
         }
         EnrichmentProposal.MediaCandidate media = decision.media();
         if (media != null) {
@@ -164,6 +192,33 @@ public final class EnrichmentDecisionApplier {
                     valueSource(media.source(), media.evidence())));
         }
         return new Prepared(List.copyOf(corrections), identities, instances);
+    }
+
+    /** Prepare the whole review before mutating staging, then retain the exact batch so
+     * preview applies only what this action accepted rather than replaying older work. */
+    private static Prepared prepareAll(
+            DomainModel domain, List<EnrichmentDecision> decisions) {
+        List<Correction> corrections = new ArrayList<>();
+        List<IdentityLink> identities = new ArrayList<>();
+        List<CuratedInstance> instances = new ArrayList<>();
+        for (EnrichmentDecision decision : decisions == null
+                ? List.<EnrichmentDecision>of() : decisions) {
+            if (decision == null) continue;
+            Prepared prepared = prepare(domain, decision);
+            corrections.addAll(prepared.corrections());
+            identities.addAll(prepared.identities());
+            instances.addAll(prepared.instances());
+        }
+        return new Prepared(List.copyOf(corrections), List.copyOf(identities),
+                List.copyOf(instances));
+    }
+
+    private static int stage(CurationStaging staging, Prepared prepared) {
+        prepared.identities().forEach(staging::stage);
+        prepared.corrections().forEach(staging::stage);
+        prepared.instances().forEach(staging::stage);
+        return prepared.corrections().size() + prepared.identities().size()
+                + prepared.instances().size();
     }
 
     private static ValueSource valueSource(
@@ -204,6 +259,17 @@ public final class EnrichmentDecisionApplier {
             return referenceId(values.iterator().next());
         }
         return null;
+    }
+
+    /** A reference identifies one configured type as well as one source identifier. */
+    private static String referenceType(Object value) {
+        if (value instanceof objectview.Viewable target) {
+            return target.typeName();
+        }
+        if (value instanceof java.util.Collection<?> values && values.size() == 1) {
+            return referenceType(values.iterator().next());
+        }
+        return "";
     }
 
     private static void validateEvidenceEntity(

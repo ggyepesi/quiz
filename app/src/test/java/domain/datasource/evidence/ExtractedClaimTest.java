@@ -35,7 +35,7 @@ class ExtractedClaimTest {
                 document("123"), "Lead", 10, " text");
         assertEquals(" text", span.excerpt());
         assertThrows(IllegalArgumentException.class, () -> new EvidenceFragment(
-                document("123"), "Lead", 10, 14, " text"));
+                document("123"), "Lead", 10, 14, " text", java.util.List.of()));
     }
 
     @Test

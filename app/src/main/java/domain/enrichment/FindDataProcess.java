@@ -62,6 +62,7 @@ public final class FindDataProcess implements Process<FindDataResult> {
         List<EnrichmentProposal.IdentityCandidate> identities = new ArrayList<>();
         List<EnrichmentProposal.FieldCandidate> fields = new ArrayList<>();
         List<EnrichmentProposal.MediaCandidate> media = new ArrayList<>();
+        List<EnrichmentProposal.InstanceCandidate> instances = new ArrayList<>();
         Throwable firstProblem = null;
         int completed = 0;
         int attempted = 0;
@@ -84,6 +85,7 @@ public final class FindDataProcess implements Process<FindDataResult> {
                 identities.addAll(proposal.identities());
                 fields.addAll(proposal.fields());
                 media.addAll(proposal.media());
+                instances.addAll(proposal.instances());
             }
             if (outcome.status() == ProcessStatus.SUCCEEDED
                     || outcome.status() == ProcessStatus.PARTIAL) {
@@ -95,7 +97,7 @@ public final class FindDataProcess implements Process<FindDataResult> {
 
         // Only gaps proceed to fallback sources. An incompatible or ignored primary value
         // is still a gap, while identity metadata by itself must not suppress field routing.
-        EnrichmentProposal routed = proposal(identities, fields, media);
+        EnrichmentProposal routed = proposal(identities, fields, media, instances);
         for (EnrichmentProvider provider : route.fallback()) {
             if (context.cancellation().isCancelled()
                     || routed.hasUsableCandidate(request.targetField())) {
@@ -111,7 +113,8 @@ public final class FindDataProcess implements Process<FindDataResult> {
                 identities.addAll(discovered.identities());
                 fields.addAll(discovered.fields());
                 media.addAll(discovered.media());
-                routed = proposal(identities, fields, media);
+                instances.addAll(discovered.instances());
+                routed = proposal(identities, fields, media, instances);
             }
             if (outcome.status() == ProcessStatus.SUCCEEDED
                     || outcome.status() == ProcessStatus.PARTIAL) {
@@ -121,7 +124,7 @@ public final class FindDataProcess implements Process<FindDataResult> {
             }
         }
 
-        EnrichmentProposal proposal = proposal(identities, fields, media);
+        EnrichmentProposal proposal = proposal(identities, fields, media, instances);
         route.allProviders().stream().skip(attempted)
                 .forEach(provider -> yields.get(provider.name()).skipped++);
         List<domain.enrichment.SourceYield> sourceYields = yields.values().stream()
@@ -157,13 +160,13 @@ public final class FindDataProcess implements Process<FindDataResult> {
     private static boolean hasCandidates(EnrichmentProposal proposal) {
         return !proposal.identities().isEmpty()
                 || !proposal.fields().isEmpty()
-                || !proposal.media().isEmpty();
+                || !proposal.media().isEmpty()
+                || !proposal.instances().isEmpty();
     }
 
     private static String summary(EnrichmentProposal proposal, String state) {
         long corroborations = proposal.corroborationCount();
-        long count = proposal.identities().size()
-                + proposal.fields().size() + proposal.media().size() - corroborations;
+        long count = proposal.nonCorroboratingChangeCount();
         return count + " candidate(s)"
                 + (corroborations == 0 ? "" : " and " + corroborations
                         + " corroboration(s) of what is already there")
@@ -178,9 +181,10 @@ public final class FindDataProcess implements Process<FindDataResult> {
     private EnrichmentProposal proposal(
             List<EnrichmentProposal.IdentityCandidate> identities,
             List<EnrichmentProposal.FieldCandidate> fields,
-            List<EnrichmentProposal.MediaCandidate> media) {
-        return deduplicate(new EnrichmentProposal(
-                request.subject(), identities, fields, media));
+            List<EnrichmentProposal.MediaCandidate> media,
+            List<EnrichmentProposal.InstanceCandidate> instances) {
+        return EnrichmentProposals.deduplicate(new EnrichmentProposal(
+                request.subject(), identities, fields, media, instances));
     }
 
     private static String providerNames(List<EnrichmentProvider> providers) {
@@ -199,23 +203,6 @@ public final class FindDataProcess implements Process<FindDataResult> {
         return List.copyOf(plans);
     }
 
-    private static EnrichmentProposal deduplicate(EnrichmentProposal proposal) {
-        Map<String, EnrichmentProposal.IdentityCandidate> identities = new LinkedHashMap<>();
-        for (EnrichmentProposal.IdentityCandidate identity : proposal.identities()) {
-            String key = identity.source().kind() + "\u0000"
-                    + identity.source().sourceId() + "\u0000"
-                    + identity.source().recordUrl();
-            identities.putIfAbsent(key, identity);
-        }
-        Map<String, EnrichmentProposal.MediaCandidate> media = new LinkedHashMap<>();
-        for (EnrichmentProposal.MediaCandidate candidate : proposal.media()) {
-            media.putIfAbsent(candidate.imageUrl(), candidate);
-        }
-        return new EnrichmentProposal(
-                proposal.subject(), new ArrayList<>(identities.values()),
-                proposal.fields(), new ArrayList<>(media.values()));
-    }
-
     private static final class YieldCounter {
         private final String source;
         private int examined;
@@ -225,6 +212,8 @@ public final class FindDataProcess implements Process<FindDataResult> {
         private final List<EnrichmentProposal.FieldCandidate> usableFields =
                 new ArrayList<>();
         private final List<EnrichmentProposal.MediaCandidate> usableMedia =
+                new ArrayList<>();
+        private final List<EnrichmentProposal.InstanceCandidate> usableInstances =
                 new ArrayList<>();
         private int corroborations;
         private long elapsedMillis;
@@ -244,22 +233,30 @@ public final class FindDataProcess implements Process<FindDataResult> {
                 // Identities attribute a proposed value to a source record; they are not
                 // themselves field yield. Counting the scaffolding identity beside its
                 // one field made a provider that found one value report two candidates.
-                candidates += proposal.fields().size() + proposal.media().size();
-                proposal.fields().stream()
+                candidates += proposal.nonCorroboratingChangeCount();
+                List<EnrichmentProposal.FieldCandidate> proposalUsableFields =
+                        proposal.fields().stream()
                         .filter(EnrichmentProposal.FieldCandidate::compatible)
                         .filter(candidate -> candidate.suggestedAction()
                                 != EnrichmentProposal.ReviewAction.IGNORE)
                         .filter(candidate -> candidate.suggestedAction()
                                 != EnrichmentProposal.ReviewAction.CORROBORATE)
-                        .forEach(usableFields::add);
+                        .toList();
+                usableFields.addAll(proposalUsableFields);
                 usableMedia.addAll(proposal.media());
+                proposal.instances().stream().filter(instance -> {
+                    boolean paired = proposal.fields().stream().anyMatch(
+                            field -> EnrichmentProposal.proposesInstance(field, instance));
+                    return !paired || proposalUsableFields.stream().anyMatch(
+                            field -> EnrichmentProposal.proposesInstance(field, instance));
+                }).forEach(usableInstances::add);
             });
         }
 
         private domain.enrichment.SourceYield snapshot() {
             return new domain.enrichment.SourceYield(source, examined, failed,
-                    skipped, candidates, usableFields, usableMedia, corroborations,
-                    elapsedMillis);
+                    skipped, candidates, usableFields, usableMedia, usableInstances,
+                    corroborations, elapsedMillis);
         }
     }
 }

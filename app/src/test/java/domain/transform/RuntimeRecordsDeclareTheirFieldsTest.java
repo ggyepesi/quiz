@@ -44,7 +44,7 @@ class RuntimeRecordsDeclareTheirFieldsTest {
     private static final Pattern RECORD_VARIABLE =
             Pattern.compile("DynamicViewable\\s+(\\w+)\\s*=\\s*new\\s+DynamicViewable\\(");
     private static final Pattern DECLARED_FIELD = Pattern.compile(
-            "RecordTypes\\.(?:text|number|value|reference|references|record|records)"
+            "RecordTypes\\.(?:display|text|number|value|reference|references|record|records)"
                     + "\\(\\s*\"([^\"]+)\"");
 
     @Test void everyFieldARuntimeRecordWritesIsDeclared() throws IOException {

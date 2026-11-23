@@ -39,6 +39,8 @@ public final class SourceYieldCards {
             List<Viewable> found = new ArrayList<>();
             yield.usableFields().forEach(candidate -> found.add(fieldCard(yield, candidate)));
             yield.usableMedia().forEach(candidate -> found.add(mediaCard(yield, candidate)));
+            yield.standaloneInstances().forEach(candidate ->
+                    found.add(instanceCard(yield, candidate)));
             DynamicViewable card = new DynamicViewable(
                     "yield-" + yield.source(),
                     yield.source() + " (" + found.size() + ")");
@@ -101,6 +103,20 @@ public final class SourceYieldCards {
         view.put("Image", candidate.imageUrl());
         view.put("Attribution", candidate.attribution());
         view.put("License", candidate.license());
+        return view;
+    }
+
+    private static Viewable instanceCard(
+            SourceYield yield, EnrichmentProposal.InstanceCandidate candidate) {
+        DynamicViewable view = new DynamicViewable(
+                "yield-instance-" + candidate.candidateId(),
+                "Create " + candidate.type() + " — " + candidate.displayName());
+        view.type("Source candidate");
+        view.put("Source", yield.source());
+        view.put("Field", "Create " + candidate.type());
+        view.put("Proposed value", candidate.displayName());
+        view.put("Suggested action", "CREATE INSTANCE");
+        view.put("Evidence", candidate.evidence());
         return view;
     }
 }

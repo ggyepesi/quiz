@@ -1,5 +1,6 @@
 package domain.curation;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import domain.datasource.api.SourceBinding;
 import domain.datasource.api.SourceBindingTarget;
@@ -57,7 +58,7 @@ public final class ManualCuration implements CorrectionSource {
                     for (Entry e : doc.corrections) {
                         entries.add(new Correction(
                                 e.type, e.qid, e.field, e.value, e.origin, e.valueKind,
-                                e.policy, e.source));
+                                e.policy, e.source, e.referenceType));
                     }
                 }
                 if (doc.fieldDefinitions != null) {
@@ -162,10 +163,17 @@ public final class ManualCuration implements CorrectionSource {
     public void put(String type, String qid, String field, Object value,
                     String origin, String valueKind, CorrectionPolicy policy,
                     ValueSource source) {
-        entries.removeIf(c -> (c.type() == null || java.util.Objects.equals(c.type(), type))
-                && c.qid().equals(qid) && c.field().equals(field));
-        entries.add(new Correction(type, qid, field, value, origin, valueKind,
-                policy, source));
+        put(type, qid, field, value, origin, valueKind, policy, source, "");
+    }
+
+    /** Store a typed field directive whose reference identity includes its class. */
+    public void put(String type, String qid, String field, Object value,
+                    String origin, String valueKind, CorrectionPolicy policy,
+                    ValueSource source, String referenceType) {
+        Correction incoming = new Correction(type, qid, field, value, origin, valueKind,
+                policy, source, referenceType);
+        entries.removeIf(incoming::replacesExisting);
+        entries.add(incoming);
     }
 
     public void remove(String qid, String field) {
@@ -179,7 +187,7 @@ public final class ManualCuration implements CorrectionSource {
 
     /** Restore an exact entry, used to roll back a failed sidecar save. */
     public void restore(Correction correction) {
-        remove(correction.type(), correction.qid(), correction.field());
+        entries.removeIf(correction::sameStoredEntry);
         entries.add(correction);
     }
 
@@ -353,6 +361,8 @@ public final class ManualCuration implements CorrectionSource {
         public String valueKind;
         public CorrectionPolicy policy;
         public ValueSource source;
+        @JsonInclude(JsonInclude.Include.NON_EMPTY)
+        public String referenceType;
 
         Entry() {}
 
@@ -365,6 +375,7 @@ public final class ManualCuration implements CorrectionSource {
             this.valueKind = c.valueKind();
             this.policy = c.policy();
             this.source = c.source();
+            this.referenceType = c.referenceType().isEmpty() ? null : c.referenceType();
         }
     }
 

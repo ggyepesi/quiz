@@ -6,6 +6,7 @@ import objectview.field.FieldAccess;
 import domain.runtime.WikidataDynamicObject;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -66,6 +67,25 @@ class CorrectionsTest {
         assertEquals(1969, intOf(FieldAccess.getPath(motivation, "year")));
     }
 
+    @Test void aTypedReferenceSelectsItsClassWhenTheIdentifierIsShared() {
+        WikidataDynamicObject group = new WikidataDynamicObject("Q9133532", "Assessors");
+        group.type("DeityGroup");
+        domain.transform.DynamicViewable stale =
+                new domain.transform.DynamicViewable("row-1", "row-1");
+        WikidataDynamicObject assessor =
+                new WikidataDynamicObject("row-1", "First assessor");
+        assessor.type("AssessorOfMaat");
+        CorrectionSource source = () -> List.of(new Correction(
+                "DeityGroup", "Q9133532", "members", "row-1", "wikipedia",
+                Correction.REFERENCE_COLLECTION, CorrectionPolicy.ADD_TO_COLLECTION,
+                null, "AssessorOfMaat"));
+
+        assertEquals(1, Corrections.apply(
+                List.of(group, stale, assessor), List.of(source)));
+        assertEquals(List.of(assessor), group.get("members"),
+                "the earlier generic same-ID object must not capture the reference");
+    }
+
     @Test void manualCurationRoundTrips(@TempDir Path dir) throws Exception {
         File f = new File(dir.toFile(), "oscarnominations.curation.json");
         ManualCuration c = new ManualCuration(f);
@@ -80,6 +100,8 @@ class CorrectionsTest {
         assertEquals("year", only.field());
         assertEquals(2027, intOf(only.value()));
         assertTrue(only.isManual());
+        assertFalse(Files.readString(f.toPath()).contains("referenceType"),
+                "untyped corrections must not add empty metadata to every sidecar entry");
     }
 
     @Test void typedMediaMetadataRoundTrips(@TempDir Path dir) throws Exception {
@@ -92,6 +114,18 @@ class CorrectionsTest {
         Correction loaded = new ManualCuration(f).load().corrections().get(0);
         assertEquals("Country", loaded.type());
         assertEquals(Correction.MEDIA_COLLECTION, loaded.valueKind());
+    }
+
+    @Test void typedReferenceMetadataRoundTrips(@TempDir Path dir) throws Exception {
+        File file = dir.resolve("egyptiangods.curation.json").toFile();
+        ManualCuration curation = new ManualCuration(file);
+        curation.put("DeityGroup", "Q9133532", "members", "row-1", "wikipedia",
+                Correction.REFERENCE_COLLECTION, CorrectionPolicy.ADD_TO_COLLECTION,
+                null, "AssessorOfMaat");
+        curation.save();
+
+        Correction loaded = new ManualCuration(file).load().corrections().getFirst();
+        assertEquals("AssessorOfMaat", loaded.referenceType());
     }
 
     @Test void sourcePropertyAndReplayPolicyRoundTrip(@TempDir Path dir) throws Exception {
@@ -140,6 +174,18 @@ class CorrectionsTest {
 
         assertEquals(1, Corrections.apply(List.of(state), List.of(source)));
         assertEquals(List.of("base", "curated"), state.get("aliases"));
+    }
+
+    @Test void applyingAnAlreadyPresentValueReportsNoChange() {
+        WikidataDynamicObject state = new WikidataDynamicObject("Q1", "State");
+        state.type("State");
+        state.put("aliases", new java.util.ArrayList<>(List.of("curated")));
+        CorrectionSource source = () -> List.of(new Correction(
+                "State", "Q1", "aliases", "curated", "wikipedia", null,
+                CorrectionPolicy.ADD_TO_COLLECTION, null));
+
+        assertEquals(0, Corrections.apply(List.of(state), List.of(source)));
+        assertEquals(List.of("curated"), state.get("aliases"));
     }
 
     @Test void evidenceOnlyDirectiveNeverChangesTheGeneratedValue() {
@@ -196,5 +242,31 @@ class CorrectionsTest {
         loaded.save();
         assertFalse(java.nio.file.Files.readString(file.toPath())
                 .contains("wikipedia-category"));
+    }
+
+    /** A reference names its class as well as its identifier. An untyped one used to be
+     *  resolved to any same-identifier object, or to an invented unnamed placeholder;
+     *  it is now refused where it is created or loaded, naming what is missing. */
+    @Test void aReferenceCorrectionWithoutItsClassIsRefused() {
+        IllegalArgumentException refused = org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalArgumentException.class, () -> new Correction(
+                        "Film", "Q1", "location", "Q60", "manual", Correction.REFERENCE,
+                        CorrectionPolicy.REPLACE, null));
+        assertTrue(refused.getMessage().contains("referenceType"), refused.getMessage());
+    }
+
+    @Test void aTypedReferenceResolvesOnlyToThatClassAndNeverInventsAMember() {
+        WikidataDynamicObject film = new WikidataDynamicObject("Q1", "Film");
+        film.type("Film");
+        WikidataDynamicObject sameIdOtherClass = new WikidataDynamicObject("Q60", "Other");
+        sameIdOtherClass.type("Person");
+        Correction location = new Correction("Film", "Q1", "location", "Q60", "manual",
+                Correction.REFERENCE, CorrectionPolicy.REPLACE, null, "Location");
+
+        Corrections.apply(List.of(film, sameIdOtherClass), List.of(() -> List.of(location)));
+
+        assertEquals(null, FieldAccess.getPath(film, objectview.field.FieldPath.of("location")),
+                "no Location Q60 is loaded, so nothing is attached; neither the Person nor "
+                        + "an invented placeholder");
     }
 }

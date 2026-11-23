@@ -12,12 +12,10 @@ import work.LogListener;
 import work.LogNode;
 
 import javax.swing.SwingUtilities;
-import javax.swing.JButton;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -93,36 +91,6 @@ class RunningStateReleaseTest {
         assertFalse(runner.isRunning());
         assertEquals(Boolean.FALSE, states.get(states.size() - 1),
                 "cancelling releases the lock too");
-    }
-
-    @Test void anOpenResultKeepsTheRunActionDisabledAfterExecutionStops()
-            throws Exception {
-        SwingProcessRunner runner = new SwingProcessRunner(
-                new work.QueryContext(), new Recorder(),
-                ProcessInputHandler.unsupported());
-        JButton run = new JButton("Run");
-        SwingUtilities.invokeAndWait(() -> runner.registerRunButton(run));
-        AtomicReference<SwingProcessRunner.RunButtonHold> result =
-                new AtomicReference<>();
-        List<Boolean> states = new CopyOnWriteArrayList<>();
-        runner.onRunningChanged(states::add);
-
-        runner.run(new Process<String>() {
-            @Override public ProcessPlan plan() {
-                return new ProcessPlan("result", "opens review", Map.of());
-            }
-            @Override public ProcessOutcome<String> execute(ProcessContext context) {
-                return new ProcessOutcome<>(
-                        ProcessStatus.SUCCEEDED, "value", null, "completed");
-            }
-        }, outcome -> result.set(runner.holdRunButtons()), error -> { });
-
-        awaitRelease(runner, states);
-        assertFalse(run.isEnabled(),
-                "finishing the request must not enable its action behind open review");
-
-        SwingUtilities.invokeAndWait(() -> result.get().close());
-        assertTrue(run.isEnabled(), "closing the result offers the action again");
     }
 
     /** The release is published from the EDT after done() has already run there, so the

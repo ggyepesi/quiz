@@ -8,6 +8,9 @@ import objectview.media.ImagePane;
 import objectview.media.MediaValue;
 
 import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 /** Schema-first compatibility check for a proposed external field value. */
 public final class FieldValueCompatibility {
@@ -27,6 +30,26 @@ public final class FieldValueCompatibility {
             return null;
         }
         return scalarProblem(domain, target, proposed);
+    }
+
+    /**
+     * Identifiers already represented by values that the declared reference field can
+     * actually contain. Discovery must not suppress a proposal merely because a stale
+     * or incompatible object happens to carry the same identifier in the raw value.
+     */
+    public static Set<String> compatibleReferenceIds(
+            DomainModel domain, FieldRef target, Object currentValue) {
+        Collection<?> values = currentValue instanceof Collection<?> collection
+                ? collection : currentValue == null ? List.of() : List.of(currentValue);
+        LinkedHashSet<String> ids = new LinkedHashSet<>();
+        for (Object value : values) {
+            if (value instanceof Viewable viewable
+                    && viewable.getIdentifier() != null
+                    && problem(domain, target, viewable) == null) {
+                ids.add(viewable.getIdentifier());
+            }
+        }
+        return Set.copyOf(ids);
     }
 
     private static String scalarProblem(

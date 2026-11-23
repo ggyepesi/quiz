@@ -35,15 +35,19 @@ class SourceYieldCardsTest {
      *  in whatever measured — reporting it as plausible zero work would hide that. */
     @Test void anImpossibleCountIsRefusedRatherThanClamped() {
         assertThrows(IllegalArgumentException.class,
-                () -> new SourceYield("Wikidata", -1, 0, 0, 0, List.of(), List.of(), 0, 0));
+                () -> new SourceYield("Wikidata", -1, 0, 0, 0,
+                        List.of(), List.of(), List.of(), 0, 0));
         assertThrows(IllegalArgumentException.class,
-                () -> new SourceYield("Wikidata", 1, 2, 0, 0, List.of(), List.of(), 0, 0),
+                () -> new SourceYield("Wikidata", 1, 2, 0, 0,
+                        List.of(), List.of(), List.of(), 0, 0),
                 "more failures than examinations");
         assertThrows(IllegalArgumentException.class,
-                () -> new SourceYield("Wikidata", 1, 0, 0, 0, List.of(), List.of(), 0, -1));
+                () -> new SourceYield("Wikidata", 1, 0, 0, 0,
+                        List.of(), List.of(), List.of(), 0, -1));
     }
 
     private static SourceYield measured(String source, int examined, int skipped) {
-        return new SourceYield(source, examined, 0, skipped, 0, List.of(), List.of(), 0, 5);
+        return new SourceYield(source, examined, 0, skipped, 0,
+                List.of(), List.of(), List.of(), 0, 5);
     }
 }

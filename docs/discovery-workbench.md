@@ -57,9 +57,10 @@ datasource and action tree never is.
 The Wikipedia source also contains the current field's configured evidence action. For a modeled
 group it automatically targets the declared members field. Thus selecting **Assessors of Maat**
 and then **Wikipedia → Find configured field evidence (including table rows)** reveals the ordinary
-**Find table-row instances…** action: its current linked members remain; a row with one loaded
-linked instance proposes that ordinary domain instance, while a row without one proposes a
-configured row instance even when its display name has no Wikipedia link. This delegates to the
+**Find table-row instances…** action: its current members remain, and every row proposes its
+configured row instance, even when its display name has no Wikipedia link. A display-cell link to
+a loaded instance fills the row's configured reference field rather than replacing the row. This
+delegates to the
 same `ValidationPanel` acquisition and review path used everywhere else.
 
 The Wikipedia, Commons, Pageviews and Wikidata actions are code-backed source workflows. Further

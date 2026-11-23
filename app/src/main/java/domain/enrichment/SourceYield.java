@@ -26,6 +26,7 @@ public record SourceYield(
         int candidates,
         List<EnrichmentProposal.FieldCandidate> usableFields,
         List<EnrichmentProposal.MediaCandidate> usableMedia,
+        List<EnrichmentProposal.InstanceCandidate> usableInstances,
         int corroborations,
         long elapsedMillis) {
 
@@ -47,6 +48,8 @@ public record SourceYield(
         }
         usableFields = List.copyOf(usableFields == null ? List.of() : usableFields);
         usableMedia = List.copyOf(usableMedia == null ? List.of() : usableMedia);
+        usableInstances = List.copyOf(
+                usableInstances == null ? List.of() : usableInstances);
     }
 
     public static List<SourceYield> aggregate(Collection<SourceYield> values) {
@@ -68,6 +71,7 @@ public record SourceYield(
                 candidates + other.candidates,
                 join(usableFields, other.usableFields),
                 join(usableMedia, other.usableMedia),
+                join(usableInstances, other.usableInstances),
                 corroborations + other.corroborations,
                 elapsedMillis + other.elapsedMillis);
     }
@@ -77,7 +81,16 @@ public record SourceYield(
 
     /** Derived from the candidates themselves, so the number and the list it summarizes
      *  cannot come apart. */
-    public int usableChanges() { return usableFields.size() + usableMedia.size(); }
+    public int usableChanges() {
+        return EnrichmentProposal.logicalChangeCount(
+                usableFields, usableMedia, usableInstances);
+    }
+
+    /** Usable instance candidates that are not created as part of a usable field change
+     *  ({@link EnrichmentProposal#proposesInstance}). */
+    public List<EnrichmentProposal.InstanceCandidate> standaloneInstances() {
+        return EnrichmentProposal.standaloneInstances(usableFields, usableInstances);
+    }
 
     public String summary() {
         return source + ": " + examined + " examined, " + usableChanges() + " usable, "

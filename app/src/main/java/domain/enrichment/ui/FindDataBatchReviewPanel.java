@@ -1,26 +1,32 @@
 package domain.enrichment.ui;
 
 import domain.datasource.SourceRef;
-
-import objectview.Viewable;
-import objectview.render.RenderingMode;
-import objectview.view.SearchableView;
+import domain.datasource.evidence.ExtractedClaim;
 import domain.enrichment.BatchReviewDecision;
 import domain.enrichment.EnrichmentDecision;
 import domain.enrichment.EnrichmentProposal;
+import domain.provenance.WikipediaCorrespondence;
+import domain.provenance.WikipediaSource;
+import domain.runtime.WikidataDynamicObject;
 import domain.transform.DynamicViewable;
+
+import objectview.Viewable;
+import objectview.field.LinkedTextSequence;
+import objectview.render.RenderingMode;
+import objectview.view.SearchableView;
+
+import process.swing.Dialogs;
 
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
 import java.awt.Component;
-import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,8 +41,7 @@ public final class FindDataBatchReviewPanel {
     public static void showDialog(
             Component owner, String title, String prompt,
             List<EnrichmentProposal> proposals, Predicate<BatchReviewDecision> onDone) {
-        show(owner, title, prompt, proposals, List.of(),
-                Dialog.ModalityType.APPLICATION_MODAL, onDone);
+        showReview(owner, title, prompt, proposals, List.of(), onDone);
     }
 
     /**
@@ -45,18 +50,17 @@ public final class FindDataBatchReviewPanel {
      *        asked and had nothing" is the answer to why a member shows no value, and
      *        it belongs where the reader is already asking that.
      */
-    public static JDialog showModeless(
+    public static JDialog showReview(
             Component owner, String title, String prompt,
             List<EnrichmentProposal> proposals, List<Viewable> sourceReport,
             Predicate<BatchReviewDecision> onDone) {
-        return show(owner, title, prompt, proposals, sourceReport,
-                Dialog.ModalityType.MODELESS, onDone);
+        return show(owner, title, prompt, proposals, sourceReport, onDone);
     }
 
     private static JDialog show(
             Component owner, String title, String prompt,
             List<EnrichmentProposal> proposals, List<Viewable> sourceReport,
-            Dialog.ModalityType modality, Predicate<BatchReviewDecision> onDone) {
+            Predicate<BatchReviewDecision> onDone) {
         Map<String, EnrichmentDecision> applicable = new LinkedHashMap<>();
         List<EnrichmentDecision> safeDefaults = new ArrayList<>();
         List<Viewable> cards = new ArrayList<>();
@@ -75,6 +79,8 @@ public final class FindDataBatchReviewPanel {
                     : decision == null ? "Not found" : overwrite ? "Overwrite" : "Found");
             card.put("Outcome", card.typeName());
             card.put("Summary", detail(proposal));
+            LinkedTextSequence proposalSource = proposalSource(proposal);
+            if (proposalSource != null) card.put("Proposal source", proposalSource);
             List<Viewable> changes = changeCards(proposal);
             if (!changes.isEmpty()) card.put("Proposed changes", changes);
             cards.add(card);
@@ -84,8 +90,7 @@ public final class FindDataBatchReviewPanel {
                 // bulk-safe fill, except where its provider marks the candidate bulk-safe
                 // (a configured structural table row). Others remain available through
                 // Stage selected card.
-                if (!overwrite && decision.instances().stream()
-                        .allMatch(EnrichmentProposal.InstanceCandidate::bulkSafe)) {
+                if (bulkSafeDefault(decision, overwrite)) {
                     safeDefaults.add(decision);
                 }
             }
@@ -99,8 +104,10 @@ public final class FindDataBatchReviewPanel {
         panel.setBorder(javax.swing.BorderFactory.createEmptyBorder(10, 10, 10, 10));
         panel.add(new JLabel("<html>" + CategorizedReviewPanel.html(prompt)
                 + "<br><br>Select a card to stage that proposed value. Overwrites and "
-                + "proposed new instances are never included in Stage all safe "
-                + "results.</html>"), BorderLayout.NORTH);
+                + "new instances marked for individual review are excluded from Stage all "
+                + "safe. Instances produced by an exact configured structure, such as "
+                + "table rows, are included when the provider marks them safe.</html>"),
+                BorderLayout.NORTH);
         JButton close = new JButton("Close without staging");
         JButton selected = new JButton("Stage selected card");
         selected.setEnabled(false);
@@ -108,7 +115,7 @@ public final class FindDataBatchReviewPanel {
         all.setEnabled(!safeDefaults.isEmpty());
         AtomicReference<EnrichmentDecision> selectedDecision = new AtomicReference<>();
         if (!cards.isEmpty()) {
-            panel.add(SearchableView.builder(cards)
+            SearchableView review = SearchableView.builder(cards)
                     .sample(cards.get(0)).mode(RenderingMode.CARD)
                     .collapsible(false).columns(2)
                     .selectionListener(value -> {
@@ -116,41 +123,56 @@ public final class FindDataBatchReviewPanel {
                                 ? applicable.get(card.getIdentifier()) : null;
                         selectedDecision.set(decision);
                         selected.setEnabled(decision != null);
-                    }).build(), BorderLayout.CENTER);
+                    }).build();
+            panel.add(review, BorderLayout.CENTER);
+            // A one-result review should be actionable immediately. More generally,
+            // the first proposal is what the reader is initially looking at; source
+            // report cards follow it and are never staged.
+            cards.stream()
+                    .filter(card -> applicable.containsKey(card.getIdentifier()))
+                    .findFirst().ifPresent(review.renderContext()::select);
         }
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 4));
         JLabel outcome = new JLabel(" ");
         footer.add(outcome);
         footer.add(close); footer.add(selected); footer.add(all);
         panel.add(footer, BorderLayout.SOUTH);
-        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(owner), title, modality);
+        JDialog dialog = Dialogs.reviewDialog(owner, title);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.setContentPane(panel); dialog.setSize(new Dimension(900, 680));
         dialog.setLocationRelativeTo(owner);
         close.addActionListener(e -> dialog.dispose());
         selected.addActionListener(e -> {
             EnrichmentDecision decision = selectedDecision.get();
-            stage(onDone, decision == null ? List.of() : List.of(decision), outcome,
-                    selected, all);
+            if (stage(onDone, decision == null ? List.of() : List.of(decision), outcome,
+                    selected, all)) dialog.dispose();
         });
-        all.addActionListener(e -> stage(onDone, safeDefaults, outcome, selected, all));
+        all.addActionListener(e -> {
+            if (stage(onDone, safeDefaults, outcome, selected, all)) dialog.dispose();
+        });
         dialog.setVisible(true);
         return dialog;
     }
 
-    static void stage(Predicate<BatchReviewDecision> callback,
-                      List<EnrichmentDecision> decisions, JLabel outcome,
-                      JButton selected, JButton all) {
-        if (decisions.isEmpty()) return;
+    static boolean bulkSafeDefault(EnrichmentDecision decision, boolean overwrite) {
+        return decision != null && !overwrite && decision.instances().stream()
+                .allMatch(EnrichmentProposal.InstanceCandidate::bulkSafe);
+    }
+
+    static boolean stage(Predicate<BatchReviewDecision> callback,
+                         List<EnrichmentDecision> decisions, JLabel outcome,
+                         JButton selected, JButton all) {
+        if (decisions.isEmpty()) return false;
         if (!callback.test(new BatchReviewDecision(List.copyOf(decisions)))) {
             outcome.setText("Nothing staged; correct the reported problem and retry.");
-            return;
+            return false;
         }
         outcome.setText("Staged " + decisions.size() + " result"
                 + (decisions.size() == 1 ? "" : "s")
-                + "; use Save staged changes in TransformApp to keep them.");
+                + "; use Save staged changes in this workbench to keep them.");
         selected.setEnabled(false);
         all.setEnabled(false);
+        return true;
     }
 
     private static String cardId(EnrichmentProposal proposal, int ordinal) {
@@ -158,17 +180,18 @@ public final class FindDataBatchReviewPanel {
                 + '\u0000' + ordinal;
     }
 
-    /** One proposed instance is one review decision. A provider may find forty bounded
-     * passages in one article, but selecting that article must never accept all forty. */
+    /** One interpretive proposed instance is one review decision. Exact structural rows
+     * are different: their configured table is one bounded field result and the provider
+     * explicitly marks every row bulk-safe, so keep that result together. */
     static List<EnrichmentProposal> splitInstanceCandidates(EnrichmentProposal proposal) {
         if (proposal == null || proposal.instances().size() <= 1) {
             return proposal == null ? List.of() : List.of(proposal);
         }
+        if (bulkSafeStructuralBatch(proposal)) return List.of(proposal);
         List<EnrichmentProposal> result = new ArrayList<>();
         for (EnrichmentProposal.InstanceCandidate instance : proposal.instances()) {
             List<EnrichmentProposal.FieldCandidate> fields = proposal.fields().stream()
-                    .filter(field -> proposedReferenceId(field.proposedValue())
-                            .equals(instance.id()))
+                    .filter(field -> EnrichmentProposal.proposesInstance(field, instance))
                     .toList();
             result.add(new EnrichmentProposal(proposal.subject(), proposal.identities(),
                     fields, List.of(), List.of(instance)));
@@ -176,14 +199,11 @@ public final class FindDataBatchReviewPanel {
         return List.copyOf(result);
     }
 
-    private static String proposedReferenceId(Object value) {
-        if (value instanceof Viewable viewable) {
-            return viewable.getIdentifier() == null ? "" : viewable.getIdentifier();
-        }
-        if (value instanceof java.util.Collection<?> values && values.size() == 1) {
-            return proposedReferenceId(values.iterator().next());
-        }
-        return "";
+    private static boolean bulkSafeStructuralBatch(EnrichmentProposal proposal) {
+        return proposal != null && !proposal.instances().isEmpty()
+                && proposal.identities().isEmpty() && proposal.media().isEmpty()
+                && proposal.instances().stream()
+                        .allMatch(EnrichmentProposal.InstanceCandidate::bulkSafe);
     }
 
     private static boolean overwrites(EnrichmentProposal proposal) {
@@ -204,6 +224,21 @@ public final class FindDataBatchReviewPanel {
                     + "before applying.";
         }
         EnrichmentDecision accepted = EnrichmentDecision.acceptDefault(proposal);
+        if (accepted != null && accepted.instances().size() > 1
+                && bulkSafeStructuralBatch(proposal)) {
+            EnrichmentProposal.InstanceCandidate first = accepted.instances().getFirst();
+            if (accepted.fields().isEmpty()) {
+                return "Create " + accepted.instances().size() + " new " + first.type()
+                        + " instances" + sourceSuffix(first.source());
+            }
+            String field = accepted.fields().getFirst().candidate().field();
+            return field + ": add " + accepted.fields().size() + " member"
+                    + (accepted.fields().size() == 1 ? "" : "s")
+                    + " (create " + accepted.instances().size() + " new "
+                    + first.type() + " instance"
+                    + (accepted.instances().size() == 1 ? "" : "s") + ")"
+                    + sourceSuffix(first.source());
+        }
         if (accepted != null && !accepted.instances().isEmpty()) {
             EnrichmentProposal.InstanceCandidate instance = accepted.instances().getFirst();
             return "Create " + instance.type() + " “" + instance.displayName() + "”"
@@ -244,15 +279,17 @@ public final class FindDataBatchReviewPanel {
             objectview.field.RecordTypes.declare(outcome,
                     objectview.field.RecordTypes.text("Outcome"),
                     objectview.field.RecordTypes.text("Summary"),
+                    objectview.field.RecordTypes.text("Proposal source"),
                     objectview.field.RecordTypes.records("Proposed changes", "Proposed value"));
         }
         objectview.field.RecordTypes.declare("Proposed value",
+                objectview.field.RecordTypes.display("Proposal"),
                 objectview.field.RecordTypes.text("Target field"),
                 objectview.field.RecordTypes.value("Value"),
                 objectview.field.RecordTypes.text("Action"),
                 objectview.field.RecordTypes.text("Source"),
                 objectview.field.RecordTypes.text("Semantic property"),
-                objectview.field.RecordTypes.value("Source URL"),
+                objectview.field.RecordTypes.text("Member article"),
                 objectview.field.RecordTypes.records("Evidence", "Evidence"),
                 objectview.field.RecordTypes.text("Compatibility"));
         objectview.field.RecordTypes.declare("Proposed instance",
@@ -281,6 +318,10 @@ public final class FindDataBatchReviewPanel {
         String prefix = proposal.subject().type() + '-' + proposal.subject().targetId() + '-';
         int ordinal = 0;
         EnrichmentDecision accepted = EnrichmentDecision.acceptDefault(proposal);
+        if (accepted != null && bulkSafeStructuralBatch(proposal)
+                && !accepted.fields().isEmpty()) {
+            return structuralMemberChangeCards(prefix, accepted);
+        }
         List<EnrichmentProposal.FieldCandidate> fields = accepted == null
                 ? proposal.fields() : accepted.fields().stream()
                 .map(EnrichmentDecision.FieldDecision::candidate).toList();
@@ -339,22 +380,131 @@ public final class FindDataBatchReviewPanel {
         return List.copyOf(result);
     }
 
+    /** One configured structural table proposes its visible members. Creating a missing
+     * typed member is an implementation consequence of that member addition, not a
+     * second user-visible change beside it. */
+    private static List<Viewable> structuralMemberChangeCards(
+            String prefix, EnrichmentDecision accepted) {
+        List<EnrichmentProposal.FieldCandidate> fields = accepted.fields().stream()
+                .map(EnrichmentDecision.FieldDecision::candidate).toList();
+        List<Viewable> result = new ArrayList<>();
+        int ordinal = 0;
+        for (EnrichmentProposal.FieldCandidate field : fields) {
+            result.add(changeCard(prefix + "structural-member-" + ordinal++,
+                    field.field(), field.proposedValue(), field.source(),
+                    field.suggestedAction().name(), field.evidence()));
+        }
+        return List.copyOf(result);
+    }
+
     private static DynamicViewable changeCard(
             String id, String field, Object value, SourceRef source, String action,
-            List<domain.datasource.evidence.ExtractedClaim> claims) {
+            List<ExtractedClaim> claims) {
         DynamicViewable card = new DynamicViewable(
                 id, field + " → " + proposedValueCaption(value));
         card.type("Proposed value");
+        card.put("Proposal", proposalCaption(field, value, claims));
         card.put("Target field", field);
         card.put("Value", value);
         card.put("Action", action);
         card.put("Source", source.kind() + (source.sourceId().isBlank()
                 ? "" : " — " + source.sourceId()));
         if (!source.propertyId().isBlank()) card.put("Semantic property", source.propertyId());
-        if (!source.recordUrl().isBlank()) card.put("Source URL", source.recordUrl());
+        LinkedTextSequence article = memberArticle(value, claims);
+        if (article != null) card.put("Member article", article);
         List<Viewable> evidence = evidenceCards(id, claims);
         if (!evidence.isEmpty()) card.put("Evidence", evidence);
         return card;
+    }
+
+    /**
+     * The member's own article: a loaded entity's English Wikipedia correspondence, or,
+     * for a member the source itself defines (a table row), the link the page authored
+     * on that member's name in the retained evidence. Null when the page shows none.
+     */
+    private static LinkedTextSequence memberArticle(
+            Object value, List<ExtractedClaim> claims) {
+        Object member = value;
+        if (member instanceof Collection<?> values && values.size() == 1) {
+            member = values.iterator().next();
+        }
+        if (member instanceof WikidataDynamicObject entity) {
+            String title = WikipediaCorrespondence.title(entity);
+            if (!title.isBlank()) {
+                String url = new WikipediaSource(title).url();
+                return link(url, url);
+            }
+        }
+        if (claims == null) return null;
+        List<domain.datasource.evidence.EvidenceFragment.Link> links = claims.stream()
+                .flatMap(claim -> claim.evidence().stream())
+                .flatMap(fragment -> fragment.links().stream()).toList();
+        // Only a link the source structure placed on the member itself (the configured
+        // display cell) is the member's article; another cell's link in the same row is not.
+        for (domain.datasource.evidence.EvidenceFragment.Link authored : links) {
+            if (authored.identifying()) return link(authored.url(), authored.url());
+        }
+        return null;
+    }
+
+    /** The supporting text with each authored link made clickable where it occurs. */
+    static Object linkedExcerpt(domain.datasource.evidence.EvidenceFragment fragment) {
+        String text = fragment.excerpt();
+        if (fragment.links().isEmpty()) return text;
+        List<LinkedTextSequence.Part> parts = new ArrayList<>();
+        int at = 0;
+        for (domain.datasource.evidence.EvidenceFragment.Link authored : fragment.links()) {
+            int found = text.indexOf(authored.text(), at);
+            if (found < 0) continue;
+            if (found > at) parts.add(LinkedTextSequence.text(text.substring(at, found)));
+            parts.add(LinkedTextSequence.link(authored.text(), authored.url()));
+            at = found + authored.text().length();
+        }
+        if (parts.isEmpty()) return text;
+        if (at < text.length()) parts.add(LinkedTextSequence.text(text.substring(at)));
+        return LinkedTextSequence.of(parts.toArray(LinkedTextSequence.Part[]::new));
+    }
+
+    /** One result may contain many member contributions from one configured document.
+     * Show each distinct proposal document once on the owning result card. */
+    static LinkedTextSequence proposalSource(EnrichmentProposal proposal) {
+        if (proposal == null) return null;
+        java.util.LinkedHashSet<String> urls = new java.util.LinkedHashSet<>();
+        proposal.fields().stream().map(EnrichmentProposal.FieldCandidate::source)
+                .map(SourceRef::recordUrl).filter(url -> !url.isBlank()).forEach(urls::add);
+        proposal.instances().stream().map(EnrichmentProposal.InstanceCandidate::source)
+                .map(SourceRef::recordUrl).filter(url -> !url.isBlank()).forEach(urls::add);
+        proposal.identities().stream().map(EnrichmentProposal.IdentityCandidate::source)
+                .map(SourceRef::recordUrl).filter(url -> !url.isBlank()).forEach(urls::add);
+        proposal.media().stream().map(EnrichmentProposal.MediaCandidate::source)
+                .map(SourceRef::recordUrl).filter(url -> !url.isBlank()).forEach(urls::add);
+        if (urls.isEmpty()) return null;
+        List<LinkedTextSequence.Part> parts = new ArrayList<>();
+        for (String url : urls) {
+            if (!parts.isEmpty()) parts.add(LinkedTextSequence.text(" · "));
+            parts.add(LinkedTextSequence.link(url, url));
+        }
+        return LinkedTextSequence.of(parts.toArray(LinkedTextSequence.Part[]::new));
+    }
+
+    /** A visible member row links only to that member's own article, when one is known.
+     * The common proposal source belongs to the owning result card. */
+    private static LinkedTextSequence proposalCaption(
+            String field, Object value, List<ExtractedClaim> claims) {
+        String member = proposedValueCaption(value);
+        LinkedTextSequence article = memberArticle(value, claims);
+        if (article == null || article.urls().isEmpty()) {
+            return LinkedTextSequence.of(
+                    LinkedTextSequence.text(field + " → " + member));
+        }
+        // The member's name is the link, as on the page; hovering it shows the URL.
+        return LinkedTextSequence.of(
+                LinkedTextSequence.text(field + " → "),
+                LinkedTextSequence.link(member, article.urls().getFirst()));
+    }
+
+    private static LinkedTextSequence link(String label, String url) {
+        return LinkedTextSequence.of(LinkedTextSequence.link(label, url));
     }
 
     /** A collapsed Proposed changes collection must still say what each entry proposes.
@@ -386,7 +536,7 @@ public final class FindDataBatchReviewPanel {
                         parentId + "-evidence-" + ordinal++, fragment.section().isBlank()
                         ? fragment.document().title() : fragment.section());
                 evidence.type("Evidence");
-                evidence.put("Supporting text", fragment.excerpt());
+                evidence.put("Supporting text", linkedExcerpt(fragment));
                 evidence.put("Document", fragment.document().title().isBlank()
                         ? fragment.document().documentId() : fragment.document().title());
                 if (!fragment.document().url().isBlank()) {

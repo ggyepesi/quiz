@@ -60,7 +60,9 @@ class EnrichmentDecisionApplierTest {
                         "Archive", "record-1", "Record", "https://example.test/1",
                         "7", new domain.datasource.evidence.ContentDigest("sha256", "abc"),
                         "2026-08-21T09:00:00Z"),
-                        "Biography", "Born as Jane Doe.")),
+                        "Biography", "Born as Jane Doe.", List.of(
+                                new EvidenceFragment.Link("Jane Doe",
+                                        "https://example.test/Jane_Doe", true)))),
                 "exact-name", "v1", "people-a", 0.98, List.of());
         EnrichmentProposal.FieldCandidate candidate = new EnrichmentProposal.FieldCandidate(
                 "birth-name", "", "birthName", null, "Jane Doe", source,
@@ -82,6 +84,9 @@ class EnrichmentDecisionApplierTest {
         assertTrue(reloaded.identityLinks().isEmpty());
         assertEquals(claim.assessmentId(), reloaded.corrections().get(0)
                 .source().evidence().get(0).assessmentId());
+        assertTrue(reloaded.corrections().get(0).source().evidence().get(0)
+                .evidence().getFirst().links().getFirst().identifying(),
+                "the source-structural member-link marker must survive staging and save");
     }
 
     @Test
@@ -258,11 +263,85 @@ class EnrichmentDecisionApplierTest {
 
         assertEquals(1, EnrichmentDecisionApplier.stage(
                 domain, staging, referenceDecision(group, assessor, source)));
+        assertEquals("AssessorOfMaat",
+                staging.corrections().getFirst().referenceType(),
+                "the staged reference must retain the configured class as identity");
         IllegalArgumentException rejected = assertThrows(IllegalArgumentException.class,
                 () -> EnrichmentDecisionApplier.stage(
                         domain, staging, referenceDecision(group, unrelated, source)));
         assertEquals("Cannot apply members: Reference Person is not a DeityGroupMember",
                 rejected.getMessage());
+    }
+
+    @Test void distinctReviewedMembersAndTheirInstancesSurviveOneBatchSave(
+            @TempDir Path dir) throws Exception {
+        DynamicViewable group = new DynamicViewable("Q9133532", "Assessors of Maat");
+        group.type("DeityGroup");
+        ProductDomain domain = new ProductDomain(new ProductSchema(List.of(
+                new ProductClass("DeityGroup", "DeityGroup", List.of(
+                        new ProductField("members", "List<DeityGroupMember>",
+                                true, true, "DeityGroupMember", false))),
+                new ProductClass("DeityGroupMember", "DeityGroupMember", List.of()),
+                new ProductClass("AssessorOfMaat", "AssessorOfMaat",
+                        "DeityGroupMember", List.of())),
+                List.of("DeityGroup", "AssessorOfMaat")),
+                List.of(group), Viewable.class, null);
+        SourceRef source = new SourceRef(
+                "Wikipedia", "Assessors_of_Maat", "url", "members");
+        EnrichmentDecision first = instanceReferenceDecision(
+                group, "row-1", "First assessor", source);
+        EnrichmentDecision second = instanceReferenceDecision(
+                group, "row-2", "Second assessor", source);
+        ManualCuration curation = new ManualCuration(
+                dir.resolve("assessors.curation.json").toFile());
+        CurationStaging staging = CurationStaging.forCuration(curation);
+
+        assertEquals(4, EnrichmentDecisionApplier.stageAll(
+                domain, staging, List.of(first, second)));
+        assertEquals(2, staging.corrections().size());
+        assertEquals(2, staging.instances().size());
+        staging.apply();
+
+        ManualCuration saved = new ManualCuration(curation.file()).load();
+        assertEquals(2, saved.corrections().size(),
+                "members += row-1 and members += row-2 are independent decisions");
+        assertEquals(2, saved.instances().size());
+    }
+
+    @Test void aPreviewReportsOnlyTheCurrentStagingActionsEffect(@TempDir Path dir) {
+        WikidataDynamicObject person = new WikidataDynamicObject("Q1", "One");
+        person.type("Person");
+        DomainModel domain = new DomainModel() {
+            @Override public List<String> types() { return List.of("Person"); }
+            @Override public objectview.field.FieldSchema fieldSchema(String type) {
+                return DomainSchemas.flatSchema(List.of(
+                        new DomainField("Person", "note", false, false,
+                                FieldKind.TEXT)));
+            }
+            @Override public Collection<? extends Viewable> instances() {
+                return List.of(person);
+            }
+            @Override public Class<? extends Viewable> universe() {
+                return WikidataDynamicObject.class;
+            }
+        };
+        SourceRef source = new SourceRef("Wikipedia", "article", "url", "note");
+        CurationStaging staging = CurationStaging.forCuration(new ManualCuration(
+                dir.resolve("preview.curation.json").toFile()));
+
+        EnrichmentDecision first = textDecision("Q1", "first", source);
+        assertEquals(1, EnrichmentDecisionApplier.stageAndPreview(
+                domain, staging, List.of(first)).appliedValues());
+        objectview.field.FieldAccess.setPath(person, "note", null);
+
+        EnrichmentDecision missingTarget = textDecision("Q-missing", "second", source);
+        EnrichmentDecisionApplier.StagedPreview second =
+                EnrichmentDecisionApplier.stageAndPreview(
+                        domain, staging, List.of(missingTarget));
+
+        assertEquals(0, second.appliedValues(),
+                "the older staged correction must not be replayed and credited to this action");
+        assertEquals(null, person.get("note"));
     }
 
     private static EnrichmentDecision referenceDecision(
@@ -277,6 +356,32 @@ class EnrichmentDecisionApplierTest {
                 owner.getDisplayName()), List.of(),
                 List.of(new EnrichmentDecision.FieldDecision(
                         candidate, candidate.suggestedAction())), null);
+    }
+
+    private static EnrichmentDecision textDecision(
+            String targetId, String value, SourceRef source) {
+        EnrichmentProposal.FieldCandidate candidate =
+                new EnrichmentProposal.FieldCandidate(
+                        "note:" + targetId, "", "note", null, value, source,
+                        EnrichmentProposal.ReviewAction.FILL_IF_EMPTY,
+                        null, false, List.of());
+        return new EnrichmentDecision(new EnrichmentProposal.Subject(
+                "Person", targetId, targetId, targetId), List.of(),
+                List.of(new EnrichmentDecision.FieldDecision(
+                        candidate, candidate.suggestedAction())), null);
+    }
+
+    private static EnrichmentDecision instanceReferenceDecision(
+            DynamicViewable owner, String id, String label, SourceRef source) {
+        DynamicViewable member = new DynamicViewable(id, label);
+        member.type("AssessorOfMaat");
+        EnrichmentDecision reference = referenceDecision(owner, member, source);
+        EnrichmentProposal.InstanceCandidate instance =
+                new EnrichmentProposal.InstanceCandidate(
+                        "table-row-instance:" + id, "AssessorOfMaat", id, label,
+                        List.of(), source, List.of(), true);
+        return new EnrichmentDecision(reference.subject(), reference.identities(),
+                reference.fields(), reference.media(), List.of(instance));
     }
 
     private static DomainModel domain(WikidataDynamicObject person) {

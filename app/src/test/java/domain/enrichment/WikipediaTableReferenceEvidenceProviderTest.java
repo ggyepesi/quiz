@@ -26,7 +26,7 @@ class WikipediaTableReferenceEvidenceProviderTest {
                         new WikipediaDatasourceProvider.ArticleTableColumnLinkSpec(
                                 "Description > List of names", "Assessors",
                                 "Name of the deity"),
-                        List.of(ra), uri -> """
+                        List.of(ra), null, uri -> """
                         {"query":{"pages":[{"title":"Unknown deity","missing":true}]}}
                         """);
         EnrichmentRequest request = request(List.of(), article());
@@ -56,7 +56,7 @@ class WikipediaTableReferenceEvidenceProviderTest {
                         new WikipediaDatasourceProvider.ArticleTableColumnLinkSpec(
                                 "Description > List of names", "Assessors",
                                 "Name of the deity"),
-                        List.of(osiris), uri -> """
+                        List.of(osiris), null, uri -> """
                         {"query":{"redirects":[{"from":"Wesir","to":"Osiris"}],
                         "pages":[{"title":"Osiris",
                         "pageprops":{"wikibase_item":"Q46491"}}]}}
@@ -78,7 +78,7 @@ class WikipediaTableReferenceEvidenceProviderTest {
                         new WikipediaDatasourceProvider.ArticleTableColumnLinkSpec(
                                 "Description > List of names", "Assessors",
                                 "Name of the deity"),
-                        List.of(ra), uri -> "{}");
+                        List.of(ra), null, uri -> "{}");
 
         EnrichmentProposal result = provider.discover(request(List.of(ra), article()))
                 .execute(new QueryContext());

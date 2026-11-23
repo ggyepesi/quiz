@@ -69,6 +69,24 @@ public record EnrichmentProposal(
                 .filter(c -> c.suggestedAction() == ReviewAction.CORROBORATE).count();
     }
 
+    /**
+     * User-visible changes proposed by this result. A field that adds a newly-created
+     * typed instance and that instance's construction are one change, because accepting
+     * either without the other has no meaning.
+     */
+    public int logicalChangeCount() {
+        return logicalChangeCount(fields, media, instances);
+    }
+
+    /** Logical changes other than evidence that only corroborates an existing value. */
+    public int nonCorroboratingChangeCount() {
+        List<FieldCandidate> changingFields = fields.stream()
+                .filter(field -> field.suggestedAction() != ReviewAction.CORROBORATE)
+                .toList();
+        return changingFields.size() + media.size()
+                + standaloneInstances(fields, instances).size();
+    }
+
     private static boolean sameField(String requested, String candidate) {
         return requested == null || requested.isBlank() || Objects.equals(requested, candidate);
     }
@@ -365,4 +383,44 @@ public record EnrichmentProposal(
         return normalized;
     }
     private static String text(String value) { return value == null ? "" : value.trim(); }
+
+    /**
+     * Whether {@code field} proposes exactly {@code instance} as its value (same class
+     * and identifier). Creating that instance is then part of the field change, not a
+     * second change: a table row is one member addition even when its typed instance
+     * must be created for it. Every count and list of changes reads this one rule.
+     */
+    public static boolean proposesInstance(FieldCandidate field, InstanceCandidate instance) {
+        if (field == null || instance == null) return false;
+        Object value = field.proposedValue();
+        if (value instanceof java.util.Collection<?> values && values.size() == 1) {
+            value = values.iterator().next();
+        }
+        return value instanceof objectview.Viewable viewable
+                && instance.id().equals(viewable.getIdentifier())
+                && instance.type().equals(viewable.typeName());
+    }
+
+    /** The instance candidates that are changes of their own: not the value of any of
+     *  {@code fields}. */
+    public static List<InstanceCandidate> standaloneInstances(
+            List<FieldCandidate> fields, List<InstanceCandidate> instances) {
+        if (instances == null) return List.of();
+        List<FieldCandidate> proposing = fields == null ? List.of() : fields;
+        return instances.stream()
+                .filter(instance -> proposing.stream()
+                        .noneMatch(field -> proposesInstance(field, instance)))
+                .toList();
+    }
+
+    /** One counting rule for provider summaries, review cards and staging outcomes. */
+    public static int logicalChangeCount(
+            List<FieldCandidate> fields,
+            List<MediaCandidate> media,
+            List<InstanceCandidate> instances) {
+        List<FieldCandidate> fieldChanges = fields == null ? List.of() : fields;
+        List<MediaCandidate> mediaChanges = media == null ? List.of() : media;
+        return fieldChanges.size() + mediaChanges.size()
+                + standaloneInstances(fieldChanges, instances).size();
+    }
 }
