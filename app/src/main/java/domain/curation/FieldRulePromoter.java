@@ -40,11 +40,18 @@ public interface FieldRulePromoter extends domain.DomainCapability {
         return null;
     }
 
-    /** Typed declaration used by both applications; legacy mapping reads above remain
-     *  projections until their editors and compiler have completed migration. */
+    /** One typed declaration from a singular slot. Candidate evidence is additive and
+     *  must be read through {@link #declaredBindings}. */
     default domain.datasource.api.SourceBinding declaredBinding(
             String type, String field, domain.datasource.api.SourceBindingSlot slot) {
         return null;
+    }
+
+    /** All independently configured children of an additive source slot. */
+    default java.util.List<domain.datasource.api.SourceBinding> declaredBindings(
+            String type, String field, domain.datasource.api.SourceBindingSlot slot) {
+        domain.datasource.api.SourceBinding one = declaredBinding(type, field, slot);
+        return one == null ? java.util.List.of() : java.util.List.of(one);
     }
 
     record PromotionPreview(

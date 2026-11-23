@@ -94,7 +94,15 @@ final class ModelFieldRulePromoter {
             // direction) would otherwise survive and be saved into the infobox binding.
             field.mapping().copyAcquisitionFrom(new FieldSourceMapping());
         }
-        FieldSourceBindings.put(field, recipe.binding());
+        SourceBindingSlot promotedSlot = recipe.binding().target().slot();
+        if (promotedSlot.additive()) {
+            java.util.List<SourceBinding> configured = new java.util.ArrayList<>(
+                    FieldSourceBindings.bindings(field, promotedSlot));
+            configured.add(recipe.binding());
+            FieldSourceBindings.replaceBindings(field, promotedSlot, configured);
+        } else {
+            FieldSourceBindings.put(field, recipe.binding());
+        }
         return preview;
     }
 
@@ -125,9 +133,20 @@ final class ModelFieldRulePromoter {
 
     SourceBinding declaredBinding(
             String type, String field, SourceBindingSlot slot) {
+        if (slot.additive()) {
+            throw new IllegalArgumentException(
+                    slot + " is a recipe list; use declaredBindings");
+        }
         GeneratedFieldModel declared = declaredField(type, field);
         return declared == null || slot == null ? null
                 : FieldSourceBindings.binding(declared, slot);
+    }
+
+    java.util.List<SourceBinding> declaredBindings(
+            String type, String field, SourceBindingSlot slot) {
+        GeneratedFieldModel declared = declaredField(type, field);
+        return declared == null || slot == null ? java.util.List.of()
+                : FieldSourceBindings.bindings(declared, slot);
     }
 
     private GeneratedFieldModel declaredField(String type, String field) {
@@ -262,18 +281,19 @@ final class ModelFieldRulePromoter {
             return FieldRulePromoter.PromotionPreview.ineligible(
                     "Reference evidence needs a complete Rendered.<label> infobox key.");
         }
-        SourceBinding previous = FieldSourceBindings.binding(
+        java.util.List<SourceBinding> previous = FieldSourceBindings.bindings(
                 field, SourceBindingSlot.CANDIDATE_EVIDENCE);
-        if (sameSource(binding, previous)) {
+        if (previous.stream().anyMatch(value -> sameSource(binding, value))) {
             return FieldRulePromoter.PromotionPreview.ineligible(
                     "The model already reviews links from this rendered infobox row.");
         }
         return new FieldRulePromoter.PromotionPreview(true,
-                previous == null ? "Add candidate-evidence source"
-                        : "Replace candidate-evidence source",
+                "Add candidate-evidence recipe",
                 modelFile.getAbsolutePath(), recipe.type(), recipe.field(),
                 field.displayType(), "Wikipedia infobox candidate evidence", "",
-                property, false, previous == null ? "" : sourceSummary(previous));
+                property, false, previous.isEmpty() ? ""
+                        : previous.size() + " configured recipe"
+                                + (previous.size() == 1 ? "" : "s"));
     }
 
     /** Acquisition writes an infobox value's text as it is

@@ -47,6 +47,23 @@ class SourceExecutionPlanTest {
         assertTrue(failure.getMessage().contains("additional-source"));
     }
 
+    @Test void candidateEvidenceIsAnExplicitAdditiveRecipeList() {
+        SourceBindingTarget target = SourceBindingTarget.fieldValue(
+                "DeityGroup", "members", SourceBindingSlot.CANDIDATE_EVIDENCE);
+        SourceBinding table = new SourceBinding(target,
+                new SourceRecipe("wikipedia", "article-table-column-links", Map.of(
+                        "section", "List of names", "column", "Name")));
+        SourceBinding infobox = new SourceBinding(target,
+                new SourceRecipe("wikipedia", "infobox-row-links", Map.of(
+                        "property", "Rendered.Members")));
+
+        SourceExecutionPlan plan = SourceExecutionPlan.compile(
+                List.of(table, infobox), Datasources.standard());
+
+        assertEquals(List.of(table, infobox), plan.steps(target).stream()
+                .map(SourceExecutionPlan.Step::binding).toList());
+    }
+
     @Test void aDocumentCannotBePlannedAsAFieldValue() {
         SourceBinding invalid = new SourceBinding(
                 SourceBindingTarget.fieldValue(

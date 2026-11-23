@@ -2,6 +2,8 @@ package wikipedia;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class WikipediaInfoboxClientTest {
@@ -76,6 +78,37 @@ class WikipediaInfoboxClientTest {
         assertEquals("d-block", result.renderedFields().get("Block"));
         assertEquals("2, 8, 14, 2", result.renderedFields().get("Electrons per shell"));
         assertFalse(result.renderedFields().containsKey("Nested presentation"));
+    }
+
+    /** Ennead names its nine members in the image caption rather than a label/data row.
+     * The caption is still an explicit infobox field and its links are the evidence needed
+     * by the configured member recipe. */
+    @Test void aLabelledInfoboxCaptionIsAFieldWithItsLinks() {
+        String html = """
+                <table class="infobox">
+                  <tr><td class="infobox-image">
+                    <div class="infobox-caption"><b>Members</b>:
+                      <a href="/wiki/Atum" title="Atum">Atum</a>,
+                      <a href="/wiki/Shu_(god)" title="Shu (god)">Shu</a>
+                    </div>
+                  </td></tr>
+                  <tr><td class="infobox-image">
+                    <div class="infobox-caption">An unlabelled image caption</div>
+                  </td></tr>
+                </table>
+                """;
+
+        var members = WikipediaInfoboxClient.parseRenderedValues(html).get("Members");
+
+        assertNotNull(members);
+        assertEquals("Atum, Shu", members.text());
+        assertEquals(List.of("Atum", "Shu (god)"), members.links().stream()
+                .map(domain.datasource.evidence.WikipediaArticle.ArticleLink::targetTitle)
+                .toList());
+        assertEquals(0, members.links().getFirst().start());
+        assertEquals(4, members.links().getFirst().end());
+        assertEquals(1, WikipediaInfoboxClient.parseRenderedValues(html).size(),
+                "an unlabelled caption must not invent a field");
     }
 
     /** #469: text-only infobox rows lost exactly the source structure needed for

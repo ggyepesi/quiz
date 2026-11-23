@@ -95,6 +95,12 @@ missing articles remain visible rather than silently shrinking the population.
 
 ## Configured table-column link evidence
 
+Candidate evidence is an ordered visible recipe list. A field may configure several structural
+selectors at once—for example a table selector and `Rendered.Members`. The selectors do not name
+the source instances. DataSourceApp applies the selected recipe independently to every selected
+instance and keeps one result card per source instance, including an explicit examined-empty card
+when its retained page has no matching structure.
+
 A reference-list field may explicitly configure the Wikipedia datasource operation
 `article-table-column-links` in its candidate-evidence slot. Its parameters are:
 

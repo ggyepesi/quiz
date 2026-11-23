@@ -3087,6 +3087,25 @@
             "table" : ""
           }
         }
+      }, {
+        "target" : {
+          "scope" : "FIELD_VALUE",
+          "className" : "DeityGroup",
+          "fieldPath" : "members",
+          "slot" : "CANDIDATE_EVIDENCE",
+          "classDeclarationId" : "decl:6184ac84-21fa-4382-86ee-220f84220e21",
+          "contextClassName" : "",
+          "contextFieldPath" : "",
+          "contextClassDeclarationId" : ""
+        },
+        "recipe" : {
+          "providerId" : "wikipedia",
+          "operationId" : "infobox-row-links",
+          "parameters" : {
+            "@class" : "java.util.ImmutableCollections$Map1",
+            "property" : "Rendered.Members"
+          }
+        }
       } ] ],
       "fields" : [ "java.util.ArrayList", [ ] ]
     } ] ],

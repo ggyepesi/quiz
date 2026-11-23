@@ -615,27 +615,32 @@ public class GeneratedProjectModel {
                             expectedPath, target.slot(), target.classDeclarationId()),
                     binding.recipe()));
         }
-        // A save after the old rename leak could already contain both the stale and
-        // newly synchronized address. Once retargeted they occupy the same semantic
-        // slot; retain the later entry, matching normal replace semantics.
-        java.util.LinkedHashMap<domain.datasource.api.SourceBindingTarget,
-                domain.datasource.api.SourceBinding> unique = new java.util.LinkedHashMap<>();
-        for (domain.datasource.api.SourceBinding binding : bindings) {
-            if (binding != null) unique.put(binding.target(), binding);
-        }
-        bindings.clear();
-        bindings.addAll(unique.values());
+        deduplicateBindings(bindings);
     }
 
     private static void deduplicateBindings(
             List<domain.datasource.api.SourceBinding> bindings) {
-        java.util.LinkedHashMap<domain.datasource.api.SourceBindingTarget,
-                domain.datasource.api.SourceBinding> unique = new java.util.LinkedHashMap<>();
-        for (domain.datasource.api.SourceBinding binding : bindings) {
-            if (binding != null) unique.put(binding.target(), binding);
+        // A save after the old rename leak could contain a stale and a synchronized
+        // address for one singular slot; keep the later one. Candidate evidence is an
+        // ordered additive slot, so distinct recipes sharing its target are children,
+        // not duplicates. Only an exact repeated child is removed.
+        java.util.Set<domain.datasource.api.SourceBindingTarget> singular =
+                new java.util.HashSet<>();
+        java.util.Set<domain.datasource.api.SourceBinding> additive =
+                new java.util.HashSet<>();
+        java.util.ArrayList<domain.datasource.api.SourceBinding> unique =
+                new java.util.ArrayList<>();
+        for (int index = bindings.size() - 1; index >= 0; index--) {
+            domain.datasource.api.SourceBinding binding = bindings.get(index);
+            if (binding == null) continue;
+            boolean candidate = binding.target().slot().additive();
+            if (candidate ? additive.add(binding) : singular.add(binding.target())) {
+                unique.add(binding);
+            }
         }
+        java.util.Collections.reverse(unique);
         bindings.clear();
-        bindings.addAll(unique.values());
+        bindings.addAll(unique);
     }
 
     private static String clean(String value) {

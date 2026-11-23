@@ -97,7 +97,8 @@ public final class FieldSourceBindings {
         return List.copyOf(bindings);
     }
 
-    /** Replace one semantic slot and update the execution-compatible projection. */
+    /** Replace one singular semantic slot, or append one distinct candidate-evidence
+     * child, and update the execution-compatible projection. */
     public static void put(GeneratedFieldModel field, SourceBinding binding) {
         if (field == null || binding == null) return;
         if (binding.target().scope() != domain.datasource.api.BindingScope.FIELD_VALUE) {
@@ -107,7 +108,13 @@ public final class FieldSourceBindings {
             throw new IllegalArgumentException(
                     "A contextual binding belongs to its owned-field source override");
         }
-        replaceInPlace(field.sourceBindings(), binding);
+        if (binding.target().slot().additive()) {
+            if (!field.sourceBindings().contains(binding)) {
+                field.sourceBindings().add(binding);
+            }
+        } else {
+            replaceInPlace(field.sourceBindings(), binding);
+        }
         projectLegacy(field, binding);
     }
 
@@ -140,9 +147,49 @@ public final class FieldSourceBindings {
     public static SourceBinding binding(
             GeneratedFieldModel field, SourceBindingSlot slot) {
         if (field == null || slot == null) return null;
+        if (slot.additive()) {
+            throw new IllegalArgumentException(
+                    slot + " is a recipe list; use bindings(field, slot)");
+        }
         return field.sourceBindings().stream()
                 .filter(value -> value.target().slot() == slot)
                 .findFirst().orElse(null);
+    }
+
+    /** Every configured child in one additive slot, in authored order. A singular
+     *  projection must never be used for a slot whose children are independently
+     *  configured and executed. */
+    public static List<SourceBinding> bindings(
+            GeneratedFieldModel field, SourceBindingSlot slot) {
+        if (field == null || slot == null) return List.of();
+        return field.sourceBindings().stream()
+                .filter(value -> value.target().slot() == slot)
+                .toList();
+    }
+
+    /** Replaces the visible ordered children of an additive slot without disturbing
+     *  any other source configuration on the field. */
+    public static void replaceBindings(GeneratedFieldModel field,
+            SourceBindingSlot slot, List<SourceBinding> replacements) {
+        if (field == null || slot == null) return;
+        List<SourceBinding> existing = field.sourceBindings();
+        int insertion = existing.size();
+        for (int i = 0; i < existing.size(); i++) {
+            if (existing.get(i).target().slot() == slot) {
+                insertion = Math.min(insertion, i);
+            }
+        }
+        existing.removeIf(value -> value.target().slot() == slot);
+        if (replacements == null) return;
+        int at = Math.min(insertion, existing.size());
+        for (SourceBinding replacement : replacements) {
+            if (replacement == null || replacement.target().slot() != slot) {
+                throw new IllegalArgumentException(
+                        "Every replacement must belong to " + slot);
+            }
+            existing.add(at++, replacement);
+            projectLegacy(field, replacement);
+        }
     }
 
     private static void synchronize(

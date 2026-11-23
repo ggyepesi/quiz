@@ -44,6 +44,16 @@ selecting a row only says what Remove would take, and a null entry leads the cho
 "nothing chosen" is a state. `OneChoiceListConstructTest` fails on a fourth hand-written
 copy — its tell is a list model and a combo over the SAME type held as fields.
 
+## Configured children are visible children
+
+When a construct contains several configured recipes, routes, sources, steps or similar
+children, show the container and every child explicitly in one ordered list or tree. A combo
+may choose the kind of child an explicit Add command will create; it must never stand in for
+the collection or hide the configured children. Selecting a child inspects or edits that child.
+Running a child runs only that child, and its result stays beneath that child. A result container
+shows the discovered members so the reader can select what to accept. The same configured-child
+component and the same action/result navigator implement this pattern wherever it appears.
+
 ## One result in one place; one question over one walk
 
 Two views of one result disagree about how it looks — a sample rendered in a tab AND a

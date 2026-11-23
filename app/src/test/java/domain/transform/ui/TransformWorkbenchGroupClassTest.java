@@ -80,7 +80,7 @@ class TransformWorkbenchGroupClassTest {
         JTree actions = named(panel[0], "workbench.action-result.tree", JTree.class);
         assertNotNull(actions);
         assertTrue(children(child(root(actions), "Wikipedia")).contains(
-                        "Find configured field evidence (including table rows)"),
+                        "Configured field evidence"),
                 "datasources and their actions are visible without opening another window");
         assertTrue(named(panel[0], "domain.datasource.wikipedia", JButton.class) == null,
                 "there is no second Wikipedia launcher beside the action tree");
@@ -104,7 +104,7 @@ class TransformWorkbenchGroupClassTest {
                 "the action tree and its right-hand detail occupy the lower panel");
     }
 
-    @Test void selectedGroupOffersItsConfiguredMembersActionWithoutASecondFieldChoice()
+    @Test void selectedGroupShowsTheConfiguredEvidenceContainerWithoutInventingRecipes()
             throws Exception {
         TransformWorkbenchPanel[] panel = new TransformWorkbenchPanel[1];
         SwingUtilities.invokeAndWait(() -> {
@@ -120,27 +120,15 @@ class TransformWorkbenchGroupClassTest {
         JTree actions = named(panel[0], "workbench.action-result.tree", JTree.class);
         DefaultMutableTreeNode wikipedia = child(root(actions), "Wikipedia");
         DefaultMutableTreeNode configured = child(wikipedia,
-                "Find configured field evidence (including table rows)");
+                "Configured field evidence");
         SwingUtilities.invokeAndWait(() ->
                 actions.setSelectionPath(new TreePath(configured.getPath())));
-
-        ValidationPanel actionPanel = await(panel[0], ValidationPanel.class);
-        assertNotNull(actionPanel,
-                "the Wikipedia tree action must reveal the existing configured "
-                        + "field-action panel");
-        assertTrue(labels(actionPanel).stream().anyMatch(
-                        text -> text.contains("DeityGroup.members")),
-                labels(actionPanel).toString());
-        assertTrue(all(actionPanel, JButton.class).stream().anyMatch(button ->
-                        button.getText().startsWith("Find ")),
-                "the compact action view keeps its explicit run action");
-        assertTrue(borderTitles(actionPanel).stream().noneMatch(
-                        "Wikipedia article evidence"::equals),
-                "the compact action view must not repeat the full editor's evidence block");
-        assertTrue(all(actionPanel, JButton.class).stream().noneMatch(button ->
-                        button.isVisible() && button.getText().contains("pending")),
-                "accepting a datasource result must not expose a second save action; "
-                        + "the retry appears only after a failed save");
+        assertEquals(0, configured.getChildCount(),
+                "this in-memory domain carries no ModelBuilder evidence recipes; the UI "
+                        + "must not invent a hidden default action");
+        assertTrue(labels(panel[0]).stream().anyMatch(text ->
+                        text.contains("No configured evidence recipes")),
+                labels(panel[0]).toString());
     }
 
     /** Reported: staging persisted 42 AssessorOfMaat instances and their group links,

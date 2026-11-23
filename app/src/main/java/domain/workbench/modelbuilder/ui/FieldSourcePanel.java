@@ -62,8 +62,9 @@ public class FieldSourcePanel extends JPanel {
         CandidateEvidenceChoice(String label) { this.label = label; }
         @Override public String toString() { return label; }
     }
-    private final JComboBox<CandidateEvidenceChoice> candidateEvidenceBox =
-            new JComboBox<>(CandidateEvidenceChoice.values());
+    private final ConfiguredConstructList<domain.datasource.api.SourceBinding,
+            CandidateEvidenceChoice> candidateEvidenceRecipes =
+            new ConfiguredConstructList<>("Configured evidence recipes");
     private final JTextField infoboxEvidenceKeyField = new JTextField(24);
     private final JTextField tableEvidenceSectionField = new JTextField(28);
     private final JTextField tableEvidenceNameField = new JTextField(24);
@@ -322,8 +323,14 @@ public class FieldSourcePanel extends JPanel {
         filterValueField.setToolTipText(filterTip);
         buildUi();
 
-        candidateEvidenceBox.addActionListener(e ->
-                refreshCandidateEvidenceApplicability());
+        candidateEvidenceRecipes.kinds(java.util.Arrays.stream(
+                        CandidateEvidenceChoice.values())
+                .filter(value -> value != CandidateEvidenceChoice.NONE).toList());
+        candidateEvidenceRecipes.factory(this::newCandidateEvidenceBinding);
+        candidateEvidenceRecipes.beforeSelectionChanges(
+                ignored -> captureSelectedCandidateEvidence());
+        candidateEvidenceRecipes.selectionChanged(this::showCandidateEvidenceBinding);
+        candidateEvidenceRecipes.describe(this::candidateEvidenceDescription);
         tableRowTargetClassBox.addActionListener(event -> {
             if (!updatingTableRowFields) refreshTableRowTargetFields(null);
         });
@@ -696,6 +703,17 @@ public class FieldSourcePanel extends JPanel {
         return tableEvidenceSectionField;
     }
 
+    void addCandidateEvidenceRecipe(String label) {
+        java.util.Arrays.stream(CandidateEvidenceChoice.values())
+                .filter(value -> value.toString().equals(label))
+                .findFirst().ifPresent(candidateEvidenceRecipes::add);
+    }
+
+    java.util.List<String> candidateEvidenceRecipeDescriptions() {
+        return candidateEvidenceRecipes.values().stream()
+                .map(this::candidateEvidenceDescription).toList();
+    }
+
     javax.swing.JTextField tableEvidenceNameField() {
         return tableEvidenceNameField;
     }
@@ -1046,9 +1064,14 @@ public class FieldSourcePanel extends JPanel {
     }
 
     private void refreshCandidateEvidenceControl() {
-        domain.datasource.api.SourceBinding binding = field == null ? null
-                : FieldSourceBindings.binding(field,
+        java.util.List<domain.datasource.api.SourceBinding> bindings = field == null
+                ? java.util.List.of() : FieldSourceBindings.bindings(field,
                         domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+        candidateEvidenceRecipes.show(bindings);
+    }
+
+    private void showCandidateEvidenceBinding(
+            domain.datasource.api.SourceBinding binding) {
         domain.datasource.wikipedia.WikipediaDatasourceProvider.ArticlePassageInstanceSpec
                 passageSpec = domain.datasource.wikipedia.WikipediaDatasourceProvider
                         .articlePassageInstances(binding);
@@ -1088,8 +1111,35 @@ public class FieldSourcePanel extends JPanel {
                 : tableSpec == null ? "" : tableSpec.column());
         refreshPassageInstanceFields(passageSpec);
         refreshTableRowInstanceFields(tableRowSpec);
-        candidateEvidenceBox.setSelectedItem(choice);
         refreshCandidateEvidenceApplicability();
+    }
+
+    private CandidateEvidenceChoice candidateEvidenceChoice(
+            domain.datasource.api.SourceBinding binding) {
+        return domain.datasource.wikipedia.WikipediaDatasourceProvider
+                .articleIntroductionMentions(binding)
+                ? CandidateEvidenceChoice.INTRODUCTION_MENTIONS
+                : domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .infoboxRowLinkOperation(binding)
+                ? CandidateEvidenceChoice.INFOBOX_ROW_LINKS
+                : domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .articleTableColumnLinkOperation(binding)
+                ? CandidateEvidenceChoice.TABLE_COLUMN_LINKS
+                : domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .articleTableRowInstanceOperation(binding)
+                ? CandidateEvidenceChoice.TABLE_ROW_INSTANCES
+                : domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .articlePassageInstanceOperation(binding)
+                ? CandidateEvidenceChoice.ARTICLE_PASSAGE_INSTANCES
+                : domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .articlePassages(binding)
+                ? CandidateEvidenceChoice.ARTICLE_PASSAGES
+                : CandidateEvidenceChoice.NONE;
+    }
+
+    private String candidateEvidenceDescription(
+            domain.datasource.api.SourceBinding binding) {
+        return domain.datasource.wikipedia.WikipediaEvidenceRecipes.describe(binding);
     }
 
     private void refreshPassageInstanceFields(
@@ -1193,17 +1243,15 @@ public class FieldSourcePanel extends JPanel {
         boolean textField = definition != null
                 && definition.type() == FieldType.TEXT
                 && definition.cardinality() == FieldCardinality.SINGLE;
-        CandidateEvidenceChoice selected = (CandidateEvidenceChoice)
-                candidateEvidenceBox.getSelectedItem();
-        candidateEvidenceBox.setEnabled(referenceCollection || textField
-                || selected != CandidateEvidenceChoice.NONE);
-        candidateEvidenceBox.setToolTipText(referenceCollection || textField
-                ? "Introduction mentions and passage instances apply to reference lists. "
-                        + "Bounded article passages apply to one Text value. Every result "
-                        + "requires explicit review."
+        CandidateEvidenceChoice selected = candidateEvidenceChoice(
+                candidateEvidenceRecipes.selected());
+        candidateEvidenceRecipes.allowAdding(referenceCollection || textField);
+        candidateEvidenceRecipes.setToolTipText(referenceCollection || textField
+                ? "Every configured recipe is visible here. Add chooses a recipe kind; "
+                        + "selecting a row edits that recipe. Every result requires review."
                 : selected != CandidateEvidenceChoice.NONE
-                        ? "This rule no longer fits the field shape. Select None or restore "
-                                + "the field shape required by the selected operation."
+                        ? "A configured recipe no longer fits this field shape. Remove it "
+                                + "or restore the required field shape."
                         : "Available for a reference list or one Text value.");
         boolean passageInstances = selected
                 == CandidateEvidenceChoice.ARTICLE_PASSAGE_INSTANCES;
@@ -1227,45 +1275,42 @@ public class FieldSourcePanel extends JPanel {
 
     private void writeCandidateEvidenceRule() {
         if (field == null) return;
-        domain.datasource.api.SourceBinding existing = FieldSourceBindings.binding(field,
-                domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
-        CandidateEvidenceChoice selected = (CandidateEvidenceChoice)
-                candidateEvidenceBox.getSelectedItem();
-        boolean recognized = existing == null
-                || domain.datasource.wikipedia.WikipediaDatasourceProvider
-                        .articleIntroductionMentions(existing)
-                || domain.datasource.wikipedia.WikipediaDatasourceProvider
-                        .infoboxRowLinkOperation(existing)
-                || domain.datasource.wikipedia.WikipediaDatasourceProvider
-                        .articleTableColumnLinkOperation(existing)
-                || domain.datasource.wikipedia.WikipediaDatasourceProvider
-                        .articleTableRowInstanceOperation(existing)
-                || domain.datasource.wikipedia.WikipediaDatasourceProvider
-                        .articlePassages(existing)
-                || domain.datasource.wikipedia.WikipediaDatasourceProvider
-                        .articlePassageInstanceOperation(existing);
-        if (!recognized) return;
-        String operation = switch (selected == null
-                ? CandidateEvidenceChoice.NONE : selected) {
-            case NONE -> "";
-            case INTRODUCTION_MENTIONS ->
-                    domain.datasource.wikipedia.WikipediaDatasourceProvider
-                            .ARTICLE_INTRODUCTION_MENTIONS;
-            case INFOBOX_ROW_LINKS ->
-                    domain.datasource.wikipedia.WikipediaDatasourceProvider.INFOBOX_ROW_LINKS;
-            case TABLE_COLUMN_LINKS ->
-                    domain.datasource.wikipedia.WikipediaDatasourceProvider
-                            .ARTICLE_TABLE_COLUMN_LINKS;
-            case TABLE_ROW_INSTANCES ->
-                    domain.datasource.wikipedia.WikipediaDatasourceProvider
-                            .ARTICLE_TABLE_ROW_INSTANCES;
-            case ARTICLE_PASSAGES ->
-                    domain.datasource.wikipedia.WikipediaDatasourceProvider
-                            .ARTICLE_PASSAGES;
-            case ARTICLE_PASSAGE_INSTANCES ->
-                    domain.datasource.wikipedia.WikipediaDatasourceProvider
-                            .ARTICLE_PASSAGE_INSTANCES;
-        };
+        captureSelectedCandidateEvidence();
+        FieldSourceBindings.replaceBindings(field,
+                domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE,
+                candidateEvidenceRecipes.values());
+    }
+
+    private void captureSelectedCandidateEvidence() {
+        domain.datasource.api.SourceBinding selected = candidateEvidenceRecipes.selected();
+        CandidateEvidenceChoice choice = candidateEvidenceChoice(selected);
+        if (selected == null || choice == CandidateEvidenceChoice.NONE) return;
+        candidateEvidenceRecipes.replaceSelected(candidateEvidenceBinding(
+                choice, selected.target()));
+    }
+
+    private domain.datasource.api.SourceBinding newCandidateEvidenceBinding(
+            CandidateEvidenceChoice choice) {
+        GeneratedClassModel owner = ownerClass();
+        if (field == null || owner == null || choice == null
+                || choice == CandidateEvidenceChoice.NONE) return null;
+        String path = OwnedFieldSources.declaredFieldPath(owner, field);
+        domain.datasource.api.SourceBindingTarget target =
+                new domain.datasource.api.SourceBindingTarget(
+                        domain.datasource.api.BindingScope.FIELD_VALUE, owner.className(), path,
+                        domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE,
+                        owner.declarationId());
+        String operation = candidateEvidenceOperation(choice);
+        return operation.isBlank() ? null : new domain.datasource.api.SourceBinding(target,
+                new domain.datasource.api.SourceRecipe(
+                        domain.datasource.wikipedia.WikipediaDatasourceProvider.ID,
+                        operation, java.util.Map.of()));
+    }
+
+    private domain.datasource.api.SourceBinding candidateEvidenceBinding(
+            CandidateEvidenceChoice selected,
+            domain.datasource.api.SourceBindingTarget target) {
+        String operation = candidateEvidenceOperation(selected);
         java.util.Map<String, String> parameters = selected
                 == CandidateEvidenceChoice.ARTICLE_PASSAGE_INSTANCES
                 ? java.util.Map.of(
@@ -1302,27 +1347,35 @@ public class FieldSourcePanel extends JPanel {
                         domain.datasource.wikipedia.WikipediaDatasourceProvider.TABLE_ROW_REFERENCES_FIELD,
                         selectedText(tableRowReferencesFieldBox))
                 : java.util.Map.of();
-        String existingOperation = existing == null ? "" : existing.recipe().operationId();
-        java.util.Map<String, String> existingParameters = existing == null
-                ? java.util.Map.of() : existing.recipe().parameters();
-        if (operation.equals(existingOperation)
-                && parameters.equals(existingParameters)) return;
-        field.sourceBindings().removeIf(binding -> binding.target().slot()
-                == domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
-        if (operation.isBlank()) return;
-        GeneratedClassModel owner = ownerClass();
-        if (owner == null) return;
-        String path = OwnedFieldSources.declaredFieldPath(owner, field);
-        domain.datasource.api.SourceBindingTarget target =
-                new domain.datasource.api.SourceBindingTarget(
-                        domain.datasource.api.BindingScope.FIELD_VALUE, owner.className(), path,
-                        domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE,
-                        owner.declarationId());
-        FieldSourceBindings.put(field, new domain.datasource.api.SourceBinding(target,
+        if (operation.isBlank() || target == null) return null;
+        return new domain.datasource.api.SourceBinding(target,
                 new domain.datasource.api.SourceRecipe(
                         domain.datasource.wikipedia.WikipediaDatasourceProvider.ID,
                         operation,
-                        parameters)));
+                        parameters));
+    }
+
+    private static String candidateEvidenceOperation(CandidateEvidenceChoice selected) {
+        return switch (selected == null ? CandidateEvidenceChoice.NONE : selected) {
+            case NONE -> "";
+            case INTRODUCTION_MENTIONS ->
+                    domain.datasource.wikipedia.WikipediaDatasourceProvider
+                            .ARTICLE_INTRODUCTION_MENTIONS;
+            case INFOBOX_ROW_LINKS ->
+                    domain.datasource.wikipedia.WikipediaDatasourceProvider.INFOBOX_ROW_LINKS;
+            case TABLE_COLUMN_LINKS ->
+                    domain.datasource.wikipedia.WikipediaDatasourceProvider
+                            .ARTICLE_TABLE_COLUMN_LINKS;
+            case TABLE_ROW_INSTANCES ->
+                    domain.datasource.wikipedia.WikipediaDatasourceProvider
+                            .ARTICLE_TABLE_ROW_INSTANCES;
+            case ARTICLE_PASSAGES ->
+                    domain.datasource.wikipedia.WikipediaDatasourceProvider
+                            .ARTICLE_PASSAGES;
+            case ARTICLE_PASSAGE_INSTANCES ->
+                    domain.datasource.wikipedia.WikipediaDatasourceProvider
+                            .ARTICLE_PASSAGE_INSTANCES;
+        };
     }
 
     private static String selectedText(JComboBox<String> box) {
@@ -1589,7 +1642,7 @@ public class FieldSourcePanel extends JPanel {
         categoryRow.add(clearCategoryButton);
         GridBagUtils.labeledRow(form, c, y++, "Wikipedia categories:", categoryRow);
         GridBagUtils.labeledRow(form, c, y++, "Wikipedia evidence:",
-                candidateEvidenceBox);
+                candidateEvidenceRecipes);
         infoboxEvidenceKeyField.setToolTipText(
                 "Rendered.<label> selected in Wikipedia Discovery, for example "
                         + "Rendered.Parents.");

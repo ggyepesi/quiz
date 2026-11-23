@@ -506,47 +506,48 @@ public final class GeneratedProjectModelValidator {
             List<Problem> problems) {
         for (GeneratedFieldModel field : owner.fields()) {
             if (field == null) continue;
-            domain.datasource.api.SourceBinding binding = FieldSourceBindings.binding(
-                    field, domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
-            if (!domain.datasource.wikipedia.WikipediaDatasourceProvider
-                    .articlePassageInstanceOperation(binding)) continue;
-            String where = path(owner, field);
-            if (field.type() != FieldType.ENTITY
-                    || field.cardinality() != FieldCardinality.COLLECTION
-                    || field.entityClassName().isBlank()) {
-                problems.add(Problem.error(where, "Article passage instances require a "
-                        + "list-valued ENTITY field with a declared target class."));
-                continue;
-            }
-            GeneratedClassModel target = project.findClass(field.entityClassName());
-            if (target == null) continue; // ordinary reference validation owns this error
-            var spec = domain.datasource.wikipedia.WikipediaDatasourceProvider
-                    .articlePassageInstances(binding);
-            if (spec == null) {
-                problems.add(Problem.error(where, "Article passage instances require both "
-                        + "a passage text field and a source instance field on "
-                        + target.className() + "."));
-                continue;
-            }
-            GeneratedFieldModel text = target.effectiveFields(project).stream()
-                    .filter(candidate -> spec.textField().equals(candidate.name()))
-                    .findFirst().orElse(null);
-            if (text == null || text.type() != FieldType.TEXT
-                    || text.cardinality() != FieldCardinality.SINGLE) {
-                problems.add(Problem.error(where, "Passage text target '"
-                        + target.className() + "." + spec.textField()
-                        + "' must be one Text value."));
-            }
-            GeneratedFieldModel source = target.effectiveFields(project).stream()
-                    .filter(candidate -> spec.sourceField().equals(candidate.name()))
-                    .findFirst().orElse(null);
-            if (source == null || source.type() != FieldType.ENTITY
-                    || source.cardinality() != FieldCardinality.COLLECTION
-                    || !project.isSameOrSubclass(
-                            owner.className(), source.entityClassName())) {
-                problems.add(Problem.error(where, "Source instance target '"
-                        + target.className() + "." + spec.sourceField()
-                        + "' must be an ENTITY list that accepts " + owner.className() + "."));
+            for (domain.datasource.api.SourceBinding binding : FieldSourceBindings.bindings(
+                    field, domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE)) {
+                if (!domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .articlePassageInstanceOperation(binding)) continue;
+                String where = path(owner, field);
+                if (field.type() != FieldType.ENTITY
+                        || field.cardinality() != FieldCardinality.COLLECTION
+                        || field.entityClassName().isBlank()) {
+                    problems.add(Problem.error(where, "Article passage instances require a "
+                            + "list-valued ENTITY field with a declared target class."));
+                    continue;
+                }
+                GeneratedClassModel target = project.findClass(field.entityClassName());
+                if (target == null) continue; // ordinary reference validation owns this error
+                var spec = domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .articlePassageInstances(binding);
+                if (spec == null) {
+                    problems.add(Problem.error(where, "Article passage instances require both "
+                            + "a passage text field and a source instance field on "
+                            + target.className() + "."));
+                    continue;
+                }
+                GeneratedFieldModel text = target.effectiveFields(project).stream()
+                        .filter(candidate -> spec.textField().equals(candidate.name()))
+                        .findFirst().orElse(null);
+                if (text == null || text.type() != FieldType.TEXT
+                        || text.cardinality() != FieldCardinality.SINGLE) {
+                    problems.add(Problem.error(where, "Passage text target '"
+                            + target.className() + "." + spec.textField()
+                            + "' must be one Text value."));
+                }
+                GeneratedFieldModel source = target.effectiveFields(project).stream()
+                        .filter(candidate -> spec.sourceField().equals(candidate.name()))
+                        .findFirst().orElse(null);
+                if (source == null || source.type() != FieldType.ENTITY
+                        || source.cardinality() != FieldCardinality.COLLECTION
+                        || !project.isSameOrSubclass(
+                                owner.className(), source.entityClassName())) {
+                    problems.add(Problem.error(where, "Source instance target '"
+                            + target.className() + "." + spec.sourceField()
+                            + "' must be an ENTITY list that accepts " + owner.className() + "."));
+                }
             }
         }
     }
@@ -557,68 +558,69 @@ public final class GeneratedProjectModelValidator {
             List<Problem> problems) {
         for (GeneratedFieldModel field : owner.fields()) {
             if (field == null) continue;
-            domain.datasource.api.SourceBinding binding = FieldSourceBindings.binding(
-                    field, domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
-            if (!domain.datasource.wikipedia.WikipediaDatasourceProvider
-                    .articleTableRowInstanceOperation(binding)) continue;
-            String where = path(owner, field);
-            if (field.type() != FieldType.ENTITY
-                    || field.cardinality() != FieldCardinality.COLLECTION
-                    || field.entityClassName().isBlank()) {
-                problems.add(Problem.error(where, "Article table-row instances require a "
-                        + "list-valued ENTITY field with a declared target class."));
-                continue;
-            }
-            var spec = domain.datasource.wikipedia.WikipediaDatasourceProvider
-                    .articleTableRowInstances(binding);
-            if (spec == null) {
-                problems.add(Problem.error(where, "Article table-row instances require a "
-                        + "section, display column, concrete row class, row-details field "
-                        + "and source-instance field."));
-                continue;
-            }
-            GeneratedClassModel target = project.findClass(spec.targetClass());
-            if (target == null) {
-                problems.add(Problem.error(where, "Table-row target class '"
-                        + spec.targetClass() + "' does not exist."));
-                continue;
-            }
-            if (!project.isSameOrSubclass(
-                    target.className(), field.entityClassName())) {
-                problems.add(Problem.error(where, "Table-row target class '"
-                        + target.className() + "' must be " + field.entityClassName()
-                        + " or one of its subclasses."));
-            }
-            GeneratedFieldModel details = target.effectiveFields(project).stream()
-                    .filter(candidate -> spec.detailsField().equals(candidate.name()))
-                    .findFirst().orElse(null);
-            if (details == null || details.type() != FieldType.TEXT
-                    || details.cardinality() != FieldCardinality.COLLECTION) {
-                problems.add(Problem.error(where, "Row details target '"
-                        + target.className() + "." + spec.detailsField()
-                        + "' must be a Text list."));
-            }
-            GeneratedFieldModel source = target.effectiveFields(project).stream()
-                    .filter(candidate -> spec.sourceField().equals(candidate.name()))
-                    .findFirst().orElse(null);
-            if (source == null || source.type() != FieldType.ENTITY
-                    || source.cardinality() != FieldCardinality.COLLECTION
-                    || !project.isSameOrSubclass(
-                            owner.className(), source.entityClassName())) {
-                problems.add(Problem.error(where, "Source instance target '"
-                        + target.className() + "." + spec.sourceField()
-                        + "' must be an ENTITY list that accepts " + owner.className() + "."));
-            }
-            if (!spec.referencesField().isBlank()) {
-                GeneratedFieldModel references = target.effectiveFields(project).stream()
-                        .filter(candidate -> spec.referencesField().equals(candidate.name()))
+            for (domain.datasource.api.SourceBinding binding : FieldSourceBindings.bindings(
+                    field, domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE)) {
+                if (!domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .articleTableRowInstanceOperation(binding)) continue;
+                String where = path(owner, field);
+                if (field.type() != FieldType.ENTITY
+                        || field.cardinality() != FieldCardinality.COLLECTION
+                        || field.entityClassName().isBlank()) {
+                    problems.add(Problem.error(where, "Article table-row instances require a "
+                            + "list-valued ENTITY field with a declared target class."));
+                    continue;
+                }
+                var spec = domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .articleTableRowInstances(binding);
+                if (spec == null) {
+                    problems.add(Problem.error(where, "Article table-row instances require a "
+                            + "section, display column, concrete row class, row-details field "
+                            + "and source-instance field."));
+                    continue;
+                }
+                GeneratedClassModel target = project.findClass(spec.targetClass());
+                if (target == null) {
+                    problems.add(Problem.error(where, "Table-row target class '"
+                            + spec.targetClass() + "' does not exist."));
+                    continue;
+                }
+                if (!project.isSameOrSubclass(
+                        target.className(), field.entityClassName())) {
+                    problems.add(Problem.error(where, "Table-row target class '"
+                            + target.className() + "' must be " + field.entityClassName()
+                            + " or one of its subclasses."));
+                }
+                GeneratedFieldModel details = target.effectiveFields(project).stream()
+                        .filter(candidate -> spec.detailsField().equals(candidate.name()))
                         .findFirst().orElse(null);
-                if (references == null || references.type() != FieldType.ENTITY
-                        || references.cardinality() != FieldCardinality.COLLECTION
-                        || references.entityClassName().isBlank()) {
-                    problems.add(Problem.error(where, "Resolved references target '"
-                            + target.className() + "." + spec.referencesField()
-                            + "' must be an ENTITY list with a declared target class."));
+                if (details == null || details.type() != FieldType.TEXT
+                        || details.cardinality() != FieldCardinality.COLLECTION) {
+                    problems.add(Problem.error(where, "Row details target '"
+                            + target.className() + "." + spec.detailsField()
+                            + "' must be a Text list."));
+                }
+                GeneratedFieldModel source = target.effectiveFields(project).stream()
+                        .filter(candidate -> spec.sourceField().equals(candidate.name()))
+                        .findFirst().orElse(null);
+                if (source == null || source.type() != FieldType.ENTITY
+                        || source.cardinality() != FieldCardinality.COLLECTION
+                        || !project.isSameOrSubclass(
+                                owner.className(), source.entityClassName())) {
+                    problems.add(Problem.error(where, "Source instance target '"
+                            + target.className() + "." + spec.sourceField()
+                            + "' must be an ENTITY list that accepts " + owner.className() + "."));
+                }
+                if (!spec.referencesField().isBlank()) {
+                    GeneratedFieldModel references = target.effectiveFields(project).stream()
+                            .filter(candidate -> spec.referencesField().equals(candidate.name()))
+                            .findFirst().orElse(null);
+                    if (references == null || references.type() != FieldType.ENTITY
+                            || references.cardinality() != FieldCardinality.COLLECTION
+                            || references.entityClassName().isBlank()) {
+                        problems.add(Problem.error(where, "Resolved references target '"
+                                + target.className() + "." + spec.referencesField()
+                                + "' must be an ENTITY list with a declared target class."));
+                    }
                 }
             }
         }
@@ -628,21 +630,22 @@ public final class GeneratedProjectModelValidator {
             GeneratedClassModel owner, List<Problem> problems) {
         for (GeneratedFieldModel field : owner.fields()) {
             if (field == null) continue;
-            domain.datasource.api.SourceBinding binding = FieldSourceBindings.binding(
-                    field, domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
-            if (!domain.datasource.wikipedia.WikipediaDatasourceProvider
-                    .infoboxRowLinkOperation(binding)) continue;
-            String where = path(owner, field);
-            if (field.type() != FieldType.ENTITY
-                    || field.cardinality() != FieldCardinality.COLLECTION
-                    || field.entityClassName().isBlank()) {
-                problems.add(Problem.error(where, "Rendered infobox links require a "
-                        + "list-valued ENTITY field with a declared target class."));
-            }
-            if (domain.datasource.wikipedia.WikipediaDatasourceProvider
-                    .infoboxRowLinks(binding) == null) {
-                problems.add(Problem.error(where, "Rendered infobox links require a "
-                        + "complete Rendered.<label> value key."));
+            for (domain.datasource.api.SourceBinding binding : FieldSourceBindings.bindings(
+                    field, domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE)) {
+                if (!domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .infoboxRowLinkOperation(binding)) continue;
+                String where = path(owner, field);
+                if (field.type() != FieldType.ENTITY
+                        || field.cardinality() != FieldCardinality.COLLECTION
+                        || field.entityClassName().isBlank()) {
+                    problems.add(Problem.error(where, "Rendered infobox links require a "
+                            + "list-valued ENTITY field with a declared target class."));
+                }
+                if (domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .infoboxRowLinks(binding) == null) {
+                    problems.add(Problem.error(where, "Rendered infobox links require a "
+                            + "complete Rendered.<label> value key."));
+                }
             }
         }
     }

@@ -3,6 +3,7 @@ package wikipedia;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import domain.datasource.evidence.InfoboxParameters;
+import domain.datasource.evidence.WikipediaArticle;
 import domain.datasource.evidence.WikipediaFragment;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
@@ -96,7 +97,12 @@ public final class WikipediaInfoboxClient {
         return Map.copyOf(result);
     }
 
-    /** Rich rendered rows; {@link #parseRenderedFields} is their scalar text projection. */
+    /**
+     * Rich rendered infobox values; {@link #parseRenderedFields} is their scalar text
+     * projection. Besides ordinary label/data rows, Wikipedia infoboxes sometimes put a
+     * labelled value in an image caption (for example {@code Members: ...}). A labelled
+     * caption is the same source structure and is retained under that label as well.
+     */
     public static Map<String, WikipediaFragment> parseRenderedValues(String html) {
         if (html == null || html.isBlank()) return Map.of();
         Element table = Jsoup.parse(html, "https://en.wikipedia.org/")
@@ -113,8 +119,47 @@ public final class WikipediaInfoboxClient {
             if (name.isBlank() || value.isEmpty()) continue;
             result.merge(name, value, WikipediaFragment::append);
         }
+        for (Element caption : table.select(".infobox-caption")) {
+            if (enclosingTable(caption) != table) continue;
+            LabelledCaption value = labelledCaption(caption);
+            if (value == null || value.value().isEmpty()) continue;
+            result.merge(value.label(), value.value(), WikipediaFragment::append);
+        }
         return Map.copyOf(result);
     }
+
+    /** A caption is a field only when it says so explicitly: {@code <b>Label</b>: value}. */
+    private static LabelledCaption labelledCaption(Element caption) {
+        Element label = caption.children().stream()
+                .filter(child -> child.tagName().equals("b")
+                        || child.tagName().equals("strong"))
+                .findFirst().orElse(null);
+        if (label == null) return null;
+        String name = label.text().trim();
+        WikipediaFragment whole = WikipediaHtmlFragmentParser.parseChildren(caption).value();
+        String text = whole.text();
+        if (name.isBlank() || !text.regionMatches(true, 0, name, 0, name.length())) return null;
+        int colon = name.length();
+        while (colon < text.length() && Character.isWhitespace(text.charAt(colon))) colon++;
+        if (colon >= text.length() || text.charAt(colon) != ':') return null;
+        int valueStart = colon + 1;
+        while (valueStart < text.length() && Character.isWhitespace(text.charAt(valueStart))) {
+            valueStart++;
+        }
+        if (valueStart >= text.length()) return null;
+        List<WikipediaArticle.ArticleLink> links = new ArrayList<>();
+        for (WikipediaArticle.ArticleLink link : whole.links()) {
+            if (link.end() <= valueStart) continue;
+            int start = Math.max(link.start(), valueStart) - valueStart;
+            int end = link.end() - valueStart;
+            links.add(new WikipediaArticle.ArticleLink(
+                    link.text(), link.targetTitle(), start, end));
+        }
+        return new LabelledCaption(name, new WikipediaFragment(
+                text.substring(valueStart), links, whole.media()));
+    }
+
+    private record LabelledCaption(String label, WikipediaFragment value) { }
 
     private static Element enclosingTable(Element element) {
         for (Element current = element.parent(); current != null; current = current.parent()) {

@@ -52,11 +52,13 @@ class FieldSourcePanelRowsTest {
                 "Loaded target instances mentioned in the introduction");
         assertTrue(candidates.isEnabled());
         selectLabel(candidates, "Loaded target instances mentioned in the introduction");
+        panel.addCandidateEvidenceRecipe(
+                "Loaded target instances mentioned in the introduction");
         button(panel, "Apply field source").doClick();
 
         domain.datasource.api.SourceBinding binding =
-                domain.config.FieldSourceBindings.binding(characters,
-                        domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+                domain.config.FieldSourceBindings.bindings(characters,
+                        domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE).getFirst();
         assertTrue(domain.datasource.wikipedia.WikipediaDatasourceProvider
                 .articleIntroductionMentions(binding));
 
@@ -65,8 +67,8 @@ class FieldSourcePanelRowsTest {
         reopened.edit(characters);
         JComboBox<?> reopenedCandidates = comboContainingLabel(reopened,
                 "Loaded target instances mentioned in the introduction");
-        assertEquals("Loaded target instances mentioned in the introduction",
-                reopenedCandidates.getSelectedItem().toString());
+        assertEquals(List.of("Introduction mentions"),
+                reopened.candidateEvidenceRecipeDescriptions());
     }
 
     @Test void aReferenceCollectionCanPersistRenderedInfoboxLinkEvidence() {
@@ -82,13 +84,15 @@ class FieldSourcePanelRowsTest {
                 "Loaded target instances linked from a rendered infobox row");
         selectLabel(candidates,
                 "Loaded target instances linked from a rendered infobox row");
+        panel.addCandidateEvidenceRecipe(
+                "Loaded target instances linked from a rendered infobox row");
         panel.infoboxEvidenceKeyField().setText("Rendered.Parents");
         assertTrue(visibleRowLabels(panel).contains("Infobox value key:"));
         button(panel, "Apply field source").doClick();
 
         domain.datasource.api.SourceBinding binding =
-                domain.config.FieldSourceBindings.binding(parents,
-                        domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+                domain.config.FieldSourceBindings.bindings(parents,
+                        domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE).getFirst();
         assertEquals("Rendered.Parents",
                 domain.datasource.wikipedia.WikipediaDatasourceProvider
                         .infoboxRowLinks(binding));
@@ -96,10 +100,8 @@ class FieldSourcePanelRowsTest {
         FieldSourcePanel reopened = new FieldSourcePanel();
         reopened.setProjectModel(project);
         reopened.edit(parents);
-        assertEquals("Loaded target instances linked from a rendered infobox row",
-                comboContainingLabel(reopened,
-                        "Loaded target instances linked from a rendered infobox row")
-                        .getSelectedItem().toString());
+        assertEquals(List.of("Infobox row links — Rendered.Parents"),
+                reopened.candidateEvidenceRecipeDescriptions());
         assertEquals("Rendered.Parents",
                 reopened.infoboxEvidenceKeyField().getText());
     }
@@ -117,6 +119,8 @@ class FieldSourcePanelRowsTest {
                 "Loaded target instances linked from one article table column");
         selectLabel(candidates,
                 "Loaded target instances linked from one article table column");
+        panel.addCandidateEvidenceRecipe(
+                "Loaded target instances linked from one article table column");
         panel.tableEvidenceSectionField().setText("Description > List of names");
         panel.tableEvidenceNameField().setText("Assessors");
         panel.tableEvidenceColumnField().setText("Name of the deity");
@@ -125,8 +129,8 @@ class FieldSourcePanelRowsTest {
         assertTrue(visibleRowLabels(panel).contains("Table column:"));
         button(panel, "Apply field source").doClick();
 
-        var binding = domain.config.FieldSourceBindings.binding(members,
-                domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+        var binding = domain.config.FieldSourceBindings.bindings(members,
+                domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE).getFirst();
         var spec = domain.datasource.wikipedia.WikipediaDatasourceProvider
                 .articleTableColumnLinks(binding);
         assertEquals("Description > List of names", spec.sectionPath());
@@ -136,14 +140,41 @@ class FieldSourcePanelRowsTest {
         FieldSourcePanel reopened = new FieldSourcePanel();
         reopened.setProjectModel(project);
         reopened.edit(members);
-        assertEquals("Loaded target instances linked from one article table column",
-                comboContainingLabel(reopened,
-                        "Loaded target instances linked from one article table column")
-                        .getSelectedItem().toString());
+        assertEquals(1, reopened.candidateEvidenceRecipeDescriptions().size());
         assertEquals("Description > List of names",
                 reopened.tableEvidenceSectionField().getText());
         assertEquals("Assessors", reopened.tableEvidenceNameField().getText());
         assertEquals("Name of the deity", reopened.tableEvidenceColumnField().getText());
+    }
+
+    @Test void everyConfiguredEvidenceRecipeRemainsVisibleAndSurvivesApply() {
+        GeneratedFieldModel members = field("members", FieldType.ENTITY,
+                FieldProductionKind.AUTO, "Deity");
+        members.cardinality(FieldCardinality.COLLECTION);
+        GeneratedProjectModel project = projectContaining(members, true);
+        FieldSourcePanel panel = new FieldSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(members);
+
+        panel.addCandidateEvidenceRecipe(
+                "Loaded target instances linked from a rendered infobox row");
+        panel.infoboxEvidenceKeyField().setText("Rendered.Members");
+        panel.addCandidateEvidenceRecipe(
+                "Loaded target instances linked from one article table column");
+        panel.tableEvidenceSectionField().setText("Description > List of names");
+        panel.tableEvidenceColumnField().setText("Name of the deity");
+        button(panel, "Apply field source").doClick();
+
+        assertEquals(2, domain.config.FieldSourceBindings.bindings(members,
+                domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE).size());
+        FieldSourcePanel reopened = new FieldSourcePanel();
+        reopened.setProjectModel(project);
+        reopened.edit(members);
+        assertEquals(List.of(
+                        "Infobox row links — Rendered.Members",
+                        "Table-column links — section ‘Description > List of names’, "
+                                + "column ‘Name of the deity’"),
+                reopened.candidateEvidenceRecipeDescriptions());
     }
 
     @Test void oneTextValueCanPersistBoundedWikipediaArticlePassages() {
@@ -158,11 +189,12 @@ class FieldSourcePanelRowsTest {
                 "Bounded passages from the full article");
         assertTrue(evidence.isEnabled());
         selectLabel(evidence, "Bounded passages from the full article");
+        panel.addCandidateEvidenceRecipe("Bounded passages from the full article");
         button(panel, "Apply field source").doClick();
 
         domain.datasource.api.SourceBinding binding =
-                domain.config.FieldSourceBindings.binding(narrative,
-                        domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+                domain.config.FieldSourceBindings.bindings(narrative,
+                        domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE).getFirst();
         assertTrue(domain.datasource.wikipedia.WikipediaDatasourceProvider.articlePassages(binding));
 
         FieldSourcePanel reopened = new FieldSourcePanel();
@@ -170,8 +202,8 @@ class FieldSourcePanelRowsTest {
         reopened.edit(narrative);
         JComboBox<?> reopenedEvidence = comboContainingLabel(reopened,
                 "Bounded passages from the full article");
-        assertEquals("Bounded passages from the full article",
-                reopenedEvidence.getSelectedItem().toString());
+        assertEquals(List.of("Article passages"),
+                reopened.candidateEvidenceRecipeDescriptions());
     }
 
     @Test void aReferenceListMapsArticlePassagesOntoItsTargetClass() {
@@ -196,14 +228,16 @@ class FieldSourcePanelRowsTest {
         JComboBox<?> evidence = comboContainingLabel(panel,
                 "One target instance per bounded article passage");
         selectLabel(evidence, "One target instance per bounded article passage");
+        panel.addCandidateEvidenceRecipe(
+                "One target instance per bounded article passage");
         panel.passageTextFieldBox().setSelectedItem("summary");
         panel.passageSourceFieldBox().setSelectedItem("characters");
         assertTrue(visibleRowLabels(panel).contains("Passage goes into:"));
         assertTrue(visibleRowLabels(panel).contains("Source instance goes into:"));
         button(panel, "Apply field source").doClick();
 
-        var binding = domain.config.FieldSourceBindings.binding(episodes,
-                domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+        var binding = domain.config.FieldSourceBindings.bindings(episodes,
+                domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE).getFirst();
         var spec = domain.datasource.wikipedia.WikipediaDatasourceProvider
                 .articlePassageInstances(binding);
         assertEquals("summary", spec.textField());
@@ -212,10 +246,8 @@ class FieldSourcePanelRowsTest {
         FieldSourcePanel reopened = new FieldSourcePanel();
         reopened.setProjectModel(project);
         reopened.edit(episodes);
-        assertEquals("One target instance per bounded article passage",
-                comboContainingLabel(reopened,
-                        "One target instance per bounded article passage")
-                        .getSelectedItem().toString());
+        assertEquals(List.of("Article passage instances"),
+                reopened.candidateEvidenceRecipeDescriptions());
         assertEquals("summary", reopened.passageTextFieldBox().getSelectedItem());
         assertEquals("characters", reopened.passageSourceFieldBox().getSelectedItem());
     }
@@ -247,6 +279,8 @@ class FieldSourcePanelRowsTest {
         JComboBox<?> evidence = comboContainingLabel(panel,
                 "One target instance per configured article table row");
         selectLabel(evidence, "One target instance per configured article table row");
+        panel.addCandidateEvidenceRecipe(
+                "One target instance per configured article table row");
         panel.tableEvidenceSectionField().setText("Description > List of names");
         panel.tableEvidenceNameField().setText("Assessors");
         panel.tableEvidenceColumnField().setText("Name of the deity");
@@ -256,8 +290,8 @@ class FieldSourcePanelRowsTest {
         panel.tableRowReferencesFieldBox().setSelectedItem("deities");
         button(panel, "Apply field source").doClick();
 
-        var binding = domain.config.FieldSourceBindings.binding(members,
-                domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
+        var binding = domain.config.FieldSourceBindings.bindings(members,
+                domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE).getFirst();
         var spec = domain.datasource.wikipedia.WikipediaDatasourceProvider
                 .articleTableRowInstances(binding);
         assertEquals("AssessorOfMaat", spec.targetClass());
@@ -598,7 +632,8 @@ class FieldSourcePanelRowsTest {
     private static JComboBox<?> comboContainingLabel(Container root, String label) {
         for (JComboBox<?> combo : components(root, JComboBox.class)) {
             for (int i = 0; i < combo.getItemCount(); i++) {
-                if (label.equals(combo.getItemAt(i).toString())) return combo;
+                Object item = combo.getItemAt(i);
+                if (item != null && label.equals(item.toString())) return combo;
             }
         }
         throw new AssertionError("No combo contains " + label);
@@ -606,7 +641,8 @@ class FieldSourcePanelRowsTest {
 
     private static void selectLabel(JComboBox<?> combo, String label) {
         for (int i = 0; i < combo.getItemCount(); i++) {
-            if (label.equals(combo.getItemAt(i).toString())) {
+            Object item = combo.getItemAt(i);
+            if (item != null && label.equals(item.toString())) {
                 combo.setSelectedIndex(i);
                 return;
             }

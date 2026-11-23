@@ -128,6 +128,10 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     private record InfoboxRowLinks() implements DatasourceOperation {
         @Override public String id() { return INFOBOX_ROW_LINKS; }
         @Override public String displayName() { return "Rendered infobox row links"; }
+        @Override public String summary(SourceBinding binding) {
+            String key = infoboxRowLinks(binding);
+            return "Infobox row links" + (key == null ? " — incomplete" : " — " + key);
+        }
         @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
         @Override public List<ParameterDescriptor> parameters() {
             return List.of(new ParameterDescriptor("property", "Rendered.label",
@@ -166,6 +170,11 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     private record ArticleTableColumnLinks() implements DatasourceOperation {
         @Override public String id() { return ARTICLE_TABLE_COLUMN_LINKS; }
         @Override public String displayName() { return "Article table-column links"; }
+        @Override public String summary(SourceBinding binding) {
+            ArticleTableColumnLinkSpec spec = articleTableColumnLinks(binding);
+            return "Table-column links" + (spec == null ? " — incomplete"
+                    : " — " + spec.description());
+        }
         @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
         @Override public List<ParameterDescriptor> parameters() {
             return List.of(
@@ -222,6 +231,11 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     private record ArticleTableRowInstances() implements DatasourceOperation {
         @Override public String id() { return ARTICLE_TABLE_ROW_INSTANCES; }
         @Override public String displayName() { return "Article table-row instances"; }
+        @Override public String summary(SourceBinding binding) {
+            ArticleTableRowInstanceSpec spec = articleTableRowInstances(binding);
+            return "Table rows" + (spec == null ? " — incomplete"
+                    : " — " + spec.description());
+        }
         @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
         @Override public List<ParameterDescriptor> parameters() {
             return List.of(
@@ -377,6 +391,9 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     private record ArticleIntroductionMentions() implements DatasourceOperation {
         @Override public String id() { return ARTICLE_INTRODUCTION_MENTIONS; }
         @Override public String displayName() { return "Article introduction mentions"; }
+        @Override public String summary(SourceBinding binding) {
+            return "Introduction mentions";
+        }
         @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
         @Override public List<ParameterDescriptor> parameters() { return List.of(); }
         @Override public SourceValueSchema outputSchema() {
@@ -407,6 +424,7 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     private record ArticlePassages() implements DatasourceOperation {
         @Override public String id() { return ARTICLE_PASSAGES; }
         @Override public String displayName() { return "Bounded article passages"; }
+        @Override public String summary(SourceBinding binding) { return "Article passages"; }
         @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
         @Override public List<ParameterDescriptor> parameters() { return List.of(); }
         @Override public SourceValueSchema outputSchema() {

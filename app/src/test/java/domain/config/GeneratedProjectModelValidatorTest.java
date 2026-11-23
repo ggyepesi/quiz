@@ -820,11 +820,13 @@ class GeneratedProjectModelValidatorTest {
         assertTrue(invalid.format().contains(
                 "Episode.missingSummary' must be one Text value"), invalid.format());
 
-        FieldSourceBindings.put(episodes, new domain.datasource.api.SourceBinding(target,
-                new domain.datasource.api.SourceRecipe("wikipedia",
-                        "article-passage-instances", java.util.Map.of(
-                        "passageTextField", "summary",
-                        "passageSourceField", "characters"))));
+        FieldSourceBindings.replaceBindings(episodes,
+                domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE,
+                java.util.List.of(new domain.datasource.api.SourceBinding(target,
+                        new domain.datasource.api.SourceRecipe("wikipedia",
+                                "article-passage-instances", java.util.Map.of(
+                                "passageTextField", "summary",
+                                "passageSourceField", "characters")))));
         assertTrue(GeneratedProjectModelValidator.validate(project).valid(),
                 GeneratedProjectModelValidator.validate(project).format());
     }
@@ -899,9 +901,12 @@ class GeneratedProjectModelValidatorTest {
         parents.type(FieldType.ENTITY);
         parents.cardinality(FieldCardinality.COLLECTION);
         parents.entityClassName("EgyptianDeity");
-        FieldSourceBindings.put(parents, new domain.datasource.api.SourceBinding(target,
-                new domain.datasource.api.SourceRecipe("wikipedia", "infobox-row-links",
-                        java.util.Map.of("property", "Rendered.Parents"))));
+        FieldSourceBindings.replaceBindings(parents,
+                domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE,
+                java.util.List.of(new domain.datasource.api.SourceBinding(target,
+                        new domain.datasource.api.SourceRecipe(
+                                "wikipedia", "infobox-row-links",
+                                java.util.Map.of("property", "Rendered.Parents")))));
         assertTrue(GeneratedProjectModelValidator.validate(project).valid(),
                 GeneratedProjectModelValidator.validate(project).format());
     }

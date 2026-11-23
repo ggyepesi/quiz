@@ -3,10 +3,11 @@ package domain.datasource.api;
 /**
  * The model site and semantic slot to which a {@link SourceRecipe} is attached.
  *
- * <p>The slot distinguishes simultaneous uses at one site (for example additive
- * category evidence and a fallback value source). Replacing a recipe compares targets,
+ * <p>The slot distinguishes simultaneous uses at one site (for example candidate
+ * evidence and a fallback value source). Replacing a singular recipe compares targets,
  * not providers: choosing DBpedia after Wikipedia infobox replaces the same fallback
- * slot instead of leaving two competing configurations behind.
+ * slot instead of leaving two competing configurations behind. Candidate evidence is
+ * the one ordered additive slot: its recipes share a target and remain visible children.
  */
 public record SourceBindingTarget(
         BindingScope scope,

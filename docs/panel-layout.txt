@@ -369,7 +369,14 @@
   button: Configure…
   button: Clear  (disabled)
   label: Wikipedia evidence:
-  combo: 7 item(s)  (disabled)
+  box: Configured evidence recipes
+    list
+    label: Add:
+    combo: 7 item(s)  (disabled)
+    button: Add  (disabled)
+    button: Remove  (disabled)
+    button: Up  (disabled)
+    button: Down  (disabled)
   label: Qualifier of:
   ids: []
     text: []

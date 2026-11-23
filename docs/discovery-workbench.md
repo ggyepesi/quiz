@@ -44,6 +44,28 @@ Moving between actions never asks for the instances again and inspecting results
 the project. An explicit promotion offered by a source action may add its reusable finding to
 the working ModelBuilder configuration; its separate Save action states the project file that
 will be written.
+
+Every structured source follows the same intended order (#566):
+
+```
+fetch one bounded source-native artifact
+    -> show the structures actually found in that artifact
+    -> explicitly choose a structure and how the model will use it
+    -> save that choice as a visible configured child
+```
+
+The fetch is the only network step in that inspection. Opening sections, tables, statement
+groups or record fields projects the retained result and never requests the source again.
+Different sources keep their real structure: Wikipedia offers sections, lists, tables and
+infobox rows; Wikidata offers statements and qualifiers; Commons offers media records and
+structured statements; a configured REST source offers its returned record fields. The shared
+action/result navigator owns the sequence and presentation, not a made-up common source schema.
+Running a saved recipe is a later action and does not replace this discovery sequence.
+The shared navigator implements fetch → discovered-result children now. Wikipedia infobox
+results also implement the configuration handoff. Completing that handoff for table/list and
+the other source-native structures is tracked separately; until then their saved selectors are
+edited in ModelBuilder's visible recipe list.
+
 DataSourceApp embeds this same source/action/result tree below its existing instance scope; it
 does not show datasource launcher buttons or open a second selection window. Its selected
 instances span the upper work area. The lower area uses the navigator's ordinary tree/detail
@@ -54,10 +76,13 @@ eligible instance. Selecting cards or modeled groups narrows that input immediat
 explicit Run control applies the action's bound and may therefore be disabled; navigating the
 datasource and action tree never is.
 
-The Wikipedia source also contains the current field's configured evidence action. For a modeled
-group it automatically targets the declared members field. Thus selecting **Assessors of Maat**
-and then **Wikipedia → Find configured field evidence (including table rows)** reveals the ordinary
-**Find table-row instances…** action: its current members remain; a row linked to one compatible
+The Wikipedia source also contains the current field's **Configured field evidence** action group.
+For a modeled group it automatically targets the declared members field. Every configured recipe
+is a visible child, such as **Table rows — section ‘Description → List of names…’** and
+**Infobox row links — Rendered.Members**. Selecting one child reveals the ordinary run action and
+applies only that recipe to every selected group. Each selected group receives its own result card;
+a non-match remains visible rather than disappearing. For the table-row recipe, current members
+remain; a row linked to one compatible
 loaded instance proposes that existing member, while every remaining row proposes its configured
 row instance even when its display name has no Wikipedia link. This delegates to the
 same `ValidationPanel` acquisition and review path used everywhere else.

@@ -164,8 +164,13 @@ class EgyptianGodsSavedModelTest {
         GeneratedFieldModel members = deityGroup.fields().stream()
                 .filter(value -> value.name().equals("members"))
                 .findFirst().orElseThrow();
-        var tableEvidence = FieldSourceBindings.binding(
+        var evidenceRecipes = FieldSourceBindings.bindings(
                 members, SourceBindingSlot.CANDIDATE_EVIDENCE);
+        assertEquals(2, evidenceRecipes.size());
+        var tableEvidence = evidenceRecipes.stream()
+                .filter(domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        ::articleTableRowInstanceOperation)
+                .findFirst().orElseThrow();
         var tableSpec = domain.datasource.wikipedia.WikipediaDatasourceProvider
                 .articleTableRowInstances(tableEvidence);
         assertEquals("Description > List of names, provenances and tasks (Wilkinson et al)",
@@ -176,5 +181,12 @@ class EgyptianGodsSavedModelTest {
         assertEquals("rowDetails", tableSpec.detailsField());
         assertEquals("groups", tableSpec.sourceField());
         assertEquals("deities", tableSpec.referencesField());
+        var infoboxEvidence = evidenceRecipes.stream()
+                .filter(domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        ::infoboxRowLinkOperation)
+                .findFirst().orElseThrow();
+        assertEquals("Rendered.Members",
+                domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .infoboxRowLinks(infoboxEvidence));
     }
 }

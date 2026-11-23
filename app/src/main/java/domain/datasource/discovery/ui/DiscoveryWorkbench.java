@@ -334,6 +334,26 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
         return action;
     }
 
+    public WorkbenchActionResultNavigator.ActionGroup addContextActionGroup(
+            Source source, String id, String label, JComponent detail, Runnable reveal) {
+        WorkbenchActionResultNavigator.Source parent = sourceNodes.get(source);
+        if (parent == null) throw new IllegalArgumentException("Unknown source " + source);
+        WorkbenchActionResultNavigator.ActionGroup group = navigator.addActionGroup(
+                parent, id, label, detail, reveal);
+        navigator.expandSources();
+        return group;
+    }
+
+    public WorkbenchActionResultNavigator.Action addContextAction(
+            WorkbenchActionResultNavigator.ActionGroup group,
+            String id, String label, JComponent detail, Runnable reveal) {
+        return navigator.addAction(group, id, label, detail, reveal);
+    }
+
+    public void clearContextActions(WorkbenchActionResultNavigator.ActionGroup group) {
+        navigator.clearActions(group);
+    }
+
     public BoundedInstanceSelection selection() { return selection; }
     public WikipediaDiscoveryPanel wikipedia() { return wikipedia; }
     public CommonsDiscoveryPanel commons() { return commons; }

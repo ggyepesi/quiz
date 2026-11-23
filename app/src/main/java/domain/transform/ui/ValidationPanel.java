@@ -8,6 +8,7 @@ import domain.datasource.evidence.ArticleIntroduction;
 import domain.datasource.evidence.InfoboxParameters;
 import domain.datasource.evidence.WikipediaArticle;
 import domain.datasource.wikipedia.WikipediaDatasourceProvider;
+import domain.datasource.wikipedia.WikipediaEvidenceRecipes;
 import domain.datasource.wikipedia.WikipediaTableRows;
 
 import objectview.Viewable;
@@ -200,6 +201,9 @@ public final class ValidationPanel extends JPanel {
     private DomainReferenceResolver referenceResolver;
     private long identityLabelRequest;
     private boolean wikipediaEvidenceOnly;
+    /** Exact visible recipe chosen by the action tree. Null only in the full field
+     *  editor, where the model's configured recipe inventory is shown separately. */
+    private SourceBinding fixedCandidateEvidence;
 
     /** The concrete member used to discover a field source. Keep its readable name beside
      *  the QID so Explore makes the probe target unambiguous. */
@@ -430,6 +434,10 @@ public final class ValidationPanel extends JPanel {
      * the detail pane does not repeat Wikidata and mixed-source actions under it. */
     public void showWikipediaEvidenceOnly() {
         wikipediaEvidenceOnly = true;
+    }
+
+    public void useFixedCandidateEvidence(SourceBinding binding) {
+        fixedCandidateEvidence = binding;
     }
 
     /** Curate the provenance-declared identity: select the type, apply the scope filter, show the
@@ -773,6 +781,8 @@ public final class ValidationPanel extends JPanel {
         boolean sourceActions = purpose.showsDatasourceActions();
         boolean localActions = purpose.showsTransformActions();
 
+        java.util.List<SourceBinding> evidenceRecipes = candidateEvidenceBindings(
+                selectedFieldType, selectedFieldPath);
         WikipediaTextEvidenceProvider.CandidateEvidenceMode candidateMode =
                 configuredCandidateEvidence(selectedFieldType, selectedFieldPath);
         WikipediaDatasourceProvider.ArticleTableColumnLinkSpec tableColumnSpec =
@@ -911,11 +921,23 @@ public final class ValidationPanel extends JPanel {
             // compact action pane into a clipped copy of the full editor.
             if (!wikipediaEvidenceOnly) target.add(articleEvidence);
 
-            actions.add(new WorkbenchActionList.Item(wikipediaEvidenceButton,
-                    articleTableRowInstances
-                            ? tableSummary.actionDescription(tableRowSpec)
-                            : "Run the configured Wikipedia evidence operation and review its "
-                                    + "proposals before staging them."));
+            if (fixedCandidateEvidence != null || evidenceRecipes.size() <= 1) {
+                actions.add(new WorkbenchActionList.Item(wikipediaEvidenceButton,
+                        articleTableRowInstances
+                                ? tableSummary.actionDescription(tableRowSpec)
+                                : "Run the configured Wikipedia evidence operation and review "
+                                        + "its proposals before staging them."));
+            } else {
+                for (SourceBinding recipe : evidenceRecipes) {
+                    JButton runRecipe = new JButton("Find "
+                            + WikipediaEvidenceRecipes.describe(recipe) + "…");
+                    runRecipe.addActionListener(event -> findWikipediaEvidence(recipe));
+                    findDataRunner.registerRunButton(runRecipe);
+                    actions.add(new WorkbenchActionList.Item(runRecipe,
+                            "Run this configured recipe only, once for every instance in "
+                                    + "the current scope."));
+                }
+            }
         }
 
         // Repairing a reference's NAME is not the same job as filling the field: the
@@ -1516,6 +1538,20 @@ public final class ValidationPanel extends JPanel {
                 ? null : ruleModel.declaredBinding(selectedFieldType, selectedFieldPath, slot);
     }
 
+    private SourceBinding candidateEvidenceBinding(String ownerType, String field) {
+        if (fixedCandidateEvidence != null) return fixedCandidateEvidence;
+        java.util.List<SourceBinding> recipes = candidateEvidenceBindings(ownerType, field);
+        return recipes.isEmpty() ? null : recipes.getFirst();
+    }
+
+    private java.util.List<SourceBinding> candidateEvidenceBindings(
+            String ownerType, String field) {
+        if (fixedCandidateEvidence != null) return java.util.List.of(fixedCandidateEvidence);
+        FieldRulePromoter ruleModel = domain.capability(FieldRulePromoter.class);
+        return ruleModel == null ? java.util.List.of() : ruleModel.declaredBindings(
+                ownerType, field, SourceBindingSlot.CANDIDATE_EVIDENCE);
+    }
+
     /** A property mapping names its property; any other declared binding names its
      *  registered datasource operation. Nothing configured says so. */
     static String configuredSource(FieldSourceMapping mapping,
@@ -1648,11 +1684,7 @@ public final class ValidationPanel extends JPanel {
             return WikipediaTextEvidenceProvider.CandidateEvidenceMode
                     .ARTICLE_PASSAGE_INSTANCES;
         }
-        FieldRulePromoter ruleModel =
-                domain.capability(FieldRulePromoter.class);
-        SourceBinding binding = ruleModel == null ? null
-                : ruleModel.declaredBinding(ownerType, field,
-                        SourceBindingSlot.CANDIDATE_EVIDENCE);
+        SourceBinding binding = candidateEvidenceBinding(ownerType, field);
         if (WikipediaDatasourceProvider
                 .articlePassages(binding)) {
             return WikipediaTextEvidenceProvider.CandidateEvidenceMode
@@ -1672,43 +1704,27 @@ public final class ValidationPanel extends JPanel {
     }
 
     private String configuredInfoboxRowLinks(String ownerType, String field) {
-        FieldRulePromoter ruleModel =
-                domain.capability(FieldRulePromoter.class);
-        SourceBinding binding = ruleModel == null ? null
-                : ruleModel.declaredBinding(ownerType, field,
-                        SourceBindingSlot.CANDIDATE_EVIDENCE);
+        SourceBinding binding = candidateEvidenceBinding(ownerType, field);
         return WikipediaDatasourceProvider.infoboxRowLinks(binding);
     }
 
     private WikipediaDatasourceProvider.ArticleTableColumnLinkSpec
             configuredArticleTableColumnLinks(String ownerType, String field) {
-        FieldRulePromoter ruleModel =
-                domain.capability(FieldRulePromoter.class);
-        SourceBinding binding = ruleModel == null ? null
-                : ruleModel.declaredBinding(ownerType, field,
-                        SourceBindingSlot.CANDIDATE_EVIDENCE);
+        SourceBinding binding = candidateEvidenceBinding(ownerType, field);
         return WikipediaDatasourceProvider
                 .articleTableColumnLinks(binding);
     }
 
     private WikipediaDatasourceProvider.ArticleTableRowInstanceSpec
             configuredArticleTableRowInstances(String ownerType, String field) {
-        FieldRulePromoter ruleModel =
-                domain.capability(FieldRulePromoter.class);
-        SourceBinding binding = ruleModel == null ? null
-                : ruleModel.declaredBinding(ownerType, field,
-                        SourceBindingSlot.CANDIDATE_EVIDENCE);
+        SourceBinding binding = candidateEvidenceBinding(ownerType, field);
         return WikipediaDatasourceProvider
                 .articleTableRowInstances(binding);
     }
 
     private WikipediaDatasourceProvider.ArticlePassageInstanceSpec
             configuredArticlePassageInstances(String ownerType, String field) {
-        FieldRulePromoter ruleModel =
-                domain.capability(FieldRulePromoter.class);
-        SourceBinding binding = ruleModel == null ? null
-                : ruleModel.declaredBinding(ownerType, field,
-                        SourceBindingSlot.CANDIDATE_EVIDENCE);
+        SourceBinding binding = candidateEvidenceBinding(ownerType, field);
         return WikipediaDatasourceProvider
                 .articlePassageInstances(binding);
     }
@@ -2038,6 +2054,16 @@ public final class ValidationPanel extends JPanel {
                                 + infoboxRowKey + "."
                         : "Review exact article mentions and configured category relations.",
                 "Wikipedia lookup failed");
+    }
+
+    private void findWikipediaEvidence(SourceBinding recipe) {
+        SourceBinding previous = fixedCandidateEvidence;
+        fixedCandidateEvidence = recipe;
+        try {
+            findWikipediaEvidence();
+        } finally {
+            fixedCandidateEvidence = previous;
+        }
     }
 
     private EnrichmentRoute routeFor(

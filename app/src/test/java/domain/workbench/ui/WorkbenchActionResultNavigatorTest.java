@@ -98,6 +98,30 @@ class WorkbenchActionResultNavigatorTest {
         });
     }
 
+    @Test void aConfiguredActionCollectionShowsEveryChildAndCanBeRebuilt() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            WorkbenchActionResultNavigator navigator =
+                    new WorkbenchActionResultNavigator();
+            var source = navigator.addSource("wikipedia", "Wikipedia", null);
+            var recipes = navigator.addActionGroup(source, "configured-evidence",
+                    "Configured field evidence", new JPanel(), null);
+            navigator.addAction(recipes, "table", "Table rows: List of names",
+                    new JPanel(), null);
+            navigator.addAction(recipes, "infobox", "Infobox row: Members",
+                    new JPanel(), null);
+
+            DefaultMutableTreeNode root = (DefaultMutableTreeNode)
+                    navigator.tree().getModel().getRoot();
+            DefaultMutableTreeNode sourceNode = (DefaultMutableTreeNode) root.getChildAt(0);
+            DefaultMutableTreeNode group = child(sourceNode, "Configured field evidence");
+            assertEquals(List.of("Table rows: List of names", "Infobox row: Members"),
+                    children(group));
+
+            navigator.clearActions(recipes);
+            assertEquals(0, group.getChildCount());
+        });
+    }
+
     private static DefaultMutableTreeNode selectedParent(JTree tree) {
         return (DefaultMutableTreeNode) selected(tree).getParent();
     }

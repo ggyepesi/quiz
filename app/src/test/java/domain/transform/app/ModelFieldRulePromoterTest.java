@@ -199,12 +199,25 @@ class ModelFieldRulePromoterTest {
 
         var savedField = new GeneratedProjectModelStore().load(modelFile)
                 .findClass("EgyptianDeity").fields().getFirst();
-        var saved = FieldSourceBindings.binding(savedField,
-                SourceBindingSlot.CANDIDATE_EVIDENCE);
+        var saved = FieldSourceBindings.bindings(savedField,
+                SourceBindingSlot.CANDIDATE_EVIDENCE).getFirst();
         assertEquals("Rendered.Parents",
                 WikipediaDatasourceProvider.infoboxRowLinks(saved));
         assertFalse(domain.previewPromotion(recipe).eligible(),
                 "one candidate-evidence source is not offered twice");
+
+        FieldSourceRecipe children = FieldSourceRecipe.wikipediaInfoboxLinks(
+                "EgyptianDeity", "parents", "Rendered.Children",
+                "Rendered Children row links");
+        assertTrue(domain.previewPromotion(children).eligible());
+        domain.promote(children);
+        domain.writeProjectModel();
+        var savedRecipes = FieldSourceBindings.bindings(
+                new GeneratedProjectModelStore().load(modelFile)
+                        .findClass("EgyptianDeity").fields().getFirst(),
+                SourceBindingSlot.CANDIDATE_EVIDENCE);
+        assertEquals(2, savedRecipes.size(),
+                "a second configured selector is an additive visible recipe");
     }
 
     /** The infobox binding says only kind, key and label; a replaced Wikidata primary's

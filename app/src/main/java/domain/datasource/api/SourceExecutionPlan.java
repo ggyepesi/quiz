@@ -11,7 +11,7 @@ import java.util.Map;
  *
  * <p>A recipe is durable configuration; an operation is an installed capability. This
  * is the boundary between them. Compilation resolves every recipe once, rejects two
- * recipes occupying the same target, and records whether the capability performs a
+ * recipes occupying a singular target, and records whether the capability performs a
  * standalone acquisition or declares data retained by the surrounding pipeline.
  *
  * <p>The plan deliberately does not execute anything. Population, field and evidence
@@ -52,7 +52,7 @@ public final class SourceExecutionPlan {
     private SourceExecutionPlan(List<Step> steps) {
         this.steps = List.copyOf(steps);
         LinkedHashMap<SourceBindingTarget, Step> index = new LinkedHashMap<>();
-        for (Step step : steps) index.put(step.target(), step);
+        for (Step step : steps) index.putIfAbsent(step.target(), step);
         this.byTarget = Map.copyOf(index);
     }
 
@@ -64,7 +64,7 @@ public final class SourceExecutionPlan {
         if (bindings != null) for (SourceBinding binding : bindings) {
             if (binding == null) continue;
             SourceBinding previous = occupied.putIfAbsent(binding.target(), binding);
-            if (previous != null) {
+            if (previous != null && !binding.target().slot().additive()) {
                 throw new IllegalArgumentException("Two datasource recipes occupy "
                         + binding.target().className()
                         + (binding.target().fieldPath().isBlank() ? ""
@@ -103,6 +103,13 @@ public final class SourceExecutionPlan {
 
     public Step step(SourceBindingTarget target) {
         return target == null ? null : byTarget.get(target);
+    }
+
+    /** Every step at a target. Candidate evidence is deliberately additive; all other
+     * targets contain at most one. */
+    public List<Step> steps(SourceBindingTarget target) {
+        if (target == null) return List.of();
+        return steps.stream().filter(step -> target.equals(step.target())).toList();
     }
 
     /** How many steps COULD acquire on their own — a capability of the operation, not

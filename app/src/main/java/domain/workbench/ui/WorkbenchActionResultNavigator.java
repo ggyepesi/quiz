@@ -35,7 +35,7 @@ import java.util.Objects;
  */
 public final class WorkbenchActionResultNavigator extends JPanel {
 
-    public enum Role { SOURCE, ACTION, RESULT }
+    public enum Role { SOURCE, ACTION_GROUP, ACTION, RESULT }
 
     /** Stable identity independent of labels, counts and action status. */
     public record NodeId(String source, String action, String result) {
@@ -85,6 +85,20 @@ public final class WorkbenchActionResultNavigator extends JPanel {
         public NodeId id() { return entry.id; }
     }
 
+    public final class ActionGroup {
+        private final Entry entry;
+        private final JComponent detail;
+        private final Runnable reveal;
+
+        private ActionGroup(Entry entry, JComponent detail, Runnable reveal) {
+            this.entry = entry;
+            this.detail = detail;
+            this.reveal = reveal;
+        }
+
+        public NodeId id() { return entry.id; }
+    }
+
     private record Entry(NodeId id, Role role, String label) {
         @Override public String toString() { return label; }
     }
@@ -98,6 +112,7 @@ public final class WorkbenchActionResultNavigator extends JPanel {
     private final JPanel detailHost = new JPanel(new CardLayout());
     private final Map<NodeId, DefaultMutableTreeNode> nodes = new LinkedHashMap<>();
     private final Map<NodeId, Action> actions = new LinkedHashMap<>();
+    private final Map<NodeId, ActionGroup> actionGroups = new LinkedHashMap<>();
     private final Map<NodeId, ResultTarget> results = new LinkedHashMap<>();
     private final IdentityHashMap<Component, String> detailCards = new IdentityHashMap<>();
     private final IdentityHashMap<JTabbedPane, Action> tabOwners = new IdentityHashMap<>();
@@ -165,6 +180,58 @@ public final class WorkbenchActionResultNavigator extends JPanel {
         ensureDetail(detail);
         model.reload(nodes.get(source.id()));
         return action;
+    }
+
+    /** A visible container whose configured child actions are shown explicitly. */
+    public ActionGroup addActionGroup(Source source, String id, String label,
+            JComponent detail, Runnable reveal) {
+        Objects.requireNonNull(source, "source");
+        Objects.requireNonNull(detail, "detail");
+        NodeId key = NodeId.action(source.id().source(), required(id, "Action group id"));
+        requireNew(key);
+        Entry entry = new Entry(key, Role.ACTION_GROUP,
+                required(label, "Action group label"));
+        ActionGroup group = new ActionGroup(entry, detail,
+                reveal == null ? () -> { } : reveal);
+        DefaultMutableTreeNode node = new DefaultMutableTreeNode(entry);
+        nodes.get(source.id()).add(node);
+        nodes.put(key, node);
+        actionGroups.put(key, group);
+        ensureDetail(detail);
+        model.reload(nodes.get(source.id()));
+        return group;
+    }
+
+    public Action addAction(ActionGroup group, String id, String label,
+            JComponent detail, Runnable reveal) {
+        Objects.requireNonNull(group, "group");
+        Objects.requireNonNull(detail, "detail");
+        String childId = group.id().action() + "/" + required(id, "Action id");
+        NodeId key = NodeId.action(group.id().source(), childId);
+        requireNew(key);
+        Entry entry = new Entry(key, Role.ACTION, required(label, "Action label"));
+        Action action = new Action(entry, detail, reveal == null ? () -> { } : reveal);
+        DefaultMutableTreeNode node = new DefaultMutableTreeNode(entry);
+        nodes.get(group.id()).add(node);
+        nodes.put(key, node);
+        actions.put(key, action);
+        ensureDetail(detail);
+        model.reload(nodes.get(group.id()));
+        return action;
+    }
+
+    /** Removes the visible children and their results; the group itself remains. */
+    public void clearActions(ActionGroup group) {
+        if (group == null) return;
+        DefaultMutableTreeNode groupNode = nodes.get(group.id());
+        if (groupNode == null) return;
+        List<DefaultMutableTreeNode> children = new ArrayList<>();
+        for (int i = 0; i < groupNode.getChildCount(); i++) {
+            children.add((DefaultMutableTreeNode) groupNode.getChildAt(i));
+        }
+        for (DefaultMutableTreeNode child : children) removeSubtree(child);
+        groupNode.removeAllChildren();
+        model.reload(groupNode);
     }
 
     /** Replace one action's result children from the exact tabs its operation produced. */
@@ -254,6 +321,12 @@ public final class WorkbenchActionResultNavigator extends JPanel {
         if (entry.role == Role.SOURCE) {
             SourceEntry source = (SourceEntry) node.getUserObject();
             show(source.detail);
+        } else if (entry.role == Role.ACTION_GROUP) {
+            ActionGroup group = actionGroups.get(entry.id);
+            if (group != null) {
+                group.reveal.run();
+                show(group.detail);
+            }
         } else if (entry.role == Role.ACTION) {
             reveal(actions.get(entry.id));
         } else {
@@ -329,6 +402,24 @@ public final class WorkbenchActionResultNavigator extends JPanel {
         if (nodes.containsKey(key)) {
             throw new IllegalArgumentException("Duplicate workbench node " + key);
         }
+    }
+
+    private void removeSubtree(DefaultMutableTreeNode node) {
+        for (int i = node.getChildCount() - 1; i >= 0; i--) {
+            removeSubtree((DefaultMutableTreeNode) node.getChildAt(i));
+        }
+        Entry value = entry(node.getUserObject());
+        if (value == null) return;
+        nodes.remove(value.id);
+        Action action = actions.remove(value.id);
+        if (action != null) {
+            results.entrySet().removeIf(entry -> entry.getValue().action == action);
+            tabOwners.entrySet().removeIf(entry -> entry.getValue() == action);
+            detailCards.remove(action.detail);
+            detailHost.remove(action.detail);
+        }
+        actionGroups.remove(value.id);
+        results.remove(value.id);
     }
 
     private static String required(String value, String name) {

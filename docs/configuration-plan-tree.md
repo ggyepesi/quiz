@@ -2,8 +2,9 @@
 
 ## Status
 
-Proposed on 2026-11-21, revised the same day after review (#533). Nothing in this construct-tree
-slice is implemented.
+Proposed on 2026-11-21, revised after review (#533). The explicit configured-child list in the
+field editor and the DataSourceApp action/result tree are implemented. Adding those same binding
+children to ModelBuilder's construct tree remains proposed.
 This document specifies one slice: showing every stored datasource binding of a field in
 ModelBuilder's existing construct tree. It does not claim to show every way a field can be
 produced: inverse, union, statement-end, owned-component and other derived productions remain
@@ -17,11 +18,11 @@ Related: [ModelBuilder Constructs](modelbuilder-constructs.md),
 
 ## Problem
 
-A field can now have several datasource bindings at once, each in its own binding slot: a
-primary value source, a fallback, category evidence and candidate evidence. The forcing case is
+A field can now have several datasource bindings at once. Primary, fallback and category sources
+occupy singular slots; candidate evidence is an ordered additive list in one slot. The forcing case is
 `DeityGroup.members` in Egyptian gods. Its primary values come from three Wikidata relation
-routes, and a Wikipedia article table column proposes additional members as candidate evidence
-for review.
+routes, while a Wikipedia article table recipe and a rendered-infobox Members recipe propose
+additional members as candidate evidence for review.
 
 Nothing shows both together. The construct tree stops at the field; the field editor shows the
 primary source in one section and the candidate evidence in another, behind a chooser. A user
@@ -39,7 +40,8 @@ second tree and no new window.
 ▾ DeityGroup
   ▾ members → EgyptianDeity[]
       Primary values · Wikidata relation routes (3)
-      Candidate evidence · Wikipedia article table column
+      Candidate evidence · Wikipedia article table rows · List of names…
+      Candidate evidence · Wikipedia infobox row links · Rendered.Members
   ▸ …other fields
 ```
 
@@ -61,7 +63,9 @@ second tree and no new window.
   edit, starts discovery or fetches anything (directive 10).
 - Editing happens in the field editor exactly as today. After Apply, the tree rebuilds from
   the model, so there is no second state to keep in step.
-- A direct source node's key is its target class's declaration id, field path and binding slot.
+- A singular source node's key is its target class's declaration id, field path and binding slot.
+  Candidate-evidence children additionally use their position in the field's authored recipe list;
+  the model stores no hidden recipe identity.
   A contextual owned-field source additionally includes the production site's owner-class
   declaration id and owner-field path. Keys therefore survive class renames without making
   two production sites collide.
