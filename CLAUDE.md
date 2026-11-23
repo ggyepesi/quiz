@@ -84,8 +84,14 @@ the tell that you are about to make the mistake again.
 **Rule number 1 — keep it simple.** Start with the smallest model that expresses what the user
 can see and control. Do not introduce hidden identities, parallel names, versions, lifecycle
 states or indirection until a concrete requirement forces each one. A simple concept must remain
-simple in the UI, persistence and explanation. *(Trigger: explaining an intrinsically simple
-construct requires a vocabulary of implementation terms.)*
+simple in the UI, persistence and explanation. Implement the shortest direct path from the
+existing input to the required result; do not add an intermediate state, abstraction, fallback,
+decision point or lifecycle merely to make the implementation feel more complete. Before adding
+anything, ask whether the existing owner can perform the required operation directly. If a simple
+defect survives one attempted fix, stop layering fixes: trace the complete existing path from
+input through mutation to visible result, find the missing boundary, and fix it there.
+*(Trigger: explaining an intrinsically simple construct requires a vocabulary of implementation
+terms, or a fix introduces a new concept instead of removing the cause.)*
 
 **Capstone — introduce nothing without a forcing reason.** The test is never "would this be
 more complete, more honest, more future-proof" — it is "is there a forcing reason NOW". No
@@ -197,10 +203,12 @@ construct per thing produced:
    another cell keeps the accepted instance. Those literal structural rows may be staged
    together. A row link may fill the optional
    reference field only when it resolves to an already-loaded compatible instance; an
-   unresolved link never invents an entity. Every configured row is represented by its
-   configured target-class instance. A resolved display-cell link fills that row's
-   configured reference field; it never replaces the row with the linked instance. This
-   keeps row-dependent facts on the role the source actually describes.
+   unresolved link never invents an entity. When one display-cell link resolves to an
+   already-loaded instance accepted by the owner field, that instance is the member and no
+   duplicate row object is created. An unlinked, ambiguous or incompatible row is represented
+   by its configured target-class instance, with any resolved links retained in its configured
+   reference field. Row-specific facts that must survive independently therefore require the
+   row instance rather than a direct compatible-member mapping.
    An unlinked label may nominate a candidate only when it identifies one loaded target;
    when loaded targets share the label, retained source links must resolve the identity.
 10. **Inspection is not an action.** Selecting, highlighting, hovering or navigating may change
@@ -690,6 +698,13 @@ construct per thing produced:
   opened it, is raised when opened, and blocks that workbench's mutating actions until it closes;
   unrelated applications remain usable. Inspection-only windows may be modeless. Both use the
   shared `Dialogs` lifecycle rather than choosing modality and focus locally.
+- **One user action completes one user intent.** Implement every command as the simplest complete
+  user-visible operation named by its control. Pressing Accept/Stage in a review validates,
+  updates the live domain, refreshes the existing result view and saves the accepted curation in
+  that same action. Internal phases, record counts, transaction boundaries, retry buffers and
+  implementation decisions stay internal: expose another control, state or message only when the
+  user must make a genuinely new decision or take action after an error. Report the resulting
+  domain change, never bookkeeping that tells the user nothing new.
 - **Name an open thread before switching.** If a new direction arrives while another is
   unfinished, say what is open and ask: finish, park, or run in parallel.
 - **File a GitHub issue for every non-trivial agreement** — a design decision, a deferred

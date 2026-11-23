@@ -140,10 +140,10 @@ public final class ValidationPanel extends JPanel {
     private final JButton exploreIdentityButton = new JButton("Explore Wikidata…");
     private final JButton cancelProcessButton = new JButton("Cancel Find Data");
     private final JButton resolveMissingButton = new JButton("Resolve identities…");
-    private final JButton applyButton = new JButton("Save staged changes");
-    /** What the last review staged, beside the one control that keeps it. A review
-     *  closes when it stages, so its own status line is never seen. */
-    private final JLabel stageOutcome = new JLabel(" ");
+    private final JButton applyButton = new JButton("Save pending changes");
+    /** What the last review accepted and saved. The review closes after acceptance,
+     * so its own transient status line is never seen. */
+    private final JLabel acceptedOutcome = new JLabel(" ");
     private final JLabel selectedLabel = new JLabel("No instance selected");
     private final JLabel batchTargetLabel = new JLabel("Batch actions: current scope");
     private final JTextField manualValue = new JTextField(18);
@@ -335,11 +335,14 @@ public final class ValidationPanel extends JPanel {
             bar.add(showUnresolvedButton);
             bar.add(showUnnamedButton);
         }
-        // Apply is a transaction-level action, not an action of the currently visible
-        // field drill. Keep it reachable even when a filter has zero rows or the user
-        // navigates to another type after staging an edit.
+        // TransformApp may deliberately collect manual edits before saving them.
+        // DataSourceApp's Stage action is already complete and shows its result in the
+        // existing group/instances panel, so it exposes no second save/status step.
+        // TransformApp deliberately collects manual edits before saving them. In
+        // DataSourceApp an accepted review is already saved; the button appears there
+        // only while a failed save left accepted changes pending, as the retry.
         bar.add(applyButton);
-        bar.add(stageOutcome);
+        bar.add(acceptedOutcome);
         if (this.purpose.showsDatasourceActions()) bar.add(cancelProcessButton);
 
         JPanel top = new JPanel(new BorderLayout());
@@ -414,7 +417,7 @@ public final class ValidationPanel extends JPanel {
             summary.add(new JLabel("· " + scopeDescription));
         }
         summary.add(applyButton);
-        summary.add(stageOutcome);
+        summary.add(acceptedOutcome);
         if (purpose.showsDatasourceActions()) summary.add(cancelProcessButton);
         add(summary, BorderLayout.NORTH);
         add(instancesHolder, BorderLayout.CENTER);
@@ -628,19 +631,29 @@ public final class ValidationPanel extends JPanel {
         instancesHolder.repaint();
     }
 
-    /** APPROVE stage indicator — one button commits every staged edit (manual values +
-     *  identities) in a single save. */
+    /** Recovery/collected-edit save. Reviewed results save during acceptance; this button
+     * remains for deliberately collected manual edits and a failed acceptance save. */
     private void updateApplyButton() {
         int n = staging == null ? 0 : staging.size();
         applyButton.setEnabled(n > 0);
-        // "Save", not "Apply": a result panel's Apply STAGES, and this is the only
-        // control that writes. Two buttons both reading Apply left the reader unable to
-        // tell whether anything had been persisted.
-        applyButton.setText(n == 0 ? "Save staged changes" : "Save " + n + " staged change"
-                + (n == 1 ? "" : "s"));
+        // Reviewed results have already been accepted and saved. This control is only
+        // for manual edits deliberately collected here, or recovery after a failed save;
+        // where nothing is collected by hand it shows only when there is something to retry.
+        String label = saveButtonLabel(purpose.showsTransformActions(), n);
+        applyButton.setVisible(label != null);
+        if (label != null) applyButton.setText(label);
         applyButton.setToolTipText(n == 0
-                                           ? "No staged changes"
-                                           : "Write " + n + " staged change(s) to the curation sidecar");
+                                           ? "No pending changes"
+                                           : "Retry saving the accepted changes");
+    }
+
+    /** The pending-changes button: always offered where manual edits are collected by
+     * hand (TransformApp); elsewhere only as the retry after a failed acceptance save.
+     * Null means the button is not shown. */
+    static String saveButtonLabel(boolean collectsManualEdits, int pending) {
+        if (collectsManualEdits) return "Save pending changes";
+        if (pending <= 0) return null;
+        return "Retry saving " + pending + " accepted change" + (pending == 1 ? "" : "s");
     }
 
     private boolean hasIdentity(Viewable member) {
@@ -1598,7 +1611,7 @@ public final class ValidationPanel extends JPanel {
                         List<EnrichmentProposal> proposals = result.results().stream()
                                 .map(FindDataResult::proposal).toList();
                         showReview(reviewTitle, reviewPrompt, proposals,
-                                SourceYieldCards.of(result.sourceYields()), store);
+                                SourceYieldCards.of(result.sourceYields()));
                     }
                     if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
                         JOptionPane.showMessageDialog(this,
@@ -1612,11 +1625,10 @@ public final class ValidationPanel extends JPanel {
      * workbench, including its run actions, cannot be used, so no second request can
      * start behind it. */
     private void showReview(String title, String prompt,
-            List<EnrichmentProposal> proposals, List<Viewable> sourceReport,
-            ManualCuration store) {
+            List<EnrichmentProposal> proposals, List<Viewable> sourceReport) {
         FindDataBatchReviewPanel.showReview(
                 this, title, prompt, proposals, sourceReport,
-                reviewed -> applyDecisions(store, reviewed.accepted()));
+                reviewed -> applyDecisions(reviewed.accepted()));
     }
 
     private domain.config.WikipediaCategoryRule effectiveWikipediaCategoryRule(
@@ -2006,7 +2018,7 @@ public final class ValidationPanel extends JPanel {
                                 + " by the model's rule (" + referentKind.propertyPid()
                                 + "); others are not offered.<br>")
                 + "Every result retains its article revision and exact source evidence; "
-                + "nothing is saved until you stage it.</div></html>";
+                + "nothing is saved until you accept it.</div></html>";
         if (JOptionPane.showConfirmDialog(this, new JLabel(message),
                 articleTableRowInstances ? "Find Wikipedia table-row instances"
                         : tableColumnLinks ? "Find Wikipedia table-column link evidence"
@@ -2052,41 +2064,49 @@ public final class ValidationPanel extends JPanel {
         return c == null ? null : c.curation();
     }
 
-    /** One review action is one staging transaction and one error surface. */
-    private boolean applyDecisions(
-            ManualCuration curation,
-            List<EnrichmentDecision> decisions) {
+    /** One review action validates, previews and durably saves one transaction. Staging
+     * is internal machinery; accepting a reviewed result never asks for a second save. */
+    private boolean applyDecisions(List<EnrichmentDecision> decisions) {
         try {
             EnrichmentDecisionApplier.StagedPreview preview =
-                    EnrichmentDecisionApplier.stageAndPreview(
+                    EnrichmentDecisionApplier.acceptAndSave(
                             domain, staging, decisions);
             if (!preview.unresolvedReferences().isEmpty()) {
                 Dialogs.showMessage(this,
                         preview.unresolvedReferences().size()
-                                + " reference(s) of the staged instances name "
+                                + " reference(s) of the accepted instances name "
                                 + "nothing loaded, so they were left empty:\n"
                                 + String.join("\n", preview.unresolvedReferences()),
                         "Unresolved references", JOptionPane.WARNING_MESSAGE);
             }
-            stageOutcome.setText(stageOutcomeText(decisions, preview));
+            acceptedOutcome.setText(acceptedOutcomeText(decisions, preview, sidecarName()));
             updateApplyButton();
             refreshCoverage();
             onCurated.run();
             renderFieldDrill();
             return true;
         } catch (Exception ex) {
-            Dialogs.showMessage(this, "Could not stage result: " + ex.getMessage(),
-                    "Could not stage result", JOptionPane.ERROR_MESSAGE);
+            updateApplyButton();
+            Dialogs.showMessage(this, "Could not accept and save result: " + ex.getMessage(),
+                    "Could not save accepted result", JOptionPane.ERROR_MESSAGE);
             return false;
         }
     }
 
-    /** Names what one reviewed staging did, counted by the same rule as the review
-     *  ({@link EnrichmentProposal#proposesInstance}), and says so when nothing changed. */
-    static String stageOutcomeText(List<EnrichmentDecision> decisions,
-            EnrichmentDecisionApplier.StagedPreview preview) {
+    /** The curation file an accepted review writes, as named to the user. */
+    private String sidecarName() {
+        ManualCuration curation = curationStore();
+        return curation == null || curation.file() == null ? "" : curation.file().getName();
+    }
+
+    /** Names the domain objects one accepted review created and the file it was saved to
+     * (directives 17/18). Persistence may require several internal records per object,
+     * but that is not a user-visible result. */
+    static String acceptedOutcomeText(List<EnrichmentDecision> decisions,
+            EnrichmentDecisionApplier.StagedPreview preview, String savedTo) {
         int changes = 0;
         int created = 0;
+        Map<String, Integer> createdByType = new LinkedHashMap<>();
         for (EnrichmentDecision decision : decisions == null
                 ? List.<EnrichmentDecision>of() : decisions) {
             if (decision == null) continue;
@@ -2097,17 +2117,37 @@ public final class ValidationPanel extends JPanel {
                     decision.media() == null ? List.of() : List.of(decision.media()),
                     decision.instances());
             created += decision.instances().size();
+            for (EnrichmentProposal.InstanceCandidate instance : decision.instances()) {
+                createdByType.merge(instance.type(), 1, Integer::sum);
+            }
         }
         if (preview == null || preview.stagedRecords() == 0) {
-            return "Nothing was staged from that review.";
+            return "Nothing was accepted from that review.";
         }
-        String what = "Staged " + changes + " change" + (changes == 1 ? "" : "s")
-                + (created == 0 ? "" : " (" + created + " new instance"
-                        + (created == 1 ? "" : "s") + ")");
+        String createdText = createdDescription(created, createdByType);
+        String what;
+        if (created > 0 && changes == created) {
+            what = "Accepted and saved " + createdText;
+        } else if (created > 0) {
+            what = "Accepted and saved " + changes + " change"
+                    + (changes == 1 ? "" : "s") + ", including " + createdText;
+        } else {
+            what = "Accepted and saved " + changes + " change"
+                    + (changes == 1 ? "" : "s");
+        }
+        if (savedTo != null && !savedTo.isBlank()) what += " to " + savedTo;
         return preview.appliedValues() == 0
                 ? what + ", but none changed the loaded instances — check the field and "
                         + "its target class."
-                : what + "; Save staged changes keeps them.";
+                : what + ".";
+    }
+
+    private static String createdDescription(int created,
+            Map<String, Integer> createdByType) {
+        String type = createdByType.size() == 1
+                ? createdByType.keySet().iterator().next() : "";
+        return created + " new " + (type.isBlank() ? "" : type + " ")
+                + (created == 1 ? "instance" : "instances");
     }
 
     private void exploreIdentity() {
@@ -2180,19 +2220,19 @@ public final class ValidationPanel extends JPanel {
         }
     }
 
-    /** APPROVE stage — commit every staged edit (manual values + identities) to the sidecar
-     *  in one save, then re-filter the current drill so approved items refresh out of scope. */
+    /** Recovery path after a save failure — commit every pending edit to the sidecar,
+     * then re-filter the current drill so accepted items refresh out of scope. */
     private void applyStaged() {
         if (staging == null || staging.size() == 0) return;
         try {
             staging.apply();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this,
-                                          "Could not save the staged changes: " + ex.getMessage(),
+                                          "Could not save the pending changes: " + ex.getMessage(),
                                           "Save failed", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        stageOutcome.setText(" ");
+        acceptedOutcome.setText(" ");
         updateApplyButton();
         refreshCoverage();
         onCurated.run();

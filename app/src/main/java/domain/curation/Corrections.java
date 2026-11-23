@@ -29,20 +29,12 @@ public final class Corrections {
         if (pool == null || sources == null) {
             return 0;
         }
-        Map<TargetKey, Viewable> byKey = new HashMap<>();
+        TypedInstanceIndex<Viewable> index = TypedInstanceIndex.of(pool);
         // EVERY instance per qid, not the first: identity is <typeKey, qid>, so one QID
         // can be pooled under two type keys (the State / Group "France" case). A
         // type-less correction is a statement about the ENTITY, so it must reach all of
         // them — keeping only the first renamed one instance and left the other a bare
         // QID, picked by pool iteration order.
-        Map<String, List<Viewable>> byQid = new HashMap<>();
-        for (Viewable q : pool) {
-            if (q != null && q.getIdentifier() != null) {
-                byKey.putIfAbsent(new TargetKey(q.typeName(), q.getIdentifier()), q);
-                byQid.computeIfAbsent(q.getIdentifier(), k -> new ArrayList<>()).add(q);
-            }
-        }
-
         List<Correction> all = new ArrayList<>();
         for (CorrectionSource source : sources) {
             if (source != null && source.corrections() != null) {
@@ -57,7 +49,7 @@ public final class Corrections {
         // A reference correction stores ⟨class, identifier⟩ and resolves against THIS
         // pool, so a curated reference lands on the same instance every other field
         // pointing at that entity already uses.
-        REFERENCE_POOL.set(new ReferencePool(byKey));
+        REFERENCE_POOL.set(new ReferencePool(index));
         try {
 
         // Pass 1 — authoritative reviewed values override or extend the base.
@@ -66,7 +58,7 @@ public final class Corrections {
             if (!c.authoritative()) {
                 continue;
             }
-            List<Viewable> targets = targets(c, byKey, byQid);
+            List<Viewable> targets = targets(c, index);
             if (targets.isEmpty()) {
                 continue;
             }
@@ -85,7 +77,7 @@ public final class Corrections {
             if (c.authoritative() || manualKeys.contains(key(c))) {
                 continue;
             }
-            for (Viewable target : targets(c, byKey, byQid)) {
+            for (Viewable target : targets(c, index)) {
                 if (objectview.ViewableAdapter.isValidQuizValue(
                         FieldAccess.getPath(target, c.field()))) {
                     continue;   // this instance already has a value; the next may not
@@ -156,7 +148,7 @@ public final class Corrections {
                 break;
             }
             for (SampleKey f : fields) {
-                if ((f.type() == null || f.type().equals(q.typeName()))
+                if ((f.type() == null || TypedInstanceIndex.hasType(q, f.type()))
                         && !out.containsKey(f)) {
                     Object v = FieldAccess.getPath(q, f.field());
                     // A VALID (non-empty) representative — so coerce sees a non-empty
@@ -254,10 +246,10 @@ public final class Corrections {
      */
     private static Viewable referent(String type, String qid) {
         ReferencePool pool = REFERENCE_POOL.get();
-        return pool == null ? null : pool.byKey().get(new TargetKey(type, qid));
+        return pool == null ? null : pool.index().get(type, qid);
     }
 
-    private record ReferencePool(Map<TargetKey, Viewable> byKey) { }
+    private record ReferencePool(TypedInstanceIndex<Viewable> index) { }
 
     /** A URL → a MediaValue matching {@code sample}'s shape: a single value when the
      *  field holds one, or a one-element collection when it holds a list of them; null
@@ -348,13 +340,12 @@ public final class Corrections {
      * belongs to the person, not to whichever class happens to reference her — so it
      * reaches every instance carrying that QID.
      */
-    private static List<Viewable> targets(Correction correction,
-                                          Map<TargetKey, Viewable> byKey,
-                                          Map<String, List<Viewable>> byQid) {
+    private static List<Viewable> targets(
+            Correction correction, TypedInstanceIndex<Viewable> index) {
         if (correction.type() == null) {
-            return byQid.getOrDefault(correction.qid(), List.of());
+            return index.get(correction.qid());
         }
-        Viewable typed = byKey.get(new TargetKey(correction.type(), correction.qid()));
+        Viewable typed = index.get(correction.type(), correction.qid());
         return typed == null ? List.of() : List.of(typed);
     }
 
@@ -366,7 +357,6 @@ public final class Corrections {
         return String.valueOf(c.type()) + "\u0000" + c.qid() + "\u0000" + c.field();
     }
 
-    private record TargetKey(String type, String qid) { }
     private record SampleKey(String type, String field) { }
 
 }

@@ -62,6 +62,33 @@ class CurationStagingTest {
         assertTrue(staging.identityLinks().isEmpty());
     }
 
+    /** Accepting a review saves that review only. A manual edit being collected in the
+     *  same curation session (TransformApp) used to be saved along with it. */
+    @Test void anAcceptedBatchSavesOnlyItselfAndLeavesCollectedEditsPending(
+            @TempDir Path dir) throws Exception {
+        ManualCuration durable = new ManualCuration(
+                dir.resolve("batch-only.curation.json").toFile());
+        CurationStaging staging = CurationStaging.forCuration(durable);
+        Correction collected = new Correction(
+                "Movie", "local-1", "year", "1999", Correction.MANUAL,
+                null, CorrectionPolicy.REPLACE, null);
+        Correction accepted = new Correction(
+                "Movie", "local-2", "title", "Brazil", "wikipedia-english",
+                null, CorrectionPolicy.FILL_IF_EMPTY, null);
+        staging.stage(collected);
+        staging.stage(accepted);
+
+        staging.applyBatch(java.util.List.of(accepted), java.util.List.of(),
+                java.util.List.of());
+
+        ManualCuration saved = new ManualCuration(durable.file()).load();
+        assertEquals(java.util.List.of("title"),
+                saved.corrections().stream().map(Correction::field).toList(),
+                "only the accepted batch reaches the file");
+        assertEquals(java.util.List.of(collected), staging.corrections(),
+                "the collected manual edit stays pending for its own Save");
+    }
+
     @Test void acceptedSourceDerivedInstancesCrossOnlyTheExplicitSaveBoundary(
             @TempDir Path dir) throws Exception {
         ManualCuration durable = new ManualCuration(

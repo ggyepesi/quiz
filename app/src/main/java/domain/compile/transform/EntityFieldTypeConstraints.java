@@ -24,14 +24,17 @@ public final class EntityFieldTypeConstraints {
         int removed = 0;
         for (WikidataDynamicObject owner : pool) {
             if (owner == null) continue;
-            GeneratedClassModel ownerClass = project.findClass(owner.typeName());
-            if (ownerClass == null) continue;
-            for (GeneratedFieldModel field : ownerClass.effectiveFields(project)) {
-                if (field == null || field.type() != FieldType.ENTITY) continue;
-                String expected = field.entityClassName();
-                if (expected == null || expected.isBlank()
-                        || project.findClass(expected) == null) continue;
-                removed += prune(owner, field.name(), expected, project);
+            java.util.Set<String> checkedFields = new java.util.LinkedHashSet<>();
+            for (GeneratedClassModel ownerClass : project.classesOf(
+                    owner.directClassNames(), owner.typeName())) {
+                for (GeneratedFieldModel field : ownerClass.effectiveFields(project)) {
+                    if (field == null || field.type() != FieldType.ENTITY
+                            || !checkedFields.add(field.name())) continue;
+                    String expected = field.entityClassName();
+                    if (expected == null || expected.isBlank()
+                            || project.findClass(expected) == null) continue;
+                    removed += prune(owner, field.name(), expected, project);
+                }
             }
         }
         if (removed > 0 && log != null) {

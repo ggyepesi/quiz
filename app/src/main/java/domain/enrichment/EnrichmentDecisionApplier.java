@@ -45,8 +45,17 @@ public final class EnrichmentDecisionApplier {
     public static StagedPreview stageAndPreview(
             DomainModel domain, CurationStaging staging,
             List<EnrichmentDecision> decisions) {
+        return stageBatch(domain, staging, decisions).preview();
+    }
+
+    private record Staged(StagedPreview preview, Prepared prepared) { }
+
+    private static Staged stageBatch(
+            DomainModel domain, CurationStaging staging,
+            List<EnrichmentDecision> decisions) {
         if (domain == null || staging == null) {
-            return new StagedPreview(0, 0, List.of());
+            return new Staged(new StagedPreview(0, 0, List.of()),
+                    new Prepared(List.of(), List.of(), List.of()));
         }
         List<EnrichmentDecision> accepted = decisions == null ? List.of()
                 : decisions.stream().filter(java.util.Objects::nonNull).toList();
@@ -64,12 +73,27 @@ public final class EnrichmentDecisionApplier {
                 : sink.materialize(prepared.instances()).unresolved();
         int applied = Corrections.apply(domain.instances(),
                 List.of(() -> prepared.corrections()));
-        return new StagedPreview(staged, applied, unresolved);
+        return new Staged(new StagedPreview(staged, applied, unresolved), prepared);
+    }
+
+    /** Accept a reviewed batch and cross its durable save boundary in the same explicit
+     * user action. Staging remains the transaction mechanism, not a second confirmation. */
+    public static StagedPreview acceptAndSave(
+            DomainModel domain, CurationStaging staging,
+            List<EnrichmentDecision> decisions) throws IOException {
+        Staged staged = stageBatch(domain, staging, decisions);
+        // Persist only this accepted batch: other pending records in the shared session
+        // (for example manual edits being collected in TransformApp) stay pending.
+        if (staged.preview().stagedRecords() > 0) {
+            Prepared batch = staged.prepared();
+            staging.applyBatch(batch.corrections(), batch.identities(), batch.instances());
+        }
+        return staged.preview();
     }
 
     /** Put a reviewed decision into the shared curation transaction without crossing the
-     * durable save boundary. The caller may preview the returned corrections immediately;
-     * {@code Save staged changes} remains the one explicit commit action. */
+     * durable save boundary. Used by workflows that deliberately collect several edits
+     * before one explicit save; review acceptance uses {@link #acceptAndSave}. */
     public static int stage(
             DomainModel domain, CurationStaging staging, EnrichmentDecision decision) {
         return stageAll(domain, staging,

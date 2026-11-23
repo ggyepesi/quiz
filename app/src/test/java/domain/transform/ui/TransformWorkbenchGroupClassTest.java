@@ -137,6 +137,51 @@ class TransformWorkbenchGroupClassTest {
         assertTrue(borderTitles(actionPanel).stream().noneMatch(
                         "Wikipedia article evidence"::equals),
                 "the compact action view must not repeat the full editor's evidence block");
+        assertTrue(all(actionPanel, JButton.class).stream().noneMatch(button ->
+                        button.isVisible() && button.getText().contains("pending")),
+                "accepting a datasource result must not expose a second save action; "
+                        + "the retry appears only after a failed save");
+    }
+
+    /** Reported: staging persisted 42 AssessorOfMaat instances and their group links,
+     * but the already-visible group panel kept rendering its pre-stage member list. */
+    @Test void stagedMembersImmediatelyReplaceTheSelectedGroupsMemberPanel()
+            throws Exception {
+        ProductDomain domain = fixture();
+        TransformWorkbenchPanel[] panel = new TransformWorkbenchPanel[1];
+        SwingUtilities.invokeAndWait(() -> {
+            panel[0] = new TransformWorkbenchPanel(
+                    domain, null, "Egyptian Gods", WorkbenchPurpose.DATASOURCE);
+            JComboBox<?> classes = named(panel[0], "view.class", JComboBox.class);
+            assertNotNull(classes);
+            classes.setSelectedItem("DeityGroup");
+        });
+
+        GroupMembersView groups = awaitGroup(panel[0], "Ennead");
+        assertNotNull(groups);
+        objectview.group.ViewableGroup<?> ennead = groups.groups().getRootGroup()
+                .getChildren().stream()
+                .filter(group -> "Ennead".equals(group.getDisplayName()))
+                .findFirst().orElseThrow();
+        WikidataDynamicObject group = (WikidataDynamicObject) ennead.getKeyRef();
+        WikidataDynamicObject added = domain.instances().stream()
+                .filter(value -> "Q2".equals(value.getIdentifier()))
+                .map(WikidataDynamicObject.class::cast).findFirst().orElseThrow();
+        WikidataDynamicObject first = domain.instances().stream()
+                .filter(value -> "Q1".equals(value.getIdentifier()))
+                .map(WikidataDynamicObject.class::cast).findFirst().orElseThrow();
+
+        SwingUtilities.invokeAndWait(() -> {
+            group.put("members", List.of(first, added));
+            panel[0].refreshAfterCuration();
+        });
+
+        assertTrue(all(panel[0], SearchableView.class).stream().anyMatch(view ->
+                        view.cardList() != null
+                                && view.cardList().getVirtualList().items().stream()
+                                        .map(Viewable::getIdentifier)
+                                        .toList().containsAll(List.of("Q1", "Q2"))),
+                "the selected group's existing instance pane must show the staged members");
     }
 
     @Test void groupClassTreeSurvivesAnAbstractMemberBaseWithNoDirectInstances()

@@ -20,6 +20,7 @@ import domain.runtime.WikidataDynamicObject;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -355,9 +356,9 @@ class ValidationPanelTest {
     }
 
     /** Reported: "Stage selected card seemingly does nothing". The review closes as it
-     *  stages, so its own status line was never seen; the workbench now names the
+     *  accepts, so its own status line was never seen; the workbench now names the
      *  outcome, counted like the review, and says when nothing changed the instances. */
-    @Test void stagingNamesItsOutcomeAndAnEmptyEffectIsNotSilent() {
+    @Test void acceptanceNamesItsOutcomeAndAnEmptyEffectIsNotSilent() {
         domain.datasource.SourceRef source = new domain.datasource.SourceRef(
                 "Wikipedia (English)", "Assessors of Maat", "https://example.test/A");
         domain.transform.DynamicViewable row = new domain.transform.DynamicViewable(
@@ -380,13 +381,47 @@ class ValidationPanelTest {
                                 .FieldDecision(member, member.suggestedAction())),
                         null, List.of(instance));
 
-        assertEquals("Staged 1 change (1 new instance); Save staged changes keeps them.",
-                ValidationPanel.stageOutcomeText(List.of(decision),
+        assertEquals("Accepted and saved 1 new AssessorOfMaat instance to "
+                        + "egyptiangods.curation.json.",
+                ValidationPanel.acceptedOutcomeText(List.of(decision),
                         new domain.enrichment.EnrichmentDecisionApplier.StagedPreview(
-                                2, 1, List.of())));
-        assertTrue(ValidationPanel.stageOutcomeText(List.of(decision),
+                                2, 1, List.of()), "egyptiangods.curation.json"));
+        assertTrue(ValidationPanel.acceptedOutcomeText(List.of(decision),
                         new domain.enrichment.EnrichmentDecisionApplier.StagedPreview(
-                                2, 0, List.of()))
+                                2, 0, List.of()), "egyptiangods.curation.json")
                 .contains("none changed the loaded instances"));
+    }
+
+    @Test void acceptedOutcomeNamesCreatedInstancesNotPersistenceRecords() {
+        domain.datasource.SourceRef source = new domain.datasource.SourceRef(
+                "Wikipedia (English)", "Assessors of Maat", "https://example.test/A");
+        List<domain.enrichment.EnrichmentProposal.InstanceCandidate> instances =
+                IntStream.range(0, 42).mapToObj(index ->
+                        new domain.enrichment.EnrichmentProposal.InstanceCandidate(
+                                "row-" + index, "AssessorOfMaat", "row-" + index,
+                                "Assessor " + index, List.of(), source, List.of(), true))
+                        .toList();
+        domain.enrichment.EnrichmentDecision decision =
+                new domain.enrichment.EnrichmentDecision(
+                        new domain.enrichment.EnrichmentProposal.Subject(
+                                "DeityGroup", "Q9133532", "Q9133532",
+                                "Assessors of Maat"),
+                        List.of(), List.of(), null, instances);
+
+        assertEquals("Accepted and saved 42 new AssessorOfMaat instances to "
+                        + "egyptiangods.curation.json.",
+                ValidationPanel.acceptedOutcomeText(List.of(decision),
+                        new domain.enrichment.EnrichmentDecisionApplier.StagedPreview(
+                                84, 42, List.of()), "egyptiangods.curation.json"));
+    }
+
+    /** DataSourceApp saves an accepted review in the same action, so it shows no save
+     *  button, until a failed save leaves accepted changes pending: then the retry must be
+     *  reachable, or the changes could only be lost. TransformApp always offers its Save. */
+    @Test void aFailedAcceptanceSaveIsRetryableWhereNoSaveButtonIsNormallyShown() {
+        assertEquals(null, ValidationPanel.saveButtonLabel(false, 0));
+        assertEquals("Retry saving 42 accepted changes",
+                ValidationPanel.saveButtonLabel(false, 42));
+        assertEquals("Save pending changes", ValidationPanel.saveButtonLabel(true, 0));
     }
 }

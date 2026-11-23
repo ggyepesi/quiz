@@ -36,12 +36,20 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 1\nName of the deity: Usekh-nemmt\n\"Far-Strider\"\nIdentified with: Heliopolis\nSin (Wilkinson): Falsehood\nPapyrus of Ani[13]: Hail, Usekh-nemmt, who comest forth from Anu, I have not committed sin."
+          "excerpt" : ": 1\nName of the deity: Usekh-nemmt\n\"Far-Strider\"\nIdentified with: Heliopolis\nSin (Wilkinson): Falsehood\nPapyrus of Ani[13]: Hail, Usekh-nemmt, who comest forth from Anu, I have not committed sin.",
+          "links" : [ {
+            "text" : "Usekh-nemmt",
+            "url" : "https://en.wikipedia.org/wiki/Usekh-nemmt_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Heliopolis",
+            "url" : "https://en.wikipedia.org/wiki/Heliopolis_%28ancient_Egypt%29"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -88,12 +96,20 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 2\nName of the deity: Hept-khet\n\"Fire-Embracer\"\nIdentified with: Kheraha\n(Old Cairo?[15])\nSin (Wilkinson): Robbery\nPapyrus of Ani[13]: Hail, Hept-khet, who comest forth from Kher-aha, I have not committed robbery with violence."
+          "excerpt" : ": 2\nName of the deity: Hept-khet\n\"Fire-Embracer\"\nIdentified with: Kheraha\n(Old Cairo?[15])\nSin (Wilkinson): Robbery\nPapyrus of Ani[13]: Hail, Hept-khet, who comest forth from Kher-aha, I have not committed robbery with violence.",
+          "links" : [ {
+            "text" : "Hept-khet",
+            "url" : "https://en.wikipedia.org/wiki/Hept-khet_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Old Cairo",
+            "url" : "https://en.wikipedia.org/wiki/Old_Cairo"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -140,12 +156,20 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 3\nName of the deity: Fenti\n\"Nosey One\"\nIdentified with: Hermopolis\nSin (Wilkinson): Rapaciousness\nPapyrus of Ani[13]: Hail, Fenti, who comest forth from Khemenu, I have not stolen."
+          "excerpt" : ": 3\nName of the deity: Fenti\n\"Nosey One\"\nIdentified with: Hermopolis\nSin (Wilkinson): Rapaciousness\nPapyrus of Ani[13]: Hail, Fenti, who comest forth from Khemenu, I have not stolen.",
+          "links" : [ {
+            "text" : "Fenti",
+            "url" : "https://en.wikipedia.org/wiki/Fenti_%28Mythology%29_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Hermopolis",
+            "url" : "https://en.wikipedia.org/wiki/Hermopolis"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -192,12 +216,17 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 4\nName of the deity: Am-khaibit\n\"Swallower of Shades\"\nIdentified with: \"The Cavern\"\nSin (Wilkinson): Murder\nPapyrus of Ani[13]: Hail, Am-khaibit, who comest forth from Qernet, I have not slain men and women."
+          "excerpt" : ": 4\nName of the deity: Am-khaibit\n\"Swallower of Shades\"\nIdentified with: \"The Cavern\"\nSin (Wilkinson): Murder\nPapyrus of Ani[13]: Hail, Am-khaibit, who comest forth from Qernet, I have not slain men and women.",
+          "links" : [ {
+            "text" : "Am-khaibit",
+            "url" : "https://en.wikipedia.org/wiki/Am-khaibit_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -244,12 +273,20 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 5\nName of the deity: Neha-her\n\"Dangerous One\"\nIdentified with: Rosetau\n(Giza Plateau[16])\nSin (Wilkinson): Stealing\nPapyrus of Ani[13]: Hail, Neha-her, who comest forth from Rasta, I have not stolen grain."
+          "excerpt" : ": 5\nName of the deity: Neha-her\n\"Dangerous One\"\nIdentified with: Rosetau\n(Giza Plateau[16])\nSin (Wilkinson): Stealing\nPapyrus of Ani[13]: Hail, Neha-her, who comest forth from Rasta, I have not stolen grain.",
+          "links" : [ {
+            "text" : "Neha-her",
+            "url" : "https://en.wikipedia.org/wiki/Nehaher_%28Mythology%29_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Giza Plateau",
+            "url" : "https://en.wikipedia.org/wiki/Giza_Plateau"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -296,12 +333,20 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 6\nName of the deity: Ruruti\n\"Double Lion\"\nIdentified with: \"The sky\"\nSin (Wilkinson): Destruction of food\nPapyrus of Ani[13]: Hail, Ruruti, who comest forth from Heaven, I have not purloined offerings."
+          "excerpt" : ": 6\nName of the deity: Ruruti\n\"Double Lion\"\nIdentified with: \"The sky\"\nSin (Wilkinson): Destruction of food\nPapyrus of Ani[13]: Hail, Ruruti, who comest forth from Heaven, I have not purloined offerings.",
+          "links" : [ {
+            "text" : "Ruruti",
+            "url" : "https://en.wikipedia.org/wiki/Ruruti_%28Mythology%29_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "sky",
+            "url" : "https://en.wikipedia.org/wiki/Sky"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -348,12 +393,20 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 7\nName of the deity: Arfi-em-khet\n\"Fiery Eyes\"\nIdentified with: Letopolis\nSin (Wilkinson): Crookedness\nPapyrus of Ani[13]: Hail, Arfi-em-khet, who comest forth from Suat, I have not stolen the property of God."
+          "excerpt" : ": 7\nName of the deity: Arfi-em-khet\n\"Fiery Eyes\"\nIdentified with: Letopolis\nSin (Wilkinson): Crookedness\nPapyrus of Ani[13]: Hail, Arfi-em-khet, who comest forth from Suat, I have not stolen the property of God.",
+          "links" : [ {
+            "text" : "Arfi-em-khet",
+            "url" : "https://en.wikipedia.org/wiki/Arfi-em-khet_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Letopolis",
+            "url" : "https://en.wikipedia.org/wiki/Letopolis"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -400,12 +453,17 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 8\nName of the deity: Neba\n\"Flame\"\nIdentified with: \"Came forth\nbackwards\"\nSin (Wilkinson): Stealing offerings\nPapyrus of Ani[13]: Hail, Neba, who comest and goest, I have not uttered lies."
+          "excerpt" : ": 8\nName of the deity: Neba\n\"Flame\"\nIdentified with: \"Came forth\nbackwards\"\nSin (Wilkinson): Stealing offerings\nPapyrus of Ani[13]: Hail, Neba, who comest and goest, I have not uttered lies.",
+          "links" : [ {
+            "text" : "Neba",
+            "url" : "https://en.wikipedia.org/wiki/Neba_%28Mythology%29_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -452,12 +510,20 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 9\nName of the deity: Set-qesu\n\"Bone Breaker\"\nIdentified with: Heracleopolis\nSin (Wilkinson): Lying\nPapyrus of Ani[13]: Hail, Set-qesu, who comest forth from Hensu, I have not carried away food."
+          "excerpt" : ": 9\nName of the deity: Set-qesu\n\"Bone Breaker\"\nIdentified with: Heracleopolis\nSin (Wilkinson): Lying\nPapyrus of Ani[13]: Hail, Set-qesu, who comest forth from Hensu, I have not carried away food.",
+          "links" : [ {
+            "text" : "Set-qesu",
+            "url" : "https://en.wikipedia.org/wiki/Set-qesu_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Heracleopolis",
+            "url" : "https://en.wikipedia.org/wiki/Heracleopolis_Magna"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -504,12 +570,20 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 10\nName of the deity: Utu-nesert\n\"Green of Flame\"\nIdentified with: Memphis\nSin (Wilkinson): Taking food\nPapyrus of Ani[13]: Hail, Utu-nesert, who comest forth from Het-ka-Ptah, I have not uttered curses."
+          "excerpt" : ": 10\nName of the deity: Utu-nesert\n\"Green of Flame\"\nIdentified with: Memphis\nSin (Wilkinson): Taking food\nPapyrus of Ani[13]: Hail, Utu-nesert, who comest forth from Het-ka-Ptah, I have not uttered curses.",
+          "links" : [ {
+            "text" : "Utu-nesert",
+            "url" : "https://en.wikipedia.org/wiki/Utu-nesert_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Memphis",
+            "url" : "https://en.wikipedia.org/wiki/Memphis%2C_Egypt"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -556,12 +630,17 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 11\nName of the deity: Qerrti\n\"You of the Cavern\"\nIdentified with: \"The West\"\nSin (Wilkinson): Sullenness\nPapyrus of Ani[13]: Hail, Qerrti, who comest forth from Amentet, I have not committed adultery."
+          "excerpt" : ": 11\nName of the deity: Qerrti\n\"You of the Cavern\"\nIdentified with: \"The West\"\nSin (Wilkinson): Sullenness\nPapyrus of Ani[13]: Hail, Qerrti, who comest forth from Amentet, I have not committed adultery.",
+          "links" : [ {
+            "text" : "Qerrti",
+            "url" : "https://en.wikipedia.org/wiki/Qerrti_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -608,12 +687,20 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 12\nName of the deity: Kenemti\n\"White of Teeth\"\nIdentified with: Faiyum\nSin (Wilkinson): Transgression\nPapyrus of Ani[13]: Hail, Kenemti, who comest forth from Kenmet, I have not blasphemed. (#27 in Papyrus source)"
+          "excerpt" : ": 12\nName of the deity: Kenemti\n\"White of Teeth\"\nIdentified with: Faiyum\nSin (Wilkinson): Transgression\nPapyrus of Ani[13]: Hail, Kenemti, who comest forth from Kenmet, I have not blasphemed. (#27 in Papyrus source)",
+          "links" : [ {
+            "text" : "Kenemti",
+            "url" : "https://en.wikipedia.org/wiki/Kenemti_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Faiyum",
+            "url" : "https://en.wikipedia.org/wiki/Faiyum"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -660,12 +747,20 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 13\nName of the deity: Hetch-abhu/\nShezmu \"House of Nature\"\nIdentified with: \"The shambles\"\nSin (Wilkinson): Killing a sacred bull\nPapyrus of Ani[13]: Hail, Basti, who comest forth from Bast, I have not eaten the heart."
+          "excerpt" : ": 13\nName of the deity: Hetch-abhu/\nShezmu \"House of Nature\"\nIdentified with: \"The shambles\"\nSin (Wilkinson): Killing a sacred bull\nPapyrus of Ani[13]: Hail, Basti, who comest forth from Bast, I have not eaten the heart.",
+          "links" : [ {
+            "text" : "Shezmu",
+            "url" : "https://en.wikipedia.org/wiki/Shezmu",
+            "identifying" : true
+          }, {
+            "text" : "sacred bull",
+            "url" : "https://en.wikipedia.org/wiki/Sacred_bull"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -712,12 +807,17 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 14\nName of the deity: Ta-retiu\n\"Eater of Entrails\"\nIdentified with: \"House of Thirty\"\nSin (Wilkinson): Perjury\nPapyrus of Ani[13]: Hail, Ta-retiu, who comest forth from the night, I have not attacked any man."
+          "excerpt" : ": 14\nName of the deity: Ta-retiu\n\"Eater of Entrails\"\nIdentified with: \"House of Thirty\"\nSin (Wilkinson): Perjury\nPapyrus of Ani[13]: Hail, Ta-retiu, who comest forth from the night, I have not attacked any man.",
+          "links" : [ {
+            "text" : "Ta-retiu",
+            "url" : "https://en.wikipedia.org/wiki/Ta-retiu_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -764,12 +864,17 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 15\nName of the deity: Unem-snef\n\"Lord of Truth\"\nIdentified with: Maaty\nSin (Wilkinson): Stealing bread\nPapyrus of Ani[13]: Hail, Unem-snef, who comest forth from the execution chamber, I am not a man of deceit."
+          "excerpt" : ": 15\nName of the deity: Unem-snef\n\"Lord of Truth\"\nIdentified with: Maaty\nSin (Wilkinson): Stealing bread\nPapyrus of Ani[13]: Hail, Unem-snef, who comest forth from the execution chamber, I am not a man of deceit.",
+          "links" : [ {
+            "text" : "Unem-snef",
+            "url" : "https://en.wikipedia.org/wiki/Unem-snef_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -816,12 +921,20 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 16\nName of the deity: Unem-besek\n\"Wanderer\"\nIdentified with: Bubastis\nSin (Wilkinson): Eavesdropping\nPapyrus of Ani[13]: Hail, Unem-besek, who comest forth from Mabit, I have not stolen cultivated land."
+          "excerpt" : ": 16\nName of the deity: Unem-besek\n\"Wanderer\"\nIdentified with: Bubastis\nSin (Wilkinson): Eavesdropping\nPapyrus of Ani[13]: Hail, Unem-besek, who comest forth from Mabit, I have not stolen cultivated land.",
+          "links" : [ {
+            "text" : "Unem-besek",
+            "url" : "https://en.wikipedia.org/wiki/Unem-besek_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Bubastis",
+            "url" : "https://en.wikipedia.org/wiki/Bubastis"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -868,12 +981,17 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 17\nName of the deity: Neb-Maat\n\"Pale One\"\nIdentified with: Heliopolis\nSin (Wilkinson): Babbling\nPapyrus of Ani[13]: Hail, Neb-Maat, who comest forth from Maati, I have not been an eavesdropper."
+          "excerpt" : ": 17\nName of the deity: Neb-Maat\n\"Pale One\"\nIdentified with: Heliopolis\nSin (Wilkinson): Babbling\nPapyrus of Ani[13]: Hail, Neb-Maat, who comest forth from Maati, I have not been an eavesdropper.",
+          "links" : [ {
+            "text" : "Neb-Maat",
+            "url" : "https://en.wikipedia.org/wiki/Neb-Maat_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -920,12 +1038,20 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 18\nName of the deity: Tenemiu\n\"Doubly Evil\"\nIdentified with: Andjet\nSin (Wilkinson): Disputing\nPapyrus of Ani[13]: Hail, Tenemiu, who comest forth from Bast, I have not slandered anyone."
+          "excerpt" : ": 18\nName of the deity: Tenemiu\n\"Doubly Evil\"\nIdentified with: Andjet\nSin (Wilkinson): Disputing\nPapyrus of Ani[13]: Hail, Tenemiu, who comest forth from Bast, I have not slandered anyone.",
+          "links" : [ {
+            "text" : "Tenemiu",
+            "url" : "https://en.wikipedia.org/wiki/Tenemiu_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Andjet",
+            "url" : "https://en.wikipedia.org/wiki/Busiris_%28Lower_Egypt%29"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -972,12 +1098,17 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 19\nName of the deity: Sertiu\n\"Wememty-Snake\"\nIdentified with: \"Place of execution\"\nSin (Wilkinson): Adultery\nPapyrus of Ani[13]: Hail, Sertiu, who comest forth from Anu, I have not been angry without just cause."
+          "excerpt" : ": 19\nName of the deity: Sertiu\n\"Wememty-Snake\"\nIdentified with: \"Place of execution\"\nSin (Wilkinson): Adultery\nPapyrus of Ani[13]: Hail, Sertiu, who comest forth from Anu, I have not been angry without just cause.",
+          "links" : [ {
+            "text" : "Sertiu",
+            "url" : "https://en.wikipedia.org/wiki/Sertiu_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -987,6 +1118,66 @@
       } ]
     },
     "referenceType" : "AssessorOfMaat"
+  }, {
+    "type" : "DeityGroup",
+    "qid" : "Q9133532",
+    "field" : "members",
+    "value" : "Q3535884",
+    "origin" : "wikipedia-english-",
+    "valueKind" : "reference[]",
+    "policy" : "ADD_TO_COLLECTION",
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : null,
+        "proposedEntity" : {
+          "namespace" : "wikidata",
+          "id" : "Q3535884"
+        },
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 20\nName of the deity: Tutu\n\"See Whom You Bring\"\nIdentified with: \"House of Min\"\nSin (Wilkinson): Misbehavior\nPapyrus of Ani[13]: Hail, Tutu, who comest forth from Ati, I have not debauched the wife of any man.",
+          "links" : [ {
+            "text" : "Tutu",
+            "url" : "https://en.wikipedia.org/wiki/Tutu_%28Egyptian_god%29",
+            "identifying" : true
+          }, {
+            "text" : "Min",
+            "url" : "https://en.wikipedia.org/wiki/Min_%28god%29"
+          } ]
+        } ],
+        "extractionMethod" : "reviewed existing table-row member",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured display-cell link identifies this loaded instance; no duplicate row instance is created." ]
+      } ]
+    },
+    "referenceType" : "EgyptianDeity"
   }, {
     "type" : "DeityGroup",
     "qid" : "Q9133532",
@@ -1024,12 +1215,20 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 21\nName of the deity: Uamenti\n\"Over the Old One\"\nIdentified with: Imau\nSin (Wilkinson): Terrorizing\nPapyrus of Ani[13]: Hail, Uamenti, who comest forth from the Khebt chamber, I have not debauched the wives of other men."
+          "excerpt" : ": 21\nName of the deity: Uamenti\n\"Over the Old One\"\nIdentified with: Imau\nSin (Wilkinson): Terrorizing\nPapyrus of Ani[13]: Hail, Uamenti, who comest forth from the Khebt chamber, I have not debauched the wives of other men.",
+          "links" : [ {
+            "text" : "Uamenti",
+            "url" : "https://en.wikipedia.org/wiki/Uamenti_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Imau",
+            "url" : "https://en.wikipedia.org/wiki/Kom_el-Hisn"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -1076,12 +1275,20 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 22\nName of the deity: Maa-antuf\n\"Demolisher\"\nIdentified with: Xois\nSin (Wilkinson): Transgressing\nPapyrus of Ani[13]: Hail, Maa-antuf, who comest forth from Per-Menu, I have not polluted myself."
+          "excerpt" : ": 22\nName of the deity: Maa-antuf\n\"Demolisher\"\nIdentified with: Xois\nSin (Wilkinson): Transgressing\nPapyrus of Ani[13]: Hail, Maa-antuf, who comest forth from Per-Menu, I have not polluted myself.",
+          "links" : [ {
+            "text" : "Maa-antuf",
+            "url" : "https://en.wikipedia.org/wiki/Maa-antuf_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Xois",
+            "url" : "https://en.wikipedia.org/wiki/Xois"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -1128,12 +1335,17 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 23\nName of the deity: Her-uru\n\"Disturber\"\nIdentified with: Weryt\nSin (Wilkinson): Being hot-tempered\nPapyrus of Ani[13]: Hail, Her-uru, who comest forth from Nehatu, I have terrorized none."
+          "excerpt" : ": 23\nName of the deity: Her-uru\n\"Disturber\"\nIdentified with: Weryt\nSin (Wilkinson): Being hot-tempered\nPapyrus of Ani[13]: Hail, Her-uru, who comest forth from Nehatu, I have terrorized none.",
+          "links" : [ {
+            "text" : "Her-uru",
+            "url" : "https://en.wikipedia.org/wiki/Her-uru_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -1180,12 +1392,20 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 24\nName of the deity: Khemiu\n\"Youth\"\nIdentified with: Heliopolitan nome\nSin (Wilkinson): Unhearing of truth\nPapyrus of Ani[13]: Hail, Khemiu, who comest forth from Kaui, I have not transgressed the law."
+          "excerpt" : ": 24\nName of the deity: Khemiu\n\"Youth\"\nIdentified with: Heliopolitan nome\nSin (Wilkinson): Unhearing of truth\nPapyrus of Ani[13]: Hail, Khemiu, who comest forth from Kaui, I have not transgressed the law.",
+          "links" : [ {
+            "text" : "Khemiu",
+            "url" : "https://en.wikipedia.org/wiki/Khemiu_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "nome",
+            "url" : "https://en.wikipedia.org/wiki/Nome_%28Egypt%29"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -1232,12 +1452,17 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 25\nName of the deity: Shet-kheru\n\"Foreteller\"\nIdentified with: Wenes\nSin (Wilkinson): Making disturbance\nPapyrus of Ani[13]: Hail, Shet-kheru, who comest forth from Urit, I have not been angry."
+          "excerpt" : ": 25\nName of the deity: Shet-kheru\n\"Foreteller\"\nIdentified with: Wenes\nSin (Wilkinson): Making disturbance\nPapyrus of Ani[13]: Hail, Shet-kheru, who comest forth from Urit, I have not been angry.",
+          "links" : [ {
+            "text" : "Shet-kheru",
+            "url" : "https://en.wikipedia.org/wiki/Shet-kheru_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -1284,12 +1509,17 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 26\nName of the deity: Nebheru\n\"You of the Altar\"\nIdentified with: \"the secret place\"\nSin (Wilkinson): Hoodwinking\nPapyrus of Ani[13]: Hail, Nekhenu, who comest forth from Heqat, I have not shut my ears to the words of truth."
+          "excerpt" : ": 26\nName of the deity: Nebheru\n\"You of the Altar\"\nIdentified with: \"the secret place\"\nSin (Wilkinson): Hoodwinking\nPapyrus of Ani[13]: Hail, Nekhenu, who comest forth from Heqat, I have not shut my ears to the words of truth.",
+          "links" : [ {
+            "text" : "Nebheru",
+            "url" : "https://en.wikipedia.org/wiki/Nebheru_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -1299,6 +1529,66 @@
       } ]
     },
     "referenceType" : "AssessorOfMaat"
+  }, {
+    "type" : "DeityGroup",
+    "qid" : "Q9133532",
+    "field" : "members",
+    "value" : "Q133855986",
+    "origin" : "wikipedia-english-",
+    "valueKind" : "reference[]",
+    "policy" : "ADD_TO_COLLECTION",
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : null,
+        "proposedEntity" : {
+          "namespace" : "wikidata",
+          "id" : "Q133855986"
+        },
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 27[17]\nName of the deity: Hraf-haf\n\"Face Behind Him\"\nIdentified with: \"Cavern of wrong\"\nSin (Wilkinson): copulating with a boy\nPapyrus of Ani[13]: Hail, Hraf-haf, who comest forth from thy cavern, I have made none to weep. (#12 in Papyrus source)",
+          "links" : [ {
+            "text" : "Hraf-haf",
+            "url" : "https://en.wikipedia.org/wiki/Hraf-haf",
+            "identifying" : true
+          }, {
+            "text" : "copulating with a boy",
+            "url" : "https://en.wikipedia.org/wiki/Pederastry"
+          } ]
+        } ],
+        "extractionMethod" : "reviewed existing table-row member",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured display-cell link identifies this loaded instance; no duplicate row instance is created." ]
+      } ]
+    },
+    "referenceType" : "EgyptianDeity"
   }, {
     "type" : "DeityGroup",
     "qid" : "Q9133532",
@@ -1336,12 +1626,17 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 28\nName of the deity: An-hetep-f\n\"Hot-Foot\"\nIdentified with: \"The dusk\"\nSin (Wilkinson): Neglect\nPapyrus of Ani[13]: Hail, An-hetep-f, who comest forth from Sau, I am not a man of violence."
+          "excerpt" : ": 28\nName of the deity: An-hetep-f\n\"Hot-Foot\"\nIdentified with: \"The dusk\"\nSin (Wilkinson): Neglect\nPapyrus of Ani[13]: Hail, An-hetep-f, who comest forth from Sau, I am not a man of violence.",
+          "links" : [ {
+            "text" : "An-hetep-f",
+            "url" : "https://en.wikipedia.org/wiki/An-hetep-f_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -1388,12 +1683,17 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 29\nName of the deity: Sera-kheru\n\"You of the Darkness\"\nIdentified with: \"The darkness\"\nSin (Wilkinson): Quarrelling\nPapyrus of Ani[13]: Hail, Sera-kheru, who comest forth from Unaset, I have not been a stirrer up of strife."
+          "excerpt" : ": 29\nName of the deity: Sera-kheru\n\"You of the Darkness\"\nIdentified with: \"The darkness\"\nSin (Wilkinson): Quarrelling\nPapyrus of Ani[13]: Hail, Sera-kheru, who comest forth from Unaset, I have not been a stirrer up of strife.",
+          "links" : [ {
+            "text" : "Sera-kheru",
+            "url" : "https://en.wikipedia.org/wiki/Sera-kheru_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -1440,12 +1740,20 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 30\nName of the deity: Neb-heru\n\"Bringer of Your Offerings\"\nIdentified with: Sais\nSin (Wilkinson): Unduly active\nPapyrus of Ani[13]: Hail, Neb-heru, who comest forth from Netchfet, I have not acted with undue haste."
+          "excerpt" : ": 30\nName of the deity: Neb-heru\n\"Bringer of Your Offerings\"\nIdentified with: Sais\nSin (Wilkinson): Unduly active\nPapyrus of Ani[13]: Hail, Neb-heru, who comest forth from Netchfet, I have not acted with undue haste.",
+          "links" : [ {
+            "text" : "Neb-heru",
+            "url" : "https://en.wikipedia.org/wiki/Neb-heru_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Sais",
+            "url" : "https://en.wikipedia.org/wiki/Sais%2C_Egypt"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -1492,12 +1800,23 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 31\nName of the deity: Sekhriu\n\"Owner of Faces\"\nIdentified with: Nedjefet\n(13th / 14th Upper\nEgyptian nome)\nSin (Wilkinson): Impatience\nPapyrus of Ani[13]: Hail, Sekhriu, who comest forth from Uten, I have not pried into other's matters."
+          "excerpt" : ": 31\nName of the deity: Sekhriu\n\"Owner of Faces\"\nIdentified with: Nedjefet\n(13th / 14th Upper\nEgyptian nome)\nSin (Wilkinson): Impatience\nPapyrus of Ani[13]: Hail, Sekhriu, who comest forth from Uten, I have not pried into other's matters.",
+          "links" : [ {
+            "text" : "Sekhriu",
+            "url" : "https://en.wikipedia.org/wiki/Sekhriu_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Upper",
+            "url" : "https://en.wikipedia.org/wiki/Upper_Egypt"
+          }, {
+            "text" : "Egyptian",
+            "url" : "https://en.wikipedia.org/wiki/Upper_Egypt"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -1544,12 +1863,23 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 32\nName of the deity: Neb-abui\n\"Accuser\"\nIdentified with: Wetjenet\n(in Punt[18])\nSin (Wilkinson): damaging a god's image\nPapyrus of Ani[13]: Hail, Neb-abui, who comest forth from Sauti, I have not multiplied my words in speaking."
+          "excerpt" : ": 32\nName of the deity: Neb-abui\n\"Accuser\"\nIdentified with: Wetjenet\n(in Punt[18])\nSin (Wilkinson): damaging a god's image\nPapyrus of Ani[13]: Hail, Neb-abui, who comest forth from Sauti, I have not multiplied my words in speaking.",
+          "links" : [ {
+            "text" : "Neb-abui",
+            "url" : "https://en.wikipedia.org/wiki/Neb-abui_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Punt",
+            "url" : "https://en.wikipedia.org/wiki/Land_of_Punt"
+          }, {
+            "text" : "damaging a god's image",
+            "url" : "https://en.wikipedia.org/wiki/Iconoclasm"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -1596,12 +1926,16 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 33\nName of the deity: \"Owner of Horns\"\nIdentified with: Asyut\nSin (Wilkinson): Volubility of speech\nPapyrus of Ani[13]: Hail, Tcheser-tep, who comest forth from the shrine, I have not carried away the khenfu cakes from the spirits of the dead. (#40 in Papyrus source)"
+          "excerpt" : ": 33\nName of the deity: \"Owner of Horns\"\nIdentified with: Asyut\nSin (Wilkinson): Volubility of speech\nPapyrus of Ani[13]: Hail, Tcheser-tep, who comest forth from the shrine, I have not carried away the khenfu cakes from the spirits of the dead. (#40 in Papyrus source)",
+          "links" : [ {
+            "text" : "Asyut",
+            "url" : "https://en.wikipedia.org/wiki/Asyut"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -1611,6 +1945,63 @@
       } ]
     },
     "referenceType" : "AssessorOfMaat"
+  }, {
+    "type" : "DeityGroup",
+    "qid" : "Q9133532",
+    "field" : "members",
+    "value" : "Q464227",
+    "origin" : "wikipedia-english-",
+    "valueKind" : "reference[]",
+    "policy" : "ADD_TO_COLLECTION",
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : null,
+        "proposedEntity" : {
+          "namespace" : "wikidata",
+          "id" : "Q464227"
+        },
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 34\nName of the deity: Nefertem\nIdentified with: Memphis\nSin (Wilkinson): Wrongdoing, beholding evil\nPapyrus of Ani[13]: Hail, Nefer-Tem, who comest forth from Het-ka-Ptah, I have wronged none, I have done no evil. (#33 in Papyrus source)",
+          "links" : [ {
+            "text" : "Nefertem",
+            "url" : "https://en.wikipedia.org/wiki/Nefertem",
+            "identifying" : true
+          } ]
+        } ],
+        "extractionMethod" : "reviewed existing table-row member",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured display-cell link identifies this loaded instance; no duplicate row instance is created." ]
+      } ]
+    },
+    "referenceType" : "EgyptianDeity"
   }, {
     "type" : "DeityGroup",
     "qid" : "Q9133532",
@@ -1648,12 +2039,23 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 35\nName of the deity: Temsep/Tem-Sepu\nIdentified with: Busiris\nSin (Wilkinson): Conjuration against\nthe king\nPapyrus of Ani[13]: Hail, Tem-Sepu, who comest forth from Tetu, I have not worked witchcraft against the king. (#34 in Papyrus source)"
+          "excerpt" : ": 35\nName of the deity: Temsep/Tem-Sepu\nIdentified with: Busiris\nSin (Wilkinson): Conjuration against\nthe king\nPapyrus of Ani[13]: Hail, Tem-Sepu, who comest forth from Tetu, I have not worked witchcraft against the king. (#34 in Papyrus source)",
+          "links" : [ {
+            "text" : "Temsep/Tem-Sepu",
+            "url" : "https://en.wikipedia.org/wiki/Temsep%2FTem-Sepu_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Busiris",
+            "url" : "https://en.wikipedia.org/wiki/Busiris_%28Lower_Egypt%29"
+          }, {
+            "text" : "king",
+            "url" : "https://en.wikipedia.org/wiki/Pharaoh"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -1700,12 +2102,20 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 36\nName of the deity: Ari-em-ab-f\n\"You Who Acted Willfully\"\nIdentified with: Tjebu\nSin (Wilkinson): Stopping water flow (Wilkinson says \"wading in water\")\nPapyrus of Ani[13]: Hail, Ari-em-ab-f, who comest forth from Tebu, I have never stopped the flow of water of a neighbor. (#35 in Papyrus source)"
+          "excerpt" : ": 36\nName of the deity: Ari-em-ab-f\n\"You Who Acted Willfully\"\nIdentified with: Tjebu\nSin (Wilkinson): Stopping water flow (Wilkinson says \"wading in water\")\nPapyrus of Ani[13]: Hail, Ari-em-ab-f, who comest forth from Tebu, I have never stopped the flow of water of a neighbor. (#35 in Papyrus source)",
+          "links" : [ {
+            "text" : "Ari-em-ab-f",
+            "url" : "https://en.wikipedia.org/wiki/Ari-em-ab-f_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Tjebu",
+            "url" : "https://en.wikipedia.org/wiki/Tjebu"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -1752,12 +2162,20 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 37\nName of the deity: Ahi\n\"Water-Smiter\"\nIdentified with: \"The abyss\"\nSin (Wilkinson): Being loud voiced\nPapyrus of Ani[13]: Hail, Ahi, who comest forth from Nu, I have never raised my voice. (#36 in Papyrus source)"
+          "excerpt" : ": 37\nName of the deity: Ahi\n\"Water-Smiter\"\nIdentified with: \"The abyss\"\nSin (Wilkinson): Being loud voiced\nPapyrus of Ani[13]: Hail, Ahi, who comest forth from Nu, I have never raised my voice. (#36 in Papyrus source)",
+          "links" : [ {
+            "text" : "Ahi",
+            "url" : "https://en.wikipedia.org/wiki/Ahi_%28Mythology%29_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "abyss",
+            "url" : "https://en.wikipedia.org/wiki/Nu_%28mythology%29"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -1804,12 +2222,17 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 38\nName of the deity: Uatch-rekhit\n\"Commander of Mankind\"\nIdentified with: \"Your house\"\nSin (Wilkinson): Reviling God\nPapyrus of Ani[13]: Hail, Uatch-rekhit, who comest forth from Sau, I have not cursed God. (#37 in Papyrus source)"
+          "excerpt" : ": 38\nName of the deity: Uatch-rekhit\n\"Commander of Mankind\"\nIdentified with: \"Your house\"\nSin (Wilkinson): Reviling God\nPapyrus of Ani[13]: Hail, Uatch-rekhit, who comest forth from Sau, I have not cursed God. (#37 in Papyrus source)",
+          "links" : [ {
+            "text" : "Uatch-rekhit",
+            "url" : "https://en.wikipedia.org/wiki/Uatch-rekhit_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -1819,6 +2242,69 @@
       } ]
     },
     "referenceType" : "AssessorOfMaat"
+  }, {
+    "type" : "DeityGroup",
+    "qid" : "Q9133532",
+    "field" : "members",
+    "value" : "Q2044276",
+    "origin" : "wikipedia-english-",
+    "valueKind" : "reference[]",
+    "policy" : "ADD_TO_COLLECTION",
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : null,
+        "proposedEntity" : {
+          "namespace" : "wikidata",
+          "id" : "Q2044276"
+        },
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 39\nName of the deity: Nehebkau\nIdentified with: The Harpoon Nome\n(7th / 8th Lower\nEgyptian nome[19])\nSin (Wilkinson): Arrogance\n(Wilkinson says \"doing...?\")\nPapyrus of Ani[13]: Hail, Neheb-ka, who comest forth from thy cavern, I have not acted with arrogance. (#38 in Papyrus source)",
+          "links" : [ {
+            "text" : "Nehebkau",
+            "url" : "https://en.wikipedia.org/wiki/Nehebkau",
+            "identifying" : true
+          }, {
+            "text" : "Lower",
+            "url" : "https://en.wikipedia.org/wiki/Lower_Egypt"
+          }, {
+            "text" : "Egyptian",
+            "url" : "https://en.wikipedia.org/wiki/Lower_Egypt"
+          } ]
+        } ],
+        "extractionMethod" : "reviewed existing table-row member",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured display-cell link identifies this loaded instance; no duplicate row instance is created." ]
+      } ]
+    },
+    "referenceType" : "EgyptianDeity"
   }, {
     "type" : "DeityGroup",
     "qid" : "Q9133532",
@@ -1856,12 +2342,17 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 40\nName of the deity: Neheb-nefert\nBestower of Powers\"\nIdentified with: \"The city\"\nSin (Wilkinson): Making distinctions\nFor self\nPapyrus of Ani[13]: Hail, Neheb-nefert, who comest forth from thy cavern, I have not stolen the bread of the gods. (#39 in Papyrus source)"
+          "excerpt" : ": 40\nName of the deity: Neheb-nefert\nBestower of Powers\"\nIdentified with: \"The city\"\nSin (Wilkinson): Making distinctions\nFor self\nPapyrus of Ani[13]: Hail, Neheb-nefert, who comest forth from thy cavern, I have not stolen the bread of the gods. (#39 in Papyrus source)",
+          "links" : [ {
+            "text" : "Neheb-nefert",
+            "url" : "https://en.wikipedia.org/wiki/Neheb-nefert_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -1908,12 +2399,20 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 41\nName of the deity: Hetch-abhu\n\"Serpent With Raised Head\"\nIdentified with: \"The cavern\"\nSin (Wilkinson): dishonest wealth\nPapyrus of Ani[13]: Hail, Hetch-abhu, who comest forth from Ta-she, I have not slain the cattle belonging to the god. (#42 in Papyrus source)"
+          "excerpt" : ": 41\nName of the deity: Hetch-abhu\n\"Serpent With Raised Head\"\nIdentified with: \"The cavern\"\nSin (Wilkinson): dishonest wealth\nPapyrus of Ani[13]: Hail, Hetch-abhu, who comest forth from Ta-she, I have not slain the cattle belonging to the god. (#42 in Papyrus source)",
+          "links" : [ {
+            "text" : "Hetch-abhu",
+            "url" : "https://en.wikipedia.org/wiki/Hetch-abhu_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "dishonest wealth",
+            "url" : "https://en.wikipedia.org/wiki/Profiteering_%28business%29"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -1960,12 +2459,20 @@
               "algorithm" : "sha256",
               "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
             },
-            "retrievedAt" : "2026-11-23T05:40:51.949048Z"
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
           },
           "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
           "startOffset" : -1,
           "endOffset" : -1,
-          "excerpt" : ": 42\nName of the deity: Neb-abui\n\"Serpent Who Brings and\nGives\"\nIdentified with: \"The silent land\"\nSin (Wilkinson): Blasphemy\nPapyrus of Ani[13]: Hail, An-af, who comest forth from Maati, I have not snatched away the bread of the child, nor treated with contempt the god of my city. (#41 in Papyrus source)"
+          "excerpt" : ": 42\nName of the deity: Neb-abui\n\"Serpent Who Brings and\nGives\"\nIdentified with: \"The silent land\"\nSin (Wilkinson): Blasphemy\nPapyrus of Ani[13]: Hail, An-af, who comest forth from Maati, I have not snatched away the bread of the child, nor treated with contempt the god of my city. (#41 in Papyrus source)",
+          "links" : [ {
+            "text" : "Neb-abui",
+            "url" : "https://en.wikipedia.org/wiki/Neb-abui_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Blasphemy",
+            "url" : "https://en.wikipedia.org/wiki/Blasphemy"
+          } ]
         } ],
         "extractionMethod" : "reviewed Wikipedia table-row instance",
         "recipeVersion" : "article-table-row-instances-v1",
@@ -1980,5 +2487,2400 @@
   "merges" : [ ],
   "identityLinks" : [ ],
   "sourceRecipes" : [ ],
-  "instances" : [ ]
+  "instances" : [ {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:e92867f0fa388d0812557ec8",
+    "displayName" : "Usekh-nemmt\n\"Far-Strider\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 1", "Name of the deity: Usekh-nemmt\n\"Far-Strider\"", "Identified with: Heliopolis", "Sin (Wilkinson): Falsehood", "Papyrus of Ani[13]: Hail, Usekh-nemmt, who comest forth from Anu, I have not committed sin." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 1\nName of the deity: Usekh-nemmt\n\"Far-Strider\"\nIdentified with: Heliopolis\nSin (Wilkinson): Falsehood\nPapyrus of Ani[13]: Hail, Usekh-nemmt, who comest forth from Anu, I have not committed sin.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 1\nName of the deity: Usekh-nemmt\n\"Far-Strider\"\nIdentified with: Heliopolis\nSin (Wilkinson): Falsehood\nPapyrus of Ani[13]: Hail, Usekh-nemmt, who comest forth from Anu, I have not committed sin.",
+          "links" : [ {
+            "text" : "Usekh-nemmt",
+            "url" : "https://en.wikipedia.org/wiki/Usekh-nemmt_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Heliopolis",
+            "url" : "https://en.wikipedia.org/wiki/Heliopolis_%28ancient_Egypt%29"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:45c5ff64c2335e8a1d1317f2",
+    "displayName" : "Hept-khet\n\"Fire-Embracer\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 2", "Name of the deity: Hept-khet\n\"Fire-Embracer\"", "Identified with: Kheraha\n(Old Cairo?[15])", "Sin (Wilkinson): Robbery", "Papyrus of Ani[13]: Hail, Hept-khet, who comest forth from Kher-aha, I have not committed robbery with violence." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 2\nName of the deity: Hept-khet\n\"Fire-Embracer\"\nIdentified with: Kheraha\n(Old Cairo?[15])\nSin (Wilkinson): Robbery\nPapyrus of Ani[13]: Hail, Hept-khet, who comest forth from Kher-aha, I have not committed robbery with violence.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 2\nName of the deity: Hept-khet\n\"Fire-Embracer\"\nIdentified with: Kheraha\n(Old Cairo?[15])\nSin (Wilkinson): Robbery\nPapyrus of Ani[13]: Hail, Hept-khet, who comest forth from Kher-aha, I have not committed robbery with violence.",
+          "links" : [ {
+            "text" : "Hept-khet",
+            "url" : "https://en.wikipedia.org/wiki/Hept-khet_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Old Cairo",
+            "url" : "https://en.wikipedia.org/wiki/Old_Cairo"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:f087bf37a7af84326b5fa164",
+    "displayName" : "Fenti\n\"Nosey One\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 3", "Name of the deity: Fenti\n\"Nosey One\"", "Identified with: Hermopolis", "Sin (Wilkinson): Rapaciousness", "Papyrus of Ani[13]: Hail, Fenti, who comest forth from Khemenu, I have not stolen." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 3\nName of the deity: Fenti\n\"Nosey One\"\nIdentified with: Hermopolis\nSin (Wilkinson): Rapaciousness\nPapyrus of Ani[13]: Hail, Fenti, who comest forth from Khemenu, I have not stolen.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 3\nName of the deity: Fenti\n\"Nosey One\"\nIdentified with: Hermopolis\nSin (Wilkinson): Rapaciousness\nPapyrus of Ani[13]: Hail, Fenti, who comest forth from Khemenu, I have not stolen.",
+          "links" : [ {
+            "text" : "Fenti",
+            "url" : "https://en.wikipedia.org/wiki/Fenti_%28Mythology%29_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Hermopolis",
+            "url" : "https://en.wikipedia.org/wiki/Hermopolis"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:def07ec60045bf04dc2a40b1",
+    "displayName" : "Am-khaibit\n\"Swallower of Shades\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 4", "Name of the deity: Am-khaibit\n\"Swallower of Shades\"", "Identified with: \"The Cavern\"", "Sin (Wilkinson): Murder", "Papyrus of Ani[13]: Hail, Am-khaibit, who comest forth from Qernet, I have not slain men and women." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 4\nName of the deity: Am-khaibit\n\"Swallower of Shades\"\nIdentified with: \"The Cavern\"\nSin (Wilkinson): Murder\nPapyrus of Ani[13]: Hail, Am-khaibit, who comest forth from Qernet, I have not slain men and women.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 4\nName of the deity: Am-khaibit\n\"Swallower of Shades\"\nIdentified with: \"The Cavern\"\nSin (Wilkinson): Murder\nPapyrus of Ani[13]: Hail, Am-khaibit, who comest forth from Qernet, I have not slain men and women.",
+          "links" : [ {
+            "text" : "Am-khaibit",
+            "url" : "https://en.wikipedia.org/wiki/Am-khaibit_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:629166cbe2f7fc132ee5522e",
+    "displayName" : "Neha-her\n\"Dangerous One\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 5", "Name of the deity: Neha-her\n\"Dangerous One\"", "Identified with: Rosetau\n(Giza Plateau[16])", "Sin (Wilkinson): Stealing", "Papyrus of Ani[13]: Hail, Neha-her, who comest forth from Rasta, I have not stolen grain." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 5\nName of the deity: Neha-her\n\"Dangerous One\"\nIdentified with: Rosetau\n(Giza Plateau[16])\nSin (Wilkinson): Stealing\nPapyrus of Ani[13]: Hail, Neha-her, who comest forth from Rasta, I have not stolen grain.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 5\nName of the deity: Neha-her\n\"Dangerous One\"\nIdentified with: Rosetau\n(Giza Plateau[16])\nSin (Wilkinson): Stealing\nPapyrus of Ani[13]: Hail, Neha-her, who comest forth from Rasta, I have not stolen grain.",
+          "links" : [ {
+            "text" : "Neha-her",
+            "url" : "https://en.wikipedia.org/wiki/Nehaher_%28Mythology%29_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Giza Plateau",
+            "url" : "https://en.wikipedia.org/wiki/Giza_Plateau"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:21b3297fa6c119698edb6e8d",
+    "displayName" : "Ruruti\n\"Double Lion\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 6", "Name of the deity: Ruruti\n\"Double Lion\"", "Identified with: \"The sky\"", "Sin (Wilkinson): Destruction of food", "Papyrus of Ani[13]: Hail, Ruruti, who comest forth from Heaven, I have not purloined offerings." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 6\nName of the deity: Ruruti\n\"Double Lion\"\nIdentified with: \"The sky\"\nSin (Wilkinson): Destruction of food\nPapyrus of Ani[13]: Hail, Ruruti, who comest forth from Heaven, I have not purloined offerings.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 6\nName of the deity: Ruruti\n\"Double Lion\"\nIdentified with: \"The sky\"\nSin (Wilkinson): Destruction of food\nPapyrus of Ani[13]: Hail, Ruruti, who comest forth from Heaven, I have not purloined offerings.",
+          "links" : [ {
+            "text" : "Ruruti",
+            "url" : "https://en.wikipedia.org/wiki/Ruruti_%28Mythology%29_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "sky",
+            "url" : "https://en.wikipedia.org/wiki/Sky"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:0791b6026cb27daa5bc91235",
+    "displayName" : "Arfi-em-khet\n\"Fiery Eyes\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 7", "Name of the deity: Arfi-em-khet\n\"Fiery Eyes\"", "Identified with: Letopolis", "Sin (Wilkinson): Crookedness", "Papyrus of Ani[13]: Hail, Arfi-em-khet, who comest forth from Suat, I have not stolen the property of God." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 7\nName of the deity: Arfi-em-khet\n\"Fiery Eyes\"\nIdentified with: Letopolis\nSin (Wilkinson): Crookedness\nPapyrus of Ani[13]: Hail, Arfi-em-khet, who comest forth from Suat, I have not stolen the property of God.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 7\nName of the deity: Arfi-em-khet\n\"Fiery Eyes\"\nIdentified with: Letopolis\nSin (Wilkinson): Crookedness\nPapyrus of Ani[13]: Hail, Arfi-em-khet, who comest forth from Suat, I have not stolen the property of God.",
+          "links" : [ {
+            "text" : "Arfi-em-khet",
+            "url" : "https://en.wikipedia.org/wiki/Arfi-em-khet_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Letopolis",
+            "url" : "https://en.wikipedia.org/wiki/Letopolis"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:fe6b36dec34f93115f87200f",
+    "displayName" : "Neba\n\"Flame\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 8", "Name of the deity: Neba\n\"Flame\"", "Identified with: \"Came forth\nbackwards\"", "Sin (Wilkinson): Stealing offerings", "Papyrus of Ani[13]: Hail, Neba, who comest and goest, I have not uttered lies." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 8\nName of the deity: Neba\n\"Flame\"\nIdentified with: \"Came forth\nbackwards\"\nSin (Wilkinson): Stealing offerings\nPapyrus of Ani[13]: Hail, Neba, who comest and goest, I have not uttered lies.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 8\nName of the deity: Neba\n\"Flame\"\nIdentified with: \"Came forth\nbackwards\"\nSin (Wilkinson): Stealing offerings\nPapyrus of Ani[13]: Hail, Neba, who comest and goest, I have not uttered lies.",
+          "links" : [ {
+            "text" : "Neba",
+            "url" : "https://en.wikipedia.org/wiki/Neba_%28Mythology%29_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:e8aefd6c7b39ae30c09a2099",
+    "displayName" : "Set-qesu\n\"Bone Breaker\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 9", "Name of the deity: Set-qesu\n\"Bone Breaker\"", "Identified with: Heracleopolis", "Sin (Wilkinson): Lying", "Papyrus of Ani[13]: Hail, Set-qesu, who comest forth from Hensu, I have not carried away food." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 9\nName of the deity: Set-qesu\n\"Bone Breaker\"\nIdentified with: Heracleopolis\nSin (Wilkinson): Lying\nPapyrus of Ani[13]: Hail, Set-qesu, who comest forth from Hensu, I have not carried away food.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 9\nName of the deity: Set-qesu\n\"Bone Breaker\"\nIdentified with: Heracleopolis\nSin (Wilkinson): Lying\nPapyrus of Ani[13]: Hail, Set-qesu, who comest forth from Hensu, I have not carried away food.",
+          "links" : [ {
+            "text" : "Set-qesu",
+            "url" : "https://en.wikipedia.org/wiki/Set-qesu_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Heracleopolis",
+            "url" : "https://en.wikipedia.org/wiki/Heracleopolis_Magna"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:c2c32883663ee46bedcd8c55",
+    "displayName" : "Utu-nesert\n\"Green of Flame\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 10", "Name of the deity: Utu-nesert\n\"Green of Flame\"", "Identified with: Memphis", "Sin (Wilkinson): Taking food", "Papyrus of Ani[13]: Hail, Utu-nesert, who comest forth from Het-ka-Ptah, I have not uttered curses." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 10\nName of the deity: Utu-nesert\n\"Green of Flame\"\nIdentified with: Memphis\nSin (Wilkinson): Taking food\nPapyrus of Ani[13]: Hail, Utu-nesert, who comest forth from Het-ka-Ptah, I have not uttered curses.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 10\nName of the deity: Utu-nesert\n\"Green of Flame\"\nIdentified with: Memphis\nSin (Wilkinson): Taking food\nPapyrus of Ani[13]: Hail, Utu-nesert, who comest forth from Het-ka-Ptah, I have not uttered curses.",
+          "links" : [ {
+            "text" : "Utu-nesert",
+            "url" : "https://en.wikipedia.org/wiki/Utu-nesert_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Memphis",
+            "url" : "https://en.wikipedia.org/wiki/Memphis%2C_Egypt"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:73c40938079b29a1eaf9ffd3",
+    "displayName" : "Qerrti\n\"You of the Cavern\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 11", "Name of the deity: Qerrti\n\"You of the Cavern\"", "Identified with: \"The West\"", "Sin (Wilkinson): Sullenness", "Papyrus of Ani[13]: Hail, Qerrti, who comest forth from Amentet, I have not committed adultery." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 11\nName of the deity: Qerrti\n\"You of the Cavern\"\nIdentified with: \"The West\"\nSin (Wilkinson): Sullenness\nPapyrus of Ani[13]: Hail, Qerrti, who comest forth from Amentet, I have not committed adultery.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 11\nName of the deity: Qerrti\n\"You of the Cavern\"\nIdentified with: \"The West\"\nSin (Wilkinson): Sullenness\nPapyrus of Ani[13]: Hail, Qerrti, who comest forth from Amentet, I have not committed adultery.",
+          "links" : [ {
+            "text" : "Qerrti",
+            "url" : "https://en.wikipedia.org/wiki/Qerrti_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:05afcd37c8d741d34abcbb12",
+    "displayName" : "Kenemti\n\"White of Teeth\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 12", "Name of the deity: Kenemti\n\"White of Teeth\"", "Identified with: Faiyum", "Sin (Wilkinson): Transgression", "Papyrus of Ani[13]: Hail, Kenemti, who comest forth from Kenmet, I have not blasphemed. (#27 in Papyrus source)" ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 12\nName of the deity: Kenemti\n\"White of Teeth\"\nIdentified with: Faiyum\nSin (Wilkinson): Transgression\nPapyrus of Ani[13]: Hail, Kenemti, who comest forth from Kenmet, I have not blasphemed. (#27 in Papyrus source)",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 12\nName of the deity: Kenemti\n\"White of Teeth\"\nIdentified with: Faiyum\nSin (Wilkinson): Transgression\nPapyrus of Ani[13]: Hail, Kenemti, who comest forth from Kenmet, I have not blasphemed. (#27 in Papyrus source)",
+          "links" : [ {
+            "text" : "Kenemti",
+            "url" : "https://en.wikipedia.org/wiki/Kenemti_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Faiyum",
+            "url" : "https://en.wikipedia.org/wiki/Faiyum"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:f94f3fc54e55318a97a6ff24",
+    "displayName" : "Hetch-abhu/\nShezmu \"House of Nature\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 13", "Name of the deity: Hetch-abhu/\nShezmu \"House of Nature\"", "Identified with: \"The shambles\"", "Sin (Wilkinson): Killing a sacred bull", "Papyrus of Ani[13]: Hail, Basti, who comest forth from Bast, I have not eaten the heart." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 13\nName of the deity: Hetch-abhu/\nShezmu \"House of Nature\"\nIdentified with: \"The shambles\"\nSin (Wilkinson): Killing a sacred bull\nPapyrus of Ani[13]: Hail, Basti, who comest forth from Bast, I have not eaten the heart.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 13\nName of the deity: Hetch-abhu/\nShezmu \"House of Nature\"\nIdentified with: \"The shambles\"\nSin (Wilkinson): Killing a sacred bull\nPapyrus of Ani[13]: Hail, Basti, who comest forth from Bast, I have not eaten the heart.",
+          "links" : [ {
+            "text" : "Shezmu",
+            "url" : "https://en.wikipedia.org/wiki/Shezmu",
+            "identifying" : true
+          }, {
+            "text" : "sacred bull",
+            "url" : "https://en.wikipedia.org/wiki/Sacred_bull"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:cdad9da817dac674c0b53dae",
+    "displayName" : "Ta-retiu\n\"Eater of Entrails\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 14", "Name of the deity: Ta-retiu\n\"Eater of Entrails\"", "Identified with: \"House of Thirty\"", "Sin (Wilkinson): Perjury", "Papyrus of Ani[13]: Hail, Ta-retiu, who comest forth from the night, I have not attacked any man." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 14\nName of the deity: Ta-retiu\n\"Eater of Entrails\"\nIdentified with: \"House of Thirty\"\nSin (Wilkinson): Perjury\nPapyrus of Ani[13]: Hail, Ta-retiu, who comest forth from the night, I have not attacked any man.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 14\nName of the deity: Ta-retiu\n\"Eater of Entrails\"\nIdentified with: \"House of Thirty\"\nSin (Wilkinson): Perjury\nPapyrus of Ani[13]: Hail, Ta-retiu, who comest forth from the night, I have not attacked any man.",
+          "links" : [ {
+            "text" : "Ta-retiu",
+            "url" : "https://en.wikipedia.org/wiki/Ta-retiu_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:9106e35c25c5d6f93dacffe4",
+    "displayName" : "Unem-snef\n\"Lord of Truth\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 15", "Name of the deity: Unem-snef\n\"Lord of Truth\"", "Identified with: Maaty", "Sin (Wilkinson): Stealing bread", "Papyrus of Ani[13]: Hail, Unem-snef, who comest forth from the execution chamber, I am not a man of deceit." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 15\nName of the deity: Unem-snef\n\"Lord of Truth\"\nIdentified with: Maaty\nSin (Wilkinson): Stealing bread\nPapyrus of Ani[13]: Hail, Unem-snef, who comest forth from the execution chamber, I am not a man of deceit.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 15\nName of the deity: Unem-snef\n\"Lord of Truth\"\nIdentified with: Maaty\nSin (Wilkinson): Stealing bread\nPapyrus of Ani[13]: Hail, Unem-snef, who comest forth from the execution chamber, I am not a man of deceit.",
+          "links" : [ {
+            "text" : "Unem-snef",
+            "url" : "https://en.wikipedia.org/wiki/Unem-snef_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:47bb1e981345a1843dbe4656",
+    "displayName" : "Unem-besek\n\"Wanderer\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 16", "Name of the deity: Unem-besek\n\"Wanderer\"", "Identified with: Bubastis", "Sin (Wilkinson): Eavesdropping", "Papyrus of Ani[13]: Hail, Unem-besek, who comest forth from Mabit, I have not stolen cultivated land." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 16\nName of the deity: Unem-besek\n\"Wanderer\"\nIdentified with: Bubastis\nSin (Wilkinson): Eavesdropping\nPapyrus of Ani[13]: Hail, Unem-besek, who comest forth from Mabit, I have not stolen cultivated land.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 16\nName of the deity: Unem-besek\n\"Wanderer\"\nIdentified with: Bubastis\nSin (Wilkinson): Eavesdropping\nPapyrus of Ani[13]: Hail, Unem-besek, who comest forth from Mabit, I have not stolen cultivated land.",
+          "links" : [ {
+            "text" : "Unem-besek",
+            "url" : "https://en.wikipedia.org/wiki/Unem-besek_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Bubastis",
+            "url" : "https://en.wikipedia.org/wiki/Bubastis"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:abf657f7f4eee8bf99a61b54",
+    "displayName" : "Neb-Maat\n\"Pale One\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 17", "Name of the deity: Neb-Maat\n\"Pale One\"", "Identified with: Heliopolis", "Sin (Wilkinson): Babbling", "Papyrus of Ani[13]: Hail, Neb-Maat, who comest forth from Maati, I have not been an eavesdropper." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 17\nName of the deity: Neb-Maat\n\"Pale One\"\nIdentified with: Heliopolis\nSin (Wilkinson): Babbling\nPapyrus of Ani[13]: Hail, Neb-Maat, who comest forth from Maati, I have not been an eavesdropper.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 17\nName of the deity: Neb-Maat\n\"Pale One\"\nIdentified with: Heliopolis\nSin (Wilkinson): Babbling\nPapyrus of Ani[13]: Hail, Neb-Maat, who comest forth from Maati, I have not been an eavesdropper.",
+          "links" : [ {
+            "text" : "Neb-Maat",
+            "url" : "https://en.wikipedia.org/wiki/Neb-Maat_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:51d6191df976573507d4c65d",
+    "displayName" : "Tenemiu\n\"Doubly Evil\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 18", "Name of the deity: Tenemiu\n\"Doubly Evil\"", "Identified with: Andjet", "Sin (Wilkinson): Disputing", "Papyrus of Ani[13]: Hail, Tenemiu, who comest forth from Bast, I have not slandered anyone." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 18\nName of the deity: Tenemiu\n\"Doubly Evil\"\nIdentified with: Andjet\nSin (Wilkinson): Disputing\nPapyrus of Ani[13]: Hail, Tenemiu, who comest forth from Bast, I have not slandered anyone.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 18\nName of the deity: Tenemiu\n\"Doubly Evil\"\nIdentified with: Andjet\nSin (Wilkinson): Disputing\nPapyrus of Ani[13]: Hail, Tenemiu, who comest forth from Bast, I have not slandered anyone.",
+          "links" : [ {
+            "text" : "Tenemiu",
+            "url" : "https://en.wikipedia.org/wiki/Tenemiu_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Andjet",
+            "url" : "https://en.wikipedia.org/wiki/Busiris_%28Lower_Egypt%29"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:69518d1df901e466a9b6f2e2",
+    "displayName" : "Sertiu\n\"Wememty-Snake\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 19", "Name of the deity: Sertiu\n\"Wememty-Snake\"", "Identified with: \"Place of execution\"", "Sin (Wilkinson): Adultery", "Papyrus of Ani[13]: Hail, Sertiu, who comest forth from Anu, I have not been angry without just cause." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 19\nName of the deity: Sertiu\n\"Wememty-Snake\"\nIdentified with: \"Place of execution\"\nSin (Wilkinson): Adultery\nPapyrus of Ani[13]: Hail, Sertiu, who comest forth from Anu, I have not been angry without just cause.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 19\nName of the deity: Sertiu\n\"Wememty-Snake\"\nIdentified with: \"Place of execution\"\nSin (Wilkinson): Adultery\nPapyrus of Ani[13]: Hail, Sertiu, who comest forth from Anu, I have not been angry without just cause.",
+          "links" : [ {
+            "text" : "Sertiu",
+            "url" : "https://en.wikipedia.org/wiki/Sertiu_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:1a16f91663f596615f7d7303",
+    "displayName" : "Uamenti\n\"Over the Old One\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 21", "Name of the deity: Uamenti\n\"Over the Old One\"", "Identified with: Imau", "Sin (Wilkinson): Terrorizing", "Papyrus of Ani[13]: Hail, Uamenti, who comest forth from the Khebt chamber, I have not debauched the wives of other men." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 21\nName of the deity: Uamenti\n\"Over the Old One\"\nIdentified with: Imau\nSin (Wilkinson): Terrorizing\nPapyrus of Ani[13]: Hail, Uamenti, who comest forth from the Khebt chamber, I have not debauched the wives of other men.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 21\nName of the deity: Uamenti\n\"Over the Old One\"\nIdentified with: Imau\nSin (Wilkinson): Terrorizing\nPapyrus of Ani[13]: Hail, Uamenti, who comest forth from the Khebt chamber, I have not debauched the wives of other men.",
+          "links" : [ {
+            "text" : "Uamenti",
+            "url" : "https://en.wikipedia.org/wiki/Uamenti_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Imau",
+            "url" : "https://en.wikipedia.org/wiki/Kom_el-Hisn"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:d32e548ef331e846d041edc4",
+    "displayName" : "Maa-antuf\n\"Demolisher\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 22", "Name of the deity: Maa-antuf\n\"Demolisher\"", "Identified with: Xois", "Sin (Wilkinson): Transgressing", "Papyrus of Ani[13]: Hail, Maa-antuf, who comest forth from Per-Menu, I have not polluted myself." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 22\nName of the deity: Maa-antuf\n\"Demolisher\"\nIdentified with: Xois\nSin (Wilkinson): Transgressing\nPapyrus of Ani[13]: Hail, Maa-antuf, who comest forth from Per-Menu, I have not polluted myself.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 22\nName of the deity: Maa-antuf\n\"Demolisher\"\nIdentified with: Xois\nSin (Wilkinson): Transgressing\nPapyrus of Ani[13]: Hail, Maa-antuf, who comest forth from Per-Menu, I have not polluted myself.",
+          "links" : [ {
+            "text" : "Maa-antuf",
+            "url" : "https://en.wikipedia.org/wiki/Maa-antuf_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Xois",
+            "url" : "https://en.wikipedia.org/wiki/Xois"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:df559a90337e236da5ef7789",
+    "displayName" : "Her-uru\n\"Disturber\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 23", "Name of the deity: Her-uru\n\"Disturber\"", "Identified with: Weryt", "Sin (Wilkinson): Being hot-tempered", "Papyrus of Ani[13]: Hail, Her-uru, who comest forth from Nehatu, I have terrorized none." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 23\nName of the deity: Her-uru\n\"Disturber\"\nIdentified with: Weryt\nSin (Wilkinson): Being hot-tempered\nPapyrus of Ani[13]: Hail, Her-uru, who comest forth from Nehatu, I have terrorized none.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 23\nName of the deity: Her-uru\n\"Disturber\"\nIdentified with: Weryt\nSin (Wilkinson): Being hot-tempered\nPapyrus of Ani[13]: Hail, Her-uru, who comest forth from Nehatu, I have terrorized none.",
+          "links" : [ {
+            "text" : "Her-uru",
+            "url" : "https://en.wikipedia.org/wiki/Her-uru_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:7174650e3a33cb73d6180298",
+    "displayName" : "Khemiu\n\"Youth\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 24", "Name of the deity: Khemiu\n\"Youth\"", "Identified with: Heliopolitan nome", "Sin (Wilkinson): Unhearing of truth", "Papyrus of Ani[13]: Hail, Khemiu, who comest forth from Kaui, I have not transgressed the law." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 24\nName of the deity: Khemiu\n\"Youth\"\nIdentified with: Heliopolitan nome\nSin (Wilkinson): Unhearing of truth\nPapyrus of Ani[13]: Hail, Khemiu, who comest forth from Kaui, I have not transgressed the law.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 24\nName of the deity: Khemiu\n\"Youth\"\nIdentified with: Heliopolitan nome\nSin (Wilkinson): Unhearing of truth\nPapyrus of Ani[13]: Hail, Khemiu, who comest forth from Kaui, I have not transgressed the law.",
+          "links" : [ {
+            "text" : "Khemiu",
+            "url" : "https://en.wikipedia.org/wiki/Khemiu_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "nome",
+            "url" : "https://en.wikipedia.org/wiki/Nome_%28Egypt%29"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:6d4f0b57865898d831db32ba",
+    "displayName" : "Shet-kheru\n\"Foreteller\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 25", "Name of the deity: Shet-kheru\n\"Foreteller\"", "Identified with: Wenes", "Sin (Wilkinson): Making disturbance", "Papyrus of Ani[13]: Hail, Shet-kheru, who comest forth from Urit, I have not been angry." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 25\nName of the deity: Shet-kheru\n\"Foreteller\"\nIdentified with: Wenes\nSin (Wilkinson): Making disturbance\nPapyrus of Ani[13]: Hail, Shet-kheru, who comest forth from Urit, I have not been angry.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 25\nName of the deity: Shet-kheru\n\"Foreteller\"\nIdentified with: Wenes\nSin (Wilkinson): Making disturbance\nPapyrus of Ani[13]: Hail, Shet-kheru, who comest forth from Urit, I have not been angry.",
+          "links" : [ {
+            "text" : "Shet-kheru",
+            "url" : "https://en.wikipedia.org/wiki/Shet-kheru_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:1354f6b55c09917d63fcc699",
+    "displayName" : "Nebheru\n\"You of the Altar\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 26", "Name of the deity: Nebheru\n\"You of the Altar\"", "Identified with: \"the secret place\"", "Sin (Wilkinson): Hoodwinking", "Papyrus of Ani[13]: Hail, Nekhenu, who comest forth from Heqat, I have not shut my ears to the words of truth." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 26\nName of the deity: Nebheru\n\"You of the Altar\"\nIdentified with: \"the secret place\"\nSin (Wilkinson): Hoodwinking\nPapyrus of Ani[13]: Hail, Nekhenu, who comest forth from Heqat, I have not shut my ears to the words of truth.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 26\nName of the deity: Nebheru\n\"You of the Altar\"\nIdentified with: \"the secret place\"\nSin (Wilkinson): Hoodwinking\nPapyrus of Ani[13]: Hail, Nekhenu, who comest forth from Heqat, I have not shut my ears to the words of truth.",
+          "links" : [ {
+            "text" : "Nebheru",
+            "url" : "https://en.wikipedia.org/wiki/Nebheru_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:9388e94a6ae70a615c1c1857",
+    "displayName" : "An-hetep-f\n\"Hot-Foot\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 28", "Name of the deity: An-hetep-f\n\"Hot-Foot\"", "Identified with: \"The dusk\"", "Sin (Wilkinson): Neglect", "Papyrus of Ani[13]: Hail, An-hetep-f, who comest forth from Sau, I am not a man of violence." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 28\nName of the deity: An-hetep-f\n\"Hot-Foot\"\nIdentified with: \"The dusk\"\nSin (Wilkinson): Neglect\nPapyrus of Ani[13]: Hail, An-hetep-f, who comest forth from Sau, I am not a man of violence.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 28\nName of the deity: An-hetep-f\n\"Hot-Foot\"\nIdentified with: \"The dusk\"\nSin (Wilkinson): Neglect\nPapyrus of Ani[13]: Hail, An-hetep-f, who comest forth from Sau, I am not a man of violence.",
+          "links" : [ {
+            "text" : "An-hetep-f",
+            "url" : "https://en.wikipedia.org/wiki/An-hetep-f_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:edea5ac53e72856103eafdf4",
+    "displayName" : "Sera-kheru\n\"You of the Darkness\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 29", "Name of the deity: Sera-kheru\n\"You of the Darkness\"", "Identified with: \"The darkness\"", "Sin (Wilkinson): Quarrelling", "Papyrus of Ani[13]: Hail, Sera-kheru, who comest forth from Unaset, I have not been a stirrer up of strife." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 29\nName of the deity: Sera-kheru\n\"You of the Darkness\"\nIdentified with: \"The darkness\"\nSin (Wilkinson): Quarrelling\nPapyrus of Ani[13]: Hail, Sera-kheru, who comest forth from Unaset, I have not been a stirrer up of strife.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 29\nName of the deity: Sera-kheru\n\"You of the Darkness\"\nIdentified with: \"The darkness\"\nSin (Wilkinson): Quarrelling\nPapyrus of Ani[13]: Hail, Sera-kheru, who comest forth from Unaset, I have not been a stirrer up of strife.",
+          "links" : [ {
+            "text" : "Sera-kheru",
+            "url" : "https://en.wikipedia.org/wiki/Sera-kheru_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:deae6848fc4505a0284a47e6",
+    "displayName" : "Neb-heru\n\"Bringer of Your Offerings\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 30", "Name of the deity: Neb-heru\n\"Bringer of Your Offerings\"", "Identified with: Sais", "Sin (Wilkinson): Unduly active", "Papyrus of Ani[13]: Hail, Neb-heru, who comest forth from Netchfet, I have not acted with undue haste." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 30\nName of the deity: Neb-heru\n\"Bringer of Your Offerings\"\nIdentified with: Sais\nSin (Wilkinson): Unduly active\nPapyrus of Ani[13]: Hail, Neb-heru, who comest forth from Netchfet, I have not acted with undue haste.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 30\nName of the deity: Neb-heru\n\"Bringer of Your Offerings\"\nIdentified with: Sais\nSin (Wilkinson): Unduly active\nPapyrus of Ani[13]: Hail, Neb-heru, who comest forth from Netchfet, I have not acted with undue haste.",
+          "links" : [ {
+            "text" : "Neb-heru",
+            "url" : "https://en.wikipedia.org/wiki/Neb-heru_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Sais",
+            "url" : "https://en.wikipedia.org/wiki/Sais%2C_Egypt"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:c0eaad0929a34cdf83897170",
+    "displayName" : "Sekhriu\n\"Owner of Faces\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 31", "Name of the deity: Sekhriu\n\"Owner of Faces\"", "Identified with: Nedjefet\n(13th / 14th Upper\nEgyptian nome)", "Sin (Wilkinson): Impatience", "Papyrus of Ani[13]: Hail, Sekhriu, who comest forth from Uten, I have not pried into other's matters." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 31\nName of the deity: Sekhriu\n\"Owner of Faces\"\nIdentified with: Nedjefet\n(13th / 14th Upper\nEgyptian nome)\nSin (Wilkinson): Impatience\nPapyrus of Ani[13]: Hail, Sekhriu, who comest forth from Uten, I have not pried into other's matters.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 31\nName of the deity: Sekhriu\n\"Owner of Faces\"\nIdentified with: Nedjefet\n(13th / 14th Upper\nEgyptian nome)\nSin (Wilkinson): Impatience\nPapyrus of Ani[13]: Hail, Sekhriu, who comest forth from Uten, I have not pried into other's matters.",
+          "links" : [ {
+            "text" : "Sekhriu",
+            "url" : "https://en.wikipedia.org/wiki/Sekhriu_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Upper",
+            "url" : "https://en.wikipedia.org/wiki/Upper_Egypt"
+          }, {
+            "text" : "Egyptian",
+            "url" : "https://en.wikipedia.org/wiki/Upper_Egypt"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:d627ee81a4f2a474e0c4974b",
+    "displayName" : "Neb-abui\n\"Accuser\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 32", "Name of the deity: Neb-abui\n\"Accuser\"", "Identified with: Wetjenet\n(in Punt[18])", "Sin (Wilkinson): damaging a god's image", "Papyrus of Ani[13]: Hail, Neb-abui, who comest forth from Sauti, I have not multiplied my words in speaking." ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 32\nName of the deity: Neb-abui\n\"Accuser\"\nIdentified with: Wetjenet\n(in Punt[18])\nSin (Wilkinson): damaging a god's image\nPapyrus of Ani[13]: Hail, Neb-abui, who comest forth from Sauti, I have not multiplied my words in speaking.",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 32\nName of the deity: Neb-abui\n\"Accuser\"\nIdentified with: Wetjenet\n(in Punt[18])\nSin (Wilkinson): damaging a god's image\nPapyrus of Ani[13]: Hail, Neb-abui, who comest forth from Sauti, I have not multiplied my words in speaking.",
+          "links" : [ {
+            "text" : "Neb-abui",
+            "url" : "https://en.wikipedia.org/wiki/Neb-abui_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Punt",
+            "url" : "https://en.wikipedia.org/wiki/Land_of_Punt"
+          }, {
+            "text" : "damaging a god's image",
+            "url" : "https://en.wikipedia.org/wiki/Iconoclasm"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:14099845e4896a244d795331",
+    "displayName" : "\"Owner of Horns\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 33", "Name of the deity: \"Owner of Horns\"", "Identified with: Asyut", "Sin (Wilkinson): Volubility of speech", "Papyrus of Ani[13]: Hail, Tcheser-tep, who comest forth from the shrine, I have not carried away the khenfu cakes from the spirits of the dead. (#40 in Papyrus source)" ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 33\nName of the deity: \"Owner of Horns\"\nIdentified with: Asyut\nSin (Wilkinson): Volubility of speech\nPapyrus of Ani[13]: Hail, Tcheser-tep, who comest forth from the shrine, I have not carried away the khenfu cakes from the spirits of the dead. (#40 in Papyrus source)",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 33\nName of the deity: \"Owner of Horns\"\nIdentified with: Asyut\nSin (Wilkinson): Volubility of speech\nPapyrus of Ani[13]: Hail, Tcheser-tep, who comest forth from the shrine, I have not carried away the khenfu cakes from the spirits of the dead. (#40 in Papyrus source)",
+          "links" : [ {
+            "text" : "Asyut",
+            "url" : "https://en.wikipedia.org/wiki/Asyut"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:0e3793a6035988fb6c27c1a5",
+    "displayName" : "Temsep/Tem-Sepu",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 35", "Name of the deity: Temsep/Tem-Sepu", "Identified with: Busiris", "Sin (Wilkinson): Conjuration against\nthe king", "Papyrus of Ani[13]: Hail, Tem-Sepu, who comest forth from Tetu, I have not worked witchcraft against the king. (#34 in Papyrus source)" ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 35\nName of the deity: Temsep/Tem-Sepu\nIdentified with: Busiris\nSin (Wilkinson): Conjuration against\nthe king\nPapyrus of Ani[13]: Hail, Tem-Sepu, who comest forth from Tetu, I have not worked witchcraft against the king. (#34 in Papyrus source)",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 35\nName of the deity: Temsep/Tem-Sepu\nIdentified with: Busiris\nSin (Wilkinson): Conjuration against\nthe king\nPapyrus of Ani[13]: Hail, Tem-Sepu, who comest forth from Tetu, I have not worked witchcraft against the king. (#34 in Papyrus source)",
+          "links" : [ {
+            "text" : "Temsep/Tem-Sepu",
+            "url" : "https://en.wikipedia.org/wiki/Temsep%2FTem-Sepu_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Busiris",
+            "url" : "https://en.wikipedia.org/wiki/Busiris_%28Lower_Egypt%29"
+          }, {
+            "text" : "king",
+            "url" : "https://en.wikipedia.org/wiki/Pharaoh"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:1f0aa32ac4b6bc09e8b1c284",
+    "displayName" : "Ari-em-ab-f\n\"You Who Acted Willfully\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 36", "Name of the deity: Ari-em-ab-f\n\"You Who Acted Willfully\"", "Identified with: Tjebu", "Sin (Wilkinson): Stopping water flow (Wilkinson says \"wading in water\")", "Papyrus of Ani[13]: Hail, Ari-em-ab-f, who comest forth from Tebu, I have never stopped the flow of water of a neighbor. (#35 in Papyrus source)" ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 36\nName of the deity: Ari-em-ab-f\n\"You Who Acted Willfully\"\nIdentified with: Tjebu\nSin (Wilkinson): Stopping water flow (Wilkinson says \"wading in water\")\nPapyrus of Ani[13]: Hail, Ari-em-ab-f, who comest forth from Tebu, I have never stopped the flow of water of a neighbor. (#35 in Papyrus source)",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 36\nName of the deity: Ari-em-ab-f\n\"You Who Acted Willfully\"\nIdentified with: Tjebu\nSin (Wilkinson): Stopping water flow (Wilkinson says \"wading in water\")\nPapyrus of Ani[13]: Hail, Ari-em-ab-f, who comest forth from Tebu, I have never stopped the flow of water of a neighbor. (#35 in Papyrus source)",
+          "links" : [ {
+            "text" : "Ari-em-ab-f",
+            "url" : "https://en.wikipedia.org/wiki/Ari-em-ab-f_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Tjebu",
+            "url" : "https://en.wikipedia.org/wiki/Tjebu"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:f748409a5f6b1179a72eccec",
+    "displayName" : "Ahi\n\"Water-Smiter\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 37", "Name of the deity: Ahi\n\"Water-Smiter\"", "Identified with: \"The abyss\"", "Sin (Wilkinson): Being loud voiced", "Papyrus of Ani[13]: Hail, Ahi, who comest forth from Nu, I have never raised my voice. (#36 in Papyrus source)" ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 37\nName of the deity: Ahi\n\"Water-Smiter\"\nIdentified with: \"The abyss\"\nSin (Wilkinson): Being loud voiced\nPapyrus of Ani[13]: Hail, Ahi, who comest forth from Nu, I have never raised my voice. (#36 in Papyrus source)",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 37\nName of the deity: Ahi\n\"Water-Smiter\"\nIdentified with: \"The abyss\"\nSin (Wilkinson): Being loud voiced\nPapyrus of Ani[13]: Hail, Ahi, who comest forth from Nu, I have never raised my voice. (#36 in Papyrus source)",
+          "links" : [ {
+            "text" : "Ahi",
+            "url" : "https://en.wikipedia.org/wiki/Ahi_%28Mythology%29_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "abyss",
+            "url" : "https://en.wikipedia.org/wiki/Nu_%28mythology%29"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:76db7d2136b1796c64925d3c",
+    "displayName" : "Uatch-rekhit\n\"Commander of Mankind\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 38", "Name of the deity: Uatch-rekhit\n\"Commander of Mankind\"", "Identified with: \"Your house\"", "Sin (Wilkinson): Reviling God", "Papyrus of Ani[13]: Hail, Uatch-rekhit, who comest forth from Sau, I have not cursed God. (#37 in Papyrus source)" ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 38\nName of the deity: Uatch-rekhit\n\"Commander of Mankind\"\nIdentified with: \"Your house\"\nSin (Wilkinson): Reviling God\nPapyrus of Ani[13]: Hail, Uatch-rekhit, who comest forth from Sau, I have not cursed God. (#37 in Papyrus source)",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 38\nName of the deity: Uatch-rekhit\n\"Commander of Mankind\"\nIdentified with: \"Your house\"\nSin (Wilkinson): Reviling God\nPapyrus of Ani[13]: Hail, Uatch-rekhit, who comest forth from Sau, I have not cursed God. (#37 in Papyrus source)",
+          "links" : [ {
+            "text" : "Uatch-rekhit",
+            "url" : "https://en.wikipedia.org/wiki/Uatch-rekhit_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:f6e56cad2e70ccf95c5acb14",
+    "displayName" : "Neheb-nefert\nBestower of Powers\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 40", "Name of the deity: Neheb-nefert\nBestower of Powers\"", "Identified with: \"The city\"", "Sin (Wilkinson): Making distinctions\nFor self", "Papyrus of Ani[13]: Hail, Neheb-nefert, who comest forth from thy cavern, I have not stolen the bread of the gods. (#39 in Papyrus source)" ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 40\nName of the deity: Neheb-nefert\nBestower of Powers\"\nIdentified with: \"The city\"\nSin (Wilkinson): Making distinctions\nFor self\nPapyrus of Ani[13]: Hail, Neheb-nefert, who comest forth from thy cavern, I have not stolen the bread of the gods. (#39 in Papyrus source)",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 40\nName of the deity: Neheb-nefert\nBestower of Powers\"\nIdentified with: \"The city\"\nSin (Wilkinson): Making distinctions\nFor self\nPapyrus of Ani[13]: Hail, Neheb-nefert, who comest forth from thy cavern, I have not stolen the bread of the gods. (#39 in Papyrus source)",
+          "links" : [ {
+            "text" : "Neheb-nefert",
+            "url" : "https://en.wikipedia.org/wiki/Neheb-nefert_%28page_does_not_exist%29",
+            "identifying" : true
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:b75565576088e3247a1efe3e",
+    "displayName" : "Hetch-abhu\n\"Serpent With Raised Head\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 41", "Name of the deity: Hetch-abhu\n\"Serpent With Raised Head\"", "Identified with: \"The cavern\"", "Sin (Wilkinson): dishonest wealth", "Papyrus of Ani[13]: Hail, Hetch-abhu, who comest forth from Ta-she, I have not slain the cattle belonging to the god. (#42 in Papyrus source)" ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 41\nName of the deity: Hetch-abhu\n\"Serpent With Raised Head\"\nIdentified with: \"The cavern\"\nSin (Wilkinson): dishonest wealth\nPapyrus of Ani[13]: Hail, Hetch-abhu, who comest forth from Ta-she, I have not slain the cattle belonging to the god. (#42 in Papyrus source)",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 41\nName of the deity: Hetch-abhu\n\"Serpent With Raised Head\"\nIdentified with: \"The cavern\"\nSin (Wilkinson): dishonest wealth\nPapyrus of Ani[13]: Hail, Hetch-abhu, who comest forth from Ta-she, I have not slain the cattle belonging to the god. (#42 in Papyrus source)",
+          "links" : [ {
+            "text" : "Hetch-abhu",
+            "url" : "https://en.wikipedia.org/wiki/Hetch-abhu_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "dishonest wealth",
+            "url" : "https://en.wikipedia.org/wiki/Profiteering_%28business%29"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  }, {
+    "type" : "AssessorOfMaat",
+    "id" : "wikipedia-table-row:94899030cad730cf1e16cf9f",
+    "displayName" : "Neb-abui\n\"Serpent Who Brings and\nGives\"",
+    "fields" : [ {
+      "field" : "rowDetails",
+      "value" : [ ": 42", "Name of the deity: Neb-abui\n\"Serpent Who Brings and\nGives\"", "Identified with: \"The silent land\"", "Sin (Wilkinson): Blasphemy", "Papyrus of Ani[13]: Hail, An-af, who comest forth from Maati, I have not snatched away the bread of the child, nor treated with contempt the god of my city. (#41 in Papyrus source)" ],
+      "references" : [ ]
+    }, {
+      "field" : "groups",
+      "value" : null,
+      "references" : [ {
+        "type" : "DeityGroup",
+        "id" : "Q9133532"
+      } ]
+    } ],
+    "source" : {
+      "kind" : "Wikipedia (English)",
+      "entityId" : "Assessors of Maat",
+      "propertyId" : "field:members",
+      "propertyLabel" : "Description > List of names, provenances and tasks (Wilkinson et al) — Table — Name of the deity",
+      "direction" : "structured table row",
+      "recordUrl" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+      "evidence" : [ {
+        "subject" : {
+          "namespace" : "wikidata",
+          "id" : "Q9133532"
+        },
+        "semanticProperty" : "field:members",
+        "proposedValue" : ": 42\nName of the deity: Neb-abui\n\"Serpent Who Brings and\nGives\"\nIdentified with: \"The silent land\"\nSin (Wilkinson): Blasphemy\nPapyrus of Ani[13]: Hail, An-af, who comest forth from Maati, I have not snatched away the bread of the child, nor treated with contempt the god of my city. (#41 in Papyrus source)",
+        "proposedEntity" : null,
+        "evidence" : [ {
+          "document" : {
+            "kind" : "Wikipedia (English)",
+            "sourceId" : "Assessors of Maat",
+            "title" : "Assessors of Maat",
+            "url" : "https://en.wikipedia.org/wiki/Assessors_of_Maat",
+            "revision" : "1369243883",
+            "contentDigest" : {
+              "algorithm" : "sha256",
+              "value" : "04b94f2ec9ac1138e88e6b38fff9efbe40c66d2d1d4d722cdb2be8c349e6e72f"
+            },
+            "retrievedAt" : "2026-11-23T13:27:03.544610Z"
+          },
+          "section" : "Description > List of names, provenances and tasks (Wilkinson et al)",
+          "startOffset" : -1,
+          "endOffset" : -1,
+          "excerpt" : ": 42\nName of the deity: Neb-abui\n\"Serpent Who Brings and\nGives\"\nIdentified with: \"The silent land\"\nSin (Wilkinson): Blasphemy\nPapyrus of Ani[13]: Hail, An-af, who comest forth from Maati, I have not snatched away the bread of the child, nor treated with contempt the god of my city. (#41 in Papyrus source)",
+          "links" : [ {
+            "text" : "Neb-abui",
+            "url" : "https://en.wikipedia.org/wiki/Neb-abui_%28page_does_not_exist%29",
+            "identifying" : true
+          }, {
+            "text" : "Blasphemy",
+            "url" : "https://en.wikipedia.org/wiki/Blasphemy"
+          } ]
+        } ],
+        "extractionMethod" : "configured Wikipedia table data row",
+        "recipeVersion" : "article-table-row-instances-v1",
+        "modelFingerprint" : "",
+        "confidence" : 0.95,
+        "warnings" : [ "The configured source structure defines one row instance; review decides whether it belongs in this field." ]
+      } ]
+    }
+  } ]
 }

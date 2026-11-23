@@ -318,6 +318,20 @@ public final class ProductCompiler {
         if (unmodeled.isEmpty()) {
             return;
         }
+        String separator = String.valueOf((char) 0);
+        Set<String> primaryAliases = new LinkedHashSet<>();
+        for (WikidataDynamicObject object : pool) {
+            if (object == null) continue;
+            for (GeneratedClassModel owner : model.classesOf(
+                    object.directClassNames(), object.typeName())) {
+                for (String field : object.dynamicFields().keySet()) {
+                    if (unmodeled.contains(owner.className() + separator + field)) {
+                        primaryAliases.add(object.typeName() + separator + field);
+                    }
+                }
+            }
+        }
+        unmodeled.addAll(primaryAliases);
         for (WikidataDynamicObject o : pool) {
             if (o == null || !o.hasTypeStamp()) {
                 continue;
@@ -440,12 +454,23 @@ public final class ProductCompiler {
         for (GeneratedClassModel owner : model.classes()) {
             if (owner == null) continue;
             for (GeneratedFieldModel field : owner.effectiveFields(model)) {
-                if (field != null && field.type() == FieldType.ENTITY
-                        && (field.unclassedEntity()
-                                || domain.config.OwnedClassSemantics
-                                        .isOwnerReferenceField(owner, field)
-                                || model.findClass(field.entityClassName()) != null)) {
+                if (retainsEntityReference(model, owner, field)) {
                     entityFields.add(owner.className() + "\0" + field.name());
+                }
+            }
+        }
+        // The stored field map belongs to the object, not only to whichever one of its
+        // configured classes became typeName(). Publish every declared entity field
+        // through that primary carrier before the existing collapse pass reads it.
+        String separator = String.valueOf((char) 0);
+        for (WikidataDynamicObject object : pool) {
+            if (object == null) continue;
+            for (GeneratedClassModel owner : model.classesOf(
+                    object.directClassNames(), object.typeName())) {
+                for (GeneratedFieldModel field : owner.effectiveFields(model)) {
+                    if (retainsEntityReference(model, owner, field)) {
+                        entityFields.add(object.typeName() + separator + field.name());
+                    }
                 }
             }
         }
@@ -460,6 +485,16 @@ public final class ProductCompiler {
                 }
             }
         }
+    }
+
+    private static boolean retainsEntityReference(
+            GeneratedProjectModel model, GeneratedClassModel owner,
+            GeneratedFieldModel field) {
+        return field != null && field.type() == FieldType.ENTITY
+                && (field.unclassedEntity()
+                        || domain.config.OwnedClassSemantics
+                                .isOwnerReferenceField(owner, field)
+                        || model.findClass(field.entityClassName()) != null);
     }
 
     private static Object collapseReference(Object v) {

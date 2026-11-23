@@ -737,7 +737,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         // several instances in a row); the cards rebuild with new values only on Back.
         ValidationPanel panel = new ValidationPanel(controller.domain(), scope.visibleMembers(),
                 queries.runner(),
-                () -> { if (viewStepsPanel != null) viewStepsPanel.refreshWorkingSet(); },
+                this::refreshAfterCuration,
                 // Identity from the curation drill opens the ONE identity panel, scoped to
                 // the drilled instances — not a direct batch run.
                 this::openScopedIdentities, purpose);
@@ -782,7 +782,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         } else {
             ValidationPanel panel = new ValidationPanel(
                     controller.domain(), scope.visibleMembers(), queries.runner(),
-                    () -> { if (viewStepsPanel != null) viewStepsPanel.refreshWorkingSet(); },
+                    this::refreshAfterCuration,
                     this::openScopedIdentities, purpose);
             if (wikipedia) panel.showWikipediaEvidenceOnly();
             String scopeLabel = scope.visibleMembers().size() + " "
@@ -816,6 +816,23 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             }
         }
         return selectedField;
+    }
+
+    /** The accepted objects are already in the live pool and on the selected group's
+     * members field. Rebuild that existing member pane immediately; do not introduce a
+     * second Apply/Save/result action merely to make the accepted result visible. */
+    void refreshAfterCuration() {
+        if (viewStepsPanel != null) viewStepsPanel.refreshWorkingSet();
+        if (rightMode == RightMode.CURATING_FIELD) {
+            render();
+            return;
+        }
+        if (activeShow != null && activeGroup != null) {
+            activeShow.accept(activeGroup);
+            updateScopeStatus();
+        } else {
+            render();
+        }
     }
 
     /** Open the merge panel: fold a duplicate instance into a primary. Re-render after. */
@@ -1668,7 +1685,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             return titledInstancePanel(instanceTitle(group), shown, memberType);
         }, JSplitPane.VERTICAL_SPLIT, true, 0.7, false);
         GroupTreeView groups = grouped.groups();
-        activeShow = grouped::showGroup;
+        activeShow = group -> {
+            grouped.showGroup(group);
+            groups.getTree().repaint();
+        };
         JButton ruleDetails = groups.addControl(
                 "Show group rule", this::showSelectedGroupRule);
         ruleDetails.setEnabled(false);
@@ -1720,7 +1740,10 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                 JSplitPane.HORIZONTAL_SPLIT, false, 0.31, true, shared);
         GroupTreeView groups = grouped.groups();
         groups.setMultipleSelectionEnabled(true);
-        activeShow = grouped::showGroup;
+        activeShow = group -> {
+            grouped.showGroup(group);
+            groups.getTree().repaint();
+        };
         grouped.setSelectionHandler(group -> {
             activeGroup = group;
             groups.setStatusText(group.getKeyRef() == null

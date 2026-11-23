@@ -868,6 +868,17 @@ public class GeneratedProjectModel {
         return null;
     }
 
+    /** Every configured class carried by one runtime object, in its declared order.
+     * The primary type is a fallback, never the sole owner of the object's fields. */
+    public List<GeneratedClassModel> classesOf(
+            java.util.Collection<String> directClassNames, String primaryType) {
+        java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
+        if (directClassNames != null) names.addAll(directClassNames);
+        if (primaryType != null && !primaryType.isBlank()) names.add(primaryType);
+        return names.stream().map(this::findClass).filter(java.util.Objects::nonNull)
+                .toList();
+    }
+
     public GeneratedClassModel findClassById(String declarationId) {
         String id = DeclarationIds.clean(declarationId);
         if (id.isBlank()) return null;

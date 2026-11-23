@@ -9,16 +9,56 @@ import domain.build.PipelineRequest;
 import domain.compile.rule.RuleTreeCompiler;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Forces the first Egyptian-deity configuration to stay bounded and source-authored. */
 class EgyptianGodsSavedModelTest {
+
+    @Test void savedAssessorsReuseLoadedDeitiesInsteadOfCreatingDuplicateRows()
+            throws Exception {
+        GeneratedProjectModel model = new GeneratedProjectModelStore().load(
+                new File("../data/wikidata/egyptiangods/egyptiangods.model.json"));
+        var loaded = new domain.runtime.WikidataDynamicObjectJsonStore()
+                .loadAllWithFieldGraph(new File(
+                        "../data/wikidata/egyptiangods/egyptiangods.snapshot.json"));
+        var curation = new domain.curation.ManualCuration(new File(
+                "../data/wikidata/egyptiangods/egyptiangods.curation.json")).load();
+        var pool = new ArrayList<>(loaded.objects());
+        domain.curation.CuratedInstances.apply(pool, curation.instances());
+        domain.curation.Corrections.apply(pool, java.util.List.of(curation));
+
+        domain.DomainModel compiled =
+                domain.compile.transform.ProductCompiler.compile(model, pool);
+        domain.runtime.WikidataDynamicObject group = compiled.instances().stream()
+                .map(domain.runtime.WikidataDynamicObject.class::cast)
+                .filter(value -> "Q9133532".equals(value.getIdentifier()))
+                .findFirst().orElseThrow();
+        java.util.List<?> members = (java.util.List<?>) group.get("members");
+        objectview.Viewable nehebkau = compiled.instances().stream()
+                .filter(value -> "Q2044276".equals(value.getIdentifier()))
+                .findFirst().orElseThrow();
+
+        assertEquals(42, members.size());
+        assertEquals(42, members.stream().map(value ->
+                        ((objectview.Viewable) value).typeName() + '\0'
+                                + ((objectview.Viewable) value).getIdentifier())
+                .distinct().count());
+        assertSame(nehebkau, members.stream()
+                .filter(value -> "Q2044276".equals(
+                        ((objectview.Viewable) value).getIdentifier()))
+                .findFirst().orElseThrow(),
+                "Nehebkau must be the loaded EgyptianDeity, not a row-shaped duplicate");
+        assertEquals(1, compiled.instances().stream()
+                .filter(value -> "Nehebkau".equals(value.getDisplayName())).count());
+    }
 
     @Test void savedDomainLoadsWithItsPopulationRelationsAndWikipediaSource()
             throws Exception {

@@ -43,6 +43,25 @@ class ConfiguredGroupsTest {
         assertEquals(List.of(fixture.member()), List.copyOf(binding.root().getMembers()));
     }
 
+    @Test void compilationKeepsMembersWhenTheGroupHasAnotherPrimaryClass() {
+        Fixture fixture = fixture();
+        fixture.group().type("Deity");
+        fixture.group().assignClass("DeityGroup");
+        java.util.List<WikidataDynamicObject> pool = new java.util.ArrayList<>(
+                List.of(fixture.group(), fixture.member()));
+
+        domain.DomainModel compiled =
+                domain.compile.transform.ProductCompiler.compile(fixture.model(), pool);
+        ConfiguredGroups.Binding binding = ConfiguredGroups.bindingForGroupClass(
+                compiled.groupRootBindings(), "DeityGroup");
+        objectview.group.ViewableGroup<?> group = binding.root().getChildren()
+                .iterator().next();
+
+        assertEquals(List.of(fixture.member()), List.copyOf(group.getMembers()),
+                "group fields belong to every configured class the object carries, "
+                        + "not only its primary type");
+    }
+
     @Test void aCategoryPopulationNamesTheOneRootGroup() {
         Fixture fixture = fixture();
         fixture.model().findClass("DeityGroup").populationSource(

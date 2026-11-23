@@ -51,9 +51,9 @@ public final class DomainSaver implements DomainWriter {
         }
         int pending = pendingCurationCount(schema);
         if (pending > 0) {
-            throw new IllegalStateException(pending + " staged change"
-                    + (pending == 1 ? " is" : "s are")
-                    + " not saved. Use \"Save staged changes\" in this workbench first. "
+            throw new IllegalStateException("Accepted changes are still pending because "
+                    + "they were not saved. Use \"Save pending changes\" in this "
+                    + "workbench first. "
                     + "Save domain wrote neither the model nor the snapshot.");
         }
         ProjectBacking backing = backingFor(name, schema);
@@ -134,9 +134,9 @@ public final class DomainSaver implements DomainWriter {
 
     private static String pendingCurationMessage(DomainModel schema) {
         int pending = pendingCurationCount(schema);
-        return pending == 0 ? "" : "\nNot ready to save: " + pending + " staged change"
-                + (pending == 1 ? " is" : "s are")
-                + " not saved. Use \"Save staged changes\" in this workbench first.";
+        return pending == 0 ? "" : "\nNot ready to save: accepted changes are still "
+                + "pending because they were not saved. Use \"Save pending changes\" "
+                + "in this workbench first.";
     }
 
     private static int pendingCurationCount(DomainModel schema) {

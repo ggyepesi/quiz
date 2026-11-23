@@ -41,7 +41,7 @@
 == TRANSFORM field pane - State.name ==
   label: Editing:
   label: State.name
-  button: Save staged changes  (disabled)
+  button: Save pending changes  (disabled)
   box: Set manually
     label: Selected:
     label: No instance selected
@@ -88,7 +88,6 @@
 == DATASOURCE field pane - State.name ==
   label: Loading:
   label: State.name
-  button: Save staged changes  (disabled)
   button: Cancel Find Data  (disabled)
   box: Available actions
     button: Find text evidence…

@@ -269,4 +269,29 @@ class CorrectionsTest {
                 "no Location Q60 is loaded, so nothing is attached; neither the Person nor "
                         + "an invented placeholder");
     }
+
+    @Test void aTypedCorrectionFindsAnObjectThroughAnyOfItsConfiguredClasses() {
+        WikidataDynamicObject group =
+                new WikidataDynamicObject("Q9133532", "Assessors of Maat");
+        group.type("EgyptianDeity");
+        group.assignClass("DeityGroup");
+        group.put("members", List.of());
+        WikidataDynamicObject first = new WikidataDynamicObject("row-1", "First assessor");
+        first.type("AssessorOfMaat");
+        WikidataDynamicObject second = new WikidataDynamicObject("row-2", "Second assessor");
+        second.type("AssessorOfMaat");
+        Correction addFirst = new Correction(
+                "DeityGroup", group.getIdentifier(), "members", first.getIdentifier(),
+                "wikipedia", Correction.REFERENCE_COLLECTION,
+                CorrectionPolicy.ADD_TO_COLLECTION, null, "AssessorOfMaat");
+        Correction addSecond = new Correction(
+                "DeityGroup", group.getIdentifier(), "members", second.getIdentifier(),
+                "wikipedia", Correction.REFERENCE_COLLECTION,
+                CorrectionPolicy.ADD_TO_COLLECTION, null, "AssessorOfMaat");
+
+        assertEquals(2, Corrections.apply(List.of(group, first, second),
+                List.of(() -> List.of(addFirst, addSecond))));
+
+        assertEquals(List.of(first, second), group.get("members"));
+    }
 }

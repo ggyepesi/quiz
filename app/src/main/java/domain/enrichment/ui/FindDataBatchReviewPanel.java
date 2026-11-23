@@ -103,7 +103,8 @@ public final class FindDataBatchReviewPanel {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBorder(javax.swing.BorderFactory.createEmptyBorder(10, 10, 10, 10));
         panel.add(new JLabel("<html>" + CategorizedReviewPanel.html(prompt)
-                + "<br><br>Select a card to stage that proposed value. Overwrites and "
+                + "<br><br>Stage applies and saves the selected result, then refreshes the "
+                + "existing instances/group view. Overwrites and "
                 + "new instances marked for individual review are excluded from Stage all "
                 + "safe. Instances produced by an exact configured structure, such as "
                 + "table rows, are included when the provider marks them safe.</html>"),
@@ -144,11 +145,11 @@ public final class FindDataBatchReviewPanel {
         close.addActionListener(e -> dialog.dispose());
         selected.addActionListener(e -> {
             EnrichmentDecision decision = selectedDecision.get();
-            if (stage(onDone, decision == null ? List.of() : List.of(decision), outcome,
+            if (accept(onDone, decision == null ? List.of() : List.of(decision), outcome,
                     selected, all)) dialog.dispose();
         });
         all.addActionListener(e -> {
-            if (stage(onDone, safeDefaults, outcome, selected, all)) dialog.dispose();
+            if (accept(onDone, safeDefaults, outcome, selected, all)) dialog.dispose();
         });
         dialog.setVisible(true);
         return dialog;
@@ -159,9 +160,9 @@ public final class FindDataBatchReviewPanel {
                 .allMatch(EnrichmentProposal.InstanceCandidate::bulkSafe);
     }
 
-    static boolean stage(Predicate<BatchReviewDecision> callback,
-                         List<EnrichmentDecision> decisions, JLabel outcome,
-                         JButton selected, JButton all) {
+    static boolean accept(Predicate<BatchReviewDecision> callback,
+                          List<EnrichmentDecision> decisions, JLabel outcome,
+                          JButton selected, JButton all) {
         if (decisions.isEmpty()) return false;
         if (!callback.test(new BatchReviewDecision(List.copyOf(decisions)))) {
             outcome.setText("Nothing staged; correct the reported problem and retry.");
@@ -169,7 +170,7 @@ public final class FindDataBatchReviewPanel {
         }
         outcome.setText("Staged " + decisions.size() + " result"
                 + (decisions.size() == 1 ? "" : "s")
-                + "; use Save staged changes in this workbench to keep them.");
+                + ".");
         selected.setEnabled(false);
         all.setEnabled(false);
         return true;

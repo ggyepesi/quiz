@@ -110,7 +110,7 @@ class FindDataBatchReviewPanelTest {
         selected.setEnabled(true);
         all.setEnabled(true);
 
-        assertTrue(!FindDataBatchReviewPanel.stage(batch -> {
+        assertTrue(!FindDataBatchReviewPanel.accept(batch -> {
             attempts.incrementAndGet();
             return false;
         }, List.of(decision, decision), outcome, selected, all));
@@ -131,7 +131,7 @@ class FindDataBatchReviewPanelTest {
         selected.setEnabled(true);
         all.setEnabled(true);
 
-        assertTrue(FindDataBatchReviewPanel.stage(batch -> true,
+        assertTrue(FindDataBatchReviewPanel.accept(batch -> true,
                 List.of(decision), new javax.swing.JLabel(), selected, all));
         assertTrue(!selected.isEnabled());
         assertTrue(!all.isEnabled());

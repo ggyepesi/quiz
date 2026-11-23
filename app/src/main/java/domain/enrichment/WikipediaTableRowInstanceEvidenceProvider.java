@@ -86,20 +86,22 @@ public final class WikipediaTableRowInstanceEvidenceProvider
             private int resolvedLinks;
             private int unresolvedLinks;
             private int attachedReferences;
+            private int reusedMembers;
+            private int proposedRowInstances;
 
             @Override public String purpose() {
                 return "Build typed instances from one Wikipedia table";
             }
 
             @Override public String skeleton() {
-                return "Read " + spec.description() + "; propose one "
-                        + spec.targetClass() + " per data row";
+                return "Read " + spec.description() + "; reuse a compatible loaded member "
+                        + "or propose one " + spec.targetClass() + " per data row";
             }
 
             @Override public String queryType() { return "Retained Wikipedia evidence"; }
 
             @Override public String description() {
-                return "Propose configured row instances and their source evidence for review";
+                return "Propose configured table members and their source evidence for review";
             }
 
             @Override public Map<String, String> parameters() {
@@ -122,6 +124,8 @@ public final class WikipediaTableRowInstanceEvidenceProvider
                 resolvedLinks = resolution.resolvedLinks();
                 unresolvedLinks = resolution.unresolvedLinks().size();
                 attachedReferences = 0;
+                reusedMembers = 0;
+                proposedRowInstances = 0;
 
                 Set<String> current = FieldValueCompatibility.compatibleReferenceIds(
                         domain, request.targetSchema(), request.currentValue());
@@ -131,50 +135,72 @@ public final class WikipediaTableRowInstanceEvidenceProvider
                 for (WikipediaTableRows.SelectedRow row : selection.rows()) {
                     int occurrence = occurrences.merge(rowKey(row), 1, Integer::sum);
                     String instanceId = rowInstanceId(request, row, occurrence);
-                    if (current.contains(instanceId)) continue;
+                    Viewable existingMember = existingMember(
+                            row, resolution.matches(), request.targetSchema());
+                    String memberId = existingMember == null
+                            ? instanceId : existingMember.getIdentifier();
+                    if (current.contains(memberId)) continue;
                     SourceRef source = source(article, request, row);
                     EvidenceFragment fragment = EvidenceFragment.excerpt(
                             article.document(), row.sectionPath(), rowEvidence(row),
                             rowLinks(row));
-                    List<EnrichmentProposal.TypedReference> linked = linkedReferences(
-                            row, resolution.matches());
-                    ExtractedClaim contentClaim = new ExtractedClaim(subjectRef(request),
-                            semanticProperty(request.targetField()), rowEvidence(row), null,
-                            List.of(fragment), "configured Wikipedia table data row",
-                            RECIPE_VERSION, "", 0.95,
-                            List.of("The configured source structure defines one row instance; "
-                                    + "review decides whether it belongs in this field."));
-
-                    List<EnrichmentProposal.InstanceField> instanceFields = new ArrayList<>();
-                    instanceFields.add(EnrichmentProposal.InstanceField.literal(
-                            spec.detailsField(), row.cells().stream()
-                                    .filter(cell -> !cell.text().isBlank())
-                                    .map(cell -> cell.column() + ": " + cell.text()).toList()));
-                    instanceFields.add(EnrichmentProposal.InstanceField.references(
-                            spec.sourceField(), List.of(new EnrichmentProposal.TypedReference(
-                                    request.subject().type(), request.subject().targetId()))));
-                    if (!spec.referencesField().isBlank() && !linked.isEmpty()) {
-                        instanceFields.add(EnrichmentProposal.InstanceField.references(
-                                spec.referencesField(), linked));
-                        attachedReferences += linked.size();
-                    }
-
                     String label = row.displayText().isBlank()
                             ? spec.targetClass() + " table row" : row.displayText();
-                    instances.add(new EnrichmentProposal.InstanceCandidate(
-                            "table-row-instance:" + instanceId, spec.targetClass(), instanceId,
-                            label, instanceFields, source, List.of(contentClaim), true));
-
-                    domain.transform.DynamicViewable proposed =
-                            new domain.transform.DynamicViewable(instanceId, label);
-                    proposed.type(spec.targetClass());
+                    Viewable proposed = existingMember;
+                    EntityRef proposedEntity;
+                    String evidenceMethod;
+                    String rationale;
+                    if (existingMember != null) {
+                        reusedMembers++;
+                        proposedEntity = entityRef(existingMember);
+                        evidenceMethod = "reviewed existing table-row member";
+                        rationale = "The configured display-cell link identifies this loaded "
+                                + "instance; no duplicate row instance is created.";
+                    } else {
+                        List<EnrichmentProposal.TypedReference> linked = linkedReferences(
+                                row, resolution.matches());
+                        ExtractedClaim contentClaim = new ExtractedClaim(subjectRef(request),
+                                semanticProperty(request.targetField()), rowEvidence(row), null,
+                                List.of(fragment), "configured Wikipedia table data row",
+                                RECIPE_VERSION, "", 0.95,
+                                List.of("The configured source structure defines one row "
+                                        + "instance; review decides whether it belongs in "
+                                        + "this field."));
+                        List<EnrichmentProposal.InstanceField> instanceFields =
+                                new ArrayList<>();
+                        instanceFields.add(EnrichmentProposal.InstanceField.literal(
+                                spec.detailsField(), row.cells().stream()
+                                        .filter(cell -> !cell.text().isBlank())
+                                        .map(cell -> cell.column() + ": " + cell.text())
+                                        .toList()));
+                        instanceFields.add(EnrichmentProposal.InstanceField.references(
+                                spec.sourceField(), List.of(
+                                        new EnrichmentProposal.TypedReference(
+                                                request.subject().type(),
+                                                request.subject().targetId()))));
+                        if (!spec.referencesField().isBlank() && !linked.isEmpty()) {
+                            instanceFields.add(EnrichmentProposal.InstanceField.references(
+                                    spec.referencesField(), linked));
+                            attachedReferences += linked.size();
+                        }
+                        instances.add(new EnrichmentProposal.InstanceCandidate(
+                                "table-row-instance:" + instanceId, spec.targetClass(),
+                                instanceId, label, instanceFields, source,
+                                List.of(contentClaim), true));
+                        proposedRowInstances++;
+                        domain.transform.DynamicViewable rowInstance =
+                                new domain.transform.DynamicViewable(instanceId, label);
+                        rowInstance.type(spec.targetClass());
+                        proposed = rowInstance;
+                        proposedEntity = new EntityRef("wikipedia-table-row", instanceId);
+                        evidenceMethod = "reviewed Wikipedia table-row instance";
+                        rationale = "The configured table row creates this typed instance; "
+                                + "unresolved links never create another entity.";
+                    }
                     ExtractedClaim referenceClaim = new ExtractedClaim(subjectRef(request),
                             semanticProperty(request.targetField()), null,
-                            new EntityRef("wikipedia-table-row", instanceId),
-                            List.of(fragment), "reviewed Wikipedia table-row instance",
-                            RECIPE_VERSION, "", 0.95,
-                            List.of("The configured table row creates this typed instance; "
-                                    + "unresolved links never create another entity."));
+                            proposedEntity, List.of(fragment), evidenceMethod,
+                            RECIPE_VERSION, "", 0.95, List.of(rationale));
                     fields.add(new EnrichmentProposal.FieldCandidate(
                             "table-row-reference:" + instanceId, "", request.targetField(),
                             request.currentValue(), proposed, source,
@@ -196,11 +222,43 @@ public final class WikipediaTableRowInstanceEvidenceProvider
                         + selection.rows().size() + " data row(s); "
                         + resolvedLinks + " display-cell link(s) resolved, "
                         + unresolvedLinks + " unresolved; " + rowCount(result)
-                        + " typed row member(s) proposed"
+                        + " member(s) proposed"
+                        + (reusedMembers == 0 ? "" : "; " + reusedMembers
+                                + " loaded member(s) reused")
+                        + (proposedRowInstances == 0 ? "" : "; " + proposedRowInstances
+                                + " row instance(s) created")
                         + (attachedReferences == 0 ? "" : "; " + attachedReferences
                                 + " loaded reference(s) attached to those rows");
             }
         };
+    }
+
+    /** A display link is already the member when it identifies exactly one loaded object
+     * accepted by the owner field. The row instance is the fallback for unlinked,
+     * ambiguous or incompatible rows, never a second representation beside that object. */
+    private Viewable existingMember(
+            WikipediaTableRows.SelectedRow row,
+            Map<WikipediaLinkedReferenceResolver.Link, Viewable> matches,
+            objectview.field.FieldRef ownerField) {
+        LinkedHashMap<String, Viewable> resolved = new LinkedHashMap<>();
+        for (WikipediaLinkedReferenceResolver.Link link :
+                WikipediaLinkedReferenceResolver.fragmentLinks(row.displayLinks())) {
+            Viewable value = matches.get(link);
+            if (value == null || value.getIdentifier() == null
+                    || value.getIdentifier().isBlank()) continue;
+            resolved.putIfAbsent(value.typeName() + '\0' + value.getIdentifier(), value);
+        }
+        if (resolved.size() != 1) return null;
+        Viewable value = resolved.values().iterator().next();
+        return FieldValueCompatibility.problem(domain, ownerField, value) == null
+                ? value : null;
+    }
+
+    private static EntityRef entityRef(Viewable value) {
+        String id = clean(value.getIdentifier());
+        return WikidataIds.isQid(id) ? EntityRef.wikidata(id)
+                : new EntityRef("domain:" + clean(value.typeName()).toLowerCase(Locale.ROOT),
+                        id);
     }
 
     private List<EnrichmentProposal.TypedReference> linkedReferences(

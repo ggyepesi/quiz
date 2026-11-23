@@ -35,12 +35,13 @@ class DomainSaverStagingTest {
 
         DomainSaver saver = new DomainSaver();
         String disclosure = saver.describeSave("Egyptian Gods", List.of(), domain);
-        assertTrue(disclosure.contains("Not ready to save: 1 staged change is not saved"),
+        assertTrue(disclosure.contains("Not ready to save: accepted changes are still "
+                        + "pending because they were not saved"),
                 disclosure);
 
         IllegalStateException refused = assertThrows(IllegalStateException.class,
                 () -> saver.save("Egyptian Gods", List.of(), domain));
-        assertTrue(refused.getMessage().contains("Use \"Save staged changes\""),
+        assertTrue(refused.getMessage().contains("Use \"Save pending changes\""),
                 refused.getMessage());
         assertFalse(curation.file().isFile(),
                 "the refused domain save must not cross the curation boundary");

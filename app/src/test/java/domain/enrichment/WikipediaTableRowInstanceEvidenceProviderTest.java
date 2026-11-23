@@ -14,10 +14,11 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** A configured table row is a typed, reviewable instance rather than an invented QID. */
+/** A configured table row reuses one compatible loaded member and creates a typed row
+ * instance only when the source does not identify such a member. */
 class WikipediaTableRowInstanceEvidenceProviderTest {
 
-    @Test void everyRowBecomesTheConfiguredRoleAndResolvedLinksFillItsReference()
+    @Test void aResolvedCompatibleMemberIsReusedAndAnUnresolvedRowGetsItsOwnInstance()
             throws Exception {
         WikidataDynamicObject ra = new WikidataDynamicObject("Q2831", "Ra");
         ra.type("EgyptianDeity");
@@ -33,9 +34,9 @@ class WikipediaTableRowInstanceEvidenceProviderTest {
         EnrichmentProposal result = provider.discover(request(article()))
                 .execute(new QueryContext());
 
-        assertEquals(2, result.instances().size());
+        assertEquals(1, result.instances().size());
         assertEquals(2, result.fields().size(),
-                "each structural row enters the owner field exactly once");
+                "each source row enters the owner field exactly once");
         EnrichmentProposal.InstanceCandidate first = result.instances().stream()
                 .filter(candidate -> candidate.displayName().equals("Unknown deity"))
                 .findFirst().orElseThrow();
@@ -47,15 +48,8 @@ class WikipediaTableRowInstanceEvidenceProviderTest {
                 first.fields().get(1).references().getFirst());
         assertEquals(2, first.fields().size(),
                 "an unresolved display-cell link creates no deity reference");
-        EnrichmentProposal.InstanceCandidate linked = result.instances().stream()
-                .filter(candidate -> candidate.displayName().equals("Ra"))
-                .findFirst().orElseThrow();
-        assertEquals(List.of(new EnrichmentProposal.TypedReference(
-                        "EgyptianDeity", "Q2831")),
-                linked.fields().stream().filter(field -> field.field().equals("deities"))
-                        .findFirst().orElseThrow().references(),
-                "the loaded deity identifies the role's configured reference; it does "
-                        + "not replace that role");
+        assertTrue(result.fields().stream().anyMatch(field -> field.proposedValue() == ra),
+                "the loaded compatible deity is the member, not a duplicate row object");
         assertTrue(result.instances().stream().map(EnrichmentProposal.InstanceCandidate::id)
                 .allMatch(id -> id.startsWith("wikipedia-table-row:")));
     }
@@ -83,7 +77,7 @@ class WikipediaTableRowInstanceEvidenceProviderTest {
                 links);
     }
 
-    @Test void anExistingLinkedDeityDoesNotReplaceTheConfiguredRole()
+    @Test void aLinkedDeityAlreadyInTheGroupIsNotProposedAgain()
             throws Exception {
         WikidataDynamicObject ra = new WikidataDynamicObject("Q2831", "Ra");
         ra.type("EgyptianDeity");
@@ -99,15 +93,10 @@ class WikipediaTableRowInstanceEvidenceProviderTest {
         EnrichmentProposal result = provider.discover(request(article(), List.of(ra)))
                 .execute(new QueryContext());
 
-        assertEquals(2, result.instances().size());
-        assertEquals(2, result.fields().size());
-        assertTrue(result.instances().stream().anyMatch(candidate ->
-                candidate.displayName().equals("Ra")
-                        && candidate.fields().stream().anyMatch(field ->
-                                field.field().equals("deities")
-                                        && field.references().equals(List.of(
-                                                new EnrichmentProposal.TypedReference(
-                                                        "EgyptianDeity", "Q2831"))))));
+        assertEquals(1, result.instances().size(),
+                "the unresolved row still needs its configured row instance");
+        assertEquals(1, result.fields().size());
+        assertTrue(result.fields().stream().noneMatch(field -> field.proposedValue() == ra));
     }
 
     @Test void anIncompatibleStaleRowDoesNotSuppressTheTypedProposal()
@@ -165,13 +154,8 @@ class WikipediaTableRowInstanceEvidenceProviderTest {
         EnrichmentProposal result = provider.discover(request(linkedArticle("Ra")))
                 .execute(new QueryContext());
 
-        assertEquals(1, result.instances().size());
-        assertEquals("AssessorOfMaat", result.instances().getFirst().type());
-        assertEquals(List.of(new EnrichmentProposal.TypedReference(
-                        "EgyptianDeity", "Q2831")),
-                result.instances().getFirst().fields().stream()
-                        .filter(field -> field.field().equals("deities"))
-                        .findFirst().orElseThrow().references());
+        assertEquals(0, result.instances().size());
+        assertEquals(ra, result.fields().getFirst().proposedValue());
     }
 
     /** An edit to another cell of an accepted row once proposed a second instance beside
