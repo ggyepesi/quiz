@@ -1,6 +1,7 @@
 package domain.curation;
 
 import domain.config.FieldSourceMapping;
+import domain.config.FieldSourceBindings;
 import domain.config.FieldSourceType;
 
 /**
@@ -23,7 +24,8 @@ public final class FieldSourceRecipeCodec {
         }
         FieldSourceType sourceType = sourceType(recipe.parameter(FieldSourceRecipe.SOURCE_TYPE));
         String property = recipe.parameter(FieldSourceRecipe.PROPERTY);
-        if (sourceType == null
+        if (sourceType == null || FieldSourceBindings.coverage(sourceType).kind()
+                        == FieldSourceBindings.LegacySourceKind.NO_BINDING
                 || sourceType.usesPropertyInput() && property.isBlank()) return null;
         FieldSourceMapping result = new FieldSourceMapping();
         result.sourceType(sourceType);
@@ -40,6 +42,8 @@ public final class FieldSourceRecipeCodec {
         // kind + property shape cannot carry.
         if (mapping == null || mapping.sourceType() == null
                 || mapping.sourceType() == FieldSourceType.DATASOURCE
+                || FieldSourceBindings.coverage(mapping.sourceType()).kind()
+                        == FieldSourceBindings.LegacySourceKind.NO_BINDING
                 || !mapping.sourceType().filledAfterExtraction()
                 || mapping.sourceType().usesPropertyInput()
                         && mapping.propertyPid().isBlank()) {

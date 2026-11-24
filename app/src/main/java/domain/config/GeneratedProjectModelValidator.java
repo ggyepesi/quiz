@@ -471,8 +471,7 @@ public final class GeneratedProjectModelValidator {
                         + "qualifier property (Pxx) and at least one allowed value "
                         + "(Qxx); it has " + condition.display() + "."));
             }
-            if (mapping.sourceType() != FieldSourceType.SPARQL
-                    && mapping.sourceType() != FieldSourceType.WIKIDATA_API) {
+            if (mapping.sourceType() != FieldSourceType.SPARQL) {
                 problems.add(Problem.error(where, "A qualifier condition applies to a "
                         + "Wikidata property; this field is read from "
                         + mapping.sourceType() + "."));

@@ -34,6 +34,89 @@ public final class FieldSourceBindings {
 
     private FieldSourceBindings() { }
 
+    /** How one legacy source choice reaches the datasource registry. */
+    public enum LegacySourceKind {
+        /** The legacy choice names one fixed shipped provider operation. */
+        REGISTERED_OPERATION,
+        /** The stored binding, rather than the enum constant, names the operation. */
+        REGISTRY_BINDING,
+        /** The field is filled manually and has no datasource binding. */
+        NO_BINDING
+    }
+
+    /**
+     * Complete classification of one retained {@link FieldSourceType}.
+     *
+     * <p>This is the migration boundary's one answer to whether an old source choice
+     * names a provider operation. New datasource capabilities do not add enum values;
+     * they use {@link FieldSourceType#DATASOURCE} and store their operation in the
+     * binding.</p>
+     */
+    public record LegacySourceCoverage(
+            FieldSourceType sourceType,
+            LegacySourceKind kind,
+            String providerId,
+            String operationId) {
+        public LegacySourceCoverage {
+            if (sourceType == null || kind == null) {
+                throw new IllegalArgumentException("Source type and coverage kind are required");
+            }
+            providerId = clean(providerId);
+            operationId = clean(operationId);
+            boolean fixed = kind == LegacySourceKind.REGISTERED_OPERATION;
+            if (fixed != (!providerId.isBlank() && !operationId.isBlank())) {
+                throw new IllegalArgumentException(
+                        "Only a registered-operation source names a fixed operation");
+            }
+        }
+
+        public boolean registeredOperation() {
+            return kind == LegacySourceKind.REGISTERED_OPERATION;
+        }
+    }
+
+    /** Every retained legacy type is classified exhaustively here. */
+    public static LegacySourceCoverage coverage(FieldSourceType type) {
+        if (type == null) type = FieldSourceType.SPARQL;
+        return switch (type) {
+            case SPARQL -> registered(type, WikidataDatasourceProvider.ID,
+                    WikidataDatasourceProvider.PROPERTY_VALUE);
+            case DBPEDIA -> registered(type, DbpediaDatasourceProvider.ID,
+                    DbpediaDatasourceProvider.PROPERTY);
+            case WIKIPEDIA_INFOBOX -> registered(type, WikipediaDatasourceProvider.ID,
+                    WikipediaDatasourceProvider.INFOBOX_PARAMETER);
+            case WIKIPEDIA_ARTICLE_INTRODUCTION,
+                    WIKIPEDIA_ARTICLE_LEAD_PARAGRAPH,
+                    WIKIPEDIA_ARTICLE_LEAD_SENTENCE -> registered(type,
+                    WikipediaDatasourceProvider.ID,
+                    WikipediaDatasourceProvider.ARTICLE_INTRODUCTION);
+            case WIKIDATA_SITELINK_COUNT -> registered(type,
+                    WikidataDatasourceProvider.ID,
+                    WikidataDatasourceProvider.SITELINK_COUNT);
+            case WIKIDATA_INCOMING_COUNT -> registered(type,
+                    WikidataDatasourceProvider.ID,
+                    WikidataDatasourceProvider.INCOMING_RELATION_COUNT);
+            case WIKIDATA_INHERITED_INCOMING_COUNT -> registered(type,
+                    WikidataDatasourceProvider.ID,
+                    WikidataDatasourceProvider.INHERITED_INCOMING_RELATION_COUNT);
+            case DATASOURCE -> new LegacySourceCoverage(type,
+                    LegacySourceKind.REGISTRY_BINDING, "", "");
+            case MANUAL -> new LegacySourceCoverage(type,
+                    LegacySourceKind.NO_BINDING, "", "");
+        };
+    }
+
+    public static List<LegacySourceCoverage> sourceTypeCoverage() {
+        return java.util.Arrays.stream(FieldSourceType.values())
+                .map(FieldSourceBindings::coverage).toList();
+    }
+
+    private static LegacySourceCoverage registered(
+            FieldSourceType type, String provider, String operation) {
+        return new LegacySourceCoverage(type, LegacySourceKind.REGISTERED_OPERATION,
+                provider, operation);
+    }
+
     public static void migrateOnLoad(GeneratedProjectModel project) {
         visit(project, (owner, path, field) -> {
             if (!field.sourceBindings().isEmpty()) {
@@ -417,9 +500,11 @@ public final class FieldSourceBindings {
     public record ConfigurationProblem(String location, String message) { }
 
     private static final List<ProviderOperation> SOURCE_TYPE_OPERATIONS =
-            java.util.Arrays.stream(FieldSourceType.values())
-                    .map(FieldSourceBindings::providerOperation)
-                    .filter(java.util.Objects::nonNull).distinct().toList();
+            sourceTypeCoverage().stream()
+                    .filter(LegacySourceCoverage::registeredOperation)
+                    .map(value -> new ProviderOperation(
+                            value.providerId(), value.operationId()))
+                    .distinct().toList();
 
     private static void projectLegacy(GeneratedFieldModel field, SourceBinding binding) {
         projectLegacy(field.mapping(), field::ensureFallbackMapping,
@@ -443,13 +528,14 @@ public final class FieldSourceBindings {
             primary.propertyLabel("");
             return;
         }
-        if (!legacyProjected(recipe)) return;
+        // The category slot has its own legacy form, independent of any source type.
         if (slot == SourceBindingSlot.CATEGORY_EVIDENCE) {
             WikipediaCategoryRule projected = WikipediaCategoryRule.fromRecipe(binding);
             if (projected == null) return;
             category.get().assign(projected);
             return;
         }
+        if (!legacyProjected(recipe)) return;
         if (slot == SourceBindingSlot.FALLBACK_FIELD_VALUE) {
             FieldSourceMapping mapping = fallback.get();
             mapping.sourceType(sourceType(recipe));
@@ -475,73 +561,45 @@ public final class FieldSourceBindings {
         }
     }
 
+    /** A binding of an operation that a legacy source type names is also shown in that
+     *  type's legacy fields; the coverage table is the one list of those operations. */
     private static boolean legacyProjected(SourceRecipe recipe) {
-        if (recipe == null) return false;
-        if (WikidataDatasourceProvider.ID.equals(recipe.providerId())) {
-            return WikidataDatasourceProvider.PROPERTY_VALUE.equals(recipe.operationId());
-        }
-        return DbpediaDatasourceProvider.ID.equals(recipe.providerId())
-                || WikipediaDatasourceProvider.ID.equals(recipe.providerId());
+        return recipe != null && !registryOnly(recipe);
     }
 
+    /** The legacy type a binding was saved from: the coverage table read backwards.
+     *  Several types may share one operation (the article-text projections); the
+     *  stored type, then the recipe's projection, decides between them. */
     private static FieldSourceType sourceType(SourceRecipe recipe) {
-        if (WikidataDatasourceProvider.ID.equals(recipe.providerId())) {
-            try { return FieldSourceType.valueOf(recipe.parameter(SOURCE_TYPE)); }
-            catch (RuntimeException ignored) { return FieldSourceType.SPARQL; }
-        }
-        if (DbpediaDatasourceProvider.ID.equals(recipe.providerId())) return FieldSourceType.DBPEDIA;
-        if (WikipediaDatasourceProvider.ID.equals(recipe.providerId())
-                && WikipediaDatasourceProvider.INFOBOX_PARAMETER.equals(recipe.operationId())) {
-            return FieldSourceType.WIKIPEDIA_INFOBOX;
-        }
+        List<FieldSourceType> candidates = sourceTypeCoverage().stream()
+                .filter(LegacySourceCoverage::registeredOperation)
+                .filter(value -> value.providerId().equals(recipe.providerId())
+                        && value.operationId().equals(recipe.operationId()))
+                .map(LegacySourceCoverage::sourceType)
+                .toList();
+        if (candidates.size() == 1) return candidates.getFirst();
+        try {
+            FieldSourceType stored = FieldSourceType.valueOf(recipe.parameter(SOURCE_TYPE));
+            if (candidates.contains(stored)) return stored;
+        } catch (RuntimeException ignored) { }
         if (WikipediaDatasourceProvider.ID.equals(recipe.providerId())
                 && WikipediaDatasourceProvider.ARTICLE_INTRODUCTION.equals(
                         recipe.operationId())) {
-            try {
-                FieldSourceType stored = FieldSourceType.valueOf(recipe.parameter(SOURCE_TYPE));
-                if (stored.wikipediaArticleText()) return stored;
-            } catch (RuntimeException ignored) { }
             return switch (articleTextProjection(recipe)) {
                 case LEAD_PARAGRAPH -> FieldSourceType.WIKIPEDIA_ARTICLE_LEAD_PARAGRAPH;
                 case LEAD_SENTENCE -> FieldSourceType.WIKIPEDIA_ARTICLE_LEAD_SENTENCE;
                 case INTRODUCTION -> FieldSourceType.WIKIPEDIA_ARTICLE_INTRODUCTION;
             };
         }
-        try { return FieldSourceType.valueOf(recipe.parameter(SOURCE_TYPE)); }
-        catch (RuntimeException ignored) { return FieldSourceType.MANUAL; }
+        throw new IllegalStateException("No legacy source type for "
+                + recipe.providerId() + "/" + recipe.operationId());
     }
 
     private static ProviderOperation providerOperation(FieldSourceType type) {
-        if (type == FieldSourceType.DBPEDIA) {
-            return new ProviderOperation(
-                    DbpediaDatasourceProvider.ID, DbpediaDatasourceProvider.PROPERTY);
-        }
-        if (type == FieldSourceType.WIKIPEDIA_INFOBOX) {
-            return new ProviderOperation(WikipediaDatasourceProvider.ID,
-                    WikipediaDatasourceProvider.INFOBOX_PARAMETER);
-        }
-        if (type != null && type.wikipediaArticleText()) {
-            return new ProviderOperation(WikipediaDatasourceProvider.ID,
-                    WikipediaDatasourceProvider.ARTICLE_INTRODUCTION);
-        }
-        if (type == FieldSourceType.WIKIDATA_SITELINK_COUNT) {
-            return new ProviderOperation(WikidataDatasourceProvider.ID,
-                    WikidataDatasourceProvider.SITELINK_COUNT);
-        }
-        if (type == FieldSourceType.WIKIDATA_INCOMING_COUNT) {
-            return new ProviderOperation(WikidataDatasourceProvider.ID,
-                    WikidataDatasourceProvider.INCOMING_RELATION_COUNT);
-        }
-        if (type == FieldSourceType.WIKIDATA_INHERITED_INCOMING_COUNT) {
-            return new ProviderOperation(WikidataDatasourceProvider.ID,
-                    WikidataDatasourceProvider.INHERITED_INCOMING_RELATION_COUNT);
-        }
-        if (type == FieldSourceType.SPARQL || type == FieldSourceType.WIKIDATA_API
-                || type == null) {
-            return new ProviderOperation(WikidataDatasourceProvider.ID,
-                    WikidataDatasourceProvider.PROPERTY_VALUE);
-        }
-        return null;
+        LegacySourceCoverage coverage = coverage(type);
+        return coverage.registeredOperation()
+                ? new ProviderOperation(coverage.providerId(), coverage.operationId())
+                : null;
     }
 
     private static WikipediaDatasourceProvider.ArticleTextProjection articleTextProjection(

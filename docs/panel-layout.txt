@@ -341,7 +341,7 @@
   combo: 11 item(s)
   label: Source
   label: From:
-  combo: 16 item(s)
+  combo: 11 item(s)
   label: Property:
   text: [P569]
   label: date of birth

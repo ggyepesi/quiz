@@ -3,6 +3,7 @@ package domain.workbench.advisor;
 import domain.config.EntityBound;
 import domain.config.FieldCardinality;
 import domain.config.FieldSemantics;
+import domain.config.FieldSourceBindings;
 import domain.config.FieldSourceMapping;
 import domain.config.FieldSourceType;
 import domain.config.GeneratedClassModel;
@@ -123,14 +124,15 @@ public final class ModelExplanationFactory {
         if (source.propertyPid().isBlank()) {
             advice.add("Choose the property that supplies this field.");
         }
-        if (!source.sourceType().implementedNow()) {
-            advice.add(source.sourceType() + " is configured but not implemented yet.");
-        }
         if (effectiveDirection != source.direction()) {
             advice.add("Scalar literal fields are queried as outgoing triples; the configured "
                                + source.direction() + " direction is not used by generation.");
         }
-        if (source.sourceType().filledAfterExtraction()) {
+        FieldSourceBindings.LegacySourceCoverage coverage =
+                FieldSourceBindings.coverage(source.sourceType());
+        if (coverage.kind() == FieldSourceBindings.LegacySourceKind.NO_BINDING) {
+            advice.add("This field has no automatic source; fill it through curation.");
+        } else if (source.sourceType().filledAfterExtraction()) {
             advice.add(source.sourceType() + " supplies this field after Wikidata extraction; "
                                + "preserve its source in review results.");
         }

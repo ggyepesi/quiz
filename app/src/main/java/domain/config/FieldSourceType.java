@@ -10,11 +10,6 @@ public enum FieldSourceType {
     WIKIDATA_SITELINK_COUNT,
     WIKIDATA_INCOMING_COUNT,
     WIKIDATA_INHERITED_INCOMING_COUNT,
-    WIKIDATA_API,
-    BACKLINKS,
-    WIKIPEDIA_CATEGORY,
-    WIKIPROJECT,
-    COMMONS,
     /**
      * A registered datasource operation that has no constant of its own here. The field's
      * stored source binding is the whole configuration; this constant only says to read
@@ -22,13 +17,6 @@ public enum FieldSourceType {
      */
     DATASOURCE,
     MANUAL;
-
-    public boolean implementedNow() {
-        return this == SPARQL || this == DBPEDIA || this == WIKIPEDIA_INFOBOX
-                || wikipediaArticleText()
-                || this == WIKIDATA_SITELINK_COUNT || this == WIKIDATA_INCOMING_COUNT
-                || this == WIKIDATA_INHERITED_INCOMING_COUNT || this == DATASOURCE;
-    }
 
     /**
      * Whether this source is read AFTER Wikidata extraction rather than compiled into the
@@ -44,12 +32,13 @@ public enum FieldSourceType {
         return this == DBPEDIA || this == WIKIPEDIA_INFOBOX
                 || wikipediaArticleText()
                 || this == WIKIDATA_SITELINK_COUNT || this == WIKIDATA_INCOMING_COUNT
-                || this == WIKIDATA_INHERITED_INCOMING_COUNT || this == DATASOURCE;
+                || this == WIKIDATA_INHERITED_INCOMING_COUNT || this == DATASOURCE
+                || this == MANUAL;
     }
 
     /** Whether this source asks the modeller to name a property/parameter. */
     public boolean usesPropertyInput() {
-        return !wikipediaArticleText() && this != DATASOURCE;
+        return !wikipediaArticleText() && this != DATASOURCE && this != MANUAL;
     }
 
     /** Whether the field editor can inspect samples and offer property choices. */
@@ -77,11 +66,6 @@ public enum FieldSourceType {
             case WIKIDATA_INCOMING_COUNT -> "Wikidata incoming relation count";
             case WIKIDATA_INHERITED_INCOMING_COUNT ->
                     "Wikidata inherited incoming relation count";
-            case WIKIDATA_API -> "Wikidata API";
-            case BACKLINKS -> "Backlinks";
-            case WIKIPEDIA_CATEGORY -> "Wikipedia category";
-            case WIKIPROJECT -> "WikiProject";
-            case COMMONS -> "Commons";
             case DATASOURCE -> "Datasource operation";
             case MANUAL -> "Manual";
         };

@@ -2504,12 +2504,6 @@ public class FieldSourcePanel extends JPanel {
         propertyPidField.setEnabled(acquiredFromOwnProperty()
                 && (sourceType == null || sourceType.usesPropertyInput()));
 
-        if (sourceType != null && !sourceType.implementedNow()) {
-            recommendationLabel.setText(
-                    "Source: " + sourceType + " | Not yet implemented");
-            return;
-        }
-
         if (sourceType == FieldSourceType.DATASOURCE) {
             String description;
             try {
@@ -2574,6 +2568,13 @@ public class FieldSourcePanel extends JPanel {
                             + "selected Pxx property points to a loaded instance that is a "
                             + "strict P279 descendant of this entity. Descendants outside "
                             + "the loaded population and direct values are not counted.");
+            return;
+        }
+
+        if (sourceType != null && FieldSourceBindings.coverage(sourceType).kind()
+                == FieldSourceBindings.LegacySourceKind.NO_BINDING) {
+            recommendationLabel.setText(
+                    "Manual: no datasource fills this field; values come from curation.");
             return;
         }
 

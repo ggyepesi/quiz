@@ -221,6 +221,19 @@ but only after coverage is explicit:
 
 Saved models retain their current stored source type until a separately approved migration.
 
+The retained legacy choices are classified at the migration boundary, not in the editor:
+
+| Classification | `FieldSourceType` values | Meaning |
+|---|---|---|
+| Fixed registered operation | `SPARQL`, `DBPEDIA`, `WIKIPEDIA_INFOBOX`, the three Wikipedia article-text projections, and the three Wikidata computed counts | The type maps to exactly one registered `FIELD_VALUE` operation. |
+| Binding-selected registry operation | `DATASOURCE` | The configured binding itself names the registered operation; new providers use this path. |
+| No datasource | `MANUAL` | No source binding and no generated acquisition. Values come from explicit curation. |
+
+The unused placeholders `WIKIDATA_API`, `BACKLINKS`, `WIKIPEDIA_CATEGORY`, `WIKIPROJECT` and
+`COMMONS` were never persisted and had no distinct generation operation, so they were removed.
+Wikipedia category evidence remains its existing separate binding site; Commons remains a discovery
+source until a concrete field operation is configured through the registry.
+
 ## Unified-workbench ownership
 
 The unified workbench owns one live project object (#560). Components edit only the declarations
@@ -247,7 +260,7 @@ Follow #557 as checked milestones:
 1. Reconcile this design with the four node kinds and neutral shell contract. **Done.**
 2. Add the typed configuration-reference inventory and projections; force validation, dependency
    navigation and rename discovery to read the same facts. **Done.**
-3. Classify legacy `FieldSourceType` coverage against the datasource registry.
+3. Classify legacy `FieldSourceType` coverage against the datasource registry. **Done.**
 4. Add the neutral tree-and-detail shell with a checked-in rendered artifact.
 5. Convert the field editor, covering a datasource field, relation-route field and table-row
    evidence field.
