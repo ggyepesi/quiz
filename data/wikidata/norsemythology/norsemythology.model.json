@@ -824,48 +824,17 @@
       "sourceType" : "SPARQL"
     },
     "membership" : {
-      "kind" : "RELATION",
-      "qids" : [ "java.util.ImmutableCollections$List12", [ "Q24336784" ] ],
-      "relationPid" : "P31",
+      "kind" : "UNBOUNDED",
+      "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+      "relationPid" : "",
       "selectionName" : "",
       "selectionId" : "",
-      "includeDescendants" : true
+      "includeDescendants" : false
     },
     "fields" : [ "java.util.ArrayList", [ ] ],
     "seedQids" : [ "java.util.ArrayList", [ ] ],
-    "populationSource" : {
-      "providerId" : "wikidata",
-      "operationId" : "statement-membership",
-      "parameters" : {
-        "@class" : "java.util.ImmutableCollections$MapN",
-        "includeSubclasses" : "true",
-        "property" : "P31",
-        "values" : "Q24336784"
-      }
-    },
     "populationMode" : "GENERATED",
     "sourceBindings" : [ "java.util.ArrayList", [ {
-      "target" : {
-        "scope" : "CLASS_POPULATION",
-        "className" : "NorseCreature",
-        "fieldPath" : "",
-        "slot" : "CLASS_POPULATION",
-        "classDeclarationId" : "decl:bc09a558-b7fe-4491-b672-ac77d860b004",
-        "contextClassName" : "",
-        "contextFieldPath" : "",
-        "contextClassDeclarationId" : ""
-      },
-      "recipe" : {
-        "providerId" : "wikidata",
-        "operationId" : "statement-membership",
-        "parameters" : {
-          "@class" : "java.util.ImmutableCollections$MapN",
-          "includeSubclasses" : "true",
-          "property" : "P31",
-          "values" : "Q24336784"
-        }
-      }
-    }, {
       "target" : {
         "scope" : "CLASS_IDENTITY",
         "className" : "NorseCreature",
@@ -980,7 +949,7 @@
     },
     "membership" : {
       "kind" : "RELATION",
-      "qids" : [ "java.util.ImmutableCollections$List12", [ "Q16514343" ] ],
+      "qids" : [ "java.util.ImmutableCollections$List12", [ "Q16514343", "Q24336784" ] ],
       "relationPid" : "P31",
       "selectionName" : "",
       "selectionId" : "",
@@ -995,7 +964,7 @@
         "@class" : "java.util.ImmutableCollections$MapN",
         "includeSubclasses" : "true",
         "property" : "P31",
-        "values" : "Q16514343"
+        "values" : "Q16514343,Q24336784"
       }
     },
     "populationMode" : "GENERATED",
@@ -1017,7 +986,7 @@
           "@class" : "java.util.ImmutableCollections$MapN",
           "includeSubclasses" : "true",
           "property" : "P31",
-          "values" : "Q16514343"
+          "values" : "Q16514343,Q24336784"
         }
       }
     }, {
@@ -1218,6 +1187,153 @@
         "fieldPath" : "",
         "slot" : "CLASS_ALIASES",
         "classDeclarationId" : "decl:f1512696-4799-4f5e-be39-ddda0d23fdff",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "aliases",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    } ] ],
+    "canonical" : {
+      "@class" : "domain.config.CanonicalSpec",
+      "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "reductions" : {
+        "@class" : "java.util.LinkedHashMap"
+      },
+      "missingKeyPolicy" : "INCOMPLETE_GROUP",
+      "duplicatePolicy" : [ "domain.config.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
+      "displayNameMode" : "LABEL",
+      "displayNameField" : "",
+      "displayNameTemplate" : "",
+      "labelLanguage" : "en",
+      "primaryListField" : ""
+    }
+  }, {
+    "@class" : "domain.config.GeneratedClassModel",
+    "declarationId" : "decl:590be49d-9028-4728-8d52-84c91abfc2cc",
+    "className" : "NorseRealm",
+    "baseClassName" : "NorseLocation",
+    "baseClassId" : "decl:f1512696-4799-4f5e-be39-ddda0d23fdff",
+    "discriminatorPid" : "P361",
+    "discriminatorQid" : "Q1798538",
+    "subclassCondition" : {
+      "kind" : "PROPERTY_VALUE",
+      "propertyPid" : "P361",
+      "qid" : "Q1798538",
+      "includeDescendants" : false
+    },
+    "alias" : "",
+    "importedFrom" : "",
+    "classKind" : "SOURCE",
+    "graphSource" : null,
+    "generationDepth" : 1,
+    "instanceMapping" : {
+      "@class" : "domain.config.FieldSourceMapping",
+      "sourceQid" : "",
+      "sourceLabel" : "",
+      "propertyPid" : "",
+      "propertyLabel" : "",
+      "qualifierPid" : "",
+      "qualifierLabel" : "",
+      "subjectField" : "",
+      "matchValueField" : "",
+      "matchRoleField" : "",
+      "inverseField" : "",
+      "direction" : "ITEM_TO_ROOT",
+      "requireLabel" : true,
+      "labelLanguage" : "en",
+      "valueLanguage" : "",
+      "requireSitelink" : false,
+      "limit" : 500,
+      "rankBy" : "",
+      "rankDescending" : true,
+      "productionKind" : "AUTO",
+      "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "sourceType" : "SPARQL"
+    },
+    "membership" : {
+      "kind" : "UNBOUNDED",
+      "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+      "relationPid" : "",
+      "selectionName" : "",
+      "selectionId" : "",
+      "includeDescendants" : false
+    },
+    "fields" : [ "java.util.ArrayList", [ ] ],
+    "seedQids" : [ "java.util.ArrayList", [ ] ],
+    "populationMode" : "GENERATED",
+    "sourceBindings" : [ "java.util.ArrayList", [ {
+      "target" : {
+        "scope" : "CLASS_POPULATION",
+        "className" : "NorseRealm",
+        "fieldPath" : "",
+        "slot" : "CLASS_POPULATION",
+        "classDeclarationId" : "decl:590be49d-9028-4728-8d52-84c91abfc2cc",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "statement-membership",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN",
+          "includeSubclasses" : "true",
+          "property" : "P31",
+          "values" : "Q24334976"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_IDENTITY",
+        "className" : "NorseRealm",
+        "fieldPath" : "",
+        "slot" : "CLASS_IDENTITY",
+        "classDeclarationId" : "decl:590be49d-9028-4728-8d52-84c91abfc2cc",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "identifier",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "NorseRealm",
+        "fieldPath" : "",
+        "slot" : "CLASS_LABEL",
+        "classDeclarationId" : "decl:590be49d-9028-4728-8d52-84c91abfc2cc",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "label",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "NorseRealm",
+        "fieldPath" : "",
+        "slot" : "CLASS_ALIASES",
+        "classDeclarationId" : "decl:590be49d-9028-4728-8d52-84c91abfc2cc",
         "contextClassName" : "",
         "contextFieldPath" : "",
         "contextClassDeclarationId" : ""
@@ -1712,13 +1828,168 @@
       "labelLanguage" : "en",
       "primaryListField" : ""
     }
+  }, {
+    "@class" : "domain.config.GeneratedClassModel",
+    "declarationId" : "decl:481862c7-c465-4c16-976c-dca7f85c737a",
+    "className" : "NorseWork",
+    "baseClassName" : "MythologicalWork",
+    "baseClassId" : "decl:d5846930-1721-45f7-84c3-5dcea475a221",
+    "discriminatorPid" : "",
+    "discriminatorQid" : "",
+    "subclassCondition" : {
+      "kind" : "NONE",
+      "includeDescendants" : false
+    },
+    "alias" : "",
+    "importedFrom" : "",
+    "classKind" : "SOURCE",
+    "graphSource" : null,
+    "generationDepth" : 1,
+    "instanceMapping" : {
+      "@class" : "domain.config.FieldSourceMapping",
+      "sourceQid" : "",
+      "sourceLabel" : "Norse work",
+      "propertyPid" : "",
+      "propertyLabel" : "instance of",
+      "qualifierPid" : "",
+      "qualifierLabel" : "",
+      "subjectField" : "",
+      "matchValueField" : "",
+      "matchRoleField" : "",
+      "inverseField" : "",
+      "direction" : "ITEM_TO_ROOT",
+      "requireLabel" : true,
+      "labelLanguage" : "en",
+      "valueLanguage" : "",
+      "requireSitelink" : false,
+      "limit" : 200,
+      "rankBy" : "",
+      "rankDescending" : true,
+      "productionKind" : "AUTO",
+      "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "sourceType" : "SPARQL"
+    },
+    "membership" : {
+      "kind" : "RELATION",
+      "qids" : [ "java.util.ImmutableCollections$ListN", [ "Q24457184", "Q24491885", "Q20022348" ] ],
+      "relationPid" : "P31",
+      "selectionName" : "",
+      "selectionId" : "",
+      "includeDescendants" : true
+    },
+    "fields" : [ "java.util.ArrayList", [ ] ],
+    "seedQids" : [ "java.util.ArrayList", [ ] ],
+    "populationSource" : {
+      "providerId" : "wikidata",
+      "operationId" : "statement-membership",
+      "parameters" : {
+        "@class" : "java.util.ImmutableCollections$MapN",
+        "includeSubclasses" : "true",
+        "property" : "P31",
+        "values" : "Q24457184,Q24491885,Q20022348"
+      }
+    },
+    "populationMode" : "GENERATED",
+    "sourceBindings" : [ "java.util.ArrayList", [ {
+      "target" : {
+        "scope" : "CLASS_POPULATION",
+        "className" : "NorseWork",
+        "fieldPath" : "",
+        "slot" : "CLASS_POPULATION",
+        "classDeclarationId" : "decl:481862c7-c465-4c16-976c-dca7f85c737a",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "statement-membership",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN",
+          "includeSubclasses" : "true",
+          "property" : "P31",
+          "values" : "Q24457184,Q24491885,Q20022348"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_IDENTITY",
+        "className" : "NorseWork",
+        "fieldPath" : "",
+        "slot" : "CLASS_IDENTITY",
+        "classDeclarationId" : "decl:481862c7-c465-4c16-976c-dca7f85c737a",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "identifier",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "NorseWork",
+        "fieldPath" : "",
+        "slot" : "CLASS_LABEL",
+        "classDeclarationId" : "decl:481862c7-c465-4c16-976c-dca7f85c737a",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "label",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "NorseWork",
+        "fieldPath" : "",
+        "slot" : "CLASS_ALIASES",
+        "classDeclarationId" : "decl:481862c7-c465-4c16-976c-dca7f85c737a",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "aliases",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    } ] ],
+    "canonical" : {
+      "@class" : "domain.config.CanonicalSpec",
+      "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "reductions" : {
+        "@class" : "java.util.LinkedHashMap"
+      },
+      "missingKeyPolicy" : "INCOMPLETE_GROUP",
+      "duplicatePolicy" : [ "domain.config.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
+      "displayNameMode" : "LABEL",
+      "displayNameField" : "",
+      "displayNameTemplate" : "",
+      "labelLanguage" : "en",
+      "primaryListField" : ""
+    }
   } ] ],
   "selections" : [ "java.util.ArrayList", [ ] ],
   "entityKindRules" : [ "java.util.ArrayList", [ ] ],
   "entityRepresentationRules" : [ "java.util.ArrayList", [ ] ],
   "imports" : [ "java.util.ArrayList", [ {
     "modelName" : "Mythology Core",
-    "classNames" : [ "java.util.ArrayList", [ "MythologicalEntity", "MythologicalCharacter", "MythologicalCreature", "MythologicalLocation", "MythologicalArtifact", "MythologicalEvent", "MythologicalGroup", "MythologicalWork" ] ]
+    "classNames" : [ "java.util.ArrayList", [ "MythologicalEntity", "MythologicalBeing", "MythologicalCharacter", "MythologicalCreature", "MythologicalLocation", "MythologicalArtifact", "MythologicalEvent", "MythologicalGroup", "MythologicalWork" ] ]
   } ] ],
   "buildOperations" : [ "java.util.ArrayList", [ {
     "declarationId" : "decl:ddaf5742-bb94-4a39-8947-fe12246c57bf",

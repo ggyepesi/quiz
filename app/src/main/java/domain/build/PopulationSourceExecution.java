@@ -157,11 +157,11 @@ public final class PopulationSourceExecution {
             return new Resolution(Resolution.Kind.NONE, List.of(), List.of(), null,
                     "No class selected");
         }
-        if (MembershipPattern.of(clazz, project)
-                == MembershipPattern.POPULATION_SUBCLASS) {
+        MembershipPattern membershipPattern = MembershipPattern.of(clazz, project);
+        if (membershipPattern.classifiedLocally()) {
             return new Resolution(Resolution.Kind.NONE, List.of(), List.of(), null,
-                    "its members are classified locally from its base class and saved "
-                            + "population, not by a population query");
+                    "its members are classified locally from already acquired entities, "
+                            + "not by a population query");
         }
         if (clazz.isImported()) {
             ImportedPopulationInputs inputs = ImportedPopulationInputs.of(project);

@@ -36,6 +36,11 @@
     "kind" : "CLASS",
     "artifact" : "norsemythology.snapshot.json"
   }, {
+    "declarationId" : "decl:590be49d-9028-4728-8d52-84c91abfc2cc",
+    "name" : "NorseRealm",
+    "kind" : "CLASS",
+    "artifact" : "norsemythology.snapshot.json"
+  }, {
     "declarationId" : "decl:446c9be5-633e-4b32-a78a-9dc5a49272db",
     "name" : "NorseArtifact",
     "kind" : "CLASS",
@@ -51,18 +56,38 @@
     "kind" : "CLASS",
     "artifact" : "norsemythology.snapshot.json"
   }, {
+    "declarationId" : "decl:481862c7-c465-4c16-976c-dca7f85c737a",
+    "name" : "NorseWork",
+    "kind" : "CLASS",
+    "artifact" : "norsemythology.snapshot.json"
+  }, {
     "declarationId" : "decl:22e6829a-abd0-49dd-8481-0d9fc20843c2",
     "name" : "MythologicalEntity",
     "kind" : "CLASS",
     "artifact" : "norsemythology.snapshot.json"
   }, {
-    "declarationId" : "decl:2c8710d1-444d-4b85-b0cd-782e12e9a26d",
-    "name" : "MythologicalCharacter",
+    "declarationId" : "decl:d5846930-1721-45f7-84c3-5dcea475a221",
+    "name" : "MythologicalWork",
+    "kind" : "CLASS",
+    "artifact" : "norsemythology.snapshot.json"
+  }, {
+    "declarationId" : "decl:7f6c8794-2491-4ad7-9fc2-f62b5d254976",
+    "name" : "MythologicalBeing",
+    "kind" : "CLASS",
+    "artifact" : "norsemythology.snapshot.json"
+  }, {
+    "declarationId" : "decl:2a292dd1-3064-4aea-8128-532f71dd32ea",
+    "name" : "MythologicalEvent",
     "kind" : "CLASS",
     "artifact" : "norsemythology.snapshot.json"
   }, {
     "declarationId" : "decl:77a1d5ce-5498-42a8-9348-731457633fae",
     "name" : "MythologicalLocation",
+    "kind" : "CLASS",
+    "artifact" : "norsemythology.snapshot.json"
+  }, {
+    "declarationId" : "decl:2c8710d1-444d-4b85-b0cd-782e12e9a26d",
+    "name" : "MythologicalCharacter",
     "kind" : "CLASS",
     "artifact" : "norsemythology.snapshot.json"
   }, {
@@ -76,15 +101,10 @@
     "kind" : "CLASS",
     "artifact" : "norsemythology.snapshot.json"
   }, {
-    "declarationId" : "decl:2a292dd1-3064-4aea-8128-532f71dd32ea",
-    "name" : "MythologicalEvent",
-    "kind" : "CLASS",
-    "artifact" : "norsemythology.snapshot.json"
-  }, {
     "declarationId" : "decl:8845f254-ab9f-4749-997e-2d72a7369f02",
     "name" : "MythologicalGroup",
     "kind" : "CLASS",
     "artifact" : "norsemythology.snapshot.json"
   } ],
-  "snapshotSignature" : "model-v2:32f1ab4fa104ebd2e1c79cd0d6de35f550dac2da198df9e01eef02cab9cf0f62"
+  "snapshotSignature" : "model-v2:5da9a66549c4d0f97f6e6f542f0a26ca6a9080742becb12ee518efedbd4c0e0a"
 }

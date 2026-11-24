@@ -39,6 +39,9 @@ final class PopulationSourceBindings {
         }
         SourceRecipe own = fromLegacy(clazz);
         if (own != null) return own;
+        if (project != null && MembershipPattern.of(clazz, project).classifiedLocally()) {
+            return null;
+        }
         return project == null ? declared : fromLegacy(clazz, project);
     }
 

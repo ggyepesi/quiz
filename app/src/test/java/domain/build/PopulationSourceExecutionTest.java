@@ -358,6 +358,33 @@ class PopulationSourceExecutionTest {
         assertTrue(withInheritedStep.reason().contains("classified locally"));
     }
 
+    @Test void anEvidenceDerivedSubclassIsClassifiedLocallyNotAskedFor() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel location = new GeneratedClassModel("Location");
+        location.membership(domain.config.EntityBound.relation(
+                "P31", List.of("Q2221906"), false));
+        project.rootClass(location);
+        GeneratedClassModel realm = new GeneratedClassModel("Realm");
+        realm.baseClassName("Location");
+        project.addClass(realm);
+        domain.config.EntityKindRule realmKind =
+                new domain.config.EntityKindRule("Realm", List.of("Q1798538"));
+        realmKind.propertyPid("P361");
+        project.addEntityKindRule(realmKind);
+
+        PopulationSourceExecution.Resolution withInheritedStep =
+                PopulationSourceExecution.resolve(project, realm,
+                        plan("Realm", new SourceRecipe(
+                                "wikidata", "statement-membership",
+                                Map.of("property", "P31", "values", "Q2221906"))));
+        PopulationSourceExecution.Resolution offline =
+                PopulationSourceExecution.resolve(project, realm, null);
+
+        assertTrue(!withInheritedStep.available());
+        assertTrue(!offline.available());
+        assertTrue(withInheritedStep.reason().contains("classified locally"));
+    }
+
     /** A skip states its cause; the run log showed \"Skip class OfficeHolding — .\" */
     @Test void aStatementClassSaysItIsProducedByReification() {
         GeneratedProjectModel project = new GeneratedProjectModel();

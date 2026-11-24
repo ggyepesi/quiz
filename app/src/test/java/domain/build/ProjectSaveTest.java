@@ -163,6 +163,36 @@ class ProjectSaveTest {
         assertTrue(save.warnings().get(1).message().contains("Galaxy"));
     }
 
+    @Test void replacingAnOldBaseStampWithItsConcreteSubclassIsNotATypeDrop()
+            throws Exception {
+        DomainStorage storage = DomainStorage.in(root.toFile());
+        GeneratedProjectModel model = domain();
+        domain.config.GeneratedClassModel creature =
+                new domain.config.GeneratedClassModel("Creature");
+        model.addClass(creature);
+        domain.config.GeneratedClassModel animal =
+                new domain.config.GeneratedClassModel("Animal");
+        animal.baseClassName("Creature");
+        animal.membership(domain.config.EntityBound.relation(
+                "P31", List.of("Q16521"), false));
+        model.addClass(animal);
+        WikidataDynamicObject old = new WikidataDynamicObject("Q1", "Old creature");
+        old.type("Creature");
+        ProjectSave.plan(new ProjectSave.Input(model, run(model, old), null, List.of()),
+                storage).write();
+
+        WikidataDynamicObject regenerated =
+                new WikidataDynamicObject("Q1", "Concrete animal");
+        regenerated.type("Animal");
+        ProjectSave save = ProjectSave.plan(new ProjectSave.Input(
+                model, run(model, regenerated), null, List.of()), storage);
+
+        assertTrue(domain.config.MembershipPattern.schemaOnlyBase(creature, model));
+        assertTrue(save.warnings().stream().noneMatch(warning ->
+                warning.kind() == ProjectSave.Warning.Kind.TYPES_DROPPED),
+                save.warnings().toString());
+    }
+
     private static GeneratedProjectModel domain() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         model.name("Stars");

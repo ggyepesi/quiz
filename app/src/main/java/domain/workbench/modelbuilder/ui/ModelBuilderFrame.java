@@ -52,6 +52,7 @@ public class ModelBuilderFrame extends JFrame {
     private static final Preferences PREFERENCES =
             Preferences.userNodeForPackage(ModelBuilderFrame.class);
     private static final String LAST_DOMAIN = "lastDomain";
+    private static final String INSTANCE_CLASS_VISIBILITY = "instance-class-visibility";
 
     private final WikidataSparqlClient client;
 
@@ -279,6 +280,8 @@ public class ModelBuilderFrame extends JFrame {
         this.sourceWorkbench.domainStatus(() -> new DomainOverviewPanel.Status(
                 modelFile().isFile(), snapshotFile().isFile(),
                 lastRun == null ? 0 : lastRun.size()));
+        this.instancesPanel.onHiddenClassSectionsChanged(
+                this::rememberInstanceClassVisibility);
 
         // Continue from the saved model (so edits like sharesBorderWith / the
         // Star class persist across restarts) instead of the hard-coded demo.
@@ -337,6 +340,7 @@ public class ModelBuilderFrame extends JFrame {
         graphDiscoveryLedger = replacementLedger == null
                 ? domain.datasource.graph.GraphDiscoveryState.EMPTY : replacementLedger;
         instancesPanel.clear();
+        instancesPanel.hiddenClassSections(rememberedInstanceClassVisibility());
     }
 
     /** Close every non-modal window whose contents describe the open project. */
@@ -3079,6 +3083,7 @@ public class ModelBuilderFrame extends JFrame {
                     reportGenerationError(failed.cause());
             case dataset.DomainStorage.Rename.Done done -> {
                 projectModel.name(done.name()); // file paths now use the new key
+                rememberInstanceClassVisibility(instancesPanel.hiddenClassSections());
                 rememberCurrentDomain();
                 modelChanged();
                 refreshProjectPicker();
@@ -3168,6 +3173,42 @@ public class ModelBuilderFrame extends JFrame {
             // This preference is a convenience; inability to write it must never
             // prevent closing, switching or saving a domain.
         }
+    }
+
+    /** The generated-instances class choice is reader presentation, not authored
+     * model data. Keep it beside the other local ModelBuilder preferences, scoped to
+     * the current domain/model, so regeneration and application restart preserve it. */
+    private java.util.Set<String> rememberedInstanceClassVisibility() {
+        try {
+            String stored = instanceClassVisibilityNode().get("hiddenClasses", "");
+            return stored.lines().map(String::trim).filter(value -> !value.isBlank())
+                    .collect(java.util.stream.Collectors.toCollection(
+                            java.util.LinkedHashSet::new));
+        } catch (RuntimeException unavailable) {
+            return java.util.Set.of();
+        }
+    }
+
+    private void rememberInstanceClassVisibility(java.util.Set<String> hidden) {
+        try {
+            Preferences node = instanceClassVisibilityNode();
+            node.put("project", instanceClassVisibilityScope());
+            node.put("hiddenClasses", String.join("\n",
+                    hidden == null ? java.util.Set.of() : hidden));
+        } catch (RuntimeException unavailable) {
+            // This preference is a convenience; inability to write it must never
+            // affect generation, saving or switching projects.
+        }
+    }
+
+    private Preferences instanceClassVisibilityNode() {
+        String id = java.util.UUID.nameUUIDFromBytes(instanceClassVisibilityScope()
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString();
+        return PREFERENCES.node(INSTANCE_CLASS_VISIBILITY).node(id);
+    }
+
+    private String instanceClassVisibilityScope() {
+        return (projectModel.isModel() ? "model:" : "domain:") + projectModel.name();
     }
 
     // Loads a project model (config) from a chosen *.model.json, replacing the

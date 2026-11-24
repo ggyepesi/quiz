@@ -102,15 +102,32 @@ class GraphAnnotationsShareInstancesViewTest {
         return new ObjectQueryResult(List.of(position, holder), null, "");
     }
 
+    /** An object in a hidden TAB still has its top-level card in the view's projection;
+     *  its owner registered how to reveal that tab, and navigation runs it first. */
     @Test void navigationRevealsAHiddenOwningTabBeforeLookingForItsCard() {
         objectview.render.RenderContext context = new objectview.render.RenderContext();
         DynamicViewable value = new DynamicViewable("Q1", "Position");
+        value.type("Position");
+        context.addTopLevel(value);
         boolean[] revealed = { false };
         context.registerTopLevelRevealer(value, () -> revealed[0] = true);
 
         context.focusTopLevel(value);
 
         assertTrue(revealed[0]);
+    }
+
+    /** A class section the reader hid is out of the projection: its objects have no
+     *  top-level card, so navigation neither reveals nor focuses them. */
+    @Test void navigationDoesNotRevealAnObjectOutsideTheProjection() {
+        objectview.render.RenderContext context = new objectview.render.RenderContext();
+        DynamicViewable value = new DynamicViewable("Q1", "Position");
+        value.type("Position");
+        boolean[] revealed = { false };
+        context.registerTopLevelRevealer(value, () -> revealed[0] = true);
+
+        assertFalse(context.focusTopLevel(value));
+        assertFalse(revealed[0]);
     }
 
     @Test void aGraphTabCanApplyItsCompletedResult() throws Exception {

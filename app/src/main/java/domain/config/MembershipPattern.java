@@ -46,6 +46,12 @@ public enum MembershipPattern {
     /** Members are inherited from the base and classified locally by whether their
      * QID is inside or outside one saved PopulationSelection. */
     POPULATION_SUBCLASS("Population-derived subclass"),
+    /** Members are the base class's members that also satisfy this subclass's
+     * property/value condition: the base's population query, narrowed by the condition
+     * (Norse realms are the Norse locations that are part of Norse cosmology). It has a
+     * population, so it is never "Unconfigured", and it is queried, not classified
+     * locally. */
+    CONDITIONED_SUBCLASS("Subclass by condition"),
     /** {@code P31 = Qx} — every member is the same single type. */
     SINGLE_TYPE("Single type"),
     /** {@code P31 ∈ {type, subtypes…}} — members span several (sub)types. */
@@ -106,6 +112,61 @@ public enum MembershipPattern {
                 || this == QUALIFIED_STATEMENT;
     }
 
+    /**
+     * Whether this class receives members by classifying entities already acquired for
+     * another class, rather than by executing a population source of its own.
+     *
+     * <p>This is one population decision shared by source-plan construction and runtime
+     * resolution. If either path independently lists these patterns, a locally classified
+     * subclass can once again inherit its base's query in one path but not the other.</p>
+     */
+    public boolean classifiedLocally() {
+        return this == EVIDENCE_KIND || this == POPULATION_SUBCLASS;
+    }
+
+    /**
+     * An unconfigured class with a concrete descendant contributes schema only. It has no
+     * direct members to preserve: instances carry the concrete descendant stamp instead.
+     */
+    public static boolean schemaOnlyBase(
+            GeneratedClassModel clazz, GeneratedProjectModel project) {
+        if (clazz == null || project == null || of(clazz, project) != UNCONFIGURED) {
+            return false;
+        }
+        String name = clean(clazz.className());
+        return !name.isEmpty() && project.classes().stream()
+                .filter(java.util.Objects::nonNull)
+                .filter(candidate -> of(candidate, project) != UNCONFIGURED)
+                .anyMatch(candidate -> inheritsFrom(candidate, name, project,
+                        new java.util.LinkedHashSet<>()));
+    }
+
+    /** A property/value subclass condition over a base that has a population of its
+     *  own: the subclass's members come from that population, narrowed. */
+    private static boolean conditionsAPopulatedBase(
+            GeneratedClassModel clazz, GeneratedProjectModel project) {
+        if (clazz == null || project == null || !clazz.hasBase()) return false;
+        SubclassCondition condition = clazz.subclassCondition();
+        if (condition.kind() != SubclassCondition.Kind.PROPERTY_VALUE
+                || !condition.configured()) return false;
+        GeneratedClassModel base = project.findClass(clazz.baseClassName());
+        if (base == null || base == clazz) return false;
+        MembershipPattern basePattern = of(base, project);
+        return basePattern != UNCONFIGURED && !basePattern.classifiedLocally();
+    }
+
+    private static boolean inheritsFrom(
+            GeneratedClassModel candidate, String ancestor,
+            GeneratedProjectModel project, Set<String> visited) {
+        if (candidate == null) return false;
+        String name = clean(candidate.className());
+        if (name.isEmpty() || !visited.add(name)) return false;
+        String base = clean(candidate.baseClassName());
+        if (base.isEmpty()) return false;
+        return base.equals(ancestor)
+                || inheritsFrom(project.findClass(base), ancestor, project, visited);
+    }
+
     private final String label;
 
     MembershipPattern(String label) {
@@ -141,6 +202,9 @@ public enum MembershipPattern {
                 && clazz.subclassCondition().populationBased()
                 && clazz.subclassCondition().configured()) return POPULATION_SUBCLASS;
         MembershipPattern base = of(clazz);
+        if (base == UNCONFIGURED && conditionsAPopulatedBase(clazz, project)) {
+            return CONDITIONED_SUBCLASS;
+        }
         if (base != UNCONFIGURED) {
             return base;
         }
@@ -493,6 +557,9 @@ public enum MembershipPattern {
                         + String.join(", ", condition.allowedQids())) + ")";
             }
             case SEEDED -> p.label + " (" + clazz.seedQids().size() + ")";
+            case CONDITIONED_SUBCLASS -> p.label + " ("
+                    + clazz.subclassCondition().propertyPid() + " = "
+                    + clazz.subclassCondition().qid() + ")";
             case AGGREGATED -> {
                 AggregateClassSource a = clazz.aggregateSource();
                 yield a == null ? p.label : p.label + " (" + a.sourceClassName()

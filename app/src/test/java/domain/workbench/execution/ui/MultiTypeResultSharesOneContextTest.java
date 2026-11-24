@@ -12,6 +12,7 @@ import java.awt.Component;
 import java.awt.Container;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -69,6 +70,15 @@ class MultiTypeResultSharesOneContextTest {
         }
     }
 
+    record Ceremony(String id, String name) implements Viewable {
+        @Override public String getIdentifier() { return id; }
+        @Override public String getDisplayName() { return name; }
+        @Override public String typeName() { return "Ceremony"; }
+        @Override public objectview.field.FieldSet fields() {
+            return objectview.field.FieldSet.standard(this);
+        }
+    }
+
     @Test void sectionsShareTheContextThatCarriesTheHighlight() throws Exception {
         QueryObjectResultPanel panel = panelShowing(List.of());
 
@@ -121,6 +131,49 @@ class MultiTypeResultSharesOneContextTest {
                 "partTypes describes ownership; it does not hide Name instances");
         assertNotNull(find(panel, MultiView.class),
                 "the owner and its part share the normal cross-reference context");
+    }
+
+    @Test void classChoiceIsPresentationOnlyAndSurvivesAResultRefresh() throws Exception {
+        QueryObjectResultPanel panel = panelShowing(List.of());
+        MultiView first = find(panel, MultiView.class);
+
+        javax.swing.SwingUtilities.invokeAndWait(
+                () -> first.visibleSections(Set.of("NobelPrize")));
+        assertEquals(Set.of("NobelPrize"), panel.displayedObjectsByType().keySet());
+
+        List<Viewable> refreshed = List.of(
+                new Prize("p1", "Physics 1921"),
+                new Award("a1", "Einstein"),
+                new Ceremony("c1", "Stockholm 1921"));
+        panel.accept(new ObjectQueryResult(refreshed, Prize.class, "test",
+                List.of("NobelPrize", "LaureatesWithMotivation", "Ceremony")));
+        javax.swing.SwingUtilities.invokeAndWait(() -> { });
+
+        MultiView second = find(panel, MultiView.class);
+        assertEquals(Set.of("NobelPrize", "Ceremony"), second.visibleSectionTitles(),
+                "an explicitly hidden class stays hidden; a new class starts visible");
+        assertEquals(Set.of("NobelPrize", "Ceremony"),
+                panel.displayedObjectsByType().keySet());
+        assertEquals(3, refreshed.size(),
+                "the visibility choice does not remove or rewrite result objects");
+
+        Set<String> remembered = panel.hiddenClassSections();
+        javax.swing.SwingUtilities.invokeAndWait(panel::clear);
+        panel.hiddenClassSections(remembered);
+        panel.accept(new ObjectQueryResult(refreshed, Prize.class, "test",
+                List.of("NobelPrize", "LaureatesWithMotivation", "Ceremony")));
+        javax.swing.SwingUtilities.invokeAndWait(() -> { });
+        assertEquals(Set.of("NobelPrize", "Ceremony"),
+                find(panel, MultiView.class).visibleSectionTitles(),
+                "restoring a domain's presentation preference restores its hidden class");
+
+        javax.swing.SwingUtilities.invokeAndWait(panel::clear);
+        panel.accept(new ObjectQueryResult(refreshed, Prize.class, "test",
+                List.of("NobelPrize", "LaureatesWithMotivation", "Ceremony")));
+        javax.swing.SwingUtilities.invokeAndWait(() -> { });
+        assertEquals(Set.of("NobelPrize", "LaureatesWithMotivation", "Ceremony"),
+                find(panel, MultiView.class).visibleSectionTitles(),
+                "clearing the result for a project switch resets presentation choices");
     }
 
     private static QueryObjectResultPanel panelShowing(List<String> typeOrder)

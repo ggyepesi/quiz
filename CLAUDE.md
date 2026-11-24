@@ -620,8 +620,10 @@ construct per thing produced:
   (#368). A finite field selection records that fact on its `ViewConfig`; a renderer must
   not infer View recursion from the same literal field tree. This keeps one config usable
   for both quiz projection and presentation without reinterpreting its selected paths.
-  Unticked means absent for every field and field role. A ticked collection
-  always renders `field name (size)` immediately, including size zero, and renders its members
+  Unticked means absent for every field and field role. View Config's **Show empty fields**
+  is on by default; when off, selected blank text and collections/maps with no present member are absent,
+  while null remains absent and a non-null reference remains a value. With it on, a ticked
+  collection always renders `field name (size)` immediately, including size zero, and renders its members
   lazily only when expanded; each member recursively follows the same config. What starts open
   is a presentation policy independent of selection, and it is one rule (`Disclosure.initiallyOpen`,
   #398): **each expand opens exactly one level.** An open object shows its plain values; every

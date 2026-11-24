@@ -184,7 +184,10 @@ public final class ProjectSave {
             } catch (Exception unreadable) {
                 onDisk = List.of();
             }
-            List<String> dropped = DomainSave.typesDropped(run.pool(), onDisk);
+            List<String> dropped = DomainSave.typesDropped(run.pool(), onDisk).stream()
+                    .filter(type -> !domain.config.MembershipPattern.schemaOnlyBase(
+                            model.findClass(type), model))
+                    .toList();
             if (!dropped.isEmpty()) {
                 warnings.add(new Warning(Warning.Kind.TYPES_DROPPED,
                         "This run produced only " + String.join(", ",

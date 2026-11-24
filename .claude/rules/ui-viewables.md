@@ -64,7 +64,9 @@ Discovery's results had no search box, because they were a `JTable` rather than 
   field has one painted occurrence: the object's caption, carrying that DISPLAY field's path
   and value for search/highlighting; it is never repeated as a body row. Every selected
   collection contributes `field name (size)` immediately and builds its configured members only
-  after expansion. Initial expansion is independent presentation policy, one rule for every
+  after expansion. View Config's **Show empty fields** is on by default; turning it off suppresses
+  selected blank text and collections/maps with no present member through this same shared decision path,
+  without suppressing a non-null reference. Initial expansion is independent presentation policy, one rule for every
   layout (`Disclosure.initiallyOpen`, #398): each expand opens exactly one level — nested
   objects and collections start folded under their caption or field name, a caption-less
   collection member shows itself, singleton media stays open. A view may name paths that

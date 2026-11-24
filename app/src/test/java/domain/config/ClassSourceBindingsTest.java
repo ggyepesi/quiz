@@ -90,6 +90,27 @@ class ClassSourceBindingsTest {
         assertEquals("Q19020", inherited.recipe().parameter("values"));
     }
 
+    @Test void anEvidenceDerivedSubclassDoesNotInheritAPopulationBinding() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        GeneratedClassModel location = new GeneratedClassModel("Location");
+        location.membership(EntityBound.relation("P31", List.of("Q2221906"), false));
+        model.rootClass(location);
+        GeneratedClassModel realm = new GeneratedClassModel("Realm");
+        realm.baseClassName("Location");
+        model.addClass(realm);
+        EntityKindRule realmKind = new EntityKindRule("Realm", List.of("Q1798538"));
+        realmKind.propertyPid("P361");
+        model.addEntityKindRule(realmKind);
+
+        var plan = ModelSourceExecutionPlan.compile(model, Datasources.standard());
+
+        assertEquals(MembershipPattern.EVIDENCE_KIND,
+                MembershipPattern.of(realm, model));
+        assertNull(plan.step(
+                domain.datasource.api.SourceBindingTarget.classPopulation("Realm")));
+        assertNull(ClassSourceBindings.binding(realm, SourceBindingSlot.CLASS_POPULATION));
+    }
+
     /** Person takes its membership from Nominee and declares only a discriminator. */
     private static GeneratedProjectModel inheritedPopulation() {
         GeneratedProjectModel model = new GeneratedProjectModel();

@@ -20,6 +20,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,6 +44,11 @@ public class QueryObjectResultPanel
     private RenderContext activeContext;
     /** The sections this panel currently shows, not a selection owned by its caller. */
     private Map<String, List<Viewable>> displayedObjectsByType = Map.of();
+    /** Presentation state for this result window. It is deliberately neither project
+     * data nor instance data. Storing the exceptions means a new class starts visible. */
+    private final Set<String> hiddenClassSections = new LinkedHashSet<>();
+    private java.util.function.Consumer<Set<String>> hiddenClassSectionsListener =
+            ignored -> { };
     private Runnable displayedObjectsListener = () -> { };
     private java.util.function.Function<Viewable, JComponent> cardDecorator =
             ignored -> null;
@@ -72,6 +78,23 @@ public class QueryObjectResultPanel
         displayedObjectsListener = listener == null ? () -> { } : listener;
     }
 
+    /** Restores presentation preferences without reporting a user action. */
+    public void hiddenClassSections(Collection<String> hidden) {
+        hiddenClassSections.clear();
+        if (hidden != null) hidden.stream()
+                .filter(name -> name != null && !name.isBlank())
+                .forEach(hiddenClassSections::add);
+    }
+
+    public Set<String> hiddenClassSections() {
+        return Collections.unmodifiableSet(new LinkedHashSet<>(hiddenClassSections));
+    }
+
+    public void onHiddenClassSectionsChanged(
+            java.util.function.Consumer<Set<String>> listener) {
+        hiddenClassSectionsListener = listener == null ? ignored -> { } : listener;
+    }
+
     /** Optional presentation-only title decoration. Datasource provenance is a field. */
     public void cardDecorator(
             java.util.function.Function<Viewable, JComponent> decorator) {
@@ -86,6 +109,7 @@ public class QueryObjectResultPanel
     public void clear() {
         activeContext = null;
         displayedObjectsByType = Map.of();
+        hiddenClassSections.clear();
         holder.removeAll();
         holder.repaint();
         displayedObjectsListener.run();
@@ -266,15 +290,14 @@ public class QueryObjectResultPanel
                 .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey,
                         entry -> entry.getValue().all(), (left, right) -> left,
                         LinkedHashMap::new)));
-        Map<String, List<Viewable>> displayed = new LinkedHashMap<>();
-        byType.forEach((name, values) -> displayed.put(name, List.copyOf(values)));
-        displayedObjectsByType = Collections.unmodifiableMap(displayed);
-
         if (peerSections.isEmpty() && byType.size() <= 1
                 && byType.keySet().stream().noneMatch(configuredGroups::containsKey)) {
+            showAllInDisplayedObjects(byType);
             return searchPanelView(result);
         }
         if (peerSections.isEmpty()) return multiView(byType);
+
+        showAllInDisplayedObjects(byType);
 
         RenderContext context = new RenderContext();
         context.setInPlaceNavigation(true);
@@ -308,9 +331,21 @@ public class QueryObjectResultPanel
 
     /** Existing ordinary multi-class results stay simultaneously visible. */
     private JComponent multiView(Map<String, List<Viewable>> byType) {
+        Set<String> shownClasses = visibleClassesFor(byType.keySet());
+        showInDisplayedObjects(byType, shownClasses);
         MultiView multi = new MultiView();
         multi.context().setCardDecorator(cardDecorator);
         multi.context().setValueLinker(WikidataLinks.valueLinker());
+        multi.sectionNoun("Classes");
+        multi.visibleSections(shownClasses);
+        multi.onVisibleSectionsChanged(selected -> {
+            hiddenClassSections.removeAll(byType.keySet());
+            byType.keySet().stream().filter(name -> !selected.contains(name))
+                    .forEach(hiddenClassSections::add);
+            showInDisplayedObjects(byType, selected);
+            hiddenClassSectionsListener.accept(hiddenClassSections());
+            displayedObjectsListener.run();
+        });
         for (Map.Entry<String, List<Viewable>> entry : byType.entrySet()) {
             List<Viewable> values = entry.getValue();
             if (values.isEmpty()) continue;
@@ -326,6 +361,28 @@ public class QueryObjectResultPanel
         multi.build(1);
         activeContext = multi.context();
         return multi;
+    }
+
+    private Set<String> visibleClassesFor(Collection<String> currentClasses) {
+        Set<String> current = new LinkedHashSet<>(currentClasses);
+        if (current.size() <= 1) return current;
+        current.removeAll(hiddenClassSections);
+        return current;
+    }
+
+    private void showAllInDisplayedObjects(Map<String, List<Viewable>> byType) {
+        showInDisplayedObjects(byType, byType.keySet());
+    }
+
+    private void showInDisplayedObjects(
+            Map<String, List<Viewable>> byType, Collection<String> shownClasses) {
+        Set<String> shown = shownClasses == null
+                ? Set.of() : new LinkedHashSet<>(shownClasses);
+        Map<String, List<Viewable>> displayed = new LinkedHashMap<>();
+        byType.forEach((name, values) -> {
+            if (shown.contains(name)) displayed.put(name, List.copyOf(values));
+        });
+        displayedObjectsByType = Collections.unmodifiableMap(displayed);
     }
 
     private JComponent groupedBrowser(
