@@ -416,135 +416,11 @@ public class GeneratedProjectModel {
         GeneratedClassModel classConflict = findClass(to);
         if (classConflict != null && classConflict != target) return false;
         if (findSelection(to) != null) return false;
+        ConfigurationReferenceInventory references =
+                ConfigurationReferenceInventory.of(this);
         target.className(to);
-        for (GeneratedClassModel clazz : classes) {
-            if (clazz == null) continue;
-            if (references(target.declarationId(), clazz.baseClassId(),
-                    from, clazz.baseClassName())) {
-                clazz.baseClassReference(target.declarationId(), to);
-            }
-            StatementClassSource statement = clazz.statementSource();
-            if (statement != null && references(target.declarationId(),
-                    statement.sourceClassId(), from, statement.sourceClassName())) {
-                statement.sourceClassReference(target.declarationId(), to);
-            }
-            AggregateClassSource aggregate = clazz.aggregateSource();
-            if (aggregate != null && references(target.declarationId(),
-                    aggregate.sourceClassId(), from, aggregate.sourceClassName())) {
-                aggregate.sourceClassReference(target.declarationId(), to);
-            }
-            renameBindingTargets(clazz.sourceBindings(), from, to, target.declarationId());
-            renameFieldTargets(clazz.fields(), from, to, target.declarationId());
-        }
-        for (EntityKindRule rule : entityKindRules) {
-            if (rule != null && references(target.declarationId(), rule.classId(),
-                    from, rule.className())) {
-                rule.classReference(target.declarationId(), to);
-            }
-        }
-        for (EntityRepresentationRule rule : entityRepresentationRules) {
-            if (rule == null) continue;
-            if (references(target.declarationId(), rule.roleClassId(),
-                    from, rule.roleClassName())) {
-                rule.roleClassReference(target.declarationId(), to);
-            }
-            if (references(target.declarationId(), rule.representationClassId(),
-                    from, rule.representationClassName())) {
-                rule.representationClassReference(target.declarationId(), to);
-            }
-        }
-        for (Selection selection : selections) {
-            if (selection instanceof RoleSelection role
-                    && references(target.declarationId(), role.ownerClassId(),
-                            from, role.ownerClassName())) {
-                role.ownerReference(target.declarationId(), to);
-            }
-            if (selection instanceof PopulationSelection population
-                    && population.className().equalsIgnoreCase(from)) {
-                population.className(to);
-            }
-        }
-        for (GeneratedClassModel clazz : classes) {
-            if (clazz == null || clazz.transformationSource() == null) continue;
-            TransformationClassSource source = clazz.transformationSource();
-            if (references(target.declarationId(), source.inputClassId(),
-                    from, source.inputClassName())) {
-                source.inputClassReference(target.declarationId(), to);
-            }
-        }
-        renameGraphClassReference(from, to);
+        references.renameClassReferences(target, from, to);
         return true;
-    }
-
-    /**
-     * Re-points every graph class's start and output at a renamed class.
-     *
-     * <p>A graph names the classes at both ends of it by name, so a rename that does not
-     * reach here leaves a graph starting from a class that no longer exists.
-     */
-    private void renameGraphClassReference(String from, String to) {
-        for (GeneratedClassModel clazz : graphClasses()) {
-            GraphClassSource graph = clazz.graphSource();
-            if (graph == null) continue;
-            GraphDiscoveryConfiguration.StartNode start = graph.startNode();
-            if (start != null && start.qidSourceClass().equalsIgnoreCase(from)) {
-                graph.startNode(new GraphDiscoveryConfiguration.StartNode(to, start.use()));
-            }
-            graph.nextNodes(graph.nextNodes().stream()
-                    .map(node -> node.use() == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION
-                            && node.populationClass().equalsIgnoreCase(from)
-                            ? node.withPopulationClass(to)
-                            : node)
-                    .toList());
-        }
-    }
-
-    private static void renameFieldTargets(
-            List<GeneratedFieldModel> fields, String from, String to, String targetId) {
-        if (fields == null) return;
-        for (GeneratedFieldModel field : fields) {
-            if (field == null) continue;
-            if (references(targetId, field.entityDeclarationId(),
-                    from, field.entityClassName())) {
-                field.entityReference(targetId, to);
-            }
-            renameBindingTargets(field.sourceBindings(), from, to, targetId);
-            for (OwnedFieldSource override : field.ownedFieldSources()) {
-                if (override != null) {
-                    renameBindingTargets(override.sourceBindings(), from, to, targetId);
-                }
-            }
-            renameFieldTargets(field.fields(), from, to, targetId);
-        }
-    }
-
-    /** Binding targets are durable model addresses, so a class rename must move them
-     * with every other name reference. Leaving the old address causes synchronization
-     * to add a second binding under the new name while the stale one remains. */
-    private static void renameBindingTargets(
-            List<domain.datasource.api.SourceBinding> bindings, String from, String to,
-            String targetId) {
-        if (bindings == null) return;
-        for (int i = 0; i < bindings.size(); i++) {
-            domain.datasource.api.SourceBinding binding = bindings.get(i);
-            if (binding == null) continue;
-            domain.datasource.api.SourceBindingTarget target = binding.target();
-            boolean renameTarget = references(targetId, target.classDeclarationId(),
-                    from, target.className());
-            boolean renameContext = references(targetId,
-                    target.contextClassDeclarationId(), from,
-                    target.contextClassName());
-            if (!renameTarget && !renameContext) continue;
-            bindings.set(i, new domain.datasource.api.SourceBinding(
-                    new domain.datasource.api.SourceBindingTarget(target.scope(),
-                            renameTarget ? to : target.className(), target.fieldPath(),
-                            target.slot(), renameTarget ? targetId
-                                    : target.classDeclarationId(),
-                            renameContext ? to : target.contextClassName(),
-                            target.contextFieldPath(), renameContext ? targetId
-                                    : target.contextClassDeclarationId()),
-                    binding.recipe()));
-        }
     }
 
     private static boolean references(String declarationId, String referenceId,
@@ -713,60 +589,10 @@ public class GeneratedProjectModel {
         // wins it. Renaming onto a class name would leave this selection unreachable.
         if (findClass(next) != null) return false;
         String previous = selection.name();
-        boolean fieldsPointHere = fieldTargetsResolveToSelection(previous);
+        ConfigurationReferenceInventory references =
+                ConfigurationReferenceInventory.of(this);
         selection.name(next);
-        for (GeneratedClassModel clazz : classes) {
-            // No early exit here: a class WITHOUT a statement source still has fields
-            // that may target this selection, and skipping them left a renamed
-            // vocabulary unreferenced from exactly those.
-            if (clazz.statementSource() != null) {
-                if (references(selection.declarationId(),
-                        clazz.statementSource().valueSelectionId(), previous,
-                        clazz.statementSource().valueSelectionName())) {
-                    clazz.statementSource().valueSelectionReference(
-                            selection.declarationId(), next);
-                }
-                // Both ends. A vocabulary can bound the subject as readily as the
-                // object, so a rename reaching only one would leave the other pointing
-                // at a name nothing answers to.
-                EntityBound subject = clazz.statementSource().subjectBound();
-                if (subject.kind() == EntityBound.Kind.VOCABULARY
-                        && references(selection.declarationId(), subject.selectionId(),
-                                previous, subject.selectionName())) {
-                    clazz.statementSource().subjectSelectionReference(
-                            selection.declarationId(), next);
-                }
-                EntityBound discovery = clazz.statementSource().discoveryObjectBound();
-                if (discovery.kind() == EntityBound.Kind.VOCABULARY
-                        && references(selection.declarationId(), discovery.selectionId(),
-                                previous, discovery.selectionName())) {
-                    clazz.statementSource().discoveryObjectSelectionReference(
-                            selection.declarationId(), next);
-                }
-            }
-            SubclassCondition subclass = clazz.subclassCondition();
-            if (subclass.populationBased() && references(selection.declarationId(),
-                    subclass.selectionId(), previous, subclass.selectionName())) {
-                clazz.subclassCondition(subclass.rebound(selection.declarationId(), next));
-            }
-            if (fieldsPointHere) renameFieldSelection(
-                    clazz.fields(), previous, next, selection.declarationId());
-        }
-        String id = selection.declarationId();
-        for (GeneratedClassModel graphClass : graphClasses()) {
-            GraphClassSource graph = graphClass.graphSource();
-            if (graph == null || graph.startNode() == null) continue;
-            GraphDiscoveryConfiguration.StartNode start = graph.startNode();
-            if (!start.populationSelection().isBlank() && references(id,
-                    start.populationSelectionId(), previous, start.populationSelection())) {
-                graph.startNode(start.withPopulation(id, next));
-            }
-            graph.nextNodes(graph.nextNodes().stream().map(node ->
-                    !node.admissionPopulationSelection().isBlank() && references(id,
-                            node.admissionPopulationSelectionId(), previous,
-                            node.admissionPopulationSelection())
-                            ? node.withAdmission(id, next) : node).toList());
-        }
+        references.renameSelectionReferences(selection, previous, next);
         return true;
     }
 
@@ -774,68 +600,21 @@ public class GeneratedProjectModel {
     public boolean removeSelection(String name) {
         Selection selection = findSelection(name);
         requireOwned(selection, "removed");
-        if (selection == null || selectionReferenced(selection.name())) return false;
-        return selections.remove(selection);
+        if (selection == null) return false;
+        ConfigurationReferenceInventory references =
+                ConfigurationReferenceInventory.of(this);
+        if (references.blocksSelectionRemoval(selection)) return false;
+        if (!selections.remove(selection)) return false;
+        buildOperations.removeIf(operation -> operation != null
+                && operation.kind().target() == BuildOperation.Kind.Target.SELECTION
+                && selection.declarationId().equals(operation.targetDeclarationId()));
+        return true;
     }
 
     public boolean selectionReferenced(String name) {
-        if (name == null || name.isBlank()) return false;
-        for (GeneratedClassModel graphClass : graphClasses()) {
-            GraphClassSource graph = graphClass.graphSource();
-            if (graph != null && graph.startNode() != null
-                    && graph.startNode().populationSelection()
-                            .equalsIgnoreCase(name)) return true;
-            if (graph != null && graph.nextNodes().stream().anyMatch(node ->
-                    node.admissionPopulationSelection().equalsIgnoreCase(name))) return true;
-        }
-        boolean fieldsPointHere = fieldTargetsResolveToSelection(name);
-        for (GeneratedClassModel clazz : classes) {
-            // A statement source names a SELECTION explicitly, so it is never ambiguous.
-            if (clazz.statementSource() != null
-                    && (boundReferences(clazz.statementSource().subjectBound(), name)
-                    || boundReferences(clazz.statementSource().objectBound(), name)
-                    || boundReferences(clazz.statementSource().discoveryObjectBound(), name))) {
-                return true;
-            }
-            if (clazz.subclassCondition().populationBased()
-                    && clazz.subclassCondition().selectionName().equalsIgnoreCase(name)) return true;
-            if (fieldsPointHere && fieldReferencesSelection(clazz.fields(), name)) return true;
-        }
-        return false;
-    }
-
-    private static boolean boundReferences(EntityBound bound, String selectionName) {
-        return bound != null && bound.kind() == EntityBound.Kind.VOCABULARY
-                && bound.selectionName().equalsIgnoreCase(selectionName);
-    }
-
-    /**
-     * Whether a field whose target reads {@code name} means the SELECTION of that name.
-     * Class and selection names share one namespace and a class wins it — ClassImportPlan
-     * and the validator both ask findClass first — so while a class of that name exists,
-     * no field target refers to the selection, however many spell its name.
-     */
-    private boolean fieldTargetsResolveToSelection(String name) {
-        return findClass(name) == null;
-    }
-
-    private static void renameFieldSelection(List<GeneratedFieldModel> fields,
-            String previous, String next, String selectionId) {
-        for (GeneratedFieldModel field : fields) {
-            if (references(selectionId, field.entityDeclarationId(),
-                    previous, field.entityClassName())) {
-                field.entityReference(selectionId, next);
-            }
-            renameFieldSelection(field.fields(), previous, next, selectionId);
-        }
-    }
-
-    private static boolean fieldReferencesSelection(List<GeneratedFieldModel> fields, String name) {
-        for (GeneratedFieldModel field : fields) {
-            if (field.entityClassName().equalsIgnoreCase(name)
-                    || fieldReferencesSelection(field.fields(), name)) return true;
-        }
-        return false;
+        Selection selection = findSelection(name);
+        return selection != null && ConfigurationReferenceInventory.of(this)
+                .referencesSelection(selection);
     }
 
     public void replaceEntityKindRule(EntityKindRule replacement) {

@@ -51,10 +51,14 @@ public final class ReferenceCycles {
     public static ReferenceCycles of(GeneratedProjectModel project) {
         Map<String, Set<String>> next = new LinkedHashMap<>();
         if (project != null) {
+            // One inventory for the whole walk: rebuilding it per class made this
+            // classes x inventory (38 ms on Norse's 23 classes for a 1.5 ms inventory).
+            ConfigurationReferenceInventory inventory =
+                    ConfigurationReferenceInventory.of(project);
             for (GeneratedClassModel clazz : project.classes()) {
                 if (clazz == null) continue;
                 for (ClassDependencies.Edge edge
-                        : ClassDependencies.dependenciesOf(clazz, project)) {
+                        : ClassDependencies.dependenciesOf(clazz, project, inventory)) {
                     String from = edge.dependent().className();
                     String to = edge.dependency().className();
                     if (edge.kind() == ClassDependencies.Kind.EXTENDS) {

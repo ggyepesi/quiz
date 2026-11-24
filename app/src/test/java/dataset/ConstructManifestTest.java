@@ -148,7 +148,9 @@ class ConstructManifestTest {
                         == ConstructInventory.Kind.POPULATION)
                 .findFirst().orElseThrow().artifact);
 
-        project.removeSelection(population.name());
+        assertTrue(project.removeSelection(population.name()));
+        assertTrue(project.buildOperations().isEmpty(),
+                "the removed population's publish step is removed with it");
         List<java.io.File> removed = storage.reconcileConstructs(
                 project.name(), ConstructInventory.of(project));
 

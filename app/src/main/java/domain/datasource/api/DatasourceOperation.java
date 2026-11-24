@@ -18,6 +18,20 @@ public interface DatasourceOperation {
     /** Source records an execution consumes, distinct from recipe parameters. */
     default List<SourceReferenceSchema> inputReferences() { return List.of(); }
 
+    /**
+     * Model classes and fields named by one configured recipe.
+     *
+     * <p>A recipe is provider-owned grammar.  Model navigation, validation and rename
+     * therefore ask the operation for these typed references instead of decoding its
+     * parameter map.  Source-native inputs remain {@link #inputReferences()}; the
+     * model-layer inventory separately resolves prepared input requirements such as an
+     * article correspondence.</p>
+     */
+    default List<ModelConfigurationReference> configurationReferences(
+            SourceBinding binding) {
+        return List.of();
+    }
+
     /** Interpret one durable recipe. Providers override when their parameters form a
      * typed executable specification; callers never decode provider keys themselves. */
     default PreparedSourceOperation prepare(SourceBinding binding) {

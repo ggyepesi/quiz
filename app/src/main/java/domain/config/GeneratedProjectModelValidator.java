@@ -35,6 +35,8 @@ public final class GeneratedProjectModelValidator {
 
         validateUniqueClassNames(project, problems);
         validateUniqueDeclarationIds(project, problems);
+        ConfigurationReferenceInventory references =
+                ConfigurationReferenceInventory.of(project);
         validateSelectionsAndKindRules(project, problems);
         validateTransformations(project, problems);
         validateTransformationBuildSteps(project, problems);
@@ -52,7 +54,7 @@ public final class GeneratedProjectModelValidator {
                 continue;
             }
 
-            validateClassReferences(project, clazz, problems);
+            validateClassReferences(project, clazz, references, problems);
             validateSubclassCondition(project, clazz, problems);
             validateOwnedClass(project, clazz, problems);
             validateOwnedComponentFields(project, clazz, problems);
@@ -1180,15 +1182,44 @@ public final class GeneratedProjectModelValidator {
     private static void validateClassReferences(
             GeneratedProjectModel project,
             GeneratedClassModel clazz,
+            ConfigurationReferenceInventory references,
             List<Problem> problems) {
 
-        if (clazz.hasBase()
-                && project.findClass(clazz.baseClassName()) == null) {
+        ConfigurationReferenceInventory.Reference baseReference = references.fromClass(clazz)
+                .stream().filter(reference -> reference.relation()
+                        == ConfigurationReferenceInventory.Relation.EXTENDS)
+                .findFirst().orElse(null);
+        if (baseReference != null && project.resolveClass(
+                baseReference.target().declarationId(),
+                baseReference.target().className()) == null) {
             problems.add(Problem.error(
                     clazz.className(),
                     "Base class '"
-                            + clazz.baseClassName()
+                            + baseReference.target().className()
                             + "' does not exist."));
+        }
+
+        for (ConfigurationReferenceInventory.Reference reference
+                : references.fromClass(clazz)) {
+            if (reference.relation()
+                    != ConfigurationReferenceInventory.Relation.ENTITY_FIELD_TARGET
+                    && reference.relation()
+                    != ConfigurationReferenceInventory.Relation.OWNED_COMPONENT_TARGET) {
+                continue;
+            }
+            if (reference.target().kind()
+                    == ConfigurationReferenceInventory.SiteKind.SELECTION) continue;
+            GeneratedFieldModel referencedField = ConfigurationReferenceInventory
+                    .resolveField(project, reference.source().className(),
+                            reference.source().fieldPath());
+            if (referencedField == null || referencedField.type() != FieldType.ENTITY
+                    || referencedField.unclassedEntity()) continue;
+            if (project.resolveClass(reference.target().declarationId(),
+                    reference.target().className()) == null) {
+                problems.add(Problem.warning(reference.source().displayName(),
+                        "Referenced entity class '" + reference.target().className()
+                                + "' is not modeled; the field renders as a string."));
+            }
         }
 
         for (GeneratedFieldModel field : clazz.fields()) {
@@ -1196,23 +1227,6 @@ public final class GeneratedProjectModelValidator {
                 continue;
             }
 
-            if (field.type() == FieldType.ENTITY
-                    && !field.unclassedEntity()
-                    && !clean(field.entityClassName()).isBlank()
-                    && project.findClass(field.entityClassName()) == null
-                    && project.findSelection(field.entityClassName()) == null) {
-                // An unmodeled ref target is a valid state, not an error: the field
-                // renders as a display-name string (no class promotion, no QID chip)
-                // — e.g. Nomination.forWork -> ForWork, which has no class. A target
-                // naming a VOCABULARY Selection (e.g. category -> OscarCategories) is
-                // fully resolved, not dangling, so it's excluded above. Warn so a
-                // genuine typo is still visible, but don't block the save.
-                problems.add(Problem.warning(
-                        path(clazz, field),
-                        "Referenced entity class '"
-                                + field.entityClassName()
-                                + "' is not modeled; the field renders as a string."));
-            }
             if (field.graphExpansionPolicy()
                     != domain.datasource.graph.GraphExpansionPolicy.NONE) {
                 if (!WikidataFieldGraphTraversalEligibility

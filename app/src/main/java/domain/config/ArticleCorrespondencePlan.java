@@ -43,7 +43,7 @@ public final class ArticleCorrespondencePlan {
         return Set.copyOf(effective);
     }
 
-    private static Set<String> articleCarriers(
+    static Set<String> articleCarriers(
             GeneratedProjectModel model, domain.datasource.api.SourceBindingTarget target) {
         if (target.contextual()) return Set.of(target.contextClassName());
         GeneratedClassModel clazz = model == null ? null : model.findClass(target.className());

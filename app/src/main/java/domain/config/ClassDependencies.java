@@ -25,9 +25,12 @@ import java.util.Set;
  * ordinary — {@code Person.spouse -> Person} is a fact about people. That is what
  * {@link Kind#acyclic()} says, and it is why one graph with kinds beats one graph.
  *
- * <p>Edges are derived in exactly one place, {@link #dependenciesOf}, which is also the
- * one place a fifth contributor is added. Everything else — the chain a sample walks, the
- * cycles the validator reports — asks this graph and gains that contributor for free.
+ * <p>Edges are projected from {@link ConfigurationReferenceInventory}, the one inventory
+ * of stored model references. This class adds only class-dependency semantics: an owned
+ * component reverses its stored owner-to-component reference because the component's
+ * existence depends on the owner, while ordinary entity references keep their direction.
+ * Everything else — the chain a sample walks, the cycles the validator reports — asks
+ * this graph and gains every reference contributor for free.
  */
 public final class ClassDependencies {
 
@@ -102,57 +105,53 @@ public final class ClassDependencies {
      * name the same owner twice — two sites on one owner agree about the population, and
      * collapsing them here would lose which fields produce it.
      *
-     * <p>THE place a new contributor is added. A construct that gives a class its
-     * members from another class belongs in this method and nowhere else.
+     * <p>A new stored reference is added to {@link ConfigurationReferenceInventory};
+     * this projection classifies it only when it affects class existence or references.
      */
     public static List<Edge> dependenciesOf(
             GeneratedClassModel clazz, GeneratedProjectModel project) {
         if (clazz == null || project == null) return List.of();
-        List<Edge> edges = new ArrayList<>();
-
-        for (MembershipPattern.OwnedBy site : MembershipPattern.ownedBy(clazz, project)) {
-            GeneratedClassModel owner = project.findClass(site.ownerClass());
-            if (owner != null) {
-                edges.add(new Edge(clazz, owner, Kind.OWNED, site.fieldName()));
-            }
-        }
-
-        AggregateClassSource source = clazz.aggregateSource();
-        if (source != null && !clean(source.sourceClassName()).isEmpty()) {
-            GeneratedClassModel from = project.findClass(source.sourceClassName());
-            if (from != null) edges.add(new Edge(clazz, from, Kind.AGGREGATED, ""));
-        }
-
-        GeneratedClassModel base = project.findClass(clazz.baseClassName());
-        if (base != null && base != clazz) {
-            edges.add(new Edge(clazz, base, Kind.EXTENDS, ""));
-        } else if (!clean(clazz.baseClassName()).isEmpty()
-                && clean(clazz.baseClassName()).equals(clean(clazz.className()))) {
-            // A class naming itself as its base is a one-class cycle, and findClass
-            // returning the class itself would otherwise hide it as "no base".
-            edges.add(new Edge(clazz, clazz, Kind.EXTENDS, ""));
-        }
-
-        referenceEdges(clazz, project, clazz.fields(), "", edges);
-
-        return List.copyOf(edges);
+        return dependenciesOf(clazz, project,
+                ConfigurationReferenceInventory.of(project));
     }
 
-    /** An ENTITY field's target, at any depth — nested fields target classes too. */
-    private static void referenceEdges(GeneratedClassModel clazz,
-            GeneratedProjectModel project, List<GeneratedFieldModel> fields,
-            String prefix, List<Edge> edges) {
-        if (fields == null) return;
-        for (GeneratedFieldModel field : fields) {
-            if (field == null) continue;
-            String path = prefix.isEmpty() ? field.name() : prefix + "." + field.name();
-            GeneratedClassModel target = project.findClass(field.entityClassName());
-            if (target != null) {
-                Edge edge = new Edge(clazz, target, Kind.REFERENCES, path);
-                if (!edges.contains(edge)) edges.add(edge);
+    /** For callers that walk every class: build the inventory once and pass it here. */
+    static List<Edge> dependenciesOf(GeneratedClassModel clazz,
+            GeneratedProjectModel project, ConfigurationReferenceInventory inventory) {
+        if (clazz == null || project == null) return List.of();
+        List<Edge> edges = new ArrayList<>();
+        for (ConfigurationReferenceInventory.Reference reference
+                : inventory.references()) {
+            GeneratedClassModel source = project.resolveClass(
+                    reference.source().declarationId(), reference.source().className());
+            GeneratedClassModel target = project.resolveClass(
+                    reference.target().declarationId(), reference.target().className());
+            if (reference.relation()
+                    == ConfigurationReferenceInventory.Relation.OWNED_COMPONENT_TARGET) {
+                // The owner points at its component in storage, while production runs
+                // the other way: the component cannot exist until the owner does.
+                if (target == clazz && source != null) {
+                    Edge edge = new Edge(clazz, source, Kind.OWNED,
+                            reference.source().fieldPath());
+                    if (!edges.contains(edge)) edges.add(edge);
+                }
+                continue;
             }
-            referenceEdges(clazz, project, field.fields(), path, edges);
+            if (source != clazz || target == null) continue;
+            Kind kind = switch (reference.relation()) {
+                case AGGREGATE_SOURCE -> Kind.AGGREGATED;
+                case EXTENDS -> Kind.EXTENDS;
+                case ENTITY_FIELD_TARGET -> Kind.REFERENCES;
+                default -> null;
+            };
+            if (kind == null) continue;
+            String site = kind == Kind.REFERENCES
+                    ? reference.source().fieldPath() : "";
+            Edge edge = new Edge(clazz, target, kind, site);
+            if (!edges.contains(edge)) edges.add(edge);
         }
+
+        return List.copyOf(edges);
     }
 
     /** Only the edges whose kind a caller cares about. */
@@ -174,9 +173,11 @@ public final class ClassDependencies {
         List<Cycle> found = new ArrayList<>();
         Set<String> reported = new LinkedHashSet<>();
         Set<String> settled = new LinkedHashSet<>();
+        ConfigurationReferenceInventory inventory =
+                ConfigurationReferenceInventory.of(project);
         for (GeneratedClassModel clazz : project.classes()) {
             if (clazz == null) continue;
-            walk(clazz, project, new LinkedHashMap<>(), settled, reported, found);
+            walk(clazz, project, inventory, new LinkedHashMap<>(), settled, reported, found);
         }
         return List.copyOf(found);
     }
@@ -203,6 +204,7 @@ public final class ClassDependencies {
     }
 
     private static void walk(GeneratedClassModel clazz, GeneratedProjectModel project,
+            ConfigurationReferenceInventory inventory,
             LinkedHashMap<String, Edge> path, Set<String> settled,
             Set<String> reported, List<Cycle> found) {
         String name = clean(clazz.className());
@@ -225,10 +227,11 @@ public final class ClassDependencies {
             return;
         }
         path.put(name, null);
-        for (Edge edge : dependenciesOf(clazz, project)) {
+        for (Edge edge : dependenciesOf(clazz, project, inventory)) {
             if (!edge.kind().acyclic()) continue;
             path.put(name, edge);
-            walk(edge.dependency(), project, path, settled, reported, found);
+            walk(edge.dependency(), project, inventory,
+                    path, settled, reported, found);
         }
         path.remove(name);
         settled.add(name);

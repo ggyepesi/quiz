@@ -1,15 +1,22 @@
-# Datasource Bindings in the Construct Tree
+# Configuration Tree and Detail Editors
 
 ## Status
 
-Proposed on 2026-11-21, revised after review (#533). The explicit configured-child list in the
-field editor and the DataSourceApp action/result tree are implemented. Adding those same binding
-children to ModelBuilder's construct tree remains proposed.
-This document specifies one slice: showing every stored datasource binding of a field in
-ModelBuilder's existing construct tree. It does not claim to show every way a field can be
-produced: inverse, union, statement-end, owned-component and other derived productions remain
-the field editor's responsibility in this slice. Later directions are listed, not designed,
-and one navigation decision is left open on purpose (see **Open decisions**).
+Agreed direction, reconciled with issue #557 on 2026-11-24. Issue #557 is the umbrella and
+milestone tracker; this document is the repository design for its configuration projection and
+neutral tree-and-detail shell. It supersedes the earlier proposal to add datasource-binding
+children to ModelBuilder's main class tree.
+
+The first unified-workbench slice (#560) includes this configuration refactor. ModelBuilderApp
+remains runnable as the comparison baseline while both hosts use the same model-layer projection
+and editor implementation. Executable operations and their results remain the separate
+action/result tree of #558.
+
+Milestones 1 and 2 are implemented. `ConfigurationReferenceInventory` is the typed model-layer
+inventory: validation, `ClassDependencies`, class/selection rename discovery and datasource recipe
+references consume it. Datasource operations declare references hidden inside their own recipe
+grammar, and prepared input requirements are resolved to model sites such as an article
+correspondence. The neutral shell and editor conversion have not started.
 
 Related: [ModelBuilder Constructs](modelbuilder-constructs.md),
 [Effective Class Explanation and Uniform Sampling](effective-class-explanation-and-sampling.md),
@@ -18,172 +25,269 @@ Related: [ModelBuilder Constructs](modelbuilder-constructs.md),
 
 ## Problem
 
-A field can now have several datasource bindings at once. Primary, fallback and category sources
-occupy singular slots; candidate evidence is an ordered additive list in one slot. The forcing case is
-`DeityGroup.members` in Egyptian gods. Its primary values come from three Wikidata relation
-routes, while a Wikipedia article table recipe and a rendered-infobox Members recipe propose
-additional members as candidate evidence for review.
+ModelBuilder's construct tree identifies projects, classes, fields, selections and other stored
+constructs. The editor for one selected construct then presents one large conditional form. For
+example, `FieldSourcePanel` combines the field definition, production kind, source, property and
+qualifier filters, Wikipedia fallback, candidate evidence, ownership, relation routes and refine
+settings. Most rows are irrelevant or disabled for any one field. `GraphConstraintsPanel` and the
+class editors have the same problem.
 
-Nothing shows both together. The construct tree stops at the field; the field editor shows the
-primary source in one section and the candidate evidence in another, behind a chooser. A user
-cannot see at a glance that the field has two sources, which one is primary, or that the second
-one only proposes values for review.
+A field may also have several independently meaningful stored bindings. `DeityGroup.members` is
+the forcing case: primary values come from Wikidata relation routes, while Wikipedia table and
+infobox recipes propose candidate evidence. A flat form does not show at a glance what is stored,
+what is still available, what the construct needs, or what uses it.
 
-## Decision
+The unified workbench makes this more urgent. Every component sees one live project, so it needs
+one answer to “what is configured here?” rather than another component-specific walk of the model.
 
-ModelBuilder's construct tree (`SingleRootClassModelPanel`) already shows
-project › class › field › child field, plus vocabularies/populations and uses. **The field
-node gains one child per stored datasource binding configured at that field.** There is no
-second tree and no new window.
+## Two trees with different meanings
+
+Configuration and execution use one neutral tree-and-detail shell but different typed projections:
+
+- **Configuration tree (#557):** stored configuration, available slots, references and inventory
+  summaries. Selecting a node only reveals configuration or an explicit add choice.
+- **Action/result tree (#558):** context or datasource, explicit action, and views of the action's
+  latest result. Only the action's verb-labelled button starts work.
+
+Configuration nodes never become workflow actions, and workflow nodes never become stored model
+constructs or `ViewableGroup`s. The shared shell owns tree selection, expansion, stable identity,
+detail placement and navigation only. It does not inspect the model, execute work or interpret
+results.
+
+## Placement
+
+ModelBuilder's main construct tree remains the compact project/class/field/selection navigator.
+Selecting one construct opens a **local configuration tree on the left and the selected detail
+editor on the right** inside that construct's editor pane.
 
 ```text
-▾ DeityGroup
-  ▾ members → EgyptianDeity[]
-      Primary values · Wikidata relation routes (3)
-      Candidate evidence · Wikipedia article table rows · List of names…
-      Candidate evidence · Wikipedia infobox row links · Rendered.Members
-  ▸ …other fields
+project/class/field navigator | local configuration tree | selected detail editor
 ```
 
-- A source node shows its slot, its datasource operation and a short summary of its
-  parameters. The full parameters appear in the field editor; the tree does not repeat them.
-- Provider and operation names, parameter labels and parameter summaries come from the
-  `DatasourceRegistry` operation and its `ParameterDescriptor`s. The tree never switches on
-  provider or operation IDs. Where descriptors cannot summarize a recipe, for example the
-  route count of `relation-routes`, whose routes are one JSON parameter, `DatasourceOperation`
-  gains a recipe-summary method that the operation implements. The tree does not decode a
-  recipe itself.
-- Source nodes come before child-field nodes and look different from them. A source is not a
-  field and must never be mistaken for one.
-- A stored binding has a node even when validation says that its recipe is incomplete. A slot
-  with no binding has no node. The tree shows what is stored, not what could be configured and
-  not a second opinion about whether the recipe is valid.
-- Selecting a source node opens the existing field editor for its field, with that exact
-  binding site and slot scrolled into view. Selecting is inspection only: it never applies an
-  edit, starts discovery or fetches anything (directive 10).
-- Editing happens in the field editor exactly as today. After Apply, the tree rebuilds from
-  the model, so there is no second state to keep in step.
-- A singular source node's key is its target class's declaration id, field path and binding slot.
-  Candidate-evidence children additionally use their position in the field's authored recipe list;
-  the model stores no hidden recipe identity.
-  A contextual owned-field source additionally includes the production site's owner-class
-  declaration id and owner-field path. Keys therefore survive class renames without making
-  two production sites collide.
+Configuration sections do not become grandchildren of every field in the main tree; doing so
+would swamp project navigation with fields × slots × steps. The local tree is rebuilt from the
+current construct draft and uses the same projection in ModelBuilderApp and the unified workbench.
 
-### Source-node selection and editor ownership
+## Configuration node contract
 
-A source node is navigation metadata, not a new model construct and not an editor owner.
-`ModelSourceWorkbenchPanel.selected` remains the `GeneratedFieldModel` whose editor is open.
-Selecting a source node therefore resolves to two separate inputs:
+Every projected node has a stable identity, one of four explicit kinds, a caption, and a detail
+target. Its kind controls appearance and allowed interaction.
 
-1. the field editor which owns the binding; and
-2. the exact binding target and slot which that editor reveals.
+1. **Stored configuration** — a construct or section backed by the selected construct draft.
+   Selecting it opens its editor.
+2. **Available slot** — a visible `+ Add …` line for an allowed but unconfigured slot. Selecting it
+   reveals compatible choices and changes nothing until the user explicitly adds one.
+3. **Reference** — a read-only `Needs` or `Used by` link to another configured site. Selecting it
+   navigates there and changes nothing.
+4. **Inventory summary** — a read-only count or status, such as curation decisions or last-run
+   artifacts. Selecting it opens the existing inventory; decisions and run results do not become
+   configuration.
 
-For a direct binding, the editor owner is the target field. For a contextual owned-field
-binding, the editor owner is the ownership/production-site field, because that is where its
-override is authored; the revealed target still names the owned class and owned field.
-The source-node presentation object is never passed to `changeSelection` as though it were a
-class or field. If its owner field is already open, selection only calls the field editor's
-reveal operation.
+Blank configuration is absent, not an empty form. Allowed blank slots remain discoverable through
+their `+ Add …` nodes.
 
-Navigation to another editor follows the construct tree's existing rule, unchanged by this
-slice: `changeSelection` applies the open editor before showing the next one. Whether that
-silent apply should become an explicit **Apply / Discard / Stay** choice is open decision 1
-(#535). It is a rule for every editor, not source-node behavior. This slice works under either
-rule: a source node under the field already open only reveals a binding and replaces no
-editor. There are no per-node drafts.
+### Field example
 
-### One source of the slot list
+```text
+birthDate
+├ Definition                    holds · class · cardinality · display
+├ Produced by: datasource value
+│  ├ Primary: Wikidata › statement value (P569)
+│  │  └ Filter: qualifier P… is one of …
+│  ├ Fallback: + Add …
+│  └ + Add category relation
+├ Candidate evidence
+│  └ Wikipedia table rows — Assessors of Maat
+│     ├ Section / table / display column
+│     └ Field mapping
+├ Needs
+│  └ EgyptianDeity article correspondence
+├ Used by
+│  └ canonical identity key …
+└ Refine                         required · expectation · numeric filter
+```
 
-Source nodes are read through one read-only binding-site inventory owned by
-`FieldSourceBindings`, the same construct which supplies bindings to validation and execution.
-It includes:
+Relation routes, union paths and candidate-evidence recipes are nested stored configuration, not
+encoded into one long caption or hidden behind a combo box.
 
-- a field's direct `sourceBindings()` in stored order; and
-- every `OwnedFieldSource.sourceBindings()` configured at that field's owned-component
-  production sites, in stored production-site and binding order.
+### Graph example
 
-The inventory returns the binding together with the field editor that owns its configuration.
-The tree must not walk owned overrides or interpret legacy mappings separately.
+```text
+Position replacement expansion
+├ Start                          class or population
+├ Path
+│  ├ Node 1                      incoming edge · alternatives · admission · use as
+│  └ Node 2                      …
+├ Output                         class · additive/narrowing · repeat
+├ Evidence
+├ Identity
+└ Display name
+```
 
-Precondition: in memory, a field's bindings can lag its legacy mapping until Save runs
-`FieldSourceBindings.synchronizeForSave`. Apply must first keep the binding inventory current,
-so the tree, validation and `ModelSourceExecutionPlan.compileStored` immediately see the same
-configuration without Save. That fix belongs in `FieldSourceBindings`; the tree does not
-compensate or synchronize as a side effect of rendering. It is the first step, committed on
-its own before any tree work, because every editor that still writes a legacy mapping must
-update its binding on Apply.
+The graph tree and `GraphConfigurationDiagram` are two views of one draft and one selection.
+Run, Clear draft and Apply remain explicit commands.
 
-### What stays as it is
+## One draft and one Apply
 
-- Save still explicitly applies the active editor before writing, and navigation keeps the
-  existing apply-on-navigation rule until open decision 1 is settled.
-- Discovery, preview, generation, enrichment and review keep their current entry points.
-  The tree adds none of them in this slice.
-- Nothing about the tree is saved in `model.json`.
+One selected construct owns one draft, shared by all of its local configuration nodes. Switching
+between Definition, Primary source and Refine does not apply partial edits to the project. Apply
+commits the complete construct draft and rebuilds its projection from the model.
 
-## Forcing tests and artifact
+There are no per-node drafts. A half-edited route step or evidence recipe never reaches execution,
+validation or another component. Selecting and expanding nodes never applies, discards, fetches or
+runs anything.
 
-- **Checked-in render.** Add the source nodes of every shipped model's fields to a
-  checked-in text render, beside `docs/panel-layout.txt`, enforced the same way as
-  `PanelLayoutIsCheckedInTest`. A reordered, missing or collapsed slot then shows up in
-  review, not only as a passing suite (directive 16).
-- **One inventory.** For every field of every shipped model, the source nodes equal the
-  `FieldSourceBindings` binding-site inventory in its declared order: same targets, ownership
-  contexts, slots and operations.
-- **Apply before Save.** Change each legacy-backed primary/fallback/category editor in turn and
-  press Apply without Save. The tree and `ModelSourceExecutionPlan.compileStored` immediately
-  report the same replacement binding.
-- **Both sources visible.** `DeityGroup.members` shows its Wikidata routes as Primary values
-  and its table column as Candidate evidence, as two nodes.
-- **Contextual source visible.** A field producing an owned component shows every configured
-  owned-field override with its target field and production-site context; equal slots at two
-  sites have different keys.
-- **Inspection only.** Selecting or expanding any node of any shipped model changes nothing
-  in the model and makes no network request. Selecting a source node under the field already
-  open never applies or rebuilds that editor; it only reveals the binding.
-- **Editor ownership.** Selecting a direct or contextual source node leaves the workbench's
-  selected object equal to the owning `GeneratedFieldModel` and reveals the exact binding; a
-  source-node presentation object is never recorded as the editor owner.
-- **Rename.** Renaming a target or context class keeps its source nodes and their selection.
+Navigation away from a dirty construct still depends on the general Apply / Discard / Stay decision
+tracked by #535. Until that decision is implemented, this refactor must not invent a second local
+rule. The unified workbench's other components see the last applied project configuration, not
+unapplied controls.
 
-## Open decisions
+## One model-layer configuration inventory
 
-These are not settled by this document and must be agreed before work that depends on them.
+The tree is a projection of one model-layer inventory. Editors do not independently walk legacy
+mappings, source bindings, owned overrides or dependency strings. The same inventory supplies:
 
-1. **Pending edits on navigation (#535).** Today, selecting another node applies the open
-   editor silently. The alternative is an explicit **Apply changes / Discard changes / Stay
-   here** choice, which directive 10 argues for. It needs an exact unapplied-changes check for
-   every editor; only `ClassSourcePanel` has one today. This slice keeps the existing rule.
+- the configuration tree;
+- validation;
+- dependency navigation;
+- rename discovery and centralized rewrites;
+- execution planning where the fact is executable.
 
-## Execution and review home
+### Typed configuration sites and references
 
-Datasource bindings and candidate evidence are configured in ModelBuilder, inspected without
-mutation in DiscoveryApp, and run/reviewed in DataSourceApp over a loaded project. TransformApp
-owns local grouping, transformations and manual edits only. DataSourceApp and TransformApp share
-the class/group/field scope UI and invoke the same headless processes; neither drives the other.
-The construct tree may therefore navigate to configuration or read-only discovery, but Execute
-and Review belong to DataSourceApp and must remain explicit actions there.
+A configuration site is identified by stable declaration identity plus its field/path and optional
+production context. A typed reference identifies both source and target sites and its relation kind.
+It covers at least:
 
-## Possible later directions
+- companion subject and match fields;
+- qualifier-of references;
+- inverse and union sources;
+- relation-route terminals;
+- population bounds and selections;
+- table-row targets and mapped fields;
+- resolved datasource-operation inputs.
 
-Listed so they are not lost; none is designed or agreed, and each needs its own forcing case.
+`ClassDependencies` remains the class-to-class existence/reference graph. The typed inventory
+projects its class-level edges there while retaining field-level `Needs` / `Used by` navigation.
+Intra-class field references do not become fake class-cycle edges. Rename propagation uses typed
+writable sites or one centralized rewrite operation; a display-only string is insufficient.
 
-- Class-level nodes for population source and identity (the article correspondence).
-- An **Add source or evidence…** action on a field, offering only operations compatible with
-  the field's type, taken from datasource operation metadata.
-- Contextual discovery launched from a source node, scoped by it, returning only an explicitly
-  chosen recipe.
-- Showing the latest preview or run result for a source node, from the existing result stores.
-- A read-only dependency view (produces, consumes, bounds, imports, transforms, publishes) over
-  the same nodes.
+`DatasourceOperation.inputReferences()` describes source-native inputs. Preparing a configured
+operation resolves those schemas into provider-neutral `SourceInputRequirement`s; the model-layer
+inventory maps the requirements to concrete model sites, such as a class's article correspondence,
+before they appear under `Needs`. The UI never guesses that mapping.
+
+## Datasource binding-site inventory
+
+The earlier datasource-binding design remains a required part of the model inventory. A field's
+binding sites include:
+
+- direct `sourceBindings()` in stored order; and
+- every `OwnedFieldSource.sourceBindings()` configured at its owned-component production sites,
+  in stored production-site and binding order.
+
+Each item carries:
+
+- the field editor that owns the configuration;
+- the exact binding target and slot;
+- the provider operation and stored recipe;
+- for contextual owned fields, the owner-class declaration id and owner-field path.
+
+A singular binding's stable key uses the target class declaration id, field path and slot.
+Candidate evidence additionally uses its authored position because the model stores no hidden
+recipe identity. Contextual sites include the owning production site's declaration id and path so
+equal slots at two sites cannot collide and class renames do not orphan them.
+
+Provider and operation captions, parameter labels, compatible choices and recipe summaries come
+from `DatasourceRegistry`, `DatasourceOperation` and `ParameterDescriptor`. The projection never
+switches on provider or operation IDs and never decodes a route recipe itself. An incomplete stored
+recipe still has a stored-configuration node and its validation problem.
+
+Apply must synchronize legacy-backed mappings with `FieldSourceBindings` immediately. Save is not
+the moment at which the tree, validator and `ModelSourceExecutionPlan.compileStored` first agree.
+The inventory does not compensate by mutating the model while rendering.
+
+## Registry coverage and retiring the parallel source walk
+
+The local tree eventually replaces the `FieldSourceType` combo and its parallel interpretation,
+but only after coverage is explicit:
+
+- every source type persisted by a checked-in model or supported by generation maps to exactly one
+  registered provider operation;
+- generic sources enter through registry-backed `DATASOURCE`, not new enum branches;
+- unused placeholders are removed or explicitly refused;
+- `MANUAL` means no datasource binding;
+- category evidence and other candidate-evidence sites remain distinct from the primary source.
+
+Saved models retain their current stored source type until a separately approved migration.
+
+## Unified-workbench ownership
+
+The unified workbench owns one live project object (#560). Components edit only the declarations
+they own on that object:
+
+- model configuration edits source/class/field/graph declarations;
+- transform edits transformations, groups and selections produced from them;
+- datasource acquisition reviews and applies fetched values;
+- discovery inspects bounded source structure and explicitly promotes reusable findings.
+
+Every component can inspect the complete configuration projection. Ownership determines whether a
+stored node's detail is editable, not whether the node exists. There are no private project copies
+and no reconciliation step.
+
+During the first slice, ModelBuilderApp remains a baseline host of the same configuration component.
+Separate entry points remain until #560 decides whether they become thin single-component launchers
+or are retired. The cross-process save guard in #536 remains necessary while more than one process
+can open the same project.
+
+## Delivery order
+
+Follow #557 as checked milestones:
+
+1. Reconcile this design with the four node kinds and neutral shell contract. **Done.**
+2. Add the typed configuration-reference inventory and projections; force validation, dependency
+   navigation and rename discovery to read the same facts. **Done.**
+3. Classify legacy `FieldSourceType` coverage against the datasource registry.
+4. Add the neutral tree-and-detail shell with a checked-in rendered artifact.
+5. Convert the field editor, covering a datasource field, relation-route field and table-row
+   evidence field.
+6. Convert the graph editor.
+7. Convert the class editors.
+8. Complete the separate-process save guard before a second application exposes the complete tree.
+9. Let Transform and Datasource views adopt the same projection with ownership-based editability.
+
+The first unified-workbench acceptance slice reaches milestone 5: open one project, select a field,
+inspect its complete configuration tree, edit and Apply it through the shared component, and observe
+the same resulting model in ModelBuilderApp.
+
+## Forcing tests and checked artifacts
+
+- **One projection:** every host receives the same node identities, kinds, captions and order for
+  the same construct draft.
+- **Inspection only:** selecting or expanding every node of every shipped model changes no model
+  value and makes no request.
+- **One inventory:** projected datasource nodes exactly equal the binding-site inventory, including
+  contextual owned fields.
+- **Both source roles visible:** `DeityGroup.members` shows Wikidata primary routes and Wikipedia
+  candidate evidence separately.
+- **Allowed slots visible:** compatible unconfigured slots appear as `+ Add …` and do nothing on
+  selection.
+- **References agree:** validator, dependency navigation and rename discovery use the same typed
+  references.
+- **Apply before Save:** Apply makes the tree and execution plan report the same configuration
+  without requiring Save.
+- **Stable rename:** renaming a target or context class retains source nodes and selection.
+- **Checked-in rendering:** a text render beside `docs/panel-layout.txt` records node kind, caption
+  and nesting for representative shipped constructs and is enforced by a test.
+- **Host parity:** editing the forcing fields through ModelBuilderApp and the unified workbench
+  produces the same serialized model.
 
 ## Non-goals
 
-- A second construct tree or a separate configuration window.
-- A workflow language or a graph editor for source parameters.
-- Unconfigured possibilities shown as tree nodes.
-- Persisting expansion, selection or status in `model.json`.
-- Automatically accepting discovery or evidence results.
-- Presenting inverse, union, statement-end, owned-component or other non-datasource field
-  production as datasource-binding nodes.
+- Adding every configuration section beneath the main project/class tree.
+- Treating configuration nodes as executable actions or action-result nodes as configuration.
+- Starting discovery, preview, acquisition, generation or transformation by selecting a node.
+- Persisting tree expansion, selection or status in `model.json`.
+- Storing curation decisions or run results as configuration nodes.
+- Reimplementing datasource compatibility or parameter interpretation in Swing.
+- Building a graph workflow language or a second execution pipeline.

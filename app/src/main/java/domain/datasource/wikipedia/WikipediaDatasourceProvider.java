@@ -13,6 +13,7 @@ import domain.datasource.api.SourceBindingSlot;
 import domain.datasource.api.SourceRecipe;
 import domain.datasource.api.PreparedSourceOperation;
 import domain.datasource.api.SourceInputRequirement;
+import domain.datasource.api.ModelConfigurationReference;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -266,6 +267,39 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         @Override public SourceValueSchema outputSchema() {
             return SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE, "model");
         }
+        @Override public List<ModelConfigurationReference> configurationReferences(
+                SourceBinding binding) {
+            ArticleTableRowInstanceSpec spec = new ArticleTableRowInstanceSpec(
+                    binding.recipe().parameter(TABLE_SECTION),
+                    binding.recipe().parameter(TABLE_NAME),
+                    binding.recipe().parameter(TABLE_COLUMN),
+                    binding.recipe().parameter(TABLE_ROW_TARGET_CLASS),
+                    binding.recipe().parameter(TABLE_ROW_DETAILS_FIELD),
+                    binding.recipe().parameter(TABLE_ROW_SOURCE_FIELD),
+                    binding.recipe().parameter(TABLE_ROW_REFERENCES_FIELD));
+            if (spec.targetClass().isBlank()) return List.of();
+            List<ModelConfigurationReference> references = new ArrayList<>();
+            references.add(ModelConfigurationReference.classParameterReference(
+                    spec.targetClass(), "concrete row class",
+                    TABLE_ROW_TARGET_CLASS, true));
+            if (!spec.detailsField().isBlank()) {
+                references.add(ModelConfigurationReference.fieldParameterReference(
+                        spec.targetClass(), spec.detailsField(), "row details field",
+                        TABLE_ROW_TARGET_CLASS, TABLE_ROW_DETAILS_FIELD, true));
+            }
+            if (!spec.sourceField().isBlank()) {
+                references.add(ModelConfigurationReference.fieldParameterReference(
+                        spec.targetClass(), spec.sourceField(), "source instance field",
+                        TABLE_ROW_TARGET_CLASS, TABLE_ROW_SOURCE_FIELD, true));
+            }
+            if (!spec.referencesField().isBlank()) {
+                references.add(ModelConfigurationReference.fieldParameterReference(
+                        spec.targetClass(), spec.referencesField(),
+                        "resolved references field", TABLE_ROW_TARGET_CLASS,
+                        TABLE_ROW_REFERENCES_FIELD, false));
+            }
+            return List.copyOf(references);
+        }
         @Override public PreparedSourceOperation prepare(SourceBinding binding) {
             ArticleTableRowInstanceSpec spec = new ArticleTableRowInstanceSpec(
                     binding.recipe().parameter(TABLE_SECTION),
@@ -491,6 +525,22 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         }
         @Override public SourceValueSchema outputSchema() {
             return SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE, "model");
+        }
+        @Override public List<ModelConfigurationReference> configurationReferences(
+                SourceBinding binding) {
+            ArticlePassageInstanceSpec spec = new ArticlePassageInstanceSpec(
+                    binding.recipe().parameter(PASSAGE_TEXT_FIELD),
+                    binding.recipe().parameter(PASSAGE_SOURCE_FIELD));
+            List<ModelConfigurationReference> references = new ArrayList<>();
+            if (!spec.textField().isBlank()) {
+                references.add(ModelConfigurationReference.bindingTargetField(
+                        spec.textField(), "passage text field", true));
+            }
+            if (!spec.sourceField().isBlank()) {
+                references.add(ModelConfigurationReference.bindingTargetField(
+                        spec.sourceField(), "source instance field", true));
+            }
+            return List.copyOf(references);
         }
         @Override public PreparedSourceOperation prepare(SourceBinding binding) {
             ArticlePassageInstanceSpec spec = new ArticlePassageInstanceSpec(
