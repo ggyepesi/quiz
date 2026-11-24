@@ -8,6 +8,7 @@ import javax.swing.JSplitPane;
 import javax.swing.JTree;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreePath;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
@@ -31,6 +32,22 @@ import java.util.function.Consumer;
  */
 public final class TreeAndDetailPanel<K> extends JPanel {
 
+    /** One complete projected branch. Replacing a projection uses stable ids to
+     * restore the reader's selection and expanded branches. */
+    public record Branch<K>(K id, String caption, JComponent detail,
+            List<Branch<K>> children) {
+        public Branch {
+            Objects.requireNonNull(id, "Node id");
+            caption = required(caption, "Node caption");
+            Objects.requireNonNull(detail, "Node detail");
+            children = children == null ? List.of() : List.copyOf(children);
+        }
+
+        public Branch(K id, String caption, JComponent detail) {
+            this(id, caption, detail, List.of());
+        }
+    }
+
     /** What the shell exposes about one selected node. */
     public record Selection<K>(K id, String caption) { }
 
@@ -52,6 +69,7 @@ public final class TreeAndDetailPanel<K> extends JPanel {
     private final DefaultTreeModel model = new DefaultTreeModel(hiddenRoot);
     private final JTree tree = new JTree(model);
     private final JPanel detailHost = new JPanel(new CardLayout());
+    private final JPanel emptyDetail = new JPanel();
     private final JSplitPane split;
     private final Map<K, DefaultMutableTreeNode> nodes = new LinkedHashMap<>();
     private final Map<K, JComponent> nodeDetails = new LinkedHashMap<>();
@@ -59,6 +77,7 @@ public final class TreeAndDetailPanel<K> extends JPanel {
             new IdentityHashMap<>();
     private Consumer<Selection<K>> selectionListener = ignored -> { };
     private int nextCard;
+    private boolean replacing;
 
     public TreeAndDetailPanel(String componentNamePrefix, String outlineTitle) {
         super(new BorderLayout());
@@ -80,6 +99,8 @@ public final class TreeAndDetailPanel<K> extends JPanel {
         detailHost.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 0));
         detailHost.setName(prefix + ".detail");
         detailHost.setMinimumSize(new Dimension(DETAIL_MINIMUM_WIDTH, 0));
+        emptyDetail.setName(prefix + ".empty-detail");
+        detailHost.add(emptyDetail, "empty");
 
         split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, outline, detailHost);
         split.setName(prefix + ".split");
@@ -97,6 +118,38 @@ public final class TreeAndDetailPanel<K> extends JPanel {
     public void addChild(K parentId, K id, String caption, JComponent detail) {
         Objects.requireNonNull(parentId, "Parent id");
         add(parentId, id, caption, detail);
+    }
+
+    /** Replaces the complete visible projection. Stable ids preserve the reader's
+     * selection and expanded branches; if the selected id disappears, no unrelated
+     * detail remains visible. */
+    public void replaceRoots(List<Branch<K>> roots) {
+        K selected = selectedId();
+        List<K> expanded = expandedIds();
+        replacing = true;
+        try {
+            hiddenRoot.removeAllChildren();
+            nodes.clear();
+            nodeDetails.clear();
+            for (Component detail : List.copyOf(detailCards.keySet())) {
+                detailHost.remove(detail);
+            }
+            detailCards.clear();
+            for (Branch<K> root : roots == null ? List.<Branch<K>>of() : roots) {
+                append(hiddenRoot, root);
+            }
+            model.reload(hiddenRoot);
+            expanded.stream().filter(nodes::containsKey).forEach(this::expand);
+            if (selected != null && nodes.containsKey(selected)) {
+                select(selected);
+            } else {
+                tree.clearSelection();
+                showEmptyDetail();
+            }
+        } finally {
+            replacing = false;
+        }
+        revealDetailOnly();
     }
 
     private void add(K parentId, K id, String caption, JComponent detail) {
@@ -128,12 +181,20 @@ public final class TreeAndDetailPanel<K> extends JPanel {
         for (int index = 0; index < parent.getChildCount(); index++) {
             children.add((DefaultMutableTreeNode) parent.getChildAt(index));
         }
+        K selected = selectedId();
         List<K> removed = new ArrayList<>();
         for (DefaultMutableTreeNode child : children) {
             collectAndRemove(child, removed);
         }
         parent.removeAllChildren();
-        model.reload(parent);
+        if (!children.isEmpty()) {
+            int[] indices = java.util.stream.IntStream.range(0, children.size()).toArray();
+            model.nodesWereRemoved(parent, indices, children.toArray());
+        }
+        if (selected != null && removed.contains(selected)) {
+            tree.clearSelection();
+            showEmptyDetail();
+        }
         return List.copyOf(removed);
     }
 
@@ -156,22 +217,76 @@ public final class TreeAndDetailPanel<K> extends JPanel {
 
     public JTree tree() { return tree; }
 
+    public K selectedId() {
+        Object selected = tree.getLastSelectedPathComponent();
+        if (!(selected instanceof DefaultMutableTreeNode node)
+                || !(node.getUserObject() instanceof Item<?> raw)) return null;
+        @SuppressWarnings("unchecked") Item<K> item = (Item<K>) raw;
+        return item.id();
+    }
+
+    public boolean contains(K id) { return nodes.containsKey(id); }
+
+    /** Appearance belongs to the semantic projection, not this neutral shell. */
+    public void setCellRenderer(TreeCellRenderer renderer) {
+        tree.setCellRenderer(renderer);
+    }
+
     JSplitPane splitPane() { return split; }
 
     JPanel detailHost() { return detailHost; }
 
     private void revealSelected() {
+        revealDetailOnly();
+        if (replacing) return;
         Object selected = tree.getLastSelectedPathComponent();
         if (!(selected instanceof DefaultMutableTreeNode node)
                 || !(node.getUserObject() instanceof Item<?> raw)) return;
+        @SuppressWarnings("unchecked")
+        Item<K> item = (Item<K>) raw;
+        selectionListener.accept(new Selection<>(item.id(), item.caption()));
+    }
+
+    private void revealDetailOnly() {
+        Object selected = tree.getLastSelectedPathComponent();
+        if (!(selected instanceof DefaultMutableTreeNode node)
+                || !(node.getUserObject() instanceof Item<?> raw)) {
+            showEmptyDetail();
+            return;
+        }
         @SuppressWarnings("unchecked")
         Item<K> item = (Item<K>) raw;
         JComponent detail = nodeDetails.get(item.id());
         DetailCard card = detailCards.get(detail);
         if (card != null) {
             ((CardLayout) detailHost.getLayout()).show(detailHost, card.name());
+        } else {
+            showEmptyDetail();
         }
-        selectionListener.accept(new Selection<>(item.id(), item.caption()));
+    }
+
+    private void append(DefaultMutableTreeNode parent, Branch<K> branch) {
+        DefaultMutableTreeNode node = new DefaultMutableTreeNode(
+                new Item<>(branch.id(), branch.caption()));
+        parent.add(node);
+        nodes.put(branch.id(), node);
+        retainDetail(branch.detail());
+        nodeDetails.put(branch.id(), branch.detail());
+        for (Branch<K> child : branch.children()) append(node, child);
+    }
+
+    private List<K> expandedIds() {
+        List<K> result = new ArrayList<>();
+        for (Map.Entry<K, DefaultMutableTreeNode> entry : nodes.entrySet()) {
+            if (tree.isExpanded(new TreePath(entry.getValue().getPath()))) {
+                result.add(entry.getKey());
+            }
+        }
+        return List.copyOf(result);
+    }
+
+    private void showEmptyDetail() {
+        ((CardLayout) detailHost.getLayout()).show(detailHost, "empty");
     }
 
     private void collectAndRemove(DefaultMutableTreeNode node, List<K> removed) {

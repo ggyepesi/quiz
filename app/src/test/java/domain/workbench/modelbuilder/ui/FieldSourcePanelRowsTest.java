@@ -505,6 +505,7 @@ class FieldSourcePanelRowsTest {
         JComboBox<?> type = comboContaining(panel, FieldType.DATE);
 
         type.setSelectedItem(FieldType.DATE);
+        panel.selectConfigurationDetail(domain.config.FieldConfigurationProjection.PRIMARY);
         List<String> shown = visibleRowLabels(panel);
         assertTrue(shown.contains("Subject field:"), shown.toString());
         assertTrue(shown.contains("Match value field:"), shown.toString());
@@ -517,8 +518,10 @@ class FieldSourcePanelRowsTest {
     }
 
     @Test void companionMatchShowsAllThreeMatchingRows() {
-        List<String> shown = visibleRowLabels(editing(field(
-                "match", FieldType.STRING, FieldProductionKind.COMPANION_MATCH, "")));
+        FieldSourcePanel panel = editing(field(
+                "match", FieldType.STRING, FieldProductionKind.COMPANION_MATCH, ""));
+        panel.selectConfigurationDetail(domain.config.FieldConfigurationProjection.PRIMARY);
+        List<String> shown = visibleRowLabels(panel);
 
         assertTrue(shown.contains("Subject field:"), shown.toString());
         assertTrue(shown.contains("Match value field:"), shown.toString());
@@ -575,8 +578,10 @@ class FieldSourcePanelRowsTest {
     // that cannot use it, so the class/field relationship is explicit. Only the
     // settings OF a qualifier disappear when there is no qualifier to settle.
     @Test void theQualifierSourceStaysVisibleWhileItsSettingsDoNot() {
-        List<String> shown = visibleRowLabels(editing(field(
-                "birthName", FieldType.STRING, FieldProductionKind.AUTO, "")));
+        FieldSourcePanel panel = editing(field(
+                "birthName", FieldType.STRING, FieldProductionKind.AUTO, ""));
+        panel.selectConfigurationDetail(domain.config.FieldConfigurationProjection.PRIMARY);
+        List<String> shown = visibleRowLabels(panel);
 
         assertTrue(shown.contains("Qualifier of:"), shown.toString());
         assertTrue(!shown.contains("Reify role:"), shown.toString());

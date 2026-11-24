@@ -23,6 +23,7 @@ import domain.workbench.ui.DbpediaPropertyPicker;
 import domain.workbench.ui.FieldDefinitionPanel;
 import domain.workbench.ui.WikipediaCategoryPicker;
 import domain.workbench.ui.WikipediaInfoboxPicker;
+import domain.workbench.ui.TreeAndDetailPanel;
 import domain.datasource.graph.GraphExpansionPolicy;
 
 public class FieldSourcePanel extends JPanel {
@@ -112,6 +113,20 @@ public class FieldSourcePanel extends JPanel {
 
     private Consumer<GeneratedFieldModel> afterApplyField = f -> {};
     private Consumer<String> onReloadField = key -> {};
+    private Consumer<ConfigurationReferenceInventory.Site> onNavigateConfiguration =
+            ignored -> { };
+
+    private final TreeAndDetailPanel<ConfigurationNode.Id> configuration =
+            new TreeAndDetailPanel<>("modelbuilder.field.configuration", "Configuration");
+    private final Map<String, JComponent> configurationDetails =
+            new java.util.LinkedHashMap<>();
+    private final Map<ConfigurationNode.Id, ConfigurationNode> configurationNodes =
+            new java.util.LinkedHashMap<>();
+    private final JLabel referenceDetail = new JLabel("Select a reference to open it.");
+    /** Opening a reference leaves this field, so it is an explicit command: selecting
+     *  the node, including by arrowing through the tree, only names the target. */
+    private final JButton openReferenceButton = new JButton("Open");
+    private ConfigurationReferenceInventory.Site selectedReference;
 
     private Map<String, WikidataProperty> propertyCache = Map.of();
     private boolean updatingObjectTypeBox = false;
@@ -510,6 +525,11 @@ public class FieldSourcePanel extends JPanel {
         this.afterChange = afterChange == null ? v -> {} : afterChange;
     }
 
+    public void onNavigateConfiguration(
+            Consumer<ConfigurationReferenceInventory.Site> navigate) {
+        onNavigateConfiguration = navigate == null ? ignored -> { } : navigate;
+    }
+
     public void setPropertyCache(Map<String, WikidataProperty> cache) {
         this.propertyCache = cache == null ? Map.of() : cache;
     }
@@ -523,6 +543,7 @@ public class FieldSourcePanel extends JPanel {
 
     public void setProjectModel(GeneratedProjectModel projectModel) {
         this.projectModel = projectModel;
+        refreshConfigurationTree();
     }
 
     public void setQueryRunner(SwingQueryRunner queryRunner) {
@@ -576,6 +597,7 @@ public class FieldSourcePanel extends JPanel {
                     fallback.propertyLabel(choice.label());
                     FieldSourceBindings.synchronizeForSave(projectModel);
                     refreshFallbackLabel();
+                    refreshConfigurationTree();
                     afterChange.accept(null);
                 },
                 null);
@@ -612,6 +634,7 @@ public class FieldSourcePanel extends JPanel {
         else override.wikipediaCategoryRule(edited);
         FieldSourceBindings.synchronizeForSave(projectModel);
         refreshCategoryLabel();
+        refreshConfigurationTree();
         afterChange.accept(null);
     }
 
@@ -697,6 +720,10 @@ public class FieldSourcePanel extends JPanel {
         return sourceContextBox;
     }
 
+    TreeAndDetailPanel<ConfigurationNode.Id> configurationTree() {
+        return configuration;
+    }
+
     javax.swing.JComboBox<String> passageTextFieldBox() {
         return passageTextFieldBox;
     }
@@ -714,6 +741,7 @@ public class FieldSourcePanel extends JPanel {
     }
 
     void addCandidateEvidenceRecipe(String label) {
+        selectConfigurationDetail(FieldConfigurationProjection.EVIDENCE);
         java.util.Arrays.stream(CandidateEvidenceChoice.values())
                 .filter(value -> value.toString().equals(label))
                 .findFirst().ifPresent(candidateEvidenceRecipes::add);
@@ -722,6 +750,14 @@ public class FieldSourcePanel extends JPanel {
     java.util.List<String> candidateEvidenceRecipeDescriptions() {
         return candidateEvidenceRecipes.values().stream()
                 .map(this::candidateEvidenceDescription).toList();
+    }
+
+    /** Selects the first node whose detail is that section; false when none offers it. */
+    boolean selectConfigurationDetail(String detailKey) {
+        var node = configurationNodes.values().stream()
+                .filter(value -> value.detailKey().equals(detailKey)).findFirst();
+        node.ifPresent(value -> configuration.select(value.id()));
+        return node.isPresent();
     }
 
     javax.swing.JTextField tableEvidenceNameField() {
@@ -803,6 +839,7 @@ public class FieldSourcePanel extends JPanel {
         updateRecommendation();
         refreshOwnedComponentControls();
         refreshGraphExpansionControl();
+        refreshConfigurationTree();
     }
 
     /** The field-source editor owns this hand-off: discovery produces a neutral typed
@@ -972,6 +1009,7 @@ public class FieldSourcePanel extends JPanel {
         OwnedFieldSources.removeOverride(ownership, componentFieldPath());
         FieldSourceBindings.synchronizeForSave(projectModel);
         loadSelectedSourceContext();
+        refreshConfigurationTree();
         afterChange.accept(null);
     }
 
@@ -1555,10 +1593,7 @@ public class FieldSourcePanel extends JPanel {
     private void buildUi() {
         JPanel form = new JPanel(new GridBagLayout());
         form.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
-
-        JScrollPane scroll = new JScrollPane(form);
-        scroll.setBorder(null);
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        Map<Integer, String> detailForRow = new java.util.LinkedHashMap<>();
 
         GridBagConstraints c = new GridBagConstraints();
         c.insets = new Insets(4, 4, 4, 4);
@@ -1566,6 +1601,7 @@ public class FieldSourcePanel extends JPanel {
         c.fill = GridBagConstraints.HORIZONTAL;
 
         int y = 0;
+        int definitionStart = y;
 
         titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 16f));
         GridBagUtils.wideRow(form, y++, titleLabel);
@@ -1582,8 +1618,10 @@ public class FieldSourcePanel extends JPanel {
         unionSourcesRow = FormRow.add(form, c, y++, "Union of fields:",
                 unionSourcesHolder);
         graphExpansionRow = FormRow.add(form, c, y++, "Graph expansion:", graphExpansionBox);
+        assignRows(detailForRow, definitionStart, y, FieldConfigurationProjection.DEFINITION);
 
         // --- Where it comes from ---
+        int primaryStart = y;
         GridBagUtils.wideRow(form, y++, sectionLabel("Source"));
         sourceContextBox.setToolTipText("Shared default, or a source override used only "
                 + "when this owned component is produced by the selected owner field.");
@@ -1628,7 +1666,9 @@ public class FieldSourcePanel extends JPanel {
         conditionPanel.add(WikidataIdLines.qidList(conditionValuesField));
         qualifierConditionRow = FormRow.add(
                 form, c, y++, "Only statements where:", conditionPanel);
+        assignRows(detailForRow, primaryStart, y, FieldConfigurationProjection.PRIMARY);
 
+        int fallbackStart = y;
         JPanel fallbackRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         fallbackLabel.setForeground(new java.awt.Color(90, 90, 90));
         fallbackRow.add(fallbackLabel);
@@ -1642,11 +1682,14 @@ public class FieldSourcePanel extends JPanel {
             else if (field != null) field.fallbackMapping(null);
             FieldSourceBindings.synchronizeForSave(projectModel);
             refreshFallbackLabel();
+            refreshConfigurationTree();
             afterChange.accept(null);
         });
         fallbackRow.add(fallbackButton);
         fallbackRow.add(clearFallbackButton);
         GridBagUtils.labeledRow(form, c, y++, "Wikipedia fallback:", fallbackRow);
+        assignRows(detailForRow, fallbackStart, y, FieldConfigurationProjection.FALLBACK);
+        int categoryStart = y;
         JPanel categoryRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         categoryLabel.setForeground(new java.awt.Color(90, 90, 90));
         categoryRow.add(categoryLabel);
@@ -1660,11 +1703,14 @@ public class FieldSourcePanel extends JPanel {
             else if (field != null) field.wikipediaCategoryRule(null);
             FieldSourceBindings.synchronizeForSave(projectModel);
             refreshCategoryLabel();
+            refreshConfigurationTree();
             afterChange.accept(null);
         });
         categoryRow.add(categoryButton);
         categoryRow.add(clearCategoryButton);
         GridBagUtils.labeledRow(form, c, y++, "Wikipedia categories:", categoryRow);
+        assignRows(detailForRow, categoryStart, y, FieldConfigurationProjection.CATEGORY);
+        int evidenceStart = y;
         GridBagUtils.labeledRow(form, c, y++, "Wikipedia evidence:",
                 candidateEvidenceRecipes);
         infoboxEvidenceKeyField.setToolTipText(
@@ -1698,6 +1744,8 @@ public class FieldSourcePanel extends JPanel {
                 "Source instance goes into:", passageSourceFieldBox);
         passageBlockKindRow = FormRow.add(form, c, y++,
                 "Article block kind:", passageBlockKindBox);
+        assignRows(detailForRow, evidenceStart, y, FieldConfigurationProjection.EVIDENCE);
+        int primaryContinuation = y;
         qualifierPidField.setToolTipText("<html>For a field of a <b>statement "
                                                  + "reification</b> class (the class \"Reifies statements of\" "
                                                  + "another): the <b>qualifier</b> PID this field draws from "
@@ -1756,8 +1804,11 @@ public class FieldSourcePanel extends JPanel {
                                             + "<b>related entities</b> (incoming, ?other P ?this) — e.g. "
                                             + "stars whose constellation P59 = this.</html>");
         GridBagUtils.labeledRow(form, c, y++, "Found on:", directionBox);
+        assignRows(detailForRow, primaryContinuation, y,
+                FieldConfigurationProjection.PRIMARY);
 
         // --- Refine ---
+        int refineStart = y;
         GridBagUtils.wideRow(form, y++, sectionLabel("Refine"));
         GridBagUtils.wideRow(form, y++, requiredBox);
 
@@ -1779,6 +1830,7 @@ public class FieldSourcePanel extends JPanel {
                                                     + "class, keep only related items that ARE that class (P31), "
                                                     + "dropping off-type values reached by the same property.</html>");
         GridBagUtils.wideRow(form, y++, onlyRelatedOfTypeBox);
+        assignRows(detailForRow, refineStart, y, FieldConfigurationProjection.REFINE);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
         examplesButton.setToolTipText(
@@ -1791,11 +1843,26 @@ public class FieldSourcePanel extends JPanel {
                 + "loaded is skipped, values and all.");
         buttons.add(reloadFieldButton);
         buttons.add(applyButton);
-        GridBagUtils.wideRow(form, y++, buttons);
 
         examplesButton.addActionListener(e -> showExamplesDialog());
-
-        add(scroll, BorderLayout.CENTER);
+        installConfigurationDetails(form, detailForRow);
+        add(configuration, BorderLayout.CENTER);
+        add(buttons, BorderLayout.SOUTH);
+        configuration.setSelectionListener(selection -> configurationSelected(selection.id()));
+        configuration.tree().addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseClicked(java.awt.event.MouseEvent event) {
+                if (event.getClickCount() == 2) openSelectedReference();
+            }
+        });
+        configuration.tree().getInputMap(JComponent.WHEN_FOCUSED).put(
+                javax.swing.KeyStroke.getKeyStroke("ENTER"), "open-configuration-reference");
+        configuration.tree().getActionMap().put("open-configuration-reference",
+                new javax.swing.AbstractAction() {
+                    @Override public void actionPerformed(java.awt.event.ActionEvent event) {
+                        openSelectedReference();
+                    }
+                });
+        configuration.setCellRenderer(configurationRenderer());
 
         applyButton.addActionListener(e -> apply());
         reloadFieldButton.addActionListener(e -> requestReload());
@@ -1874,6 +1941,183 @@ public class FieldSourcePanel extends JPanel {
         typeBox.addActionListener(e -> refreshGraphExpansionControl());
         objectTypeBox.addActionListener(e -> refreshGraphExpansionControl());
     }
+
+    private static void assignRows(Map<Integer, String> rows,
+            int fromInclusive, int toExclusive, String detailKey) {
+        for (int row = fromInclusive; row < toExclusive; row++) {
+            rows.put(row, detailKey);
+        }
+    }
+
+    /**
+     * The former editor built one large form. Its controls remain the single editor;
+     * this method only places each authored row in the detail section that owns it.
+     * Thus the configuration tree cannot acquire a second copy of field semantics.
+     */
+    private void installConfigurationDetails(
+            JPanel assembled, Map<Integer, String> detailForRow) {
+        Map<String, JPanel> forms = new java.util.LinkedHashMap<>();
+        for (String key : List.of(FieldConfigurationProjection.DEFINITION,
+                FieldConfigurationProjection.PRIMARY,
+                FieldConfigurationProjection.FALLBACK,
+                FieldConfigurationProjection.CATEGORY,
+                FieldConfigurationProjection.EVIDENCE,
+                FieldConfigurationProjection.REFINE)) {
+            JPanel panel = new JPanel(new GridBagLayout());
+            panel.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+            forms.put(key, panel);
+        }
+
+        Map<String, Map<Integer, Integer>> displayedRows = new java.util.LinkedHashMap<>();
+        for (Component component : assembled.getComponents()) {
+            GridBagConstraints original = ((GridBagLayout) assembled.getLayout())
+                    .getConstraints(component);
+            String detailKey = detailForRow.get(original.gridy);
+            if (detailKey == null) {
+                throw new IllegalStateException(
+                        "Field editor row " + original.gridy + " has no configuration section");
+            }
+            Map<Integer, Integer> rowMap = displayedRows.computeIfAbsent(
+                    detailKey, ignored -> new java.util.LinkedHashMap<>());
+            int displayed = rowMap.computeIfAbsent(original.gridy, ignored -> rowMap.size());
+            GridBagConstraints placed = (GridBagConstraints) original.clone();
+            placed.gridy = displayed;
+            forms.get(detailKey).add(component, placed);
+        }
+        assembled.removeAll();
+
+        for (Map.Entry<String, JPanel> entry : forms.entrySet()) {
+            GridBagConstraints filler = new GridBagConstraints();
+            filler.gridx = 0;
+            filler.gridy = displayedRows.getOrDefault(entry.getKey(), Map.of()).size();
+            filler.gridwidth = GridBagConstraints.REMAINDER;
+            filler.weighty = 1.0;
+            filler.fill = GridBagConstraints.VERTICAL;
+            entry.getValue().add(Box.createVerticalGlue(), filler);
+            configurationDetails.put(entry.getKey(), scrollDetail(entry.getValue()));
+        }
+        JPanel reference = new JPanel(new BorderLayout());
+        reference.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        reference.add(referenceDetail, BorderLayout.NORTH);
+        JPanel open = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 6));
+        open.add(openReferenceButton);
+        reference.add(open, BorderLayout.CENTER);
+        openReferenceButton.setEnabled(false);
+        openReferenceButton.addActionListener(e -> openSelectedReference());
+        configurationDetails.put(FieldConfigurationProjection.REFERENCE, reference);
+    }
+
+    private static JScrollPane scrollDetail(JPanel panel) {
+        JScrollPane scroll = new JScrollPane(panel);
+        scroll.setBorder(null);
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        return scroll;
+    }
+
+    private javax.swing.tree.TreeCellRenderer configurationRenderer() {
+        return new javax.swing.tree.DefaultTreeCellRenderer() {
+            @Override public Component getTreeCellRendererComponent(
+                    JTree tree, Object value, boolean selected, boolean expanded,
+                    boolean leaf, int row, boolean focus) {
+                JLabel label = (JLabel) super.getTreeCellRendererComponent(
+                        tree, value, selected, expanded, leaf, row, focus);
+                if (!(value instanceof javax.swing.tree.DefaultMutableTreeNode treeNode)
+                        || !(treeNode.getUserObject() instanceof TreeAndDetailPanel.Item<?> item)
+                        || !(item.id() instanceof ConfigurationNode.Id id)) return label;
+                ConfigurationNode node = configurationNodes.get(id);
+                if (node == null) return label;
+                if (node.kind() == ConfigurationNode.Kind.AVAILABLE_SLOT) {
+                    label.setFont(label.getFont().deriveFont(Font.ITALIC));
+                    if (!selected) label.setForeground(new Color(0x0969da));
+                } else if (node.kind() == ConfigurationNode.Kind.REFERENCE) {
+                    if (!selected) label.setForeground(new Color(0x0969da));
+                } else if (node.kind() == ConfigurationNode.Kind.INVENTORY_SUMMARY) {
+                    if (!selected) label.setForeground(new Color(0x6e7781));
+                }
+                return label;
+            }
+        };
+    }
+
+    private void refreshConfigurationTree() {
+        GeneratedClassModel owner = ownerClass();
+        if (projectModel == null || owner == null || field == null) {
+            configurationNodes.clear();
+            configuration.replaceRoots(List.of());
+            return;
+        }
+        ConfigurationNode root = FieldConfigurationProjection.project(
+                projectModel, owner, field, datasources);
+        configurationNodes.clear();
+        TreeAndDetailPanel.Branch<ConfigurationNode.Id> branch = configurationBranch(root);
+        configuration.replaceRoots(List.of(branch));
+        configuration.expand(root.id());
+        if (configuration.selectedId() == null) configuration.select(root.id());
+    }
+
+    private TreeAndDetailPanel.Branch<ConfigurationNode.Id> configurationBranch(
+            ConfigurationNode node) {
+        configurationNodes.put(node.id(), node);
+        JComponent detail = configurationDetails.getOrDefault(node.detailKey(),
+                configurationDetails.get(FieldConfigurationProjection.DEFINITION));
+        return new TreeAndDetailPanel.Branch<>(node.id(), node.caption(), detail,
+                node.children().stream().map(this::configurationBranch).toList());
+    }
+
+    private void configurationSelected(ConfigurationNode.Id id) {
+        ConfigurationNode node = configurationNodes.get(id);
+        if (node == null) return;
+        selectedReference = node.referenceTarget();
+        openReferenceButton.setEnabled(selectedReference != null);
+        if (selectedReference != null) {
+            referenceDetail.setText(node.caption());
+            openReferenceButton.setText("Open " + selectedReference.displayName());
+        } else {
+            referenceDetail.setText("Select a reference to open it.");
+            openReferenceButton.setText("Open");
+        }
+        if (node.sourceContext() != null) {
+            selectSourceContext(node.sourceContext());
+        }
+        ConfigurationReferenceInventory.BindingSite bindingSite = node.bindingSite();
+        if (bindingSite == null) return;
+        var target = bindingSite.binding().target();
+        if (target.slot() == domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE) {
+            candidateEvidenceRecipes.selectValue(bindingSite.binding());
+        }
+    }
+
+    /** Switches the edited production site only when the node names another one.
+     *  The combo reloads every source control from the model whenever it is set, even
+     *  to its current value, so setting it unconditionally discarded unapplied edits
+     *  each time a source node was selected. */
+    private void selectSourceContext(domain.datasource.api.SourceBindingTarget target) {
+        int wanted = -1;
+        if (!target.contextual()) {
+            if (sourceContextBox.getItemCount() > 0) wanted = 0;
+        } else {
+            for (int index = 0; index < sourceContextBox.getItemCount(); index++) {
+                SourceContext context = sourceContextBox.getItemAt(index);
+                if (context == null || context.site() == null) continue;
+                if (context.site().ownerClass().equals(target.contextClassName())
+                        && context.site().ownerField().equals(target.contextFieldPath())) {
+                    wanted = index;
+                    break;
+                }
+            }
+        }
+        if (wanted >= 0 && wanted != sourceContextBox.getSelectedIndex()) {
+            sourceContextBox.setSelectedIndex(wanted);
+        }
+    }
+
+    private void openSelectedReference() {
+        if (selectedReference != null) onNavigateConfiguration.accept(selectedReference);
+    }
+
+    JButton openReferenceButton() { return openReferenceButton; }
+
+    JTextField propertyPidField() { return propertyPidField; }
 
     // MissingQualifierPolicy ↔ combo label (null = safe Auto = leave missing).
     private static String policyLabel(
@@ -2107,6 +2351,11 @@ public class FieldSourcePanel extends JPanel {
         updateRecommendation();
         clearSourceOverrideButton.setEnabled(
                 selectedSourceSite() != null && activeOverride(false) != null);
+
+        // Apply is the synchronization boundary: the visible tree, validation and the
+        // execution plan must agree now, not only after Save model/domain.
+        FieldSourceBindings.synchronizeForSave(projectModel);
+        refreshConfigurationTree();
 
         // The model changed either way — the tree labels and the dirty state depend on it.
         // Only the ANNOUNCEMENT is optional: a confirmation flash and a re-selection make
@@ -2770,6 +3019,7 @@ public class FieldSourcePanel extends JPanel {
         filterOpBox.setSelectedItem(NO_OP);
         filterValueField.setText("");
         recommendationLabel.setText(" ");
+        refreshConfigurationTree();
     }
 
     // Reads the operator + value controls onto the field. Invalid/empty = no

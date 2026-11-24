@@ -12,12 +12,15 @@ remains runnable as the comparison baseline while both hosts use the same model-
 and editor implementation. Executable operations and their results remain the separate
 action/result tree of #558.
 
-Milestones 1 through 4 are implemented. `ConfigurationReferenceInventory` is the typed model-layer
+Milestones 1 through 5 are implemented. `ConfigurationReferenceInventory` is the typed model-layer
 inventory: validation, `ClassDependencies`, class/selection rename discovery and datasource recipe
 references consume it. Datasource operations declare references hidden inside their own recipe
 grammar, and prepared input requirements are resolved to model sites such as an article
 correspondence. `TreeAndDetailPanel` is the neutral shell, and the existing action/result navigator
-uses it. Construct-specific configuration projection and editor conversion start with milestone 5.
+uses it. The field editor now projects Definition, production, fallback, category, candidate
+evidence, references and Refine into that shell while retaining one set of editor controls and one
+field-level Apply. Relation-route steps and Wikipedia table-row structure come from their provider
+operations rather than being decoded by Swing.
 
 Related: [ModelBuilder Constructs](modelbuilder-constructs.md),
 [Effective Class Explanation and Uniform Sampling](effective-class-explanation-and-sampling.md),
@@ -79,7 +82,8 @@ target. Its kind controls appearance and allowed interaction.
 2. **Available slot** — a visible `+ Add …` line for an allowed but unconfigured slot. Selecting it
    reveals compatible choices and changes nothing until the user explicitly adds one.
 3. **Reference** — a read-only `Needs` or `Used by` link to another configured site. Selecting it
-   navigates there and changes nothing.
+   only names the target; its detail's **Open …** command (or Enter, or a double click) navigates
+   there. Arrowing through the tree must never leave the construct being edited.
 4. **Inventory summary** — a read-only count or status, such as curation decisions or last-run
    artifacts. Selecting it opens the existing inventory; decisions and run results do not become
    configuration.
@@ -264,7 +268,7 @@ Follow #557 as checked milestones:
 3. Classify legacy `FieldSourceType` coverage against the datasource registry. **Done.**
 4. Add the neutral tree-and-detail shell with a checked-in rendered artifact. **Done.**
 5. Convert the field editor, covering a datasource field, relation-route field and table-row
-   evidence field.
+   evidence field. **Done.**
 6. Convert the graph editor.
 7. Convert the class editors.
 8. Complete the separate-process save guard before a second application exposes the complete tree.

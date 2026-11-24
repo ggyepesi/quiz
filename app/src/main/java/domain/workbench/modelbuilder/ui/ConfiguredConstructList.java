@@ -132,6 +132,21 @@ final class ConfiguredConstructList<T, K> extends JPanel {
 
     T selected() { return configured.getSelectedValue(); }
 
+    void selectIndex(int index) {
+        if (index < 0 || index >= model.size()) return;
+        configured.setSelectedIndex(index);
+        configured.ensureIndexIsVisible(index);
+    }
+
+    void selectValue(T value) {
+        for (int index = 0; index < model.size(); index++) {
+            if (java.util.Objects.equals(model.get(index), value)) {
+                selectIndex(index);
+                return;
+            }
+        }
+    }
+
     /** Availability of the explicit Add command. Existing children remain inspectable
      *  and removable when the current owner shape cannot accept another child. */
     void allowAdding(boolean value) {

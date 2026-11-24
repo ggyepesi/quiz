@@ -13,3 +13,40 @@ Wikipedia
   Fetch selected articles
     Articles — 2
     Sections — 9
+
+== Shipped DeityGroup.members projection ==
+stored configuration: DeityGroup.members
+  stored configuration: Definition
+  stored configuration: Produced by
+    stored configuration: Primary: Wikidata — 3 bounded relation routes
+      stored configuration: Route: Listed members
+        stored configuration: Step 1: outgoing P527
+      stored configuration: Route: Members with part of group
+        stored configuration: Step 1: incoming P361
+      stored configuration: Route: Members of group
+        stored configuration: Step 1: incoming P463
+    available slot: + Add fallback source
+    available slot: + Add category relation
+  stored configuration: Candidate evidence
+    stored configuration: Wikipedia — Table rows — section ‘Description > List of names, provenances and tasks (Wilkinson et al)’, display column ‘Name of the deity’
+      stored configuration: Article table
+        stored configuration: Section: Description > List of names, provenances and tasks (Wilkinson et al)
+        stored configuration: Display column: Name of the deity
+      stored configuration: Field mapping
+        stored configuration: Row class: AssessorOfMaat
+        stored configuration: Row details: rowDetails
+        stored configuration: Source instance: groups
+        stored configuration: Resolved links: deities
+    stored configuration: Wikipedia — Infobox row links — Rendered.Members
+      stored configuration: Rendered infobox row: Rendered.Members
+    available slot: + Add evidence recipe
+  reference: Needs
+    reference: entity field target: DeityGroupMember
+    reference: concrete row class: AssessorOfMaat
+    reference: row details field: AssessorOfMaat.rowDetails
+    reference: source instance field: AssessorOfMaat.groups
+    reference: resolved references field: AssessorOfMaat.deities
+    reference: wikidata article correspondence: article correspondence
+  reference: Used by
+    reference: group members field: DeityGroup
+  stored configuration: Refine

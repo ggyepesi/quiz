@@ -32,6 +32,24 @@ public interface DatasourceOperation {
         return List.of();
     }
 
+    /**
+     * Provider-owned visible structure of one stored recipe.
+     *
+     * <p>The default covers ordinary declarative parameters. Structural grammars such
+     * as relation routes override this so the configuration tree never parses their
+     * persisted representation.</p>
+     */
+    default List<ConfigurationElement> configurationElements(SourceBinding binding) {
+        if (binding == null) return List.of();
+        return parameters().stream().map(parameter -> {
+            String value = binding.recipe().parameter(parameter.key());
+            if (value.isBlank()) value = parameter.defaultValue();
+            if (value.isBlank() && !parameter.required()) return null;
+            if (value.isBlank()) value = "not configured";
+            return new ConfigurationElement(parameter.key(), parameter.label() + ": " + value);
+        }).filter(java.util.Objects::nonNull).toList();
+    }
+
     /** Interpret one durable recipe. Providers override when their parameters form a
      * typed executable specification; callers never decode provider keys themselves. */
     default PreparedSourceOperation prepare(SourceBinding binding) {

@@ -6,6 +6,7 @@ import domain.build.GraphDiscoveryResultStore;
 
 import domain.config.FieldCardinality;
 import domain.config.FieldSampleContext;
+import domain.config.ConfigurationReferenceInventory;
 import domain.datasource.schema.FieldType;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedFieldModel;
@@ -314,6 +315,14 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
     public void onGraphSelection(Consumer<Object> consumer) {
         graphConfigurationDiagram.onActivate(consumer);
+    }
+
+    public void onConfigurationNavigation(Consumer<Object> consumer) {
+        Consumer<Object> destination = consumer == null ? ignored -> { } : consumer;
+        fieldSourcePanel.onNavigateConfiguration(site -> {
+            Object resolved = ConfigurationReferenceInventory.of(projectModel).resolve(site);
+            if (resolved != null) destination.accept(resolved);
+        });
     }
 
     /** The window's reusable selections, shared with tools that name or consume them. */

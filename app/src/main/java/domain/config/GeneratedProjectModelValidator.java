@@ -1272,7 +1272,7 @@ public final class GeneratedProjectModelValidator {
                                     + "or at least one exact category-to-QID mapping."));
                 }
                 if (category.policy() != CategoryCandidatePolicy.EVIDENCE_ONLY
-                        && field.type() != FieldType.ENTITY) {
+                        && !WikipediaCategoryRule.fillsFieldOfType(field.type())) {
                     problems.add(Problem.error(path(clazz, field),
                             "A category relation that produces values requires an "
                                     + "entity-valued field."));

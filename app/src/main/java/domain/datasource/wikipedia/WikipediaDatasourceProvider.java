@@ -136,7 +136,7 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         }
         @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
         @Override public List<ParameterDescriptor> parameters() {
-            return List.of(new ParameterDescriptor("property", "Rendered.label",
+            return List.of(new ParameterDescriptor("property", "Rendered infobox row",
                     ParameterDescriptor.Kind.TEXT, true, "", List.of(),
                     "The rendered infobox row whose retained article links are proposed "
                             + "as references."));
@@ -266,6 +266,37 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         }
         @Override public SourceValueSchema outputSchema() {
             return SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE, "model");
+        }
+        @Override public List<domain.datasource.api.ConfigurationElement>
+                configurationElements(SourceBinding binding) {
+            ArticleTableRowInstanceSpec spec = articleTableRowInstances(binding);
+            if (spec == null) return DatasourceOperation.super.configurationElements(binding);
+            List<domain.datasource.api.ConfigurationElement> location = new ArrayList<>();
+            location.add(new domain.datasource.api.ConfigurationElement(
+                    TABLE_SECTION, "Section: " + spec.sectionPath()));
+            if (!spec.table().isBlank()) {
+                location.add(new domain.datasource.api.ConfigurationElement(
+                        TABLE_NAME, "Table: " + spec.table()));
+            }
+            location.add(new domain.datasource.api.ConfigurationElement(
+                    TABLE_COLUMN, "Display column: " + spec.displayColumn()));
+            List<domain.datasource.api.ConfigurationElement> mapping = new ArrayList<>();
+            mapping.add(new domain.datasource.api.ConfigurationElement(
+                    TABLE_ROW_TARGET_CLASS, "Row class: " + spec.targetClass()));
+            mapping.add(new domain.datasource.api.ConfigurationElement(
+                    TABLE_ROW_DETAILS_FIELD, "Row details: " + spec.detailsField()));
+            mapping.add(new domain.datasource.api.ConfigurationElement(
+                    TABLE_ROW_SOURCE_FIELD, "Source instance: " + spec.sourceField()));
+            if (!spec.referencesField().isBlank()) {
+                mapping.add(new domain.datasource.api.ConfigurationElement(
+                        TABLE_ROW_REFERENCES_FIELD,
+                        "Resolved links: " + spec.referencesField()));
+            }
+            return List.of(
+                    new domain.datasource.api.ConfigurationElement(
+                            "location", "Article table", location),
+                    new domain.datasource.api.ConfigurationElement(
+                            "mapping", "Field mapping", mapping));
         }
         @Override public List<ModelConfigurationReference> configurationReferences(
                 SourceBinding binding) {

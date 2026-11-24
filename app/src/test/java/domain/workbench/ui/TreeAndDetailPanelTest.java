@@ -90,6 +90,51 @@ class TreeAndDetailPanelTest {
         });
     }
 
+    @Test void replacingAProjectionKeepsStableSelectionAndExpansion() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            TreeAndDetailPanel<String> shell =
+                    new TreeAndDetailPanel<>("test.tree-detail", "Configuration");
+            JPanel original = detail("original");
+            shell.replaceRoots(List.of(new TreeAndDetailPanel.Branch<>("field", "field",
+                    detail("field"), List.of(new TreeAndDetailPanel.Branch<>(
+                            "source", "Source", original)))));
+            shell.expand("field");
+            shell.select("source");
+
+            JPanel replacement = detail("replacement");
+            shell.replaceRoots(List.of(new TreeAndDetailPanel.Branch<>("field", "field",
+                    detail("new field"), List.of(
+                            new TreeAndDetailPanel.Branch<>(
+                                    "source", "Primary source", replacement),
+                            new TreeAndDetailPanel.Branch<>(
+                                    "refine", "Refine", detail("refine"))))));
+
+            assertEquals("source", shell.selectedId());
+            javax.swing.tree.DefaultMutableTreeNode fieldNode =
+                    (javax.swing.tree.DefaultMutableTreeNode)
+                            ((javax.swing.tree.DefaultMutableTreeNode)
+                                    shell.tree().getModel().getRoot()).getFirstChild();
+            assertTrue(shell.tree().isExpanded(new javax.swing.tree.TreePath(
+                    fieldNode.getPath())));
+            assertSame(replacement, visibleDetail(shell));
+        });
+    }
+
+    @Test void removingTheSelectedNodeShowsNoUnrelatedDetail() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            TreeAndDetailPanel<String> shell =
+                    new TreeAndDetailPanel<>("test.tree-detail", "Configuration");
+            shell.addRoot("field", "field", detail("field"));
+            shell.addChild("field", "source", "Source", detail("source"));
+            shell.select("source");
+
+            shell.removeChildren("field");
+
+            assertEquals(null, shell.selectedId());
+            assertSame(shell.detailHost().getComponent(0), visibleComponent(shell));
+        });
+    }
+
     private static JPanel detail(String name) {
         JPanel panel = new JPanel();
         panel.setName(name);
@@ -98,8 +143,11 @@ class TreeAndDetailPanelTest {
     }
 
     private static JPanel visibleDetail(TreeAndDetailPanel<?> shell) {
+        return (JPanel) visibleComponent(shell);
+    }
+
+    private static java.awt.Component visibleComponent(TreeAndDetailPanel<?> shell) {
         return java.util.Arrays.stream(shell.detailHost().getComponents())
-                .filter(java.awt.Component::isVisible)
-                .map(JPanel.class::cast).findFirst().orElseThrow();
+                .filter(java.awt.Component::isVisible).findFirst().orElseThrow();
     }
 }

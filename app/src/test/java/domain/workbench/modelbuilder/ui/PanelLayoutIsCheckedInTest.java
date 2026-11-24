@@ -77,6 +77,22 @@ class PanelLayoutIsCheckedInTest {
         field.setProjectModel(project);
         field.edit(project.findClass("Person").fields().get(0));
         describe(actual, "Field - FieldSourcePanel", field);
+        // The editor's rows live in one detail section per configuration node and only
+        // the selected section is visible, so each section is rendered on its own.
+        for (String section : List.of(
+                domain.config.FieldConfigurationProjection.DEFINITION,
+                domain.config.FieldConfigurationProjection.PRIMARY,
+                domain.config.FieldConfigurationProjection.FALLBACK,
+                domain.config.FieldConfigurationProjection.CATEGORY,
+                domain.config.FieldConfigurationProjection.EVIDENCE,
+                domain.config.FieldConfigurationProjection.REFINE)) {
+            if (!field.selectConfigurationDetail(section)) {
+                actual.append("== Field section ").append(section)
+                        .append(" - no node offers it ==\n\n");
+                continue;
+            }
+            describe(actual, "Field section " + section, field);
+        }
 
         GeneratedProjectModel graphProject = new GeneratedProjectModel();
         GeneratedClassModel position = new GeneratedClassModel("Position");

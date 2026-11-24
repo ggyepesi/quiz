@@ -13,6 +13,12 @@ package domain.config;
  */
 @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
 public class WikipediaCategoryRule {
+
+    /** A category relation maps categories to Wikidata value QIDs, so the field it fills
+     *  holds entities. The validator and the configuration tree ask this one rule. */
+    public static boolean fillsFieldOfType(domain.datasource.schema.FieldType type) {
+        return type == domain.datasource.schema.FieldType.ENTITY;
+    }
     private String pattern = "";
     private CategoryCandidatePolicy policy = CategoryCandidatePolicy.REVIEW;
     @com.fasterxml.jackson.annotation.JsonInclude(

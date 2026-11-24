@@ -37,6 +37,17 @@ public enum FieldProductionKind {
     OWNER_REFERENCE,
     AUTO;
 
+    /** Whether the model itself produces this field from already generated data or
+     *  structure, so no datasource fills it. */
+    public boolean producedWithinModel() {
+        return switch (this) {
+            case OWNED_COMPONENT, STATEMENT_SUBJECT, STATEMENT_OBJECT,
+                    STATEMENT_PARTICIPANTS, INVERT, UNION, COMPANION_MATCH,
+                    OWNER_REFERENCE -> true;
+            case INLINE_VALUE, DELAYED_ENTITY_FIELD, CHILD_OBJECTS, AUTO -> false;
+        };
+    }
+
     @Override
     public String toString() {
         return switch (this) {

@@ -322,6 +322,7 @@
   label: Choices come from compatible fields on this class and its source class.
 
 == Field - FieldSourcePanel ==
+  box: Configuration
   label: Field: birthDate
   label: How do we fill this field?
   box: Field definition
@@ -339,6 +340,35 @@
     combo: 3 item(s)
   label: Load as:
   combo: 11 item(s)
+  button: Examples…
+  button: Re-fetch on next enrich
+  button: Apply field source
+
+== Field section field-definition ==
+  box: Configuration
+  label: Field: birthDate
+  label: How do we fill this field?
+  box: Field definition
+    label: Field name:
+    text: [birthDate]
+    label: Holds:
+    combo: 8 item(s)
+    label: Of class:
+    combo: 7 item(s)
+      text: [(none)]
+    check: no class (keep label)  (disabled)
+    label: Count:
+    combo: 2 item(s)
+    label: Display:
+    combo: 3 item(s)
+  label: Load as:
+  combo: 11 item(s)
+  button: Examples…
+  button: Re-fetch on next enrich
+  button: Apply field source
+
+== Field section field-primary-source ==
+  box: Configuration
   label: Source
   label: From:
   combo: 11 item(s)
@@ -360,23 +390,6 @@
     list
     button: Remove  (disabled)
     button: Open  (disabled)
-  label: Wikipedia fallback:
-  label: none
-  button: Set Wikipedia fallback…
-  button: Clear  (disabled)
-  label: Wikipedia categories:
-  label: none
-  button: Configure…
-  button: Clear  (disabled)
-  label: Wikipedia evidence:
-  box: Configured evidence recipes
-    list
-    label: Add:
-    combo: 7 item(s)  (disabled)
-    button: Add  (disabled)
-    button: Remove  (disabled)
-    button: Up  (disabled)
-    button: Down  (disabled)
   label: Qualifier of:
   ids: []
     text: []
@@ -389,6 +402,39 @@
     text: []
   label: Found on:
   combo: 2 item(s)
+  button: Examples…
+  button: Re-fetch on next enrich
+  button: Apply field source
+
+== Field section field-fallback-source ==
+  box: Configuration
+  label: Wikipedia fallback:
+  label: none
+  button: Set Wikipedia fallback…
+  button: Clear  (disabled)
+  button: Examples…
+  button: Re-fetch on next enrich
+  button: Apply field source
+
+== Field section field-category-source - no node offers it ==
+
+== Field section field-candidate-evidence ==
+  box: Configuration
+  label: Wikipedia evidence:
+  box: Configured evidence recipes
+    list
+    label: Add:
+    combo: 7 item(s)  (disabled)
+    button: Add  (disabled)
+    button: Remove  (disabled)
+    button: Up  (disabled)
+    button: Down  (disabled)
+  button: Examples…
+  button: Re-fetch on next enrich
+  button: Apply field source
+
+== Field section field-refine ==
+  box: Configuration
   label: Refine
   check: Required (membership filter — drops entities without it)
   label: Expectation:

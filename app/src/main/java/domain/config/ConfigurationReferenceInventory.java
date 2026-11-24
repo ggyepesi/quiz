@@ -118,18 +118,36 @@ public final class ConfigurationReferenceInventory {
 
     private record Entry(Reference reference, Rewriter rewriter) { }
 
+    /** One stored datasource binding at the exact model site that owns it. */
+    public record BindingSite(
+            Site storageSite,
+            Site bindingSite,
+            SourceBinding binding,
+            String storageRole,
+            int authoredIndex) {
+        public BindingSite {
+            storageSite = Objects.requireNonNull(storageSite, "storageSite");
+            bindingSite = Objects.requireNonNull(bindingSite, "bindingSite");
+            binding = Objects.requireNonNull(binding, "binding");
+            storageRole = clean(storageRole);
+        }
+    }
+
     private final GeneratedProjectModel project;
     private final List<Entry> entries;
+    private final List<BindingSite> bindingSites;
 
     private ConfigurationReferenceInventory(
             GeneratedProjectModel project, DatasourceRegistry registry) {
         this.project = Objects.requireNonNull(project, "project");
         List<Entry> found = new ArrayList<>();
-        collectClasses(project, registry, found);
+        List<BindingSite> bindings = new ArrayList<>();
+        collectClasses(project, registry, found, bindings);
         collectRules(project, found);
         collectSelections(project, found);
         collectBuildOperations(project, found);
         this.entries = List.copyOf(found);
+        this.bindingSites = List.copyOf(bindings);
     }
 
     public static ConfigurationReferenceInventory of(GeneratedProjectModel project) {
@@ -146,6 +164,22 @@ public final class ConfigurationReferenceInventory {
         return entries.stream().map(Entry::reference).toList();
     }
 
+    public List<BindingSite> bindingSites() { return bindingSites; }
+
+    public List<BindingSite> bindingsStoredAt(Site storageSite) {
+        if (storageSite == null) return List.of();
+        return bindingSites.stream()
+                .filter(site -> site.storageSite().equals(storageSite)).toList();
+    }
+
+    /** The stable site of one declared field path, shared by projection and reference
+     * navigation. */
+    public static Site fieldSite(GeneratedClassModel owner, String fieldPath) {
+        if (owner == null) throw new IllegalArgumentException("Field owner is required");
+        return new Site(SiteKind.FIELD, owner.declarationId(), owner.className(),
+                clean(fieldPath), "");
+    }
+
     public List<Reference> from(Site source) {
         return entries.stream().map(Entry::reference)
                 .filter(reference -> reference.source().equals(source)).toList();
@@ -154,6 +188,19 @@ public final class ConfigurationReferenceInventory {
     public List<Reference> to(Site target) {
         return entries.stream().map(Entry::reference)
                 .filter(reference -> reference.target().equals(target)).toList();
+    }
+
+    /** Resolves a projected navigation target through the same inventory that named it. */
+    public Object resolve(Site target) {
+        if (target == null) return null;
+        return switch (target.kind()) {
+            case CLASS -> project.resolveClass(target.declarationId(), target.className());
+            case FIELD -> resolveField(project, target.className(), target.fieldPath());
+            case SELECTION -> project.resolveSelection(target.declarationId(), target.name());
+            case DATASOURCE_INPUT -> project.resolveClass(
+                    target.declarationId(), target.className());
+            case CONFIGURATION -> null;
+        };
     }
 
     public List<Reference> fromClass(GeneratedClassModel clazz) {
@@ -242,7 +289,8 @@ public final class ConfigurationReferenceInventory {
     }
 
     private static void collectClasses(GeneratedProjectModel project,
-            DatasourceRegistry registry, List<Entry> entries) {
+            DatasourceRegistry registry, List<Entry> entries,
+            List<BindingSite> bindingSites) {
         for (GeneratedClassModel clazz : project.classes()) {
             if (clazz == null) continue;
             Site owner = classSite(clazz);
@@ -326,16 +374,17 @@ public final class ConfigurationReferenceInventory {
             collectCanonical(project, clazz, owner, entries);
             collectGraph(project, clazz, entries);
             collectBindings(project, registry, owner, clazz.sourceBindings(),
-                    "class", entries);
+                    "class", entries, bindingSites);
             for (GeneratedFieldModel field : clazz.fields()) {
-                collectField(project, registry, clazz, "", field, entries);
+                collectField(project, registry, clazz, "", field, entries, bindingSites);
             }
         }
     }
 
     private static void collectField(GeneratedProjectModel project,
             DatasourceRegistry registry, GeneratedClassModel owner, String prefix,
-            GeneratedFieldModel field, List<Entry> entries) {
+            GeneratedFieldModel field, List<Entry> entries,
+            List<BindingSite> bindingSites) {
         if (field == null) return;
         String path = prefix.isBlank() ? field.name() : prefix + "." + field.name();
         Site source = fieldSite(owner, path);
@@ -376,12 +425,12 @@ public final class ConfigurationReferenceInventory {
                             override.fieldPath()), Relation.OWNED_FIELD_OVERRIDE,
                     "owned-field source", true, null);
             collectBindings(project, registry, source, override.sourceBindings(),
-                    "owned-field source", entries);
+                    "owned-field source", entries, bindingSites);
         }
         collectBindings(project, registry, source, field.sourceBindings(),
-                "field", entries);
+                "field", entries, bindingSites);
         for (GeneratedFieldModel child : field.fields()) {
-            collectField(project, registry, owner, path, child, entries);
+            collectField(project, registry, owner, path, child, entries, bindingSites);
         }
     }
 
@@ -540,14 +589,22 @@ public final class ConfigurationReferenceInventory {
 
     private static void collectBindings(GeneratedProjectModel project,
             DatasourceRegistry registry, Site storageSite,
-            List<SourceBinding> bindings, String storageRole, List<Entry> entries) {
+            List<SourceBinding> bindings, String storageRole, List<Entry> entries,
+            List<BindingSite> bindingSites) {
         if (bindings == null) return;
+        java.util.Map<String, Integer> slotPositions = new java.util.LinkedHashMap<>();
         for (int index = 0; index < bindings.size(); index++) {
             SourceBinding binding = bindings.get(index);
             if (binding == null) continue;
             int at = index;
             SourceBindingTarget target = binding.target();
-            Site bindingSite = bindingSite(storageSite, target, index);
+            String slotSite = target.slot().name() + "|"
+                    + target.contextClassDeclarationId() + "|" + target.contextClassName()
+                    + "|" + target.contextFieldPath();
+            int authoredPosition = slotPositions.merge(slotSite, 1, Integer::sum) - 1;
+            Site bindingSite = bindingSite(storageSite, target, authoredPosition);
+            bindingSites.add(new BindingSite(storageSite, bindingSite, binding,
+                    storageRole, authoredPosition));
             add(entries, bindingSite,
                     classTarget(project, target.classDeclarationId(), target.className()),
                     Relation.SOURCE_BINDING_TARGET, storageRole + " binding target", true,
@@ -664,10 +721,6 @@ public final class ConfigurationReferenceInventory {
         return new Site(SiteKind.CLASS, clazz.declarationId(), clazz.className(), "", "");
     }
 
-    private static Site fieldSite(GeneratedClassModel clazz, String path) {
-        return new Site(SiteKind.FIELD, clazz.declarationId(), clazz.className(), path, "");
-    }
-
     private static Site selectionSite(Selection selection) {
         return new Site(SiteKind.SELECTION, selection.declarationId(), "", "",
                 selection.name());
@@ -678,7 +731,14 @@ public final class ConfigurationReferenceInventory {
     }
 
     private static Site bindingSite(Site storage, SourceBindingTarget target, int index) {
-        String name = target.slot().id() + (target.slot().additive() ? ":" + index : "");
+        String context = "";
+        if (target.contextual()) {
+            String owner = target.contextClassDeclarationId().isBlank()
+                    ? target.contextClassName() : target.contextClassDeclarationId();
+            context = "context:" + owner + ":" + target.contextFieldPath() + "/";
+        }
+        String name = context + target.slot().id()
+                + (target.slot().additive() ? ":" + index : "");
         return new Site(SiteKind.CONFIGURATION, storage.declarationId(),
                 storage.className(), storage.fieldPath(), name);
     }

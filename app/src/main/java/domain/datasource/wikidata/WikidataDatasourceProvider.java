@@ -311,6 +311,11 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
     private record RelationRoutesOffering() implements DatasourceOperation {
         @Override public String id() { return RELATION_ROUTES; }
         @Override public String displayName() { return "Bounded relation routes"; }
+        @Override public String summary(domain.datasource.api.SourceBinding binding) {
+            int count = WikidataRelationRouteSpec.parse(
+                    binding.recipe().parameter(ROUTES_PARAMETER)).routes().size();
+            return count + " bounded relation route" + (count == 1 ? "" : "s");
+        }
         @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
         @Override public SourceValueSchema outputSchema() {
             return SourceValueSchema.collection(SourceValueKind.ENTITY_REFERENCE, ID);
@@ -320,6 +325,27 @@ public final class WikidataDatasourceProvider implements DatasourceProvider {
                     ParameterDescriptor.Kind.RELATION_ROUTES, true, "", List.of(),
                     "Finite ordered relation routes. Configure them with the route editor; "
                             + "no route repeats or follows an implicit closure."));
+        }
+        @Override public List<domain.datasource.api.ConfigurationElement>
+                configurationElements(domain.datasource.api.SourceBinding binding) {
+            WikidataRelationRouteSpec spec = WikidataRelationRouteSpec.parse(
+                    binding.recipe().parameter(ROUTES_PARAMETER));
+            return java.util.stream.IntStream.range(0, spec.routes().size()).mapToObj(index -> {
+                domain.datasource.graph.RelationRoute route = spec.routes().get(index);
+                java.util.List<domain.datasource.api.ConfigurationElement> steps =
+                        java.util.stream.IntStream.range(0, route.steps().size())
+                                .mapToObj(stepIndex -> {
+                                    domain.datasource.graph.RelationRoute.Step step =
+                                            route.steps().get(stepIndex);
+                                    return new domain.datasource.api.ConfigurationElement(
+                                            "step:" + stepIndex,
+                                            "Step " + (stepIndex + 1) + ": "
+                                                    + step.direction().name().toLowerCase()
+                                                    + " " + step.relation().relationId());
+                                }).toList();
+                return new domain.datasource.api.ConfigurationElement(
+                        "route:" + route.id(), "Route: " + route.label(), steps);
+            }).toList();
         }
         @Override public PreparedSourceOperation prepare(
                 domain.datasource.api.SourceBinding binding) {

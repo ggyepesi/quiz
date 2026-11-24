@@ -1,5 +1,10 @@
 package domain.workbench.ui;
 
+import domain.config.ConfigurationNode;
+import domain.config.FieldConfigurationProjection;
+import domain.config.GeneratedProjectModel;
+import domain.config.GeneratedProjectModelStore;
+import domain.datasource.Datasources;
 import org.junit.jupiter.api.Test;
 
 import javax.swing.JLabel;
@@ -10,6 +15,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.tree.DefaultMutableTreeNode;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.io.File;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -23,6 +29,13 @@ class TreeAndDetailLayoutIsCheckedInTest {
     private static final Path GOLDEN = Path.of("../docs/tree-and-detail-layout.txt");
 
     @Test void theNeutralTreeAndDetailShapeIsCheckedIn() throws Exception {
+        GeneratedProjectModel egyptianGods = new GeneratedProjectModelStore().load(
+                new File("../data/wikidata/egyptiangods/egyptiangods.model.json"));
+        var deityGroup = egyptianGods.findClass("DeityGroup");
+        var members = deityGroup.fields().stream()
+                .filter(field -> field.name().equals("members")).findFirst().orElseThrow();
+        ConfigurationNode projected = FieldConfigurationProjection.project(
+                egyptianGods, deityGroup, members, Datasources.standard());
         StringBuilder actual = new StringBuilder();
         SwingUtilities.invokeAndWait(() -> {
             TreeAndDetailPanel<FixtureId> configuration = configurationFixture();
@@ -35,6 +48,8 @@ class TreeAndDetailLayoutIsCheckedInTest {
             WorkbenchActionResultNavigator actions = actionResultFixture();
             actual.append("== Existing action/result consumer ==\n");
             describeCaptions(actual, actions.tree());
+            actual.append("\n== Shipped DeityGroup.members projection ==\n");
+            describeProjection(actual, projected, 0);
         });
 
         String rendered = actual.toString().stripTrailing() + "\n";
@@ -49,6 +64,14 @@ class TreeAndDetailLayoutIsCheckedInTest {
                     + "longer matches " + GOLDEN + "; diff it against " + seen
                     + ", then re-run with -Dtree.detail.layout.write=true to accept");
         }
+    }
+
+    private static void describeProjection(
+            StringBuilder out, ConfigurationNode node, int depth) {
+        out.append("  ".repeat(depth))
+                .append(node.kind().name().toLowerCase().replace('_', ' '))
+                .append(": ").append(node.caption()).append('\n');
+        node.children().forEach(child -> describeProjection(out, child, depth + 1));
     }
 
     private static TreeAndDetailPanel<FixtureId> configurationFixture() {
