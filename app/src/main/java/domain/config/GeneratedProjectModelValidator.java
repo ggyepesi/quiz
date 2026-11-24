@@ -1273,6 +1273,18 @@ public final class GeneratedProjectModelValidator {
             GeneratedClassModel clazz,
             List<Problem> problems) {
         SubclassCondition condition = clazz.subclassCondition();
+        if (condition.kind() == SubclassCondition.Kind.PROPERTY_VALUE) {
+            if (MembershipPattern.of(clazz) == MembershipPattern.UNCONFIGURED
+                    && clazz.hasBase()) {
+                GeneratedClassModel base = project.findClass(clazz.baseClassName());
+                if (!PopulationSourceBindings.hasNarrowableWikidataPopulation(base)) {
+                    problems.add(Problem.error(clazz.className(),
+                            "A property/value subclass condition requires its base "
+                                    + "class to declare a Wikidata relation population."));
+                }
+            }
+            return;
+        }
         if (!condition.populationBased()) return;
         if (!clazz.hasBase()) {
             problems.add(Problem.error(clazz.className(),

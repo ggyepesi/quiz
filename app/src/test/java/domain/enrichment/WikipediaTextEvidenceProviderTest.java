@@ -350,6 +350,31 @@ class WikipediaTextEvidenceProviderTest {
         }
     }
 
+    @Test void aConfiguredBlockKindKeepsOnlyCaptionsFromTheStructuredArticle() {
+        var parsed = wikipedia.WikipediaArticleClient.parseArticleText("""
+                <p>Ymir was the ancestor of the jötnar.</p>
+                <figure><img src="ymir.jpg"><figcaption>
+                Ymir is killed by the sons of Borr in this illustration.
+                </figcaption></figure>
+                """);
+        var document = wikipedia.WikipediaArticleClient.sourceDocument(
+                "Ymir", "17", parsed.text(), List.of(), parsed.links());
+        var structured = new domain.datasource.evidence.WikipediaArticle(
+                document, parsed.text(), List.of(), parsed.structuredSections());
+        var article = new wikipedia.WikipediaArticleClient.Article(structured);
+
+        WikipediaTextEvidenceProvider.ArticlePassages passages =
+                WikipediaTextEvidenceProvider.articlePassages(article,
+                        new domain.datasource.wikipedia.WikipediaDatasourceProvider
+                                .ArticlePassageSpec(
+                                domain.datasource.evidence.WikipediaArticle.Block.Kind
+                                        .CAPTION));
+
+        assertEquals(1, passages.passages().size());
+        assertTrue(passages.text().contains("Ymir is killed by the sons of Borr"));
+        assertFalse(passages.text().contains("ancestor of the jötnar"));
+    }
+
     @Test void articlePassagesCanProposeTypedInstancesWithExplicitFieldMappings()
             throws Exception {
         String source = """

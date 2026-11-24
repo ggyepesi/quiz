@@ -16,6 +16,11 @@
     "kind" : "CLASS",
     "artifact" : "norsemythology.snapshot.json"
   }, {
+    "declarationId" : "decl:0a68c036-7e7a-46ce-b2ad-22bed0bbcbbe",
+    "name" : "NorseGiant",
+    "kind" : "CLASS",
+    "artifact" : "norsemythology.snapshot.json"
+  }, {
     "declarationId" : "decl:6deaa4bc-9029-4a6b-8e4f-9035ff95f853",
     "name" : "NorseDwarf",
     "kind" : "CLASS",
@@ -58,6 +63,11 @@
   }, {
     "declarationId" : "decl:481862c7-c465-4c16-976c-dca7f85c737a",
     "name" : "NorseWork",
+    "kind" : "CLASS",
+    "artifact" : "norsemythology.snapshot.json"
+  }, {
+    "declarationId" : "decl:7b29bd16-a901-4193-bb41-b67a7ed2d1ea",
+    "name" : "NorseLiteraryWork",
     "kind" : "CLASS",
     "artifact" : "norsemythology.snapshot.json"
   }, {
@@ -106,5 +116,5 @@
     "kind" : "CLASS",
     "artifact" : "norsemythology.snapshot.json"
   } ],
-  "snapshotSignature" : "model-v2:5da9a66549c4d0f97f6e6f542f0a26ca6a9080742becb12ee518efedbd4c0e0a"
+  "snapshotSignature" : "model-v2:a322c9f6129307ad3daeabf30064210ba97f7cb4a37759a13adea7211a962d79"
 }

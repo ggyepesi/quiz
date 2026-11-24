@@ -202,8 +202,43 @@ class FieldSourcePanelRowsTest {
         reopened.edit(narrative);
         JComboBox<?> reopenedEvidence = comboContainingLabel(reopened,
                 "Bounded passages from the full article");
-        assertEquals(List.of("Article passages"),
+        assertEquals(List.of("Article content passages"),
                 reopened.candidateEvidenceRecipeDescriptions());
+    }
+
+    @Test void articlePassageBlockKindSurvivesApplyAndReopen() {
+        GeneratedFieldModel captions = field("captions", FieldType.TEXT,
+                FieldProductionKind.AUTO, "");
+        GeneratedProjectModel project = projectContaining(captions, true);
+        FieldSourcePanel panel = new FieldSourcePanel();
+        panel.setProjectModel(project);
+        panel.edit(captions);
+
+        panel.addCandidateEvidenceRecipe("Bounded passages from the full article");
+        panel.passageBlockKindBox().setSelectedItem("CAPTION");
+        assertTrue(visibleRowLabels(panel).contains("Article block kind:"));
+        button(panel, "Apply field source").doClick();
+
+        var binding = domain.config.FieldSourceBindings.bindings(captions,
+                domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE).getFirst();
+        assertEquals("CAPTION", binding.recipe().parameter(
+                domain.datasource.wikipedia.WikipediaDatasourceProvider.PASSAGE_BLOCK_KIND));
+        assertEquals("caption blocks",
+                domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .articlePassageSpec(binding).description());
+
+        FieldSourcePanel reopened = new FieldSourcePanel();
+        reopened.setProjectModel(project);
+        reopened.edit(captions);
+        assertEquals("CAPTION", reopened.passageBlockKindBox().getSelectedItem());
+        assertEquals(List.of("Article caption blocks"),
+                reopened.candidateEvidenceRecipeDescriptions());
+        button(reopened, "Apply field source").doClick();
+        assertEquals("CAPTION", domain.config.FieldSourceBindings.bindings(captions,
+                        domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE)
+                .getFirst().recipe().parameter(
+                        domain.datasource.wikipedia.WikipediaDatasourceProvider
+                                .PASSAGE_BLOCK_KIND));
     }
 
     @Test void aReferenceListMapsArticlePassagesOntoItsTargetClass() {

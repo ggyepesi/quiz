@@ -8,6 +8,7 @@ import domain.transform.EditableGroup;
 import domain.transform.FacetGroup;
 import domain.transform.FilterCondition;
 import domain.transform.NearestAncestorGroup;
+import domain.transform.ClassSubtypeGroup;
 import domain.transform.OperationGroup;
 import domain.transform.ProducedGroup;
 import domain.transform.ReferenceField;
@@ -576,6 +577,10 @@ public final class TransformController {
         if (source.getMembers().isEmpty()) {
             throw new IllegalArgumentException("The selected group “"
                     + source.getDisplayName() + "” has no members.");
+        }
+        if (source instanceof ClassSubtypeGroup cls) {
+            throw new IllegalArgumentException(cls.subtype() + " is already a class; "
+                    + "its node only shows its members inside the base class's groups.");
         }
         if (source instanceof OperationGroup operation) {
             return domain.defineSubclass(name, baseType, source.getMembers(), operation);

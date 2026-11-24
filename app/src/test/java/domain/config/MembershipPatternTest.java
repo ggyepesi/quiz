@@ -152,6 +152,63 @@ class MembershipPatternTest {
                 MembershipPattern.describe(person, project));
     }
 
+    @Test void aConditionedSubclassNamesItsActualCondition() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel location = new GeneratedClassModel("Location");
+        location.membership(EntityBound.relation("P31", List.of("Q24334976"), true));
+        project.addClass(location);
+        GeneratedClassModel realm = new GeneratedClassModel("Realm");
+        realm.baseClassName("Location");
+        realm.subclassCondition(SubclassCondition.propertyValue("P361", "Q1798538"));
+        project.addClass(realm);
+
+        assertEquals(MembershipPattern.CONDITIONED_SUBCLASS,
+                MembershipPattern.of(realm, project));
+        assertEquals("Subclass by condition (P361 = Q1798538)",
+                MembershipPattern.describe(realm, project));
+    }
+
+    @Test void aReferencedBaseCannotPretendToSupplyAConditionedPopulationQuery() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel source = new GeneratedClassModel("Source");
+        source.membership(EntityBound.relation("P31", List.of("Q1"), false));
+        source.addField("location", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("Location");
+        project.addClass(source);
+        GeneratedClassModel location = new GeneratedClassModel("Location");
+        project.addClass(location);
+        GeneratedClassModel realm = new GeneratedClassModel("Realm");
+        realm.baseClassName("Location");
+        realm.subclassCondition(SubclassCondition.propertyValue("P361", "Q1798538"));
+        project.addClass(realm);
+
+        assertEquals(MembershipPattern.REFERENCED,
+                MembershipPattern.of(location, project));
+        assertEquals(MembershipPattern.UNCONFIGURED,
+                MembershipPattern.of(realm, project));
+        assertTrue(GeneratedProjectModelValidator.validate(project).errors().stream()
+                .anyMatch(problem -> problem.message().contains(
+                        "requires its base class to declare a Wikidata relation population")));
+    }
+
+    @Test void anImportedBaseDoesNotReexecuteItsOwnersPopulationForACondition() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel location = new GeneratedClassModel("Location");
+        location.importedFrom("Geography");
+        location.membership(EntityBound.relation("P31", List.of("Q2221906"), true));
+        project.addClass(location);
+        GeneratedClassModel realm = new GeneratedClassModel("Realm");
+        realm.baseClassName("Location");
+        realm.subclassCondition(SubclassCondition.propertyValue("P361", "Q1798538"));
+        project.addClass(realm);
+
+        assertEquals(MembershipPattern.UNCONFIGURED,
+                MembershipPattern.of(realm, project));
+        assertTrue(GeneratedProjectModelValidator.validate(project).errors().stream()
+                .anyMatch(problem -> problem.message().contains(
+                        "requires its base class to declare a Wikidata relation population")));
+    }
+
     /**
      * Where a class's instances come from is a fact about roles, not about which field
      * happens to be declared first. History's Person was reported as "Derived from

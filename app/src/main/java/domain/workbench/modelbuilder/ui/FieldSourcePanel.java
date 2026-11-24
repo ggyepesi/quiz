@@ -71,6 +71,7 @@ public class FieldSourcePanel extends JPanel {
     private final JTextField tableEvidenceColumnField = new JTextField(24);
     private final JComboBox<String> passageTextFieldBox = new JComboBox<>();
     private final JComboBox<String> passageSourceFieldBox = new JComboBox<>();
+    private final JComboBox<String> passageBlockKindBox = new JComboBox<>();
     private final JComboBox<String> tableRowTargetClassBox = new JComboBox<>();
     private final JComboBox<String> tableRowDetailsFieldBox = new JComboBox<>();
     private final JComboBox<String> tableRowSourceFieldBox = new JComboBox<>();
@@ -98,6 +99,7 @@ public class FieldSourcePanel extends JPanel {
     private FormRow qualifierConditionRow;
     private FormRow passageTextFieldRow;
     private FormRow passageSourceFieldRow;
+    private FormRow passageBlockKindRow;
     private FormRow infoboxEvidenceKeyRow;
     private FormRow tableEvidenceSectionRow;
     private FormRow tableEvidenceNameRow;
@@ -331,6 +333,10 @@ public class FieldSourcePanel extends JPanel {
                 ignored -> captureSelectedCandidateEvidence());
         candidateEvidenceRecipes.selectionChanged(this::showCandidateEvidenceBinding);
         candidateEvidenceRecipes.describe(this::candidateEvidenceDescription);
+        passageBlockKindBox.addItem("ALL");
+        java.util.Arrays.stream(
+                        domain.datasource.evidence.WikipediaArticle.Block.Kind.values())
+                .map(Enum::name).forEach(passageBlockKindBox::addItem);
         tableRowTargetClassBox.addActionListener(event -> {
             if (!updatingTableRowFields) refreshTableRowTargetFields(null);
         });
@@ -693,6 +699,10 @@ public class FieldSourcePanel extends JPanel {
 
     javax.swing.JComboBox<String> passageTextFieldBox() {
         return passageTextFieldBox;
+    }
+
+    javax.swing.JComboBox<String> passageBlockKindBox() {
+        return passageBlockKindBox;
     }
 
     javax.swing.JTextField infoboxEvidenceKeyField() {
@@ -1075,6 +1085,9 @@ public class FieldSourcePanel extends JPanel {
         domain.datasource.wikipedia.WikipediaDatasourceProvider.ArticlePassageInstanceSpec
                 passageSpec = domain.datasource.wikipedia.WikipediaDatasourceProvider
                         .articlePassageInstances(binding);
+        domain.datasource.wikipedia.WikipediaDatasourceProvider.ArticlePassageSpec
+                articlePassageSpec = domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .articlePassageSpec(binding);
         domain.datasource.wikipedia.WikipediaDatasourceProvider.ArticleTableColumnLinkSpec
                 tableSpec = domain.datasource.wikipedia.WikipediaDatasourceProvider
                         .articleTableColumnLinks(binding);
@@ -1110,6 +1123,8 @@ public class FieldSourcePanel extends JPanel {
         tableEvidenceColumnField.setText(tableRowSpec != null ? tableRowSpec.displayColumn()
                 : tableSpec == null ? "" : tableSpec.column());
         refreshPassageInstanceFields(passageSpec);
+        passageBlockKindBox.setSelectedItem(articlePassageSpec.filtered()
+                ? articlePassageSpec.blockKind().name() : "ALL");
         refreshTableRowInstanceFields(tableRowSpec);
         refreshCandidateEvidenceApplicability();
     }
@@ -1255,6 +1270,7 @@ public class FieldSourcePanel extends JPanel {
                         : "Available for a reference list or one Text value.");
         boolean passageInstances = selected
                 == CandidateEvidenceChoice.ARTICLE_PASSAGE_INSTANCES;
+        boolean articlePassages = selected == CandidateEvidenceChoice.ARTICLE_PASSAGES;
         applicable(infoboxEvidenceKeyRow,
                 selected == CandidateEvidenceChoice.INFOBOX_ROW_LINKS);
         boolean table = selected == CandidateEvidenceChoice.TABLE_COLUMN_LINKS
@@ -1269,6 +1285,7 @@ public class FieldSourcePanel extends JPanel {
         applicable(tableRowReferencesFieldRow, tableRows);
         applicable(passageTextFieldRow, passageInstances);
         applicable(passageSourceFieldRow, passageInstances);
+        applicable(passageBlockKindRow, articlePassages);
         passageTextFieldBox.setEnabled(referenceCollection);
         passageSourceFieldBox.setEnabled(referenceCollection);
     }
@@ -1320,6 +1337,13 @@ public class FieldSourcePanel extends JPanel {
                         domain.datasource.wikipedia.WikipediaDatasourceProvider
                                 .PASSAGE_SOURCE_FIELD,
                         selectedText(passageSourceFieldBox))
+                : selected == CandidateEvidenceChoice.ARTICLE_PASSAGES
+                ? "ALL".equals(selectedText(passageBlockKindBox))
+                        ? java.util.Map.of()
+                        : java.util.Map.of(
+                                domain.datasource.wikipedia.WikipediaDatasourceProvider
+                                        .PASSAGE_BLOCK_KIND,
+                                selectedText(passageBlockKindBox))
                 : selected == CandidateEvidenceChoice.INFOBOX_ROW_LINKS
                 ? java.util.Map.of("property", infoboxEvidenceKeyField.getText().trim())
                 : selected == CandidateEvidenceChoice.TABLE_COLUMN_LINKS
@@ -1672,6 +1696,8 @@ public class FieldSourcePanel extends JPanel {
                 "Passage goes into:", passageTextFieldBox);
         passageSourceFieldRow = FormRow.add(form, c, y++,
                 "Source instance goes into:", passageSourceFieldBox);
+        passageBlockKindRow = FormRow.add(form, c, y++,
+                "Article block kind:", passageBlockKindBox);
         qualifierPidField.setToolTipText("<html>For a field of a <b>statement "
                                                  + "reification</b> class (the class \"Reifies statements of\" "
                                                  + "another): the <b>qualifier</b> PID this field draws from "

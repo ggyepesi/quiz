@@ -1776,6 +1776,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         JButton ruleDetails = groups.addControl(
                 "Show group rule", this::showSelectedGroupRule);
         ruleDetails.setEnabled(false);
+        JButton[] createSubclass = { null };
         grouped.setSelectionHandler(group -> {
             boolean schemaChanged = controller.selectGroup(group);
             if (schemaChanged && viewStepsPanel != null) viewStepsPanel.refreshSchema();
@@ -1783,6 +1784,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     ? editable : null;
             groups.setStatusText(selectedGroupStatus(group));
             ruleDetails.setEnabled(group instanceof domain.transform.ProducedGroup);
+            updateCreateSubclassAction(createSubclass[0], group);
             updateClosurePathAction();
         });
         groups.addControl("Show type spec", this::showSelectedTypeSpec);
@@ -1795,7 +1797,8 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             // panel's operator row, and a control that commits a rule edited elsewhere
             // reads as unrelated to it. Facet and manual groups ask for their own input.
             groups.addControl("Add manual group", () -> addManualGroup(selectedType, root));
-            groups.addControl("Create subclass from group", this::createSubclassFromSelection);
+            createSubclass[0] = groups.addControl(
+                    "Create subclass from group", this::createSubclassFromSelection);
             groups.addControl("Remove", () -> removeSelectedGroup(selectedType, root));
         }
         selectedGroup = root instanceof domain.transform.EditableGroup editable
@@ -2491,6 +2494,17 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             if (!part.isBlank()) result.add(part.trim());
         }
         return result;
+    }
+
+    /** A class node in the group tree already IS a class: offering to turn it into one
+     *  would only end in a refusal. */
+    private static void updateCreateSubclassAction(
+            JButton action, objectview.group.ViewableGroup<?> group) {
+        if (action == null) return;
+        boolean isClass = group instanceof domain.transform.ClassSubtypeGroup;
+        action.setEnabled(!isClass);
+        action.setToolTipText(isClass && group instanceof domain.transform.ClassSubtypeGroup cls
+                ? cls.subtype() + " is already a class" : null);
     }
 
     private void createSubclassFromSelection() {

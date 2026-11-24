@@ -66,6 +66,7 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
             "wikipedia-article-passage-instances";
     public static final String PASSAGE_TEXT_FIELD = "passageTextField";
     public static final String PASSAGE_SOURCE_FIELD = "passageSourceField";
+    public static final String PASSAGE_BLOCK_KIND = "blockKind";
     public static final int MAX_ARTICLE_PASSAGES = 40;
     public static final int MAX_ARTICLE_PASSAGE_CHARACTERS = 20_000;
 
@@ -424,13 +425,27 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     private record ArticlePassages() implements DatasourceOperation {
         @Override public String id() { return ARTICLE_PASSAGES; }
         @Override public String displayName() { return "Bounded article passages"; }
-        @Override public String summary(SourceBinding binding) { return "Article passages"; }
+        @Override public String summary(SourceBinding binding) {
+            return "Article " + articlePassageSpec(binding).description();
+        }
         @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
-        @Override public List<ParameterDescriptor> parameters() { return List.of(); }
+        @Override public List<ParameterDescriptor> parameters() {
+            List<String> choices = new ArrayList<>();
+            choices.add("ALL");
+            java.util.Arrays.stream(
+                            domain.datasource.evidence.WikipediaArticle.Block.Kind.values())
+                    .map(Enum::name).forEach(choices::add);
+            return List.of(new ParameterDescriptor(PASSAGE_BLOCK_KIND,
+                    "Article block kind", ParameterDescriptor.Kind.CHOICE, false,
+                    "ALL", choices,
+                    "Keep every bounded content passage, or only one structural kind "
+                            + "such as CAPTION."));
+        }
         @Override public SourceValueSchema outputSchema() {
             return new SourceValueSchema(SourceValueKind.MODEL_VALUE, false, "");
         }
         @Override public PreparedSourceOperation prepare(SourceBinding binding) {
+            ArticlePassageSpec spec = articlePassageSpec(binding);
             return new PreparedSourceOperation(FAMILY_ARTICLE_PASSAGES,
                     "Wikipedia article passages",
                     PreparedSourceOperation.Execution.RETAIN,
@@ -438,16 +453,23 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
                             + " — review bounded text from the full article",
                     java.util.Map.of(
                             "input", "One versioned full Wikipedia article per selected member",
-                            "operation", "Keep at most " + MAX_ARTICLE_PASSAGES
-                                    + " content passages and "
+                            "operation", "Keep at most " + MAX_ARTICLE_PASSAGES + " "
+                                    + spec.description() + " and "
                                     + MAX_ARTICLE_PASSAGE_CHARACTERS + " characters",
                             "output", "Propose section-labelled text for explicit review"),
-                    ArticlePassageSpec.INSTANCE,
+                    spec,
                     articleCorrespondence());
         }
     }
 
-    public enum ArticlePassageSpec { INSTANCE }
+    public record ArticlePassageSpec(
+            domain.datasource.evidence.WikipediaArticle.Block.Kind blockKind) {
+        public boolean filtered() { return blockKind != null; }
+        public String description() {
+            return filtered() ? blockKind.name().toLowerCase(java.util.Locale.ROOT) + " blocks"
+                    : "content passages";
+        }
+    }
 
     /**
      * The field receives references to reviewed instances of its declared target class.
@@ -646,6 +668,22 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         SourceRecipe recipe = binding.recipe();
         return recipe != null && ID.equals(recipe.providerId())
                 && ARTICLE_PASSAGES.equals(recipe.operationId());
+    }
+
+    public static ArticlePassageSpec articlePassageSpec(SourceBinding binding) {
+        if (!articlePassages(binding)) return new ArticlePassageSpec(null);
+        String configured = binding.recipe().parameter(PASSAGE_BLOCK_KIND).trim();
+        if (configured.isBlank() || configured.equalsIgnoreCase("ALL")) {
+            return new ArticlePassageSpec(null);
+        }
+        try {
+            return new ArticlePassageSpec(
+                    domain.datasource.evidence.WikipediaArticle.Block.Kind.valueOf(
+                            configured.toUpperCase(java.util.Locale.ROOT)));
+        } catch (IllegalArgumentException invalid) {
+            throw new IllegalArgumentException(
+                    "Unknown Wikipedia article block kind: " + configured, invalid);
+        }
     }
 
     public static ArticlePassageInstanceSpec articlePassageInstances(SourceBinding binding) {

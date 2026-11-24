@@ -44,6 +44,8 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
     private final WikipediaLinkedReferenceResolver linkedCandidates;
     private final CandidateEvidenceMode candidateEvidenceMode;
     private final domain.datasource.wikipedia.WikipediaDatasourceProvider
+            .ArticlePassageSpec passageSpec;
+    private final domain.datasource.wikipedia.WikipediaDatasourceProvider
             .ArticlePassageInstanceSpec passageInstanceSpec;
 
     public WikipediaTextEvidenceProvider() {
@@ -90,8 +92,21 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
             CandidateEvidenceMode candidateEvidenceMode,
             domain.datasource.wikipedia.WikipediaDatasourceProvider.ArticlePassageInstanceSpec
                     passageInstanceSpec) {
+        this(categoryRule, referentKind, mentionCandidates, candidateEvidenceMode,
+                passageInstanceSpec, null);
+    }
+
+    public WikipediaTextEvidenceProvider(
+            domain.config.WikipediaCategoryRule categoryRule,
+            domain.config.EntityKindRule referentKind,
+            Collection<? extends Viewable> mentionCandidates,
+            CandidateEvidenceMode candidateEvidenceMode,
+            domain.datasource.wikipedia.WikipediaDatasourceProvider.ArticlePassageInstanceSpec
+                    passageInstanceSpec,
+            domain.datasource.wikipedia.WikipediaDatasourceProvider.ArticlePassageSpec
+                    passageSpec) {
         this(WikimediaEntityLookup.defaultFetcher(), categoryRule, referentKind,
-                mentionCandidates, candidateEvidenceMode, passageInstanceSpec);
+                mentionCandidates, candidateEvidenceMode, passageInstanceSpec, passageSpec);
     }
 
     WikipediaTextEvidenceProvider(WikimediaEntityLookup.JsonFetcher fetcher) {
@@ -133,6 +148,19 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
             CandidateEvidenceMode candidateEvidenceMode,
             domain.datasource.wikipedia.WikipediaDatasourceProvider.ArticlePassageInstanceSpec
                     passageInstanceSpec) {
+        this(fetcher, categoryRule, referentKind, mentionCandidates, candidateEvidenceMode,
+                passageInstanceSpec, null);
+    }
+
+    WikipediaTextEvidenceProvider(WikimediaEntityLookup.JsonFetcher fetcher,
+            domain.config.WikipediaCategoryRule categoryRule,
+            domain.config.EntityKindRule referentKind,
+            Collection<? extends Viewable> mentionCandidates,
+            CandidateEvidenceMode candidateEvidenceMode,
+            domain.datasource.wikipedia.WikipediaDatasourceProvider.ArticlePassageInstanceSpec
+                    passageInstanceSpec,
+            domain.datasource.wikipedia.WikipediaDatasourceProvider.ArticlePassageSpec
+                    passageSpec) {
         this.lookup = new WikimediaEntityLookup(fetcher);
         this.articles = new wikipedia.WikipediaArticleClient(fetcher::fetch);
         this.categoryRule = categoryRule == null ? null : categoryRule.copy();
@@ -140,6 +168,10 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
         this.candidateEvidenceMode = candidateEvidenceMode == null
                 ? CandidateEvidenceMode.NONE : candidateEvidenceMode;
         this.passageInstanceSpec = passageInstanceSpec;
+        this.passageSpec = passageSpec == null
+                ? new domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .ArticlePassageSpec(null)
+                : passageSpec;
         java.util.LinkedHashMap<String, Viewable> unique = new java.util.LinkedHashMap<>();
         if (mentionCandidates != null) {
             for (Viewable candidate : mentionCandidates) {
@@ -201,7 +233,8 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
                 return candidateEvidenceMode == CandidateEvidenceMode.ARTICLE_PASSAGES
                         || candidateEvidenceMode
                             == CandidateEvidenceMode.ARTICLE_PASSAGE_INSTANCES
-                        ? "Find bounded passages in a full Wikipedia article"
+                        ? "Find bounded " + passageSpec.description()
+                                + " in a full Wikipedia article"
                         : "Find Wikipedia text evidence";
             }
             @Override public String skeleton() {
@@ -211,7 +244,7 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
                         ? "Read one full English Wikipedia article; retain at most "
                                 + domain.datasource.wikipedia.WikipediaDatasourceProvider
                                         .MAX_ARTICLE_PASSAGES
-                                + " passages and "
+                                + " " + passageSpec.description() + " and "
                                 + domain.datasource.wikipedia.WikipediaDatasourceProvider
                                         .MAX_ARTICLE_PASSAGE_CHARACTERS
                                 + " characters"
@@ -220,7 +253,8 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
             @Override public String queryType() { return "Wikipedia API"; }
             @Override public String description() {
                 return candidateEvidenceMode == CandidateEvidenceMode.ARTICLE_PASSAGES
-                        ? "Propose section-labelled article text for explicit review"
+                        ? "Propose section-labelled " + passageSpec.description()
+                                + " for explicit review"
                         : candidateEvidenceMode
                             == CandidateEvidenceMode.ARTICLE_PASSAGE_INSTANCES
                         ? "Propose one target-class instance per bounded passage"
@@ -250,7 +284,9 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
                                 lookup.byQid(request.subject().id()).execute(context);
                         String title = entity.sitelink("enwiki");
                         if (title.isBlank()) return empty(request);
-                        article = articles.byTitle(title).execute(context);
+                        article = passageSpec.filtered()
+                                ? articles.structuredByTitle(title).execute(context).article()
+                                : articles.byTitle(title).execute(context);
                     }
                 } else if (request.articleIntroduction() != null) {
                     domain.datasource.evidence.ArticleIntroduction introduction =
@@ -305,7 +341,7 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
                         candidateEvidenceMode == CandidateEvidenceMode.ARTICLE_PASSAGES
                                 || candidateEvidenceMode
                                     == CandidateEvidenceMode.ARTICLE_PASSAGE_INSTANCES
-                                ? articlePassages(article) : null,
+                                ? articlePassages(article, passageSpec) : null,
                         candidateEvidenceMode
                                 == CandidateEvidenceMode.ARTICLE_PASSAGE_INSTANCES
                                 ? passageInstanceSpec : null);
@@ -624,8 +660,19 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
      * not from domain words hidden in Java. */
     static ArticlePassages articlePassages(
             wikipedia.WikipediaArticleClient.Article article) {
+        return articlePassages(article,
+                new domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .ArticlePassageSpec(null));
+    }
+
+    static ArticlePassages articlePassages(
+            wikipedia.WikipediaArticleClient.Article article,
+            domain.datasource.wikipedia.WikipediaDatasourceProvider.ArticlePassageSpec spec) {
         if (article == null || article.text().isBlank()) {
             return new ArticlePassages("", List.of());
+        }
+        if (spec != null && spec.filtered()) {
+            return structuredPassages(article, spec.blockKind());
         }
         int remaining = domain.datasource.wikipedia.WikipediaDatasourceProvider
                 .MAX_ARTICLE_PASSAGE_CHARACTERS;
@@ -679,6 +726,65 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
         return new ArticlePassages(combined.toString(), kept);
     }
 
+    private static ArticlePassages structuredPassages(
+            wikipedia.WikipediaArticleClient.Article article,
+            domain.datasource.evidence.WikipediaArticle.Block.Kind kind) {
+        if (article.structuredArticle() == null || kind == null) {
+            return new ArticlePassages("", List.of());
+        }
+        List<StructuredPassage> candidates = new ArrayList<>();
+        for (domain.datasource.evidence.WikipediaArticle.Section section
+                : article.structuredArticle().sections()) {
+            collectStructuredPassages(section, "", kind, candidates);
+        }
+        int remaining = domain.datasource.wikipedia.WikipediaDatasourceProvider
+                .MAX_ARTICLE_PASSAGE_CHARACTERS;
+        List<Passage> kept = new ArrayList<>();
+        StringBuilder combined = new StringBuilder();
+        String lastSection = "";
+        for (StructuredPassage candidate : candidates) {
+            if (kept.size() >= domain.datasource.wikipedia.WikipediaDatasourceProvider
+                    .MAX_ARTICLE_PASSAGES || remaining <= 0) break;
+            String value = clean(candidate.value());
+            if (value.isBlank()) continue;
+            if (!candidate.section().equals(lastSection)) {
+                String heading = combined.isEmpty() ? candidate.section()
+                        : "\n\n" + candidate.section();
+                if (heading.length() >= remaining) break;
+                combined.append(heading).append('\n');
+                remaining -= heading.length() + 1;
+                lastSection = candidate.section();
+            } else if (!combined.isEmpty()) {
+                if (remaining < 2) break;
+                combined.append("\n\n");
+                remaining -= 2;
+            }
+            int length = Math.min(value.length(), remaining);
+            if (length <= 0) break;
+            String retained = value.substring(0, length);
+            combined.append(retained);
+            kept.add(new Passage(candidate.section(), candidate.start(), retained));
+            remaining -= retained.length();
+        }
+        return new ArticlePassages(combined.toString(), kept);
+    }
+
+    private static void collectStructuredPassages(
+            domain.datasource.evidence.WikipediaArticle.Section section,
+            String parent,
+            domain.datasource.evidence.WikipediaArticle.Block.Kind kind,
+            List<StructuredPassage> out) {
+        if (section == null || maintenanceSection(section.heading())) return;
+        String path = parent.isBlank() ? section.heading()
+                : parent + " > " + section.heading();
+        section.blocks().stream().filter(block -> block.kind() == kind)
+                .forEach(block -> out.add(
+                        new StructuredPassage(path, block.start(), block.value())));
+        for (domain.datasource.evidence.WikipediaArticle.Section child : section.sections()) {
+            collectStructuredPassages(child, path, kind, out);
+        }
+    }
+
     private static boolean maintenanceSection(String title) {
         String normalized = clean(title).toLowerCase(Locale.ROOT);
         return java.util.Set.of("references", "notes", "sources", "bibliography",
@@ -705,6 +811,7 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
     private record MentionTerm(Viewable candidate, String phrase, String articleTitle) { }
     private record MentionHit(Viewable candidate, String phrase, int offset, boolean linked,
                               String section, String recipe) { }
+    private record StructuredPassage(String section, int start, String value) { }
     record Passage(String section, int start, String text) { }
     record ArticlePassages(String text, List<Passage> passages) {
         ArticlePassages {

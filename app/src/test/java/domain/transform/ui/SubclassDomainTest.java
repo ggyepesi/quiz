@@ -41,6 +41,47 @@ class SubclassDomainTest {
         assertEquals(List.of(alabama), onlySubtype.instancesOf("State"));
     }
 
+    /** A class node already is a class: turning it into one is refused with that
+     *  reason, not as an unimplemented "group rule". */
+    @Test void aClassNodeIsNotOfferedAsTheSourceOfANewSubclass() {
+        WikidataDynamicObject ymir = state("Ymir");
+        WikidataDynamicObject thrym = state("Thrym");
+        WorkingDomain domain = new WorkingDomain(
+                new SnapshotDomain(List.of(ymir, thrym)));
+        domain.defineSubclass("NorseGiant", "State", List.of(ymir, thrym));
+        domain.defineSubclass("Jotunn", "NorseGiant", List.of(thrym));
+        objectview.group.ViewableGroup<?> jotunn = domain.editableGroupRoot("NorseGiant")
+                .getChildren().stream()
+                .filter(group -> "Jotunn".equals(group.getDisplayName()))
+                .findFirst().orElseThrow();
+
+        IllegalArgumentException refused = org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalArgumentException.class, () -> new TransformController(domain, null)
+                        .createSubclassFromGroup("Copy", "NorseGiant", jotunn));
+        assertTrue(refused.getMessage().startsWith("Jotunn is already a class"),
+                refused.getMessage());
+    }
+
+    @Test void classHierarchyAppearsAsReadOnlyNestedGroups() {
+        WikidataDynamicObject ymir = state("Ymir");
+        WikidataDynamicObject thrym = state("Thrym");
+        WorkingDomain domain = new WorkingDomain(
+                new SnapshotDomain(List.of(ymir, thrym)));
+        domain.defineSubclass("NorseGiant", "State", List.of(ymir, thrym));
+        domain.defineSubclass("Jotunn", "NorseGiant", List.of(thrym));
+
+        objectview.group.ViewableGroup<?> root =
+                domain.editableGroupRoot("NorseGiant");
+        objectview.group.ViewableGroup<?> jotunn = root.getChildren().stream()
+                .filter(group -> "Jotunn".equals(group.getDisplayName()))
+                .findFirst().orElseThrow();
+
+        assertInstanceOf(domain.transform.ClassSubtypeGroup.class, jotunn);
+        assertInstanceOf(domain.transform.ConfiguredGroup.class, jotunn);
+        assertEquals(List.of("Thrym"), jotunn.getMembers().stream()
+                .map(objectview.Viewable::getIdentifier).toList());
+    }
+
     @Test void directClassClaimsAndBaseClassRoundTripInSnapshot() throws Exception {
         WikidataDynamicObject france = state("France");
         WikidataDynamicObject alabama = state("Alabama");

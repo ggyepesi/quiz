@@ -789,6 +789,8 @@ public final class ValidationPanel extends JPanel {
                 configuredArticleTableColumnLinks(selectedFieldType, selectedFieldPath);
         WikipediaDatasourceProvider.ArticleTableRowInstanceSpec tableRowSpec =
                 configuredArticleTableRowInstances(selectedFieldType, selectedFieldPath);
+        WikipediaDatasourceProvider.ArticlePassageSpec passageSpec =
+                configuredArticlePassageSpec(selectedFieldType, selectedFieldPath);
         boolean configuredEvidence = candidateMode
                 != WikipediaTextEvidenceProvider.CandidateEvidenceMode.NONE
                 || tableColumnSpec != null;
@@ -857,7 +859,7 @@ public final class ValidationPanel extends JPanel {
             wikipediaEvidenceButton.setText(articleTableRowInstances
                     ? "Find table-row instances…"
                     : articlePassageInstances ? "Find passage instances…"
-                    : articlePassages ? "Find article passages…"
+                    : articlePassages ? "Find " + passageSpec.description() + "…"
                     : infoboxRowLinks ? "Find infobox link evidence…"
                     : tableColumnLinks ? "Find table-column link evidence…"
                     : "Find text evidence…");
@@ -873,7 +875,7 @@ public final class ValidationPanel extends JPanel {
                                     + " instances from configured article table rows"
                             : articlePassageInstances
                             ? "Proposed instances from bounded article passages"
-                            : articlePassages ? "Bounded article passages"
+                            : articlePassages ? "Bounded " + passageSpec.description()
                             : infoboxRowLinks ? "Loaded targets linked from an infobox row"
                             : tableColumnLinks
                             ? "Loaded targets linked from an article table column"
@@ -905,7 +907,8 @@ public final class ValidationPanel extends JPanel {
                             : candidateMode == WikipediaTextEvidenceProvider
                             .CandidateEvidenceMode.ARTICLE_PASSAGES
                             ? "<html>Reads each selected member's full article and proposes at "
-                                    + "most 40 content passages / 20,000 characters as one "
+                                    + "most 40 " + passageSpec.description()
+                                    + " / 20,000 characters as one "
                                     + "reviewable text value. It infers no entities or events.</html>"
                             : configuredEvidence
                             ? "<html>Corroborates current values and proposes already-loaded "
@@ -1729,6 +1732,12 @@ public final class ValidationPanel extends JPanel {
                 .articlePassageInstances(binding);
     }
 
+    private WikipediaDatasourceProvider.ArticlePassageSpec
+            configuredArticlePassageSpec(String ownerType, String field) {
+        SourceBinding binding = candidateEvidenceBinding(ownerType, field);
+        return WikipediaDatasourceProvider.articlePassageSpec(binding);
+    }
+
     /** Reviews configured evidence from versioned Wikipedia prose. This is deliberately
      * a separate action from Load values: a mention may corroborate an existing value or,
      * when the model says so, nominate an already-typed instance; neither is automatic
@@ -1782,6 +1791,8 @@ public final class ValidationPanel extends JPanel {
         WikipediaDatasourceProvider.ArticlePassageInstanceSpec
                 passageInstanceSpec = configuredArticlePassageInstances(
                         selectedFieldType, path);
+        WikipediaDatasourceProvider.ArticlePassageSpec passageSpec =
+                configuredArticlePassageSpec(selectedFieldType, path);
         if (articlePassages && (fieldSchema == null
                 || fieldSchema.kind() != objectview.field.FieldKind.TEXT
                 || fieldSchema.collection())) {
@@ -1868,7 +1879,7 @@ public final class ValidationPanel extends JPanel {
                         infoboxRowKey, mentionCandidates, domain)
                 : new WikipediaTextEvidenceProvider(
                         categoryRule, referentKind, mentionCandidates, candidateMode,
-                        passageInstanceSpec);
+                        passageInstanceSpec, passageSpec);
         int skipped = 0;
         for (Viewable member : actionInstances()) {
             if (!domain.isInstanceOf(member, selectedFieldType)) continue;
@@ -1968,7 +1979,7 @@ public final class ValidationPanel extends JPanel {
                 ? "Each selected member's full article is read once; at most "
                         + WikipediaDatasourceProvider
                                 .MAX_ARTICLE_PASSAGES
-                        + " content passages and "
+                        + " " + passageSpec.description() + " and "
                         + WikipediaDatasourceProvider
                                 .MAX_ARTICLE_PASSAGE_CHARACTERS
                         + " characters are proposed as one reviewable text value. Standard "

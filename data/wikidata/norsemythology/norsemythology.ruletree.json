@@ -9,7 +9,7 @@
     "itemVar" : "norseCharacter",
     "sourceQid" : "Q16513904",
     "sourceLabel" : "Norse mythical character",
-    "additionalSourceQids" : [ "java.util.LinkedHashSet", [ "Q131087" ] ],
+    "additionalSourceQids" : [ "java.util.LinkedHashSet", [ "Q131087", "Q4466392" ] ],
     "propertyPid" : "P31",
     "propertyLabel" : "instance of",
     "direction" : "ITEM_TO_ROOT",

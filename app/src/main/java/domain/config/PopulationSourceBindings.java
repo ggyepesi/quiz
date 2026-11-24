@@ -23,6 +23,25 @@ final class PopulationSourceBindings {
 
     private PopulationSourceBindings() { }
 
+    /**
+     * Whether this class declares the Wikidata relation query that a subclass
+     * property/value condition can narrow.
+     *
+     * <p>This deliberately asks for the class's own catalogue binding. A referenced,
+     * acquired, imported, locally classified or merely schema-bearing base does not
+     * supply a relation query into which the subclass condition can be composed.</p>
+     */
+    static boolean hasNarrowableWikidataPopulation(GeneratedClassModel clazz) {
+        if (clazz == null || clazz.isImported() || clazz.classKind() != ClassKind.SOURCE) {
+            return false;
+        }
+        SourceRecipe recipe = fromLegacy(clazz);
+        return recipe != null
+                && WikidataDatasourceProvider.ID.equals(recipe.providerId())
+                && WikidataDatasourceProvider.STATEMENT_MEMBERSHIP.equals(
+                        recipe.operationId());
+    }
+
     static SourceRecipe effective(GeneratedClassModel clazz) {
         return effective(clazz, null);
     }

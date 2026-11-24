@@ -40,6 +40,15 @@ class NorseMythologySavedModelTest {
         assertEquals(FieldSourceType.WIKIPEDIA_ARTICLE_LEAD_SENTENCE,
                 field(model.findClass("MythologicalEntity"), "summary")
                         .mapping().sourceType());
+        GeneratedFieldModel captions = field(
+                model.findClass("MythologicalEntity"), "captions");
+        var captionBinding = captions.sourceBindings().stream()
+                .filter(binding -> binding.target().slot()
+                        == SourceBindingSlot.CANDIDATE_EVIDENCE)
+                .findFirst().orElseThrow();
+        assertEquals(domain.datasource.evidence.WikipediaArticle.Block.Kind.CAPTION,
+                domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .articlePassageSpec(captionBinding).blockKind());
         assertEquals("P710", field(model.findClass("MythologicalEvent"), "participants")
                 .mapping().propertyPid());
         // "Part of" on every entity was almost all "part of Norse mythology"; only a
@@ -125,11 +134,29 @@ class NorseMythologySavedModelTest {
         assertEquals(GeneratedProjectModel.ProjectKind.DOMAIN, model.projectKind());
         assertEquals("Mythology Core", model.findClass("MythologicalEntity").importedFrom());
         assertEquals("Mythology Core", model.findClass("MythologicalBeing").importedFrom());
-        // Valkyries (Q131087) are Norse characters that the character class alone missed.
+        // Valkyries (Q131087) and the Norse-specific Thurse branch (Q4466392) are
+        // character carriers that the broad Norse-character class alone misses.
         assertPopulation(model, "NorseCharacter", "MythologicalCharacter",
-                "Q16513904", "Q131087");
+                "Q16513904", "Q131087", "Q4466392");
         assertPopulation(model, "NorseDeity", "NorseCharacter", "Q16513881");
-        assertPopulation(model, "Jotunn", "NorseCharacter", "Q24267081");
+        // Wikidata does not place Jötunn under "giant"; the model does: every jötunn is a
+        // NorseGiant, while Jotunn keeps its own Jötunn population, not narrowed by the
+        // giant condition.
+        assertPopulation(model, "Jotunn", "NorseGiant", "Q24267081");
+        assertTrue(model.isSameOrSubclass("Jotunn", "NorseCharacter"));
+        GeneratedClassModel giant = model.findClass("NorseGiant");
+        assertNotNull(giant);
+        assertEquals("NorseCharacter", giant.baseClassName());
+        assertEquals(EntityBound.Kind.UNBOUNDED, giant.membership().kind());
+        assertEquals(SubclassCondition.propertyValue("P31", "Q3707571", true),
+                giant.subclassCondition());
+        assertEquals(MembershipPattern.CONDITIONED_SUBCLASS,
+                MembershipPattern.of(giant, model));
+        String giantQuery = RuleNodeQueryBuilder.valuesQuery(
+                domain.compile.rule.RuleTreeCompiler.compileClass(giant, model));
+        for (String qid : List.of("Q16513904", "Q131087", "Q4466392", "Q3707571")) {
+            assertTrue(giantQuery.contains("wd:" + qid), giantQuery);
+        }
         assertPopulation(model, "NorseDwarf", "NorseCharacter", "Q2738581");
         GeneratedClassModel creature = model.findClass("NorseCreature");
         assertNotNull(creature);
@@ -160,6 +187,8 @@ class NorseMythologySavedModelTest {
         // It has a population (its base's, narrowed), so it is neither "Unconfigured" in
         // the editor nor a schema-only base whose members a save may drop unguarded.
         assertEquals(MembershipPattern.CONDITIONED_SUBCLASS, MembershipPattern.of(realm, model));
+        assertEquals("Subclass by condition (P361 = Q1798538)",
+                MembershipPattern.describe(realm, model));
         assertFalse(MembershipPattern.schemaOnlyBase(realm, model));
         assertPopulation(model, "NorseArtifact", "MythologicalArtifact", "Q16521098");
         assertPopulation(model, "NorseEvent", "MythologicalEvent", "Q24336490");
@@ -167,6 +196,19 @@ class NorseMythologySavedModelTest {
         // class would admit an uncontrolled population merely to retain P1441 links.
         assertPopulation(model, "NorseWork", "MythologicalWork",
                 "Q24457184", "Q24491885", "Q20022348");
+        // The texts Norse entities appear in (Eddas, sagas) are typed only "literary
+        // work", too broad to populate from. They are a sibling seeded kind: seeds on
+        // NorseWork itself would INTERSECT its class membership and drop them again.
+        GeneratedClassModel literary = model.findClass("NorseLiteraryWork");
+        assertNotNull(literary);
+        assertEquals("MythologicalWork", literary.baseClassName());
+        assertEquals(MembershipPattern.SEEDED, MembershipPattern.of(literary, model));
+        assertTrue(literary.seedQids().containsAll(List.of("Q205874", "Q205882", "Q733340")),
+                "Poetic Edda, Prose Edda and Volsunga saga");
+        String literaryQuery = RuleNodeQueryBuilder.valuesQuery(
+                domain.compile.rule.RuleTreeCompiler.compileClass(literary, model));
+        assertFalse(literaryQuery.contains("wdt:P31 ?root"),
+                "no inherited class restriction narrows the seeds");
         // The group class alone has 5 instances; most Norse groups are typed as character
         // or creature groupings (coverage check, 2026-11-23).
         assertPopulation(model, "NorseGroup", "MythologicalGroup",

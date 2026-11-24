@@ -151,8 +151,7 @@ public enum MembershipPattern {
                 || !condition.configured()) return false;
         GeneratedClassModel base = project.findClass(clazz.baseClassName());
         if (base == null || base == clazz) return false;
-        MembershipPattern basePattern = of(base, project);
-        return basePattern != UNCONFIGURED && !basePattern.classifiedLocally();
+        return PopulationSourceBindings.hasNarrowableWikidataPopulation(base);
     }
 
     private static boolean inheritsFrom(
@@ -491,7 +490,8 @@ public enum MembershipPattern {
      *  single-argument {@link #describe(GeneratedClassModel)}. */
     public static String describe(
             GeneratedClassModel clazz, GeneratedProjectModel project) {
-        if (of(clazz, project) == OWNED_COMPONENT) {
+        MembershipPattern pattern = of(clazz, project);
+        if (pattern == OWNED_COMPONENT) {
             // What the CLASS is, then where it is produced. "Owned by Person.fullname"
             // read as though the class belonged to that owner; a field is a production
             // SITE, and the same owned class may be produced at several of them.
@@ -501,25 +501,30 @@ public enum MembershipPattern {
             return shown.isBlank() ? "Owned class (no producing field yet)"
                     : "Owned class — produced at " + shown;
         }
-        if (of(clazz, project) == REFERENCED) {
+        if (pattern == REFERENCED) {
             DerivedFrom d = derivedFrom(clazz, project);
             String via = d.ownerClass() + "." + d.fieldName();
             return "Derived from " + via
                     + (d.pid().matches("(?i)P\\d+") ? " (" + d.pid() + ")" : "");
         }
         EntityKindRule kind = kindRule(clazz, project);
-        if (of(clazz, project) == EVIDENCE_KIND && kind != null) {
+        if (pattern == EVIDENCE_KIND && kind != null) {
             List<String> qids = kind.evidenceQids();
             String shown = String.join(", ", qids.subList(0, Math.min(3, qids.size())));
             return EVIDENCE_KIND.label + " (" + kind.propertyPid() + " = " + shown
                     + (qids.size() > 3 ? ", +" + (qids.size() - 3) : "") + ")";
         }
-        if (of(clazz, project) == POPULATION_SUBCLASS) {
+        if (pattern == POPULATION_SUBCLASS) {
             SubclassCondition condition = clazz.subclassCondition();
             return POPULATION_SUBCLASS.label + " (QID "
                     + (condition.kind() == SubclassCondition.Kind.IN_POPULATION
                             ? "is in " : "is outside ")
                     + condition.selectionName() + ")";
+        }
+        if (pattern == CONDITIONED_SUBCLASS) {
+            SubclassCondition condition = clazz.subclassCondition();
+            return CONDITIONED_SUBCLASS.label + " (" + condition.propertyPid()
+                    + " = " + condition.qid() + ")";
         }
         return describe(clazz);
     }

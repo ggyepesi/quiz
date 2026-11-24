@@ -48,7 +48,7 @@
     },
     "membership" : {
       "kind" : "RELATION",
-      "qids" : [ "java.util.ImmutableCollections$List12", [ "Q16513904", "Q131087" ] ],
+      "qids" : [ "java.util.ImmutableCollections$ListN", [ "Q16513904", "Q131087", "Q4466392" ] ],
       "relationPid" : "P31",
       "selectionName" : "",
       "selectionId" : "",
@@ -63,7 +63,7 @@
         "@class" : "java.util.ImmutableCollections$MapN",
         "includeSubclasses" : "true",
         "property" : "P31",
-        "values" : "Q16513904,Q131087"
+        "values" : "Q16513904,Q131087,Q4466392"
       }
     },
     "populationMode" : "GENERATED",
@@ -85,7 +85,7 @@
           "@class" : "java.util.ImmutableCollections$MapN",
           "includeSubclasses" : "true",
           "property" : "P31",
-          "values" : "Q16513904,Q131087"
+          "values" : "Q16513904,Q131087,Q4466392"
         }
       }
     }, {
@@ -205,7 +205,7 @@
     },
     "membership" : {
       "kind" : "RELATION",
-      "qids" : [ "java.util.ImmutableCollections$List12", [ "Q16513904", "Q131087" ] ],
+      "qids" : [ "java.util.ImmutableCollections$ListN", [ "Q16513904", "Q131087", "Q4466392" ] ],
       "relationPid" : "P31",
       "selectionName" : "",
       "selectionId" : "",
@@ -220,7 +220,7 @@
         "@class" : "java.util.ImmutableCollections$MapN",
         "includeSubclasses" : "true",
         "property" : "P31",
-        "values" : "Q16513904,Q131087"
+        "values" : "Q16513904,Q131087,Q4466392"
       }
     },
     "populationMode" : "GENERATED",
@@ -242,7 +242,7 @@
           "@class" : "java.util.ImmutableCollections$MapN",
           "includeSubclasses" : "true",
           "property" : "P31",
-          "values" : "Q16513904,Q131087"
+          "values" : "Q16513904,Q131087,Q4466392"
         }
       }
     }, {
@@ -473,8 +473,8 @@
     "@class" : "domain.config.GeneratedClassModel",
     "declarationId" : "decl:e1486c2b-ab50-4756-b834-53f86889feeb",
     "className" : "Jotunn",
-    "baseClassName" : "NorseCharacter",
-    "baseClassId" : "decl:44a3fc15-b391-4fae-9a7d-f50c7bd1c507",
+    "baseClassName" : "NorseGiant",
+    "baseClassId" : "decl:0a68c036-7e7a-46ce-b2ad-22bed0bbcbbe",
     "discriminatorPid" : "",
     "discriminatorQid" : "",
     "subclassCondition" : {
@@ -598,6 +598,153 @@
         "fieldPath" : "",
         "slot" : "CLASS_ALIASES",
         "classDeclarationId" : "decl:e1486c2b-ab50-4756-b834-53f86889feeb",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "aliases",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    } ] ],
+    "canonical" : {
+      "@class" : "domain.config.CanonicalSpec",
+      "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "reductions" : {
+        "@class" : "java.util.LinkedHashMap"
+      },
+      "missingKeyPolicy" : "INCOMPLETE_GROUP",
+      "duplicatePolicy" : [ "domain.config.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
+      "displayNameMode" : "LABEL",
+      "displayNameField" : "",
+      "displayNameTemplate" : "",
+      "labelLanguage" : "en",
+      "primaryListField" : ""
+    }
+  }, {
+    "@class" : "domain.config.GeneratedClassModel",
+    "declarationId" : "decl:0a68c036-7e7a-46ce-b2ad-22bed0bbcbbe",
+    "className" : "NorseGiant",
+    "baseClassName" : "NorseCharacter",
+    "baseClassId" : "decl:44a3fc15-b391-4fae-9a7d-f50c7bd1c507",
+    "discriminatorPid" : "P31",
+    "discriminatorQid" : "Q3707571",
+    "subclassCondition" : {
+      "kind" : "PROPERTY_VALUE",
+      "propertyPid" : "P31",
+      "qid" : "Q3707571",
+      "includeDescendants" : true
+    },
+    "alias" : "",
+    "importedFrom" : "",
+    "classKind" : "SOURCE",
+    "graphSource" : null,
+    "generationDepth" : 1,
+    "instanceMapping" : {
+      "@class" : "domain.config.FieldSourceMapping",
+      "sourceQid" : "",
+      "sourceLabel" : "Norse giant",
+      "propertyPid" : "",
+      "propertyLabel" : "instance of",
+      "qualifierPid" : "",
+      "qualifierLabel" : "",
+      "subjectField" : "",
+      "matchValueField" : "",
+      "matchRoleField" : "",
+      "inverseField" : "",
+      "direction" : "ITEM_TO_ROOT",
+      "requireLabel" : true,
+      "labelLanguage" : "en",
+      "valueLanguage" : "",
+      "requireSitelink" : false,
+      "limit" : 500,
+      "rankBy" : "",
+      "rankDescending" : true,
+      "productionKind" : "AUTO",
+      "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "sourceType" : "SPARQL"
+    },
+    "membership" : {
+      "kind" : "UNBOUNDED",
+      "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+      "relationPid" : "",
+      "selectionName" : "",
+      "selectionId" : "",
+      "includeDescendants" : false
+    },
+    "fields" : [ "java.util.ArrayList", [ ] ],
+    "seedQids" : [ "java.util.ArrayList", [ ] ],
+    "populationMode" : "GENERATED",
+    "sourceBindings" : [ "java.util.ArrayList", [ {
+      "target" : {
+        "scope" : "CLASS_POPULATION",
+        "className" : "NorseGiant",
+        "fieldPath" : "",
+        "slot" : "CLASS_POPULATION",
+        "classDeclarationId" : "decl:0a68c036-7e7a-46ce-b2ad-22bed0bbcbbe",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "statement-membership",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN",
+          "includeSubclasses" : "true",
+          "property" : "P31",
+          "values" : "Q16513904,Q131087,Q4466392"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_IDENTITY",
+        "className" : "NorseGiant",
+        "fieldPath" : "",
+        "slot" : "CLASS_IDENTITY",
+        "classDeclarationId" : "decl:0a68c036-7e7a-46ce-b2ad-22bed0bbcbbe",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "identifier",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "NorseGiant",
+        "fieldPath" : "",
+        "slot" : "CLASS_LABEL",
+        "classDeclarationId" : "decl:0a68c036-7e7a-46ce-b2ad-22bed0bbcbbe",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "label",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "NorseGiant",
+        "fieldPath" : "",
+        "slot" : "CLASS_ALIASES",
+        "classDeclarationId" : "decl:0a68c036-7e7a-46ce-b2ad-22bed0bbcbbe",
         "contextClassName" : "",
         "contextFieldPath" : "",
         "contextClassDeclarationId" : ""
@@ -1957,6 +2104,157 @@
         "fieldPath" : "",
         "slot" : "CLASS_ALIASES",
         "classDeclarationId" : "decl:481862c7-c465-4c16-976c-dca7f85c737a",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "aliases",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    } ] ],
+    "canonical" : {
+      "@class" : "domain.config.CanonicalSpec",
+      "keyFields" : [ "java.util.ArrayList", [ ] ],
+      "reductions" : {
+        "@class" : "java.util.LinkedHashMap"
+      },
+      "missingKeyPolicy" : "INCOMPLETE_GROUP",
+      "duplicatePolicy" : [ "domain.config.CanonicalSpec$DuplicatePolicy", "KEEP_ONE" ],
+      "displayNameMode" : "LABEL",
+      "displayNameField" : "",
+      "displayNameTemplate" : "",
+      "labelLanguage" : "en",
+      "primaryListField" : ""
+    }
+  }, {
+    "@class" : "domain.config.GeneratedClassModel",
+    "declarationId" : "decl:7b29bd16-a901-4193-bb41-b67a7ed2d1ea",
+    "className" : "NorseLiteraryWork",
+    "baseClassName" : "MythologicalWork",
+    "baseClassId" : "decl:d5846930-1721-45f7-84c3-5dcea475a221",
+    "discriminatorPid" : "",
+    "discriminatorQid" : "",
+    "subclassCondition" : {
+      "kind" : "NONE",
+      "includeDescendants" : false
+    },
+    "alias" : "",
+    "importedFrom" : "",
+    "classKind" : "SOURCE",
+    "graphSource" : null,
+    "generationDepth" : 1,
+    "instanceMapping" : {
+      "@class" : "domain.config.FieldSourceMapping",
+      "sourceQid" : "",
+      "sourceLabel" : "",
+      "propertyPid" : "",
+      "propertyLabel" : "",
+      "qualifierPid" : "",
+      "qualifierLabel" : "",
+      "subjectField" : "",
+      "matchValueField" : "",
+      "matchRoleField" : "",
+      "inverseField" : "",
+      "direction" : "ITEM_TO_ROOT",
+      "requireLabel" : true,
+      "labelLanguage" : "en",
+      "valueLanguage" : "",
+      "requireSitelink" : false,
+      "limit" : 200,
+      "rankBy" : "",
+      "rankDescending" : true,
+      "productionKind" : "AUTO",
+      "allowedQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "excludedQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "additionalTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "excludedTypeQids" : [ "java.util.LinkedHashSet", [ ] ],
+      "sourceType" : "SPARQL"
+    },
+    "membership" : {
+      "kind" : "UNBOUNDED",
+      "qids" : [ "java.util.ImmutableCollections$ListN", [ ] ],
+      "relationPid" : "",
+      "selectionName" : "",
+      "selectionId" : "",
+      "includeDescendants" : false
+    },
+    "fields" : [ "java.util.ArrayList", [ ] ],
+    "seedQids" : [ "java.util.ArrayList", [ "Q733340", "Q205882", "Q1202175", "Q205874", "Q131554", "Q1134288", "Q1756505", "Q617881", "Q108652", "Q178075", "Q804775", "Q1479058", "Q1503061", "Q1848239", "Q195789", "Q2290034", "Q3049498", "Q3481116", "Q510143" ] ],
+    "populationSource" : {
+      "providerId" : "wikidata",
+      "operationId" : "seed-list",
+      "parameters" : {
+        "@class" : "java.util.ImmutableCollections$Map1",
+        "ids" : "Q733340,Q205882,Q1202175,Q205874,Q131554,Q1134288,Q1756505,Q617881,Q108652,Q178075,Q804775,Q1479058,Q1503061,Q1848239,Q195789,Q2290034,Q3049498,Q3481116,Q510143"
+      }
+    },
+    "populationMode" : "GENERATED",
+    "sourceBindings" : [ "java.util.ArrayList", [ {
+      "target" : {
+        "scope" : "CLASS_POPULATION",
+        "className" : "NorseLiteraryWork",
+        "fieldPath" : "",
+        "slot" : "CLASS_POPULATION",
+        "classDeclarationId" : "decl:7b29bd16-a901-4193-bb41-b67a7ed2d1ea",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "seed-list",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$Map1",
+          "ids" : "Q733340,Q205882,Q1202175,Q205874,Q131554,Q1134288,Q1756505,Q617881,Q108652,Q178075,Q804775,Q1479058,Q1503061,Q1848239,Q195789,Q2290034,Q3049498,Q3481116,Q510143"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_IDENTITY",
+        "className" : "NorseLiteraryWork",
+        "fieldPath" : "",
+        "slot" : "CLASS_IDENTITY",
+        "classDeclarationId" : "decl:7b29bd16-a901-4193-bb41-b67a7ed2d1ea",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "identifier",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "NorseLiteraryWork",
+        "fieldPath" : "",
+        "slot" : "CLASS_LABEL",
+        "classDeclarationId" : "decl:7b29bd16-a901-4193-bb41-b67a7ed2d1ea",
+        "contextClassName" : "",
+        "contextFieldPath" : "",
+        "contextClassDeclarationId" : ""
+      },
+      "recipe" : {
+        "providerId" : "wikidata",
+        "operationId" : "label",
+        "parameters" : {
+          "@class" : "java.util.ImmutableCollections$MapN"
+        }
+      }
+    }, {
+      "target" : {
+        "scope" : "CLASS_NAMES",
+        "className" : "NorseLiteraryWork",
+        "fieldPath" : "",
+        "slot" : "CLASS_ALIASES",
+        "classDeclarationId" : "decl:7b29bd16-a901-4193-bb41-b67a7ed2d1ea",
         "contextClassName" : "",
         "contextFieldPath" : "",
         "contextClassDeclarationId" : ""

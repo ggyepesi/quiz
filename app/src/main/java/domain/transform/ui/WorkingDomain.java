@@ -381,9 +381,27 @@ public final class WorkingDomain extends DelegatingDomainModel
         objectview.group.ViewableGroup<?> declared = base.groupRoot(type);
         // Members + produced descendants are (re)derived by editableGroupRoot's refresh;
         // this only reconstructs the declared/empty tree shape.
-        return declared == null
+        domain.transform.EditableGroup root = declared == null
                 ? new domain.transform.EditableGroup("All " + type)
                 : domain.transform.EditableGroup.copyOf(declared, this);
+        addClassSubtypeGroups(root, type, new java.util.HashSet<>());
+        return root;
+    }
+
+    /** Mirrors only direct class edges; recursion supplies deeper subtype nesting. */
+    private void addClassSubtypeGroups(
+            domain.transform.EditableGroup parent, String baseType,
+            java.util.Set<String> visited) {
+        if (parent == null || baseType == null || !visited.add(baseType)) return;
+        types().stream()
+                .filter(candidate -> baseType.equals(baseType(candidate)))
+                .sorted()
+                .forEach(subtype -> {
+                    domain.transform.ClassSubtypeGroup child =
+                            new domain.transform.ClassSubtypeGroup(subtype, this);
+                    parent.addGroup(child);
+                    addClassSubtypeGroups(child, subtype, visited);
+                });
     }
 
     @Override public List<String> types() {
