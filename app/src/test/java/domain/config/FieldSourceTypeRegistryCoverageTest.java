@@ -78,9 +78,8 @@ class FieldSourceTypeRegistryCoverageTest {
         assertEquals(List.of(), failures);
     }
 
-    /** The binding-to-type direction is a separate hand-written list
-     *  ({@code FieldSourceBindings.sourceType(recipe)}). A type added to the coverage
-     *  table but not to that list would silently read back as SPARQL or MANUAL. */
+    /** The binding-to-type direction must read the same exhaustive coverage table.
+     *  Otherwise a newly classified type could silently read back as another type. */
     @Test void everyFixedLegacySourceReadsBackAsTheTypeItWasSavedAs() {
         for (FieldSourceBindings.LegacySourceCoverage coverage
                 : FieldSourceBindings.sourceTypeCoverage()) {

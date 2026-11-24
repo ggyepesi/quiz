@@ -12,11 +12,12 @@ remains runnable as the comparison baseline while both hosts use the same model-
 and editor implementation. Executable operations and their results remain the separate
 action/result tree of #558.
 
-Milestones 1 and 2 are implemented. `ConfigurationReferenceInventory` is the typed model-layer
+Milestones 1 through 4 are implemented. `ConfigurationReferenceInventory` is the typed model-layer
 inventory: validation, `ClassDependencies`, class/selection rename discovery and datasource recipe
 references consume it. Datasource operations declare references hidden inside their own recipe
 grammar, and prepared input requirements are resolved to model sites such as an article
-correspondence. The neutral shell and editor conversion have not started.
+correspondence. `TreeAndDetailPanel` is the neutral shell, and the existing action/result navigator
+uses it. Construct-specific configuration projection and editor conversion start with milestone 5.
 
 Related: [ModelBuilder Constructs](modelbuilder-constructs.md),
 [Effective Class Explanation and Uniform Sampling](effective-class-explanation-and-sampling.md),
@@ -261,7 +262,7 @@ Follow #557 as checked milestones:
 2. Add the typed configuration-reference inventory and projections; force validation, dependency
    navigation and rename discovery to read the same facts. **Done.**
 3. Classify legacy `FieldSourceType` coverage against the datasource registry. **Done.**
-4. Add the neutral tree-and-detail shell with a checked-in rendered artifact.
+4. Add the neutral tree-and-detail shell with a checked-in rendered artifact. **Done.**
 5. Convert the field editor, covering a datasource field, relation-route field and table-row
    evidence field.
 6. Convert the graph editor.
@@ -290,8 +291,9 @@ the same resulting model in ModelBuilderApp.
 - **Apply before Save:** Apply makes the tree and execution plan report the same configuration
   without requiring Save.
 - **Stable rename:** renaming a target or context class retains source nodes and selection.
-- **Checked-in rendering:** a text render beside `docs/panel-layout.txt` records node kind, caption
-  and nesting for representative shipped constructs and is enforced by a test.
+- **Checked-in rendering:** `docs/tree-and-detail-layout.txt` records node kind, caption and nesting
+  for the neutral configuration-shaped fixture and proves that the existing action/result navigator
+  consumes the same shell. Milestone 5 extends the artifact with projected shipped constructs.
 - **Host parity:** editing the forcing fields through ModelBuilderApp and the unified workbench
   produces the same serialized model.
 

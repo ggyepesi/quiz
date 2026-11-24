@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -22,6 +24,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * real result tabs are two controls over one selected result.
  */
 class WorkbenchActionResultNavigatorTest {
+
+    @Test void actionAndResultNavigationUsesTheNeutralTreeAndDetailShell()
+            throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            WorkbenchActionResultNavigator navigator =
+                    new WorkbenchActionResultNavigator();
+            TreeAndDetailPanel<?> shell = find(navigator, TreeAndDetailPanel.class);
+
+            assertNotNull(shell);
+            assertSame(shell.tree(), navigator.tree(),
+                    "the action navigator must expose the shared shell's one tree");
+        });
+    }
 
     @Test void theResultWorkAreaGetsWidthBeforeTheNavigationTree() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
@@ -160,5 +175,17 @@ class WorkbenchActionResultNavigatorTest {
             }
         }
         throw new AssertionError("No " + type.getSimpleName() + " named " + name);
+    }
+
+    private static <T> T find(java.awt.Container root, Class<T> type) {
+        if (type.isInstance(root)) return type.cast(root);
+        for (java.awt.Component child : root.getComponents()) {
+            if (type.isInstance(child)) return type.cast(child);
+            if (child instanceof java.awt.Container nested) {
+                T found = find(nested, type);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 }

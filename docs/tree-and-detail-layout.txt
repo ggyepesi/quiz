@@ -1,0 +1,15 @@
+== Configuration-shaped neutral tree ==
+stored configuration: DeityGroup.members
+  stored configuration: Definition
+  stored configuration: Produced by
+    stored configuration: Primary: Wikidata relation routes (3)
+    available slot: + Add fallback source
+  reference: Needs: DeityGroupMember
+  inventory summary: Curation: 42 decisions
+selected detail: Compatible fallback choices
+
+== Existing action/result consumer ==
+Wikipedia
+  Fetch selected articles
+    Articles — 2
+    Sections — 9
