@@ -320,6 +320,13 @@ public final class ViewableToWdo {
                 if (!ref.role().domainValue()) {
                     continue;
                 }
+                // A group's unanimous member fields are a live projection of its current
+                // members. Persisting them would turn the projection into stale authored
+                // data after membership changes; reload recomputes them instead.
+                if (q instanceof objectview.group.ViewableGroup<?>
+                        && objectview.group.ViewableGroupFields.isMemberDerived(ref)) {
+                    continue;
+                }
                 Object cv = convert(
                         set.read(ref.name()), seen, groups, schema, nestedScope);
                 // Skip null AND blank scalars — a blank value carries no information and

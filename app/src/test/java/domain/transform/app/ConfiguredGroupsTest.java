@@ -65,6 +65,61 @@ class ConfiguredGroupsTest {
         assertEquals(names(modelBuilderRoot), names(compiledRoot));
     }
 
+    @Test void aStrictlyContainedSiblingClassBecomesASemanticSubgroup() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.rootClass().className("Character");
+        GeneratedClassModel giant = new GeneratedClassModel("Giant");
+        giant.baseClassName("Character");
+        model.addClass(giant);
+        GeneratedClassModel jotunn = new GeneratedClassModel("Jotunn");
+        jotunn.baseClassName("Character");
+        model.addClass(jotunn);
+
+        WikidataDynamicObject ymir = new WikidataDynamicObject("Q1", "Ymir");
+        ymir.type("Giant");
+        ymir.directClasses(java.util.Set.of("Giant"));
+        WikidataDynamicObject thrym = new WikidataDynamicObject("Q2", "Thrym");
+        thrym.type("Jotunn");
+        thrym.directClasses(java.util.Set.of("Giant", "Jotunn"));
+
+        objectview.group.ViewableGroup<?> root =
+                domain.transform.ClassHierarchyGroups.rootBindings(
+                                model, List.of(ymir, thrym)).stream()
+                        .filter(binding -> "Character".equals(binding.memberType()))
+                        .findFirst().orElseThrow().root();
+        objectview.group.ViewableGroup<?> giantGroup = root.getChildren().stream()
+                .filter(group -> "Giant".equals(group.getDisplayName()))
+                .findFirst().orElseThrow();
+
+        assertEquals(List.of("Giant"), names(root));
+        assertEquals(List.of("Jotunn"), names(giantGroup));
+        assertEquals(List.of("Thrym"), giantGroup.getChildren().iterator().next()
+                .getMembers().stream().map(objectview.Viewable::getDisplayName).toList());
+    }
+
+    @Test void equalSiblingPopulationsDoNotInventAnArbitraryHierarchy() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.rootClass().className("Character");
+        GeneratedClassModel first = new GeneratedClassModel("FirstKind");
+        first.baseClassName("Character");
+        model.addClass(first);
+        GeneratedClassModel second = new GeneratedClassModel("SecondKind");
+        second.baseClassName("Character");
+        model.addClass(second);
+        WikidataDynamicObject same = new WikidataDynamicObject("Q1", "Same member");
+        same.type("FirstKind");
+        same.directClasses(java.util.Set.of("FirstKind", "SecondKind"));
+
+        objectview.group.ViewableGroup<?> root =
+                domain.transform.ClassHierarchyGroups.rootBindings(
+                                model, List.of(same)).stream()
+                        .filter(binding -> "Character".equals(binding.memberType()))
+                        .findFirst().orElseThrow().root();
+
+        assertEquals(List.of("FirstKind", "SecondKind"), names(root));
+        assertTrue(root.getChildren().stream().allMatch(group -> group.getChildren().isEmpty()));
+    }
+
     @Test void aConfiguredMemberFieldProducesAGroupWithThoseInstances() {
         Fixture fixture = fixture();
 

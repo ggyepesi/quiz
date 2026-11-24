@@ -351,10 +351,10 @@ public class QueryObjectResultPanel
             if (values.isEmpty()) continue;
             objectview.group.ViewableGroup<?> group = configuredGroups.get(entry.getKey());
             if (group != null) {
-                multi.addSection(sectionTitle(entry.getKey(), values.size()),
+                multi.addSection(entry.getKey(), sectionTitle(entry.getKey(), values.size()),
                         new objectview.render.GroupView(group, multi.context()), capped(values));
             } else {
-                multi.addSection(sectionTitle(entry.getKey(), values.size()),
+                multi.addSection(entry.getKey(), sectionTitle(entry.getKey(), values.size()),
                         values.getFirst().getClass(), capped(values));
             }
         }

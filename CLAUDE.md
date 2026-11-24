@@ -675,10 +675,18 @@ construct per thing produced:
   search, sort, persistence and configuration never reflect an implementation class to
   rediscover a second shape. Membership, subgroups and an optional group-entity reference
   are ordinary visible fields; the parent link and group role are structural bookkeeping.
+  A non-empty group's members also extend their unanimous ordinary fields to the group:
+  a scalar/reference value extends only when every member has that same known value, and a
+  collection contributes only values present on every member. Missing data is not agreement.
+  These values are recomputed projections, never stored copies. Group A is a subgroup of B
+  when A's effective members are a strict subset of B's; empty and equal member sets establish
+  no direction.
   A group outline is a compact `JTree` navigation over those same objects, not a separate
   group-card renderer: its row keeps the group's own-member count and native keyboard
-  navigation, while an explicit disclosure renders the selected group's ordinary ObjectView
-  fields in one shared details area. `GroupMembersView` is the sole production composition
+  navigation. Its search and ordering act on group captions only, since one outline may hold
+  several group classes; the parallel selected-members view keeps the ordinary full
+  Search/Sort/View controls for the member class. An explicit disclosure renders the selected
+  group's ordinary ObjectView fields in one shared details area. `GroupMembersView` is the sole production composition
   of that outline and its member content; applications and compatibility facades supply the
   member view and selected-node actions to it rather than constructing another group tree or
   flattening groups into instance cards. Selecting a modeled group node is already an explicit

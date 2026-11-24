@@ -36,6 +36,9 @@ public final class ClassSubtypeGroup extends EditableGroup
     /** Keep authored groups with the same caption distinct from this derived node. */
     @Override public String groupKey() { return "@class:" + subtype; }
 
+    /** A class hierarchy is useful only when its nested structure is immediately visible. */
+    @Override public boolean initiallyExpanded() { return true; }
+
     @Override public void reproduce(Collection<? extends Viewable> parentMembers) {
         replaceMembers(parentMembers == null ? java.util.List.of()
                 : parentMembers.stream()

@@ -90,3 +90,12 @@ Discovery's results had no search box, because they were a `JTable` rather than 
 annotations and contracts it already understands (`@Link`, `@Hidden`, `MediaValue`,
 `RenderContext.valueLinker`). A change that teaches one layout something new must teach every
 layout the same thing, or a card and a table will disagree about the same value.
+
+An ObjectView group may declare that its structural children start expanded. Group-tree
+rendering honors that declaration everywhere; ordinary authored and facet groups remain folded.
+Within one sibling set, independently produced leaf groups are outlined below their unique
+smallest strict member superset. Authored nesting remains unchanged; empty, equal and ambiguous
+member sets remain siblings.
+The group outline searches and optionally orders captions only; heterogeneous group classes do
+not create a synthetic shared field configuration. The selected group's parallel member view is
+still an ordinary `SearchableView` and owns the full Search/Sort/View controls for those members.

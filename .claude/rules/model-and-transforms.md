@@ -126,6 +126,20 @@ no per-value provenance. A union may read another union in any declaration order
 until no union changes. It is never compiled into a datasource query and never reimplements
 acquisition for one domain.
 
+Class hierarchy groups are a read-only projection, never another saved group tree. Declared
+base-class edges are authoritative. Among classes declared under the same branch, a non-empty
+class may be shown below the smallest strict containing class when every current member also
+satisfies that containing class's membership; equal and empty populations are not hierarchy
+evidence. This is the same strict-member-containment decision used by the ordinary group
+outline, not a class-only approximation. ModelBuilder, TransformApp and served domains obtain
+the class projection from the same builder.
+
+A non-empty group projects the ordinary fields shared by all its current members. Scalar and
+reference fields require one identical known value on every member; collection fields project
+their intersection. Missing values are not agreement. The projected values are not stored on
+the group: membership changes recompute them. Relations need no separate rule because they are
+entity-valued fields.
+
 # Wikipedia category relations
 
 A field's one Wikipedia-category source may interpret retained direct category memberships

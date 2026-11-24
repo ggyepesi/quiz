@@ -208,6 +208,36 @@ class SubclassDomainTest {
         assertTrue(maps.inline());
     }
 
+    /** A class's group root refines only its own declared branch. Testing every class
+     *  over the whole pool for every root made the projection types x instances per
+     *  root, which large domains (History ~130k entities) would pay on each load. */
+    @Test void aClassRootComputesHierarchyMembershipOnlyWithinItsBranch() {
+        WikidataDynamicObject ymir = state("Ymir");
+        WikidataDynamicObject thrym = state("Thrym");
+        WikidataDynamicObject iceland = state("Iceland");
+        WorkingDomain working = new WorkingDomain(
+                new SnapshotDomain(List.of(ymir, thrym, iceland)));
+        working.defineSubclass("NorseGiant", "State", List.of(ymir, thrym));
+        working.defineSubclass("Jotunn", "NorseGiant", List.of(thrym));
+        working.defineSubclass("Island", "State", List.of(iceland));
+        java.util.Set<String> asked = new java.util.TreeSet<>();
+        domain.DomainModel counting = new domain.DelegatingDomainModel(working) {
+            @Override public boolean isInstanceOf(objectview.Viewable value, String type) {
+                asked.add(type);
+                return working.isInstanceOf(value, type);
+            }
+        };
+        domain.transform.EditableGroup root = new domain.transform.EditableGroup("All NorseGiant");
+        root.replaceMembers(List.of(ymir, thrym));
+
+        domain.transform.ClassHierarchyGroups.addChildren(root, "NorseGiant", counting);
+
+        assertEquals(java.util.Set.of("Jotunn", "NorseGiant"), asked,
+                "classes outside the NorseGiant branch are never tested");
+        assertEquals(List.of("Jotunn"), root.getChildren().stream()
+                .map(objectview.Viewable::getDisplayName).toList());
+    }
+
     private static WikidataDynamicObject state(String name) {
         WikidataDynamicObject state = new WikidataDynamicObject(name, name);
         state.type("State");

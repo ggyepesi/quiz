@@ -27,6 +27,10 @@
     button: Restore Order
     button: View Config...
     button: Highlight Fields
+  box: Search group names
+  button: ◀  (disabled)
+  button: ▶  (disabled)
+  button: Sort groups by name
   button: Show group fields
   button: Show group rule  (disabled)
   button: Show type spec
@@ -79,6 +83,10 @@
     button: Restore Order
     button: View Config...
     button: Highlight Fields
+  box: Search group names
+  button: ◀  (disabled)
+  button: ▶  (disabled)
+  button: Sort groups by name
   button: Show group fields
   button: Show group rule  (disabled)
   button: Show type spec
