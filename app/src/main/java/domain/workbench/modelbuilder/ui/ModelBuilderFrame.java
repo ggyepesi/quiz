@@ -593,7 +593,7 @@ public class ModelBuilderFrame extends JFrame {
         }
         wikidata.explore.query.result.ObjectQueryResult result = lastRun.objectResult();
         instancesPanel.configuredGroups(
-                domain.transform.app.ConfiguredGroups.materialize(
+                domain.transform.app.ConfiguredGroups.presentationBindings(
                         projectModel, result.objects()));
         instancesPanel.acceptGrouped(new wikidata.explore.query.result.ObjectQueryResult(
                 inventory.visibleInstances(result.objects()), result.primaryClass(),

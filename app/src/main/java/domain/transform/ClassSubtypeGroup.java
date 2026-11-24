@@ -16,12 +16,18 @@ public final class ClassSubtypeGroup extends EditableGroup
         implements ProducedGroup, ConfiguredGroup {
 
     private final String subtype;
-    private final DomainModel domain;
+    private final java.util.function.BiPredicate<Viewable, String> membership;
 
     public ClassSubtypeGroup(String subtype, DomainModel domain) {
+        this(subtype, java.util.Objects.requireNonNull(domain, "domain")::isInstanceOf);
+    }
+
+    ClassSubtypeGroup(
+            String subtype,
+            java.util.function.BiPredicate<Viewable, String> membership) {
         super(subtype);
         this.subtype = java.util.Objects.requireNonNull(subtype, "subtype");
-        this.domain = java.util.Objects.requireNonNull(domain, "domain");
+        this.membership = java.util.Objects.requireNonNull(membership, "membership");
         setRole(Role.BUCKET);
     }
 
@@ -33,7 +39,7 @@ public final class ClassSubtypeGroup extends EditableGroup
     @Override public void reproduce(Collection<? extends Viewable> parentMembers) {
         replaceMembers(parentMembers == null ? java.util.List.of()
                 : parentMembers.stream()
-                        .filter(member -> domain.isInstanceOf(member, subtype))
+                        .filter(member -> membership.test(member, subtype))
                         .toList());
     }
 

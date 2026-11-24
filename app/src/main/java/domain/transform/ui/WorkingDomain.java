@@ -384,24 +384,8 @@ public final class WorkingDomain extends DelegatingDomainModel
         domain.transform.EditableGroup root = declared == null
                 ? new domain.transform.EditableGroup("All " + type)
                 : domain.transform.EditableGroup.copyOf(declared, this);
-        addClassSubtypeGroups(root, type, new java.util.HashSet<>());
+        domain.transform.ClassHierarchyGroups.addChildren(root, type, this);
         return root;
-    }
-
-    /** Mirrors only direct class edges; recursion supplies deeper subtype nesting. */
-    private void addClassSubtypeGroups(
-            domain.transform.EditableGroup parent, String baseType,
-            java.util.Set<String> visited) {
-        if (parent == null || baseType == null || !visited.add(baseType)) return;
-        types().stream()
-                .filter(candidate -> baseType.equals(baseType(candidate)))
-                .sorted()
-                .forEach(subtype -> {
-                    domain.transform.ClassSubtypeGroup child =
-                            new domain.transform.ClassSubtypeGroup(subtype, this);
-                    parent.addGroup(child);
-                    addClassSubtypeGroups(child, subtype, visited);
-                });
     }
 
     @Override public List<String> types() {

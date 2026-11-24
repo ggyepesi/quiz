@@ -31,6 +31,40 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** A configured group keeps ordinary entity rendering; it is not a second card type. */
 class ConfiguredGroupsTest {
 
+    @Test void modelBuilderAndCompiledDomainsReceiveTheSameClassHierarchyGroups() {
+        GeneratedProjectModel model = new GeneratedProjectModel();
+        model.rootClass().className("NorseCharacter");
+        GeneratedClassModel giant = new GeneratedClassModel("NorseGiant");
+        giant.baseClassName("NorseCharacter");
+        model.addClass(giant);
+        GeneratedClassModel jotunn = new GeneratedClassModel("Jotunn");
+        jotunn.baseClassName("NorseGiant");
+        model.addClass(jotunn);
+
+        WikidataDynamicObject ymir = new WikidataDynamicObject("Q1", "Ymir");
+        ymir.type("NorseGiant");
+        ymir.directClasses(java.util.Set.of("NorseGiant"));
+        WikidataDynamicObject thrym = new WikidataDynamicObject("Q2", "Thrym");
+        thrym.type("Jotunn");
+        thrym.directClasses(java.util.Set.of("Jotunn"));
+        List<WikidataDynamicObject> instances = List.of(ymir, thrym);
+
+        objectview.group.ViewableGroup<?> modelBuilderRoot =
+                ConfiguredGroups.presentationBindings(model, instances).stream()
+                        .filter(binding -> "NorseGiant".equals(binding.groupClass()))
+                        .findFirst().orElseThrow().root();
+        objectview.group.ViewableGroup<?> compiledRoot =
+                domain.compile.transform.ProductCompiler.compile(model, instances)
+                        .groupRoot("NorseGiant");
+
+        assertEquals(List.of("Ymir", "Thrym"), modelBuilderRoot.getMembers().stream()
+                .map(objectview.Viewable::getDisplayName).toList());
+        assertEquals(List.of("Jotunn"), names(modelBuilderRoot));
+        assertEquals(List.of("Thrym"), modelBuilderRoot.getChildren().iterator().next()
+                .getMembers().stream().map(objectview.Viewable::getDisplayName).toList());
+        assertEquals(names(modelBuilderRoot), names(compiledRoot));
+    }
+
     @Test void aConfiguredMemberFieldProducesAGroupWithThoseInstances() {
         Fixture fixture = fixture();
 

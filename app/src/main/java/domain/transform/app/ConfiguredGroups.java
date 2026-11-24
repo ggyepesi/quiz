@@ -129,6 +129,25 @@ public final class ConfiguredGroups {
             result.add(new DomainGroupRoot(memberClass,
                     MultiRootGroup.container(roots, "All " + memberClass, all)));
         });
+        return combine(domain.transform.ClassHierarchyGroups.rootBindings(model, instances),
+                result);
+    }
+
+    /**
+     * The group presentation for every class section in an instances window.
+     * Group classes use their configured members; ordinary base classes use the same
+     * hierarchy roots returned by {@link #rootBindings(GeneratedProjectModel, Collection)}.
+     */
+    public static List<Binding> presentationBindings(
+            GeneratedProjectModel model,
+            Collection<? extends Viewable> instances) {
+        List<Binding> result = new ArrayList<>(materialize(model, instances));
+        for (DomainGroupRoot root : rootBindings(model, instances)) {
+            if (result.stream().noneMatch(binding ->
+                    root.memberType().equals(binding.groupClass()))) {
+                result.add(new Binding(root.memberType(), root.memberType(), "", root.root()));
+            }
+        }
         return List.copyOf(result);
     }
 
