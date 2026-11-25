@@ -9,6 +9,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 
 /** The configured recipes for one field, each opening the existing evidence review action. */
@@ -39,7 +40,9 @@ public final class ConfiguredFieldEvidenceActions {
     public void show(Object scope, String field, List<SourceBinding> recipes, String unavailable) {
         var target = new Target(scope, field, List.copyOf(recipes), unavailable);
         if (target.equals(shown)) return;
-        if (shown == null || !shown.field().equals(field)) details.clear();
+        if (shown == null || !shown.field().equals(field) || !Objects.equals(shown.scope(), scope)) {
+            details.clear();
+        }
         details.keySet().retainAll(recipes);
         shown = target;
         actions.clear();

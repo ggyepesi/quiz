@@ -10,6 +10,7 @@ import domain.runtime.WikidataDynamicObjectJsonStore;
 import wikidata.explore.query.logical.ConfiguredGraphDiscoveryQuery;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -158,12 +159,13 @@ public final class GraphDiscoveryResultStore {
         if (!file.isFile()) return null;
         WikidataDynamicObjectJsonStore.LoadedSnapshot loaded =
                 new WikidataDynamicObjectJsonStore().loadAllWithFieldGraph(file);
-        List<WikidataDynamicObject> annotations = loaded.objects();
+        String type = domainName(graphConstraintName);
+        List<WikidataDynamicObject> annotations = annotationsOf(type, loaded.objects());
         List<WikidataDynamicObject> candidates = annotations.stream()
                 .map(value -> value.get(ANNOTATED_INSTANCE))
                 .filter(WikidataDynamicObject.class::isInstance)
                 .map(WikidataDynamicObject.class::cast).distinct().toList();
-        return new Artifact(projectName, domainName(graphConstraintName), outputClass, operation,
+        return new Artifact(projectName, type, outputClass, operation,
                 annotations, candidates,
                 new SnapshotDomain(annotations, loaded.fieldGraph()));
     }
@@ -177,11 +179,7 @@ public final class GraphDiscoveryResultStore {
     public static Artifact restore(String projectName, String graphConstraintName,
             String outputClass, java.util.Collection<WikidataDynamicObject> pool) {
         String type = domainName(graphConstraintName);
-        List<WikidataDynamicObject> annotations = pool == null ? List.of() : pool.stream()
-                .filter(java.util.Objects::nonNull)
-                .filter(value -> type.equals(value.typeName())
-                        || value.directClassNames().contains(type))
-                .toList();
+        List<WikidataDynamicObject> annotations = annotationsOf(type, pool);
         if (annotations.isEmpty()) return null;
         List<WikidataDynamicObject> candidates = annotations.stream()
                 .map(value -> value.get(ANNOTATED_INSTANCE))
@@ -189,6 +187,14 @@ public final class GraphDiscoveryResultStore {
                 .map(WikidataDynamicObject.class::cast).distinct().toList();
         return new Artifact(projectName, type, outputClass, annotations, candidates,
                 new SnapshotDomain(annotations, fieldGraph(type, outputClass, annotations)));
+    }
+
+    private static List<WikidataDynamicObject> annotationsOf(String type,
+            Collection<WikidataDynamicObject> pool) {
+        return pool == null ? List.of() : pool.stream()
+                .filter(java.util.Objects::nonNull)
+                .filter(value -> type.equals(value.typeName()) || value.directClassNames().contains(type))
+                .toList();
     }
 
     /**
@@ -496,6 +502,19 @@ public final class GraphDiscoveryResultStore {
         } else {
             annotation.put(MANUAL_DECISION, decision);
         }
+    }
+
+    /** A changed decision must be applied again before the build can reuse this result. */
+    public static boolean review(Artifact artifact,
+            Collection<WikidataDynamicObject> annotations, String decision) {
+        boolean changed = false;
+        for (var annotation : annotations) {
+            if (java.util.Objects.equals(annotation.get(MANUAL_DECISION), decision)) continue;
+            manualDecision(annotation, decision);
+            changed = true;
+        }
+        if (changed) artifact.instances().forEach(value -> value.remove(OUTPUT_APPLIED));
+        return changed;
     }
 
     public static boolean included(WikidataDynamicObject annotation) {

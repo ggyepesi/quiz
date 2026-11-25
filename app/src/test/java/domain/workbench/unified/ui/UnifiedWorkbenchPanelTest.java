@@ -2,10 +2,14 @@ package domain.workbench.unified.ui;
 
 import dataset.DomainStorage;
 import domain.build.GenerationStepOutputStore;
+import domain.build.GraphDiscoveryResultStore;
+import domain.build.GraphResults;
 import domain.build.ProjectSave;
 import domain.compile.transform.SelfReferenceLedger;
 import domain.config.BuildOperation;
 import domain.config.ClassConfigurationProjection;
+import domain.config.ClassKind;
+import domain.config.GraphClassSource;
 import domain.config.ClassPopulationMode;
 import domain.config.FieldCardinality;
 import domain.config.FieldConfigurationProjection;
@@ -19,6 +23,10 @@ import domain.config.TransformationClassSource;
 import domain.config.TransformationStep;
 import domain.datasource.schema.FieldType;
 import domain.datasource.graph.GraphDiscoveryState;
+import domain.datasource.graph.GraphDiscoveryConfiguration;
+import domain.datasource.graph.GraphRelation;
+import domain.datasource.graph.GraphTraversalDirection;
+import domain.runtime.SnapshotDomain;
 import domain.runtime.WikidataDynamicObject;
 import domain.transform.FilterOperator;
 import domain.transform.app.DomainCatalog;
@@ -37,6 +45,7 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JTabbedPane;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
@@ -62,6 +71,113 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class UnifiedWorkbenchPanelTest {
     @TempDir Path root;
+
+    @Test void reviewSavesGraphDecisionsAndTheNextBuildAppliesThemInTheSameWindow() throws Exception {
+        var storage = DomainStorage.in(root.toFile());
+        var model = new GeneratedProjectModel();
+        model.name("Offices");
+        var positions = model.getOrCreateClass("Position");
+        model.rootClass(positions);
+        var graph = model.getOrCreateClass("PositionGraph");
+        graph.classKind(ClassKind.GRAPH);
+        graph.graphSource(new GraphClassSource(
+                new GraphDiscoveryConfiguration.StartNode("Position", "",
+                        GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
+                List.of(new GraphDiscoveryConfiguration.NextNode(new GraphRelation("wikidata", "P31"),
+                        GraphTraversalDirection.OUTGOING, GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
+                        "Position", null))));
+        model.buildOperations(List.of(new BuildOperation(BuildOperation.Kind.APPLY_GRAPH_DECISIONS,
+                graph.declarationId()), new BuildOperation(BuildOperation.Kind.SAVE_PROJECT_RESULT, "")));
+        var members = List.of("Q1", "Q2").stream().map(qid -> {
+            var member = new WikidataDynamicObject(qid, "Position " + qid);
+            member.type("Position");
+            return member;
+        }).toList();
+        var annotations = members.stream().map(member -> {
+            var annotation = new WikidataDynamicObject(member.getIdentifier(), member.getDisplayName());
+            annotation.type(graph.className());
+            annotation.put(GraphDiscoveryResultStore.ANNOTATED_INSTANCE, member);
+            annotation.put(GraphDiscoveryResultStore.GRAPH_DECISION, "Review");
+            annotation.put(GraphDiscoveryResultStore.REVIEW_DISPOSITION, GraphDiscoveryResultStore.AWAIT_DECISION);
+            return annotation;
+        }).toList();
+        var graphs = new GraphResults(model, storage);
+        graphs.record(graph, new GraphDiscoveryResultStore.Artifact(model.name(), graph.className(),
+                positions.className(), annotations, members, new SnapshotDomain(annotations,
+                        GraphDiscoveryResultStore.fieldGraph(graph.className(), positions.className(), annotations))));
+        var run = new ProjectSave.Run(members, List.of(), null, model);
+        ProjectSave.plan(new ProjectSave.Input(model, run, null, graphs.all()), storage).write();
+
+        var snapshot = storage.snapshotFile(model.name()).toPath();
+        var graphFile = graphs.destination(graph).toPath();
+        var before = Files.readString(snapshot);
+        var beforeDecisions = Files.readString(graphFile);
+        var open = DomainCatalog.modelBacked(storage).getFirst().opener();
+        var opened = open.open();
+        var backing = opened.capability(ProjectBacking.class);
+        var panel = new AtomicReference<UnifiedWorkbenchPanel>();
+        SwingUtilities.invokeAndWait(() -> {
+            var workbench = new UnifiedWorkbenchPanel(opened);
+            panel.set(workbench);
+            workbench.showSaveSuccess(false);
+            workbench.persistenceConfirmation(message -> message.contains(graphFile.toString()));
+            selectAction(workbench, "Build project");
+            find(workbench, JButton.class, b -> "Plan build".equals(b.getText())).doClick();
+            find(workbench, JButton.class, b -> "Execute".equals(b.getText())).doClick();
+        });
+        try {
+            var workbench = panel.get();
+            await(() -> actionNode(workbench, "Graph decisions") != null,
+                    "the stopped build did not offer review");
+            assertEquals(before, Files.readString(snapshot));
+            SwingUtilities.invokeAndWait(() -> {
+                selectAction(workbench, "Graph decisions");
+                find(workbench, JLabel.class, label -> ("Load " + graphFile).equals(label.getText()));
+                find(workbench, JButton.class, b -> "Review PositionGraph".equals(b.getText())).doClick();
+                assertTrue(backing.unsavedModelChanges().isEmpty());
+            });
+            await(() -> descendants(workbench).filter(QueryObjectResultPanel.class::isInstance)
+                    .map(QueryObjectResultPanel.class::cast)
+                    .anyMatch(view -> view.displayedObjectsByType().containsKey(graph.className())),
+                    "the saved graph did not render");
+            SwingUtilities.invokeAndWait(() -> {
+                var view = find(workbench, QueryObjectResultPanel.class,
+                        cards -> cards.displayedObjectsByType().containsKey(graph.className()));
+                var tabs = find(view, JTabbedPane.class, t -> t.getTabCount() == 4);
+                assertEquals(List.of("All (2)", "Accepted (0)", "Review (2)", "Rejected (0)"),
+                        java.util.stream.IntStream.range(0, 4).mapToObj(tabs::getTitleAt).toList());
+                var cards = view.displayedObjectsByType().get(graph.className());
+                view.activeRenderContext().select(cards.stream().filter(c -> c.getIdentifier().equals("Q1"))
+                        .findFirst().orElseThrow());
+                find(view, JButton.class, b -> "Accept selection".equals(b.getText())).doClick();
+                view.activeRenderContext().select(cards.stream().filter(c -> c.getIdentifier().equals("Q2"))
+                        .findFirst().orElseThrow());
+                find(view, JButton.class, b -> "Reject selection".equals(b.getText())).doClick();
+                assertEquals("Review (2)", tabs.getTitleAt(2));
+                assertEquals(List.of("Graph decisions for PositionGraph"), backing.unsavedModelChanges());
+            });
+            assertEquals(beforeDecisions, Files.readString(graphFile));
+            SwingUtilities.invokeAndWait(() ->
+                    find(workbench, JButton.class, b -> "Save domain…".equals(b.getText())).doClick());
+            awaitSaved(workbench);
+            assertEquals(before, Files.readString(snapshot));
+            var savedGraphs = new GraphResults(backing.projectModel(), storage);
+            var saved = savedGraphs.restore(backing.projectModel().findClass(graph.className()), ignored -> { });
+            assertEquals(java.util.Set.of("Q1"), saved.acceptedIdentities());
+            assertTrue(saved.awaitingDecision().isEmpty());
+            SwingUtilities.invokeAndWait(() -> {
+                selectAction(workbench, "Build project");
+                find(workbench, JButton.class, b -> "Plan build".equals(b.getText())).doClick();
+                find(workbench, JButton.class, b -> "Execute".equals(b.getText())).doClick();
+            });
+            await(() -> actionNode(workbench, "Instances (1)") != null,
+                    "the build did not publish the accepted instance");
+            assertEquals(List.of("Q1"), open.open().instancesOf("Position").stream()
+                    .map(objectview.Viewable::getIdentifier).toList());
+        } finally {
+            SwingUtilities.invokeAndWait(panel.get()::close);
+        }
+    }
 
     @Test void applyUpdatesThePlanInTheSameWindowBeforeSaveAndReopen() throws Exception {
         var storage = DomainStorage.in(root.toFile());

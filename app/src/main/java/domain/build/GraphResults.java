@@ -100,10 +100,9 @@ public final class GraphResults {
     }
 
     /**
-     * Restores every graph class's saved result not already held: from the loaded pool,
-     * where older applied annotations are reachable from their instances, and otherwise
-     * from the class's own annotation file. The one load path — a project load passes an
-     * empty pool, Load instances the loaded one. Each file read and each failure is named.
+     * Restores every graph class's saved result not already held. Its own annotation file
+     * can contain decisions made since the snapshot was built. The pool supplies older
+     * annotations only when that file is missing. Each file read and each failure is named.
      */
     public void restore(Collection<WikidataDynamicObject> loadedObjects, Consumer<String> report) {
         restore(loadedObjects, this::loadSaved, report);
@@ -113,27 +112,40 @@ public final class GraphResults {
                  Consumer<String> report) {
         Consumer<String> say = report == null ? ignored -> { } : report;
         for (GeneratedClassModel graphClass : model.graphClasses()) {
-            if (of(graphClass) != null || graphClass.graphSource() == null) continue;
-            GraphDiscoveryResultStore.Artifact restored = GraphDiscoveryResultStore.restore(
-                    model.name(), graphClass.className(),
-                    graphClass.graphSource().outputClassName(), loadedObjects);
-            String file = GraphDiscoveryResultStore.destination(
-                    storage, model.name(), graphClass.className()).getPath();
-            if (restored == null && loader != null) {
-                try {
-                    restored = loader.load(graphClass);
-                    if (restored != null) {
-                        say.accept("Loaded " + restored.instances().size()
-                                + " graph annotations \"" + graphClass.className()
-                                + "\" from " + file + ".");
-                    }
-                } catch (Exception error) {
-                    say.accept("Could not load graph annotations \"" + graphClass.className()
-                            + "\" from " + file + ": " + error.getMessage());
-                }
+            try {
+                restore(graphClass, loadedObjects, loader, say);
+            } catch (Exception error) {
+                say.accept("Could not load graph annotations \"" + graphClass.className()
+                        + "\" from " + destination(graphClass).getPath() + ": " + error.getMessage());
             }
-            if (restored != null) held.put(key(graphClass), restored);
         }
+    }
+
+    /** Loads just one saved annotation set when its review is explicitly opened. */
+    public GraphDiscoveryResultStore.Artifact restore(
+            GeneratedClassModel graphClass, Consumer<String> report) throws Exception {
+        return restore(graphClass, List.of(), this::loadSaved, report == null ? ignored -> { } : report);
+    }
+
+    public java.io.File destination(GeneratedClassModel graphClass) {
+        return GraphDiscoveryResultStore.destination(storage, model.name(), graphClass.className());
+    }
+
+    private GraphDiscoveryResultStore.Artifact restore(
+            GeneratedClassModel graphClass, Collection<WikidataDynamicObject> loadedObjects,
+            SavedResultLoader loader, Consumer<String> report) throws Exception {
+        var current = of(graphClass);
+        if (current != null || graphClass.graphSource() == null) return current;
+        var restored = loader == null ? null : loader.load(graphClass);
+        if (restored != null) {
+            report.accept("Loaded " + restored.instances().size() + " graph annotations \""
+                    + graphClass.className() + "\" from " + destination(graphClass).getPath() + ".");
+        } else if (loadedObjects != null && !loadedObjects.isEmpty()) {
+            restored = GraphDiscoveryResultStore.restore(model.name(), graphClass.className(),
+                    graphClass.graphSource().outputClassName(), loadedObjects);
+        }
+        if (restored != null) held.put(key(graphClass), restored);
+        return restored;
     }
 
     /**

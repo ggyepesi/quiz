@@ -2,6 +2,7 @@ package domain.workbench.unified.ui;
 
 import domain.DomainModel;
 import domain.DomainSchemas;
+import domain.build.ProjectBuild;
 import domain.compile.transform.TransformationExecution;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedFieldModel;
@@ -9,6 +10,7 @@ import domain.config.GeneratedProjectModel;
 import domain.config.GeneratedProjectModelStore;
 import domain.config.FieldSourceBindings;
 import domain.config.FieldDefinition;
+import domain.config.BuildOperation;
 import domain.config.ModelSourceExecutionPlan;
 import domain.config.OwnedFieldSources;
 import domain.datasource.Datasources;
@@ -69,6 +71,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private final WorkbenchActionResultNavigator actions = new WorkbenchActionResultNavigator();
     private final WorkbenchActionResultNavigator.Action previewAction;
     private final WorkbenchActionResultNavigator.Action buildAction;
+    private final WorkbenchActionResultNavigator.Action graphReviewAction;
+    private final GraphDecisionReviewPanel graphReview;
     private final ConfiguredFieldEvidenceActions evidenceActions;
     private final SwingProcessRunner buildRunner;
     private final JPanel buildDetail = new JPanel(new BorderLayout());
@@ -96,6 +100,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private boolean buildPlanOpen;
     private boolean buildActionSelected;
     private DomainModel builtDomain;
+    private GeneratedClassModel graphAwaitingReview;
     private boolean previewCompleted;
     private boolean previewActionSelected;
     private boolean loadActionSelected;
@@ -161,6 +166,14 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         });
         var projectActions = actions.addSource("project", "Project", null);
         buildAction = actions.addAction(projectActions, "build-project", "Build project", buildDetail, null);
+        graphReview = new GraphDecisionReviewPanel(project,
+                () -> !busy() && configuration.resolveUnappliedEdits("loading graph annotations"),
+                loading -> {
+                    configuration.setEditingEnabled(!loading);
+                    updateSave();
+                }, queries::info, this::updateSave);
+        graphReviewAction = actions.addAction(projectActions, "review-graph-decisions",
+                "Review graph decisions", graphReview, null);
         planBuild.addActionListener(event -> planBuild());
         editBuild.addActionListener(event -> configuration.selectConstruct(project.projectModel()));
         buildRunner.onRunningChanged(running -> {
@@ -202,6 +215,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private void resetBuild(String message) {
         buildPlanOpen = false;
         builtDomain = null;
+        graphAwaitingReview = null;
         if (buildActionSelected) actions.selectAction(buildAction);
         actions.clearResults(buildAction);
         buildStatus.setText(message.isBlank() ? buildPlanPrompt() : message);
@@ -220,7 +234,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private boolean buildReady(String activity) {
         if (busy() || !configuration.resolveUnappliedEdits(activity)) return false;
         if (!project.unsavedModelChanges().isEmpty()) {
-            resetBuild("Use " + saveVerb + " to write " + project.modelFile().getPath() + " before building.");
+            resetBuild("Use " + saveVerb + " to write " + savePaths() + " before building.");
             return false;
         }
         return true;
@@ -253,7 +267,21 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                         return new BuildProjectWorkflow.Loaded<>(loaded, loaded.memberRoots().size()
                                 + " saved instances loaded from " + snapshot.getPath());
                     }, this::installBuiltDomain,
-                    "The open project has been refreshed. Select Instances to inspect it.");
+                    "The open project has been refreshed. Select Instances to inspect it.",
+                    "For a graph in this project, use Review graph decisions, save the decisions, "
+                            + "and build again. For a dependency, open that project to review its graph.",
+                    report -> {
+                        if (report.outcome() != ProjectBuild.State.AWAITING_DECISION) return;
+                        sessionGuard.acceptWritesFrom(guard);
+                        graphReview.reset(project);
+                        graphReview.select(selectedClass);
+                        graphAwaitingReview = report.steps().stream()
+                                .filter(step -> step.action() == ProjectBuild.Action.STOPPED)
+                                .map(step -> step.planned().operation())
+                                .filter(step -> step.kind() == BuildOperation.Kind.APPLY_GRAPH_DECISIONS)
+                                .map(step -> step.target(project.projectModel()))
+                                .filter(Objects::nonNull).findFirst().orElse(null);
+                    });
             buildPlanOpen = true;
             SwingProcessWorkflow.embed(buildRunner, action, new SwingProcessWorkflow.Embedded(
                     buildDetail, () -> {
@@ -275,6 +303,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         configuration.close();
         domain = loaded;
         project = Objects.requireNonNull(loaded.capability(ProjectBacking.class));
+        graphReview.reset(project);
         transform = new TransformController(loaded, null);
         valuePanel = null;
         evidenceTarget = null;
@@ -304,6 +333,21 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     }
 
     private void publishBuildResults(JTabbedPane tabs) {
+        if (graphAwaitingReview != null) {
+            var graph = graphAwaitingReview;
+            var detail = new JPanel(new FlowLayout(FlowLayout.LEFT));
+            var review = new JButton("Review " + graph.className());
+            review.addActionListener(event -> {
+                if (busy()) return;
+                configuration.selectConstruct(graph);
+                if (configuration.selectedConstruct() != graph) return;
+                actions.selectAction(graphReviewAction);
+                graphReview.loadAnnotations();
+            });
+            detail.add(review);
+            detail.add(new JLabel("Load " + graphReview.annotationFile(graph).getPath()));
+            tabs.addTab("Graph decisions", detail);
+        }
         if (builtDomain != null) {
             var instances = new QueryObjectResultPanel();
             var loaded = builtDomain;
@@ -320,7 +364,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     }
 
     private boolean busy() {
-        return saving || loadingValues || runningEvidence != null || previewing || building;
+        return saving || loadingValues || runningEvidence != null || previewing || building
+                || graphReview.isLoading();
     }
 
     private void constructSelected(Object construct) {
@@ -328,6 +373,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         if (selectedClass != clazz) {
             selectedClass = clazz;
             refreshPreview();
+            graphReview.select(clazz);
         }
         fieldSelected(construct instanceof GeneratedFieldModel field ? field : null);
     }
@@ -427,7 +473,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
             return;
         }
         String field = owner.className() + "." + OwnedFieldSources.declaredFieldPath(owner, selectedField);
-        evidenceActions.show(target, field, target.recipes(), "No configured evidence recipes for " + field + ".");
+        evidenceActions.show(target.definition(), field, target.recipes(),
+                "No configured evidence recipes for " + field + ".");
     }
 
     private JComponent evidencePanel(SourceBinding recipe) {
@@ -593,6 +640,12 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
 
     private String verb() { return saveVerb; }
 
+    private String savePaths() {
+        var paths = new StringBuilder(project.modelFile().getPath());
+        graphReview.editedFiles().forEach(file -> paths.append('\n').append(file.getPath()));
+        return paths.toString();
+    }
+
     /** Lets a test confirm the shared persistence question instead of the dialog. */
     void persistenceConfirmation(java.util.function.Predicate<String> confirm) {
         confirmPersistence = confirm;
@@ -609,7 +662,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         if (draft) {
             int answer = choice.ask("Unapplied edits", configuration.editedConstructName()
                     + " has edits that are not applied.\n\nSave writes "
-                    + project.modelFile().getPath() + ".",
+                    + savePaths() + ".",
                     new String[] {"Apply and save", "Discard draft and save applied changes",
                             "Stay"}, 2);
             if (answer == 2) return;
@@ -622,8 +675,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         }
         // Cancelling the file confirmation keeps the draft: nothing is applied or
         // discarded until the save is confirmed.
-        if (!confirmPersistence.test("Save the applied configuration to\n"
-                + project.modelFile().getPath())) return;
+        if (!confirmPersistence.test("Save the applied project changes to\n" + savePaths())) return;
         if (applyDraft) {
             // A refused Apply stops here with the draft open and its reason shown.
             if (!configuration.applyUnappliedEdits()) return;
@@ -647,6 +699,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     boolean saving() { return saving; }
 
     private void startSave(Runnable afterSuccess) {
+        String savedPaths = savePaths();
+        boolean savingGraphDecisions = !graphReview.editedFiles().isEmpty();
         saving = true;
         // Keep the reader's place in view; only block input while the file is written.
         blockInput(true);
@@ -663,11 +717,12 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                 try {
                     get();
                     saved = true;
-                    if (buildPlanOpen) resetBuild("");
+                    graphReview.saved();
+                    if (buildPlanOpen || savingGraphDecisions) resetBuild("");
                     else buildStatus.setText(buildPlanPrompt());
                     if (afterSuccess == null && showSaveSuccess) {
                         Dialogs.showPersistenceSuccess(UnifiedWorkbenchPanel.this, saveVerb,
-                                project.projectName(), project.modelFile().getPath());
+                                project.projectName(), savedPaths);
                     }
                 } catch (Exception failure) {
                     Throwable cause = failure.getCause() == null ? failure : failure.getCause();
@@ -684,7 +739,14 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     }
 
     void saveProject() throws Exception {
-        project.writeProjectModel();
+        if (graphReview.editedFiles().isEmpty()) {
+            project.writeProjectModel();
+        } else {
+            project.saveProject(() -> { }, () -> {
+                graphReview.writeEdits();
+                return null;
+            });
+        }
     }
 
     private void updateSave() {
@@ -695,6 +757,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         preview.setEnabled(previewInput != null && !busy());
         planBuild.setEnabled(!busy());
         editBuild.setEnabled(!busy());
+        graphReview.setReviewEnabled(!busy());
         if (loadingValues) {
             saveStatus.setText("Loading and reviewing field values");
         } else if (runningEvidence != null) {
@@ -703,8 +766,12 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
             saveStatus.setText("Previewing population for " + selectedClass.className());
         } else if (building) {
             saveStatus.setText("Building " + project.projectName());
+        } else if (graphReview.isLoading()) {
+            saveStatus.setText("Loading graph annotations");
         } else if (!saving) {
-            saveStatus.setText(dirty ? "Applied configuration has unsaved changes" : " ");
+            saveStatus.setText(graphReview.editedFiles().isEmpty()
+                    ? dirty ? "Applied configuration has unsaved changes" : " "
+                    : "Graph decisions have unsaved changes");
         }
     }
 
@@ -737,7 +804,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
      * A refused Apply or a failed save keeps the window and the edits open.
      */
     public void requestClose(Runnable closeWindow) {
-        if (saving) return;
+        if (saving || graphReview.isLoading()) return;
         if (building) {
             SwingCancellationConfirmation.requestForVisibleRun(this, buildRunner::cancel);
             return;
@@ -760,7 +827,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
             closeWindow.run();
             return;
         }
-        String file = project.modelFile().getPath();
+        String file = savePaths();
         String message = draft
                 ? configuration.editedConstructName() + " has edits that are not applied"
                         + (unsaved ? ", and applied changes are not saved" : "")

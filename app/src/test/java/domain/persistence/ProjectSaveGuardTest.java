@@ -78,6 +78,25 @@ public class ProjectSaveGuardTest {
         assertEquals("the other session", Files.readString(model));
     }
 
+    @Test void aStoppedBuildHandsBackOnlyItsOwnWrites() throws Exception {
+        var storage = DomainStorage.in(root.toFile());
+        var model = storage.modelFile("History").toPath();
+        Files.createDirectories(model.getParent());
+        Files.writeString(model, "original model");
+        var session = ProjectSaveGuard.capture(storage, "History");
+        var build = session.copy();
+        var graph = model.resolveSibling("positiongraph.graph.snapshot.json");
+        build.write(() -> Files.writeString(graph, "pending decisions"));
+        assertThrows(ProjectSaveGuard.Conflict.class, session::check);
+
+        session.acceptWritesFrom(build);
+        session.check();
+        Files.writeString(graph, "other editor's decisions");
+        assertThrows(ProjectSaveGuard.Conflict.class,
+                () -> session.write(() -> Files.writeString(graph, "my decisions")));
+        assertEquals("other editor's decisions", Files.readString(graph));
+    }
+
     @Test void aReplacementWithTheSameSizeAndTimestampIsStillChecked() throws Exception {
         var storage = DomainStorage.in(root.toFile());
         var model = storage.modelFile("History").toPath();

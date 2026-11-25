@@ -50,6 +50,7 @@ import wikidata.query.core.Datasource;
 import wikidata.query.core.WikidataAccess;
 
 import javax.swing.JButton;
+import javax.swing.JLabel;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JTextField;
@@ -80,6 +81,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** The unified action runs the shared value lookup and review on its live field mapping. */
 class UnifiedFieldAcquisitionTest {
     @TempDir Path directory;
+
+    @Test void changingInstanceScopeReopensTheRecipeOnTheNewScope() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            var target = SourceBindingTarget.fieldValue("DeityGroup", "members",
+                    SourceBindingSlot.CANDIDATE_EVIDENCE);
+            var binding = new SourceBinding(target, new SourceRecipe(WikipediaDatasourceProvider.ID,
+                    WikipediaDatasourceProvider.ARTICLE_INTRODUCTION_MENTIONS, Map.of()));
+            var navigator = new WorkbenchActionResultNavigator();
+            var selected = new AtomicReference<>("Assessors of Maat");
+            var actions = new ConfiguredFieldEvidenceActions(navigator,
+                    navigator.addSource("wikipedia", "Wikipedia", null), "evidence",
+                    ignored -> new JLabel(selected.get()));
+            actions.show(selected.get(), "DeityGroup.members", List.of(binding), "");
+            selectAction(navigator, WikipediaEvidenceRecipes.describe(binding));
+            find(navigator, JLabel.class, label -> "Assessors of Maat".equals(label.getText()));
+            selected.set("Ennead");
+            actions.show(selected.get(), "DeityGroup.members", List.of(binding), "");
+            selectAction(navigator, WikipediaEvidenceRecipes.describe(binding));
+            find(navigator, JLabel.class, label -> "Ennead".equals(label.getText()));
+        });
+    }
 
     private DomainStorage saveProject() throws Exception {
         return saveProject(FieldSourceType.SPARQL, "P1559");

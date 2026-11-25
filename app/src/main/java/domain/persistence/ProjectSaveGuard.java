@@ -71,6 +71,15 @@ public final class ProjectSaveGuard {
         return copy;
     }
 
+    /** Advance an editor after its own copied guard wrote artifacts the editor now uses. */
+    public void acceptWritesFrom(ProjectSaveGuard operation) {
+        if (storage != operation.storage || !name.equals(operation.name)
+                || !additionalFiles.equals(operation.additionalFiles)) {
+            throw new IllegalArgumentException("The save guard belongs to another project.");
+        }
+        baseline = operation.baseline;
+    }
+
     /** A save may only write the project key this session opened or created. */
     public void requireDestination(DomainStorage destination, String project) throws IOException {
         File expected = storage.modelFile(name).getCanonicalFile();

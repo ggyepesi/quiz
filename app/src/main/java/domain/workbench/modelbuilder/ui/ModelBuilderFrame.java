@@ -572,25 +572,10 @@ public class ModelBuilderFrame extends JFrame {
                 domain.workbench.execution.ui.QueryObjectResultPanel.GroupedSection> annotations =
                 new java.util.LinkedHashMap<>();
         for (GraphDiscoveryResultStore.Artifact result : graphResults.all()) {
-            java.util.Map<String, java.util.List<Viewable>> decisions =
-                    new java.util.LinkedHashMap<>();
-            for (String decision : java.util.List.of("Accepted", "Review", "Rejected")) {
-                decisions.put(decision, result.instances().stream()
-                        .filter(value -> GraphDiscoveryResultStore.originalDecisions(value)
-                                .contains(decision))
-                        .map(GraphResultPresentation::candidate).toList());
-            }
-            annotations.put(result.type(),
-                    domain.workbench.execution.ui.QueryObjectResultPanel.GroupedSection.presented(
-                            GraphResultPresentation.candidates(result.instances()), decisions,
-                            java.util.List.of(
-                                    new domain.workbench.execution.ui.QueryObjectResultPanel
-                                            .GroupAction("Apply accepted instances",
-                                            () -> applyGraphResultFromInstances(result))),
-                            decidingMarksUnsaved(
-                                    GraphResultPresentation.decisionActions(result)),
-                            GraphResultPresentation.shapeSample(result),
-                            GraphResultPresentation.decorator(result)));
+            annotations.put(result.type(), GraphResultPresentation.review(result,
+                    java.util.List.of(new domain.workbench.execution.ui.QueryObjectResultPanel
+                            .GroupAction("Apply accepted instances", () -> applyGraphResultFromInstances(result))),
+                    () -> savedGenerationRun = null));
         }
         wikidata.explore.query.result.ObjectQueryResult result = lastRun.objectResult();
         instancesPanel.configuredGroups(
@@ -599,22 +584,6 @@ public class ModelBuilderFrame extends JFrame {
         instancesPanel.acceptGrouped(new wikidata.explore.query.result.ObjectQueryResult(
                 inventory.visibleInstances(result.objects()), result.primaryClass(),
                 result.generatedSource(), result.typeOrder(), result.partTypes()), annotations);
-    }
-
-    /**
-     * The decision edits, each also marking the instances unsaved: a decision is project
-     * data that only Save writes, so closing asks first and a build says to save before it
-     * runs — a build reads the saved project, and would otherwise not see it.
-     */
-    private java.util.List<process.swing.workflow.ProcessWorkflowResults.SelectionAction>
-            decidingMarksUnsaved(
-            java.util.List<process.swing.workflow.ProcessWorkflowResults.SelectionAction> edits) {
-        return edits.stream().map(edit ->
-                new process.swing.workflow.ProcessWorkflowResults.SelectionAction(
-                        edit.label(), chosen -> {
-                            edit.apply().accept(chosen);
-                            savedGenerationRun = null;
-                        })).toList();
     }
 
     private void applyGraphResultFromInstances(GraphDiscoveryResultStore.Artifact result) {

@@ -25,6 +25,10 @@ import java.util.stream.Stream;
 public final class BuildProjectWorkflow {
     private BuildProjectWorkflow() { }
 
+    private static final String MODEL_BUILDER_REVIEW =
+            "In ModelBuilder, load the instances, accept or reject the Review entries "
+                    + "named in the steps on that graph's tab, save, and build again.";
+
     // The build report's cards show exactly these fields (#363).
     static {
         objectview.field.RecordTypes.declare("Build step",
@@ -46,6 +50,14 @@ public final class BuildProjectWorkflow {
     public static <T> ProcessWorkflowAction<ProjectBuild.Report, ProjectBuild.Report> action(
             GeneratedProjectModel saved, File modelFile, DomainStorage storage, ProjectSaveGuard guard,
             String reloadTitle, Reload<T> reload, Consumer<T> install, String inspection) {
+        return action(saved, modelFile, storage, guard, reloadTitle, reload, install, inspection,
+                MODEL_BUILDER_REVIEW, ignored -> { });
+    }
+
+    public static <T> ProcessWorkflowAction<ProjectBuild.Report, ProjectBuild.Report> action(
+            GeneratedProjectModel saved, File modelFile, DomainStorage storage, ProjectSaveGuard guard,
+            String reloadTitle, Reload<T> reload, Consumer<T> install, String inspection,
+            String reviewInstructions, Consumer<ProjectBuild.Report> completed) {
         List<Viewable> steps = saved.buildOperations().stream()
                 .map(operation -> (Viewable) card(operation.declarationId(), operation.describe(saved), "Build step"))
                 .toList();
@@ -77,12 +89,13 @@ public final class BuildProjectWorkflow {
                                 new ProcessWorkflowPlan.Tab("Files it may read or write", files)));
             }
             @Override public void afterCompletion(ProcessOutcome<ProjectBuild.Report> outcome) {
-                var completed = loaded.getAndSet(null);
-                if (completed != null) install.accept(completed.value());
+                var reloaded = loaded.getAndSet(null);
+                if (reloaded != null) install.accept(reloaded.value());
+                if (outcome != null && outcome.result() != null) completed.accept(outcome.result());
             }
             @Override public ProcessWorkflowResults<ProjectBuild.Report> results(
                     ProcessOutcome<ProjectBuild.Report> outcome) {
-                return BuildProjectWorkflow.results(saved, outcome, inspection);
+                return BuildProjectWorkflow.results(saved, outcome, inspection, reviewInstructions);
             }
             @Override public void apply(List<ProjectBuild.Report> ignored) { }
         };
@@ -99,6 +112,11 @@ public final class BuildProjectWorkflow {
     public static ProcessWorkflowResults<ProjectBuild.Report>
             results(GeneratedProjectModel project,
                     ProcessOutcome<ProjectBuild.Report> outcome, String inspection) {
+        return results(project, outcome, inspection, MODEL_BUILDER_REVIEW);
+    }
+
+    private static ProcessWorkflowResults<ProjectBuild.Report> results(GeneratedProjectModel project,
+            ProcessOutcome<ProjectBuild.Report> outcome, String inspection, String reviewInstructions) {
         ProjectBuild.Report report = outcome.result();
         if (report == null) {
             return new ProcessWorkflowResults<>(
@@ -127,9 +145,7 @@ public final class BuildProjectWorkflow {
                     : "Build completed and saved. Opening the built project failed: "
                             + outcome.error().getMessage();
             case AWAITING_DECISION -> "Stopped: a graph result is awaiting a decision, and the "
-                    + "snapshot was not replaced. In ModelBuilder, load the instances, accept or reject "
-                    + "the Review entries named in the steps on that graph's tab, save, and "
-                    + "build again.";
+                    + "snapshot was not replaced. " + reviewInstructions;
             case INCOMPLETE -> "Stopped: generation was incomplete, so nothing was saved.";
             default -> report.steps().stream().filter(step -> step.action() == ProjectBuild.Action.STOPPED)
                     .findFirst().map(step -> "Stopped at " + step.planned().description() + ". " + step.detail())

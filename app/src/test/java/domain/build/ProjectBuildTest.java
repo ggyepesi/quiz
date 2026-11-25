@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -119,6 +120,26 @@ class ProjectBuildTest {
                         ProjectBuild.State.CURRENT, ProjectBuild.State.CURRENT),
                 ProjectBuild.plan(model, storage).stream().map(ProjectBuild.Step::state).toList(),
                 "a second build has nothing to do");
+    }
+
+    @Test void theSavedReviewSupersedesOlderAppliedAnnotationsInTheInstancePool() throws Exception {
+        var storage = DomainStorage.in(root.toFile());
+        var model = project();
+        var graph = model.findClass("PositionGraph");
+        var old = GraphDiscoveryResultStore.applied(result(model, annotation("Q1", "Accepted", null)));
+        var results = new GraphResults(model, storage);
+        var reviewed = GraphDiscoveryResultStore.applied(result(model, annotation("Q1", "Accepted", null)));
+        results.record(graph, reviewed);
+        assertTrue(GraphDiscoveryResultStore.review(reviewed, reviewed.instances(), "Rejected"));
+        assertFalse(reviewed.applied());
+        GraphDiscoveryResultStore.save(reviewed, storage);
+
+        var reloaded = new GraphResults(model, storage);
+        reloaded.restore(old.instances(), ignored -> { });
+        assertTrue(reloaded.of(graph).acceptedIdentities().isEmpty());
+        assertFalse(reloaded.of(graph).applied());
+        assertEquals("Rejected", reloaded.of(graph).instances().getFirst()
+                .get(GraphDiscoveryResultStore.MANUAL_DECISION));
     }
 
     /**

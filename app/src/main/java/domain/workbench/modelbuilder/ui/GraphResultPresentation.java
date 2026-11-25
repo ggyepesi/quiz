@@ -4,6 +4,7 @@ import objectview.Viewable;
 import process.swing.workflow.ProcessWorkflowResults;
 import domain.runtime.WikidataDynamicObject;
 import domain.build.GraphDiscoveryResultStore;
+import domain.workbench.execution.ui.QueryObjectResultPanel;
 
 import javax.swing.BoxLayout;
 import javax.swing.JComponent;
@@ -11,6 +12,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import java.awt.Color;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -23,8 +25,22 @@ import java.util.function.Function;
  * annotation, with only its decision, manual override and per-candidate reason added as a
  * decoration. Traversal configuration belongs to the graph editor, not to every card.
  */
-final class GraphResultPresentation {
+public final class GraphResultPresentation {
     private GraphResultPresentation() { }
+
+    /** The graph's original decision tabs, with edits recorded separately on the annotations. */
+    public static QueryObjectResultPanel.GroupedSection review(
+            GraphDiscoveryResultStore.Artifact result,
+            List<QueryObjectResultPanel.GroupAction> actions, Runnable changed) {
+        Map<String, List<Viewable>> partitions = new LinkedHashMap<>();
+        for (String decision : List.of("Accepted", "Review", "Rejected")) {
+            partitions.put(decision, result.instances().stream()
+                    .filter(value -> GraphDiscoveryResultStore.originalDecisions(value).contains(decision))
+                    .map(GraphResultPresentation::candidate).toList());
+        }
+        return QueryObjectResultPanel.GroupedSection.presented(candidates(result.instances()),
+                partitions, actions, decisionActions(result, changed), shapeSample(result), decorator(result));
+    }
 
     static Viewable candidate(WikidataDynamicObject annotation) {
         Object value = annotation == null ? null
@@ -56,19 +72,25 @@ final class GraphResultPresentation {
 
     static List<ProcessWorkflowResults.SelectionAction> decisionActions(
             GraphDiscoveryResultStore.Artifact artifact) {
+        return decisionActions(artifact, () -> { });
+    }
+
+    private static List<ProcessWorkflowResults.SelectionAction> decisionActions(
+            GraphDiscoveryResultStore.Artifact artifact, Runnable changed) {
         Map<Viewable, WikidataDynamicObject> annotations = annotationsByCandidate(artifact);
         return List.of(
-                decisionAction("Accept selection", "Accepted", annotations),
-                decisionAction("Reject selection", "Rejected", annotations),
-                decisionAction("Clear manual decision", null, annotations));
+                decisionAction("Accept selection", "Accepted", artifact, annotations, changed),
+                decisionAction("Reject selection", "Rejected", artifact, annotations, changed),
+                decisionAction("Clear manual decision", null, artifact, annotations, changed));
     }
 
     private static ProcessWorkflowResults.SelectionAction decisionAction(
-            String label, String decision,
-            Map<Viewable, WikidataDynamicObject> annotations) {
-        return new ProcessWorkflowResults.SelectionAction(label, values -> values.stream()
-                .map(annotations::get).filter(java.util.Objects::nonNull)
-                .forEach(value -> GraphDiscoveryResultStore.manualDecision(value, decision)));
+            String label, String decision, GraphDiscoveryResultStore.Artifact artifact,
+            Map<Viewable, WikidataDynamicObject> annotations, Runnable changed) {
+        return new ProcessWorkflowResults.SelectionAction(label, values -> {
+            var selected = values.stream().map(annotations::get).filter(java.util.Objects::nonNull).toList();
+            if (GraphDiscoveryResultStore.review(artifact, selected, decision)) changed.run();
+        });
     }
 
     private static Map<Viewable, WikidataDynamicObject> annotationsByCandidate(

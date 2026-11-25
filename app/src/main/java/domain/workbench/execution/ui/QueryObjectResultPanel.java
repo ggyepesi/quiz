@@ -42,6 +42,8 @@ public class QueryObjectResultPanel
             new JPanel(new BorderLayout());
 
     private RenderContext activeContext;
+    private final List<JButton> resultActions = new ArrayList<>();
+    private boolean resultActionsEnabled = true;
     /** The sections this panel currently shows, not a selection owned by its caller. */
     private Map<String, List<Viewable>> displayedObjectsByType = Map.of();
     /** Presentation state for this result window. It is deliberately neither project
@@ -107,12 +109,25 @@ public class QueryObjectResultPanel
     }
 
     public void clear() {
+        resultActions.clear();
         activeContext = null;
         displayedObjectsByType = Map.of();
         hiddenClassSections.clear();
         holder.removeAll();
         holder.repaint();
         displayedObjectsListener.run();
+    }
+
+    public void setResultActionsEnabled(boolean enabled) {
+        resultActionsEnabled = enabled;
+        resultActions.forEach(button -> button.setEnabled(enabled));
+    }
+
+    private JButton resultAction(String label) {
+        JButton button = new JButton(label);
+        button.setEnabled(resultActionsEnabled);
+        resultActions.add(button);
+        return button;
     }
 
     /** The explicit group-class presentations for the result currently being shown. */
@@ -273,6 +288,7 @@ public class QueryObjectResultPanel
             holder.setVisible(false);
             holder.removeAll();
             activeContext = null;
+            resultActions.clear();
 
             if ((result == null || result.objects() == null || result.objects().isEmpty())
                     && shownSections.isEmpty()) {
@@ -426,7 +442,7 @@ public class QueryObjectResultPanel
         if (!group.actions().isEmpty()) {
             JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
             for (GroupAction action : group.actions()) {
-                JButton button = new JButton(action.label());
+                JButton button = resultAction(action.label());
                 button.addActionListener(ignored -> action.apply().run());
                 actions.add(button);
             }
@@ -452,7 +468,7 @@ public class QueryObjectResultPanel
      * last one did. Only this group's members are edited, whatever else the shared
      * selection holds, and the edited cards are redrawn in every tab that shows them.
      */
-    private static JComponent selectionActions(GroupedSection group, RenderContext context,
+    private JComponent selectionActions(GroupedSection group, RenderContext context,
                                                List<SearchableView> shown) {
         JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
         JLabel status = new JLabel("Ctrl/Cmd-click selects several.");
@@ -460,7 +476,7 @@ public class QueryObjectResultPanel
         members.addAll(group.all());
         for (process.swing.workflow.ProcessWorkflowResults.SelectionAction edit
                 : group.selectionActions()) {
-            JButton button = new JButton(edit.label());
+            JButton button = resultAction(edit.label());
             button.addActionListener(ignored -> {
                 List<Viewable> chosen = context.selectedObjects().stream()
                         .filter(Viewable.class::isInstance).map(Viewable.class::cast)

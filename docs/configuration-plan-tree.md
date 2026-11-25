@@ -389,7 +389,18 @@ Under **Project → Build project**, **Plan build** shows the saved steps and th
 may read or write. Save configuration changes before building. **Execute** uses the same
 build, progress view and report as ModelBuilder. A completed build reloads its saved model and
 snapshot into the open workbench before publishing **Instances**, **Steps** and **Files written**
-in the action tree. The results are for inspection. Graph decision review is still in ModelBuilder.
+in the action tree. The results are for inspection.
+
+When a build stops for a graph decision in the open project, its **Graph decisions** result
+offers to load the waiting graph's annotations for review. You can also select a local graph class and open
+**Project → Review graph decisions** directly. **Load graph annotations** reads the displayed
+`.graph.snapshot.json` file. The review uses ModelBuilder's candidate cards and the
+**All**, **Accepted**, **Review** and **Rejected** tabs. Accepting, rejecting or clearing a
+manual decision updates the card while keeping it in its original tab.
+**Save model** or **Save domain** writes the changed annotation files and names them in the
+confirmation. The next **Build project** applies the saved decisions through its
+**Apply graph decisions** step. The published instance snapshot stays in place until the
+build reaches **Save project**.
 
 ## Forcing tests and checked artifacts
 

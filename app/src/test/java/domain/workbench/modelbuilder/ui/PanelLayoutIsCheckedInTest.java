@@ -27,10 +27,10 @@ import javax.swing.JList;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 import javax.swing.border.TitledBorder;
 import java.awt.Component;
 import java.awt.Container;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -56,9 +56,31 @@ class PanelLayoutIsCheckedInTest {
 
     private static final Path GOLDEN = Path.of("../docs/panel-layout.txt");
 
-    @Test void theEditorsLookLikeTheCheckedInLayout() throws IOException {
-        GeneratedProjectModel project = project();
+    @Test void theEditorsLookLikeTheCheckedInLayout() throws Exception {
         StringBuilder actual = new StringBuilder();
+        describeEditors(actual);
+        Path golden = Files.isRegularFile(GOLDEN) ? GOLDEN : Path.of("docs/panel-layout.txt");
+        if (Boolean.getBoolean("panel.layout.write")) {
+            Files.writeString(golden, actual.toString().stripTrailing() + "\n");
+        }
+        // The artifact describes components and order; the number of blank lines after
+        // its final component is not panel structure.
+        String checkedIn = Files.readString(golden).stripTrailing();
+        String rendered = actual.toString().stripTrailing();
+        if (!checkedIn.equals(rendered)) {
+            // The diff is the point, and an assertion message is not where anyone can
+            // read a 300-line one.
+            Path seen = golden.resolveSibling("panel-layout.actual.txt");
+            Files.writeString(seen, actual.toString().stripTrailing() + "\n");
+            assertEquals(checkedIn, rendered,
+                    "the editors no longer look like " + golden + "; diff it against "
+                            + seen + ", then re-run with -Dpanel.layout.write=true to "
+                            + "accept the new layout");
+        }
+    }
+
+    private static void describeEditors(StringBuilder actual) throws Exception {
+        GeneratedProjectModel project = project();
 
         DomainOverviewPanel overview = new DomainOverviewPanel(project);
         describe(actual, "Project - DomainOverviewPanel", overview);
@@ -147,63 +169,54 @@ class PanelLayoutIsCheckedInTest {
                 return type == ProjectBacking.class ? type.cast(backing) : super.capability(type);
             }
         };
-        try (var unified = new UnifiedWorkbenchPanel(opened)) {
-            find(unified, SingleRootClassModelPanel.class)
-                    .selectField(backing.projectModel().rootClass().fields().getFirst());
-            var editor = find(unified, FieldSourcePanel.class);
-            editor.selectConfigurationDetail(FieldConfigurationProjection.PRIMARY);
-            describe(actual, "Unified Workbench / Field source and acquisition plan", unified);
-            var tree = find(unified, domain.workbench.ui.WorkbenchActionResultNavigator.class).tree();
-            var root = (javax.swing.tree.DefaultMutableTreeNode) tree.getModel().getRoot();
-            for (var nodes = root.depthFirstEnumeration(); nodes.hasMoreElements();) {
-                var node = (javax.swing.tree.DefaultMutableTreeNode) nodes.nextElement();
-                if ("Load field values".equals(node.toString())) {
-                    tree.setSelectionPath(new javax.swing.tree.TreePath(node.getPath()));
-                    break;
+        SwingUtilities.invokeAndWait(() -> {
+            try (var unified = new UnifiedWorkbenchPanel(opened)) {
+                find(unified, SingleRootClassModelPanel.class)
+                        .selectField(backing.projectModel().rootClass().fields().getFirst());
+                var editor = find(unified, FieldSourcePanel.class);
+                editor.selectConfigurationDetail(FieldConfigurationProjection.PRIMARY);
+                describe(actual, "Unified Workbench / Field source and acquisition plan", unified);
+                var tree = find(unified, domain.workbench.ui.WorkbenchActionResultNavigator.class).tree();
+                var root = (javax.swing.tree.DefaultMutableTreeNode) tree.getModel().getRoot();
+                for (var nodes = root.depthFirstEnumeration(); nodes.hasMoreElements();) {
+                    var node = (javax.swing.tree.DefaultMutableTreeNode) nodes.nextElement();
+                    if ("Load field values".equals(node.toString())) {
+                        tree.setSelectionPath(new javax.swing.tree.TreePath(node.getPath()));
+                        break;
+                    }
                 }
-            }
-            describe(actual, "Unified Workbench / Load field values", unified);
-            find(unified, SingleRootClassModelPanel.class).selectClass(output);
-            find(unified, ClassSourcePanel.class).configurationEditor().tree()
-                    .selectDetail(ClassConfigurationProjection.TRANSFORMATION);
-            for (var nodes = root.depthFirstEnumeration(); nodes.hasMoreElements();) {
-                var node = (javax.swing.tree.DefaultMutableTreeNode) nodes.nextElement();
-                if ("Preview population".equals(node.toString())) {
-                    tree.setSelectionPath(new javax.swing.tree.TreePath(node.getPath()));
-                    break;
+                describe(actual, "Unified Workbench / Load field values", unified);
+                find(unified, SingleRootClassModelPanel.class).selectClass(output);
+                find(unified, ClassSourcePanel.class).configurationEditor().tree()
+                        .selectDetail(ClassConfigurationProjection.TRANSFORMATION);
+                for (var nodes = root.depthFirstEnumeration(); nodes.hasMoreElements();) {
+                    var node = (javax.swing.tree.DefaultMutableTreeNode) nodes.nextElement();
+                    if ("Preview population".equals(node.toString())) {
+                        tree.setSelectionPath(new javax.swing.tree.TreePath(node.getPath()));
+                        break;
+                    }
                 }
-            }
-            describe(actual, "Unified Workbench / Edit transformation and preview population", unified);
-            for (var nodes = root.depthFirstEnumeration(); nodes.hasMoreElements();) {
-                var node = (javax.swing.tree.DefaultMutableTreeNode) nodes.nextElement();
-                if ("Build project".equals(node.toString())) {
-                    tree.setSelectionPath(new javax.swing.tree.TreePath(node.getPath()));
-                    break;
+                describe(actual, "Unified Workbench / Edit transformation and preview population", unified);
+                for (var nodes = root.depthFirstEnumeration(); nodes.hasMoreElements();) {
+                    var node = (javax.swing.tree.DefaultMutableTreeNode) nodes.nextElement();
+                    if ("Build project".equals(node.toString())) {
+                        tree.setSelectionPath(new javax.swing.tree.TreePath(node.getPath()));
+                        break;
+                    }
                 }
+                describe(actual, "Unified Workbench / Build project", unified);
+                find(unified, SingleRootClassModelPanel.class).selectConstruct(backing.projectModel());
+                describe(actual, "Unified Workbench / Edit build steps", unified);
+                for (var nodes = root.depthFirstEnumeration(); nodes.hasMoreElements();) {
+                    var node = (javax.swing.tree.DefaultMutableTreeNode) nodes.nextElement();
+                    if ("Review graph decisions".equals(node.toString())) {
+                        tree.setSelectionPath(new javax.swing.tree.TreePath(node.getPath()));
+                        break;
+                    }
+                }
+                describe(actual, "Unified Workbench / Review graph decisions", unified);
             }
-            describe(actual, "Unified Workbench / Build project", unified);
-            find(unified, SingleRootClassModelPanel.class).selectConstruct(backing.projectModel());
-            describe(actual, "Unified Workbench / Edit build steps", unified);
-        }
-
-        Path golden = Files.isRegularFile(GOLDEN) ? GOLDEN : Path.of("docs/panel-layout.txt");
-        if (Boolean.getBoolean("panel.layout.write")) {
-            Files.writeString(golden, actual.toString().stripTrailing() + "\n");
-        }
-        // The artifact describes components and order; the number of blank lines after
-        // its final component is not panel structure.
-        String checkedIn = Files.readString(golden).stripTrailing();
-        String rendered = actual.toString().stripTrailing();
-        if (!checkedIn.equals(rendered)) {
-            // The diff is the point, and an assertion message is not where anyone can
-            // read a 300-line one.
-            Path seen = golden.resolveSibling("panel-layout.actual.txt");
-            Files.writeString(seen, actual.toString().stripTrailing() + "\n");
-            assertEquals(checkedIn, rendered,
-                    "the editors no longer look like " + golden + "; diff it against "
-                            + seen + ", then re-run with -Dpanel.layout.write=true to "
-                            + "accept the new layout");
-        }
+        });
     }
 
     // --- the walk ---
