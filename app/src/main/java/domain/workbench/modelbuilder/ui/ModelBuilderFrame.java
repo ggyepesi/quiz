@@ -497,30 +497,27 @@ public class ModelBuilderFrame extends JFrame {
         return panel;
     }
 
-    // RIGHT panel: the config editor, with the artifact viewers + Explorer in
-    // a header.
+    // Keep the editor's tools together below the configuration they work with.
     private JPanel buildConfigPanel() {
-        JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
-        header.add(showGeneratedSourceButton);
-        header.add(showRuleTreeButton);
-        header.add(showExplorerButton);
-        header.add(showGraphButton);
+        JPanel tools = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        tools.add(showGeneratedSourceButton);
+        tools.add(showRuleTreeButton);
+        tools.add(showExplorerButton);
+        tools.add(showGraphButton);
         showEntityKindsButton.setToolTipText(
                 "Map Wikidata evidence such as P31 values to modeled entity kinds");
-        header.add(showEntityKindsButton);
+        tools.add(showEntityKindsButton);
         showGuideButton.setToolTipText("Guided build steps for the selected class: "
                                                + "what's done, what's next, the tool for it, and the hint");
-        header.add(showGuideButton);
+        tools.add(showGuideButton);
 
         configurationLockLabel.setForeground(new Color(155, 90, 0));
         configurationLockLabel.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 2));
         configurationLockLabel.setVisible(false);
-        JPanel top = new JPanel(new BorderLayout());
-        top.add(header, BorderLayout.NORTH);
-        top.add(configurationLockLabel, BorderLayout.SOUTH);
         JPanel panel = new JPanel(new BorderLayout(4, 4));
-        panel.add(top, BorderLayout.NORTH);
+        panel.add(configurationLockLabel, BorderLayout.NORTH);
         panel.add(sourceWorkbench, BorderLayout.CENTER);
+        panel.add(tools, BorderLayout.SOUTH);
         return panel;
     }
 

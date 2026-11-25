@@ -45,7 +45,8 @@ public class ClassSourcePanel extends JPanel {
     private Consumer<GeneratedClassModel> transformationApplied = ignored -> { };
     private final TransformationConfigurationEditor transformation =
             new TransformationConfigurationEditor(
-                    this::refreshConfiguration, clazz -> transformationApplied.accept(clazz));
+                    this::refreshConfiguration, this::selectTransformationStep,
+                    clazz -> transformationApplied.accept(clazz));
 
     private final JComboBox<ClassSearchQuery.Mode> searchModeBox =
             new JComboBox<>(ClassSearchQuery.Mode.values());
@@ -747,6 +748,13 @@ public class ClassSourcePanel extends JPanel {
     private void refreshConfiguration() {
         transformation.showClass(projectModel, clazz);
         configuration.showClass(projectModel, clazz, transformation.transformation());
+    }
+
+    private void selectTransformationStep(int index) {
+        var tree = configuration.tree();
+        tree.nodes().stream()
+                .filter(node -> ClassConfigurationProjection.transformationStepIndex(node) == index)
+                .findFirst().ifPresent(node -> tree.select(node.id()));
     }
 
     private void wireQuery() {

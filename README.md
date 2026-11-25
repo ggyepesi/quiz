@@ -84,6 +84,7 @@ There is no packaged launcher yet; run the entry points from your IDE against th
 | | |
 |---|---|
 | `domain.workbench.modelbuilder.app.ModelBuilderApp` | the modelling workbench |
+| `domain.workbench.unified.app.UnifiedWorkbenchApp` | edit fields and inspect their acquisition plans in the same window for a saved project |
 | `domain.datasource.app.DataSourceApp` | load identities and field values from configured external sources, then review and apply them |
 | `domain.transform.app.TransformApp` | local grouping, transformations and manual edits over a generated snapshot |
 | `domain.datasource.discovery.app.DiscoveryApp` | bounded source discovery over one instance selection, with explicit promotion of reusable findings into ModelBuilder configuration |

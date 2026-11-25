@@ -1,6 +1,7 @@
 package domain.workbench.configuration.ui;
 
 import domain.config.GeneratedProjectModel;
+import domain.config.GeneratedFieldModel;
 import domain.config.PopulationSelection;
 import domain.provenance.SourceIdentities;
 import domain.transform.ui.ProjectBacking;
@@ -23,47 +24,93 @@ import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.List;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /** The ModelBuilder configuration navigator and detail editors over an open project. */
 public final class ProjectConfigurationPanel extends JPanel implements AutoCloseable {
     private final ModelSourceWorkbenchPanel details;
+    private final SingleRootClassModelPanel constructs;
 
     public ProjectConfigurationPanel(ProjectBacking project, TransformController controller,
             WorkbenchPurpose purpose, List<? extends Viewable> selectedInstances, Object initialConstruct,
             Runnable populationChanged) {
+        this(project, controller.domain().instances().size(), initialConstruct, (details, selections) -> {
+            GeneratedProjectModel model = project.projectModel();
+            selections.inspect(selection -> purpose.showsTransformActions() && !selection.isImported()
+                            && selection instanceof PopulationSelection population
+                            && !isTransformationOutput(model, population),
+                    population -> selectedInstances.stream()
+                            .filter(value -> controller.domain().isInstanceOf(value, population.className()))
+                            .map(SourceIdentities::wikidataQid)
+                            .filter(wikidata.WikidataIds::isQid).distinct().toList());
+            selections.afterChange(selection -> {
+                if (selection instanceof PopulationSelection population) project.populationChanged(population);
+                populationChanged.run();
+            });
+            var fields = purpose.showsTransformActions() ? new TransformationConfigurationEditor.Fields(
+                    controller.domain(), controller::candidateValueSelection,
+                    controller::sampleFieldValue) : null;
+            details.inspectConfiguration(fields, clazz -> project.recordModelChange(
+                    "Population transformation for " + clazz.className()));
+        }, ignored -> { });
+    }
+
+    /** The shared navigator and editor mounted with ownership of field declarations. */
+    public static ProjectConfigurationPanel editFields(ProjectBacking project, int loadedObjects,
+            Consumer<GeneratedFieldModel> selected, Consumer<GeneratedFieldModel> applied) {
+        return new ProjectConfigurationPanel(project, loadedObjects, project.projectModel().rootClass(),
+                (details, selections) -> {
+            selections.inspect(ignored -> false, ignored -> List.of());
+            details.editFieldConfiguration();
+            details.afterChange(ignored -> {
+                if (details.selected() instanceof GeneratedFieldModel field) applied.accept(field);
+            });
+        }, value -> selected.accept(value instanceof GeneratedFieldModel field ? field : null));
+    }
+
+    private boolean restoringSelection;
+    private java.util.function.BiFunction<String, String, process.swing.Dialogs.UnappliedEdits>
+            unappliedDecision = (construct, action) ->
+                    process.swing.Dialogs.unappliedEdits(this, construct, action);
+
+    private ProjectConfigurationPanel(ProjectBacking project, int loadedObjects, Object initialConstruct,
+            BiConsumer<ModelSourceWorkbenchPanel, SelectionViewerPanel> configure,
+            Consumer<Object> selected) {
         super(new BorderLayout());
         GeneratedProjectModel model = project.projectModel();
-        var constructs = new SingleRootClassModelPanel(model, false);
+        constructs = new SingleRootClassModelPanel(model, false);
         details = new ModelSourceWorkbenchPanel(model);
         var selections = new SelectionViewerPanel(model, null, null);
-        selections.inspect(selection -> purpose.showsTransformActions() && !selection.isImported()
-                        && selection instanceof PopulationSelection population
-                        && !isTransformationOutput(model, population),
-                population -> selectedInstances.stream()
-                        .filter(value -> controller.domain().isInstanceOf(value, population.className()))
-                        .map(SourceIdentities::wikidataQid)
-                        .filter(wikidata.WikidataIds::isQid).distinct().toList());
-        selections.afterChange(selection -> {
-            if (selection instanceof PopulationSelection population) project.populationChanged(population);
-            populationChanged.run();
-        });
         details.selectionEditor(selections);
-        var fields = purpose.showsTransformActions() ? new TransformationConfigurationEditor.Fields(
-                controller.domain(), controller::candidateValueSelection,
-                controller::sampleFieldValue) : null;
-        details.inspectConfiguration(fields, clazz -> project.recordModelChange(
-                "Population transformation for " + clazz.className()));
-        details.loadedProjectStatus(
-                project.modelFile().isFile(), project.snapshotFile().isFile(),
-                controller.domain().instances().size());
+        configure.accept(details, selections);
+        details.loadedProjectStatus(project.modelFile().isFile(), project.snapshotFile().isFile(), loadedObjects);
         details.onConfigurationNavigation(constructs::selectConstruct);
         details.onGraphSelection(constructs::selectConstruct);
         constructs.addTreeSelectionListener(event -> {
-            Object selected = constructs.selectedUserObject();
-            if (SingleRootClassModelPanel.isConfigurable(selected)) details.edit(selected);
+            if (restoringSelection) return;
+            Object construct = constructs.selectedUserObject();
+            if (SingleRootClassModelPanel.isConfigurable(construct) && construct != details.selected()) {
+                // Leaving a construct with unapplied edits asks first (#535); Stay keeps
+                // both the edits and the selection.
+                if (!resolveUnappliedEdits("opening another construct")) {
+                    restoringSelection = true;
+                    try {
+                        constructs.selectConstruct(details.selected());
+                    } finally {
+                        restoringSelection = false;
+                    }
+                    return;
+                }
+                details.edit(construct);
+                selected.accept(construct);
+            }
         });
         constructs.selectConstruct(initialConstruct);
-        if (details.selected() == null) details.edit(constructs.selectedUserObject());
+        if (details.selected() == null) {
+            details.edit(constructs.selectedUserObject());
+            selected.accept(details.selected());
+        }
         var split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, constructs, details);
         split.setDividerLocation(230);
         add(split, BorderLayout.CENTER);
@@ -76,6 +123,40 @@ public final class ProjectConfigurationPanel extends JPanel implements AutoClose
     }
 
     public boolean hasDrafts() { return details.hasTransformationDrafts(); }
+
+    /**
+     * Before an action that would drop the open editor's unapplied edits: asks Apply /
+     * Discard / Stay. Returns whether the action may continue; Discard reloads the
+     * editor from the model, and a refused Apply stays.
+     */
+    public boolean resolveUnappliedEdits(String action) {
+        if (!details.hasUnappliedEdits()) return true;
+        return switch (unappliedDecision.apply(details.editedConstructName(), action)) {
+            case APPLY -> details.applyUnappliedEdits();
+            case DISCARD -> {
+                discardUnappliedEdits();
+                yield true;
+            }
+            case STAY -> false;
+        };
+    }
+
+    public boolean hasUnappliedEdits() { return details.hasUnappliedEdits(); }
+
+    /** Applies the open editor's edits as its Apply does; false when Apply refused. */
+    public boolean applyUnappliedEdits() { return details.applyUnappliedEdits(); }
+
+    public String editedConstructName() { return details.editedConstructName(); }
+
+    /** Reloads the open construct from the working model, dropping its draft. */
+    public void discardUnappliedEdits() { details.edit(details.selected()); }
+
+    /** Lets a test or host answer the question instead of the shared dialog. */
+    public void unappliedDecision(java.util.function.BiFunction<String, String,
+            process.swing.Dialogs.UnappliedEdits> decision) {
+        unappliedDecision = decision;
+        details.unappliedDecision(decision);
+    }
 
     /** Application composition: mount the shared model editor over this workbench's scope. */
     public static void open(TransformWorkbenchPanel.ConfigurationContext context) {

@@ -154,10 +154,28 @@ commits the complete construct draft and rebuilds its projection from the model.
 There are no per-node drafts. A half-edited route step or evidence recipe never reaches execution,
 validation or another component. Inspecting sections of the current editor preserves its controls.
 
-The shared Apply / Discard / Stay behavior is tracked by #535. It also covers leaving a graph node
-to edit another node or opening **+ Add next node**. Today those switches replace the current
-node's unapplied controls. The unified workbench's other components read the last applied project
-configuration.
+In the unified workbench a field's draft is resolved explicitly (#535). One method reads the
+field controls onto a copy of the model. The editor compares the authored configuration even when
+the model has validation errors. Apply checks the proposed change before writing it to the working
+model. Invalid input stays in the editor for correction. Inspecting sections, expanding or
+scrolling preserves the draft, and restoring an edited value leaves the field clean.
+
+- **Leaving a dirty field** (another construct in the navigator, a reference's Open, or another
+  production site of the same field) asks **Apply / Discard / Stay** for the whole field draft,
+  shared definition included. Stay is the default and keeps the selection and the draft; Apply runs
+  the field's Apply and its validation, and a refused Apply stays with the reason shown; Discard
+  reloads the whole field from the working model.
+- **Save** is enabled whenever no save runs. With a draft it offers **Apply and save**, **Discard
+  draft and save applied changes**, or **Stay**; the shared file confirmation comes first, so
+  cancelling it keeps the draft. A failed write keeps the applied changes in memory.
+- **Close** is one decision: with a draft **Apply, save and close / Discard changes and close /
+  Stay**; with only applied changes **Save and close / Discard changes and close / Stay**. Stay is
+  the default; a refused Apply or a failed save keeps the workbench open.
+
+ModelBuilderApp keeps its current behavior until it is retired. Graph and class editors adopt the
+same rule when the unified workbench lets them edit; until then leaving a graph node or opening
+**+ Add next node** in ModelBuilder replaces that node's unapplied controls. The unified
+workbench's other components read the last applied project configuration.
 
 ## One model-layer configuration inventory
 
@@ -304,9 +322,17 @@ Follow #557 as checked milestones:
 9. Let Transform and Datasource views adopt the same projection with ownership-based editability.
    **Done.**
 
-The first unified-workbench acceptance slice reaches milestone 5: open one project, select a field,
-inspect its complete configuration tree, edit and Apply it through the shared component, and observe
-the same resulting model in ModelBuilderApp.
+The first unified-workbench slice is available in `domain.workbench.unified.app.UnifiedWorkbenchApp`.
+Open a saved model or domain with an instance snapshot, select a field, and use the same field
+editor as ModelBuilder. **Apply field source** updates the working model and the **Field acquisition
+plan** in the same window. The preview reads the plan compiler used by Generate and Enrich.
+Selecting a field or reading its plan sends no datasource requests.
+Leaving, saving or closing over unapplied edits asks first, as described under
+[One draft and one Apply](#one-draft-and-one-apply).
+
+**Save model** or **Save domain** writes the project's `.model.json` through the shared concurrent-save
+guard. Reopening the project shows the saved field and plan. The snapshot still contains the
+previous instances. Change the field, Apply, and run acquisition to refresh their values.
 
 ## Forcing tests and checked artifacts
 

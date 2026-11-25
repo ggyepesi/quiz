@@ -129,6 +129,32 @@ public final class Dialogs {
         return new Dimension(width, height);
     }
 
+    /** The answer to leaving, saving or closing over unapplied edits (#535). */
+    public enum UnappliedEdits { APPLY, DISCARD, STAY }
+
+    /**
+     * Asks what to do with an editor's unapplied edits before an action that would
+     * otherwise drop them. Stay is the default and the answer when the dialog is closed.
+     */
+    public static UnappliedEdits unappliedEdits(Component parent, String construct,
+            String action) {
+        int answer = choose(parent, "Unapplied edits",
+                construct + " has edits that are not applied.\n\nApply them before "
+                        + action + ", discard them, or stay and keep editing?",
+                new String[] {"Apply", "Discard", "Stay"}, 2);
+        return answer == 0 ? UnappliedEdits.APPLY
+                : answer == 1 ? UnappliedEdits.DISCARD : UnappliedEdits.STAY;
+    }
+
+    /** One decision among named, complete actions; closing the dialog chooses the default. */
+    public static int choose(Component parent, String title, String message,
+            String[] options, int defaultOption) {
+        int answer = JOptionPane.showOptionDialog(owner(parent), wrapped(message), title,
+                JOptionPane.DEFAULT_OPTION, JOptionPane.WARNING_MESSAGE, null, options,
+                options[defaultOption]);
+        return answer < 0 ? defaultOption : answer;
+    }
+
     /** Consistent readable body for dialogs containing explanations or exact file paths. */
     public static JComponent wrapped(String text) {
         JTextArea area = new JTextArea(text == null ? "" : text);

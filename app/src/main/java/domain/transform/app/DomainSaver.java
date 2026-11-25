@@ -289,7 +289,10 @@ public final class DomainSaver implements DomainWriter {
 
     /** Exact file written by {@link #save}; plans can name it before work starts. */
     public static File destination(String name) {
-        return new File(aux.Constants.wikidataDataDirectory
-                + "transform/" + sanitize(name) + ".snapshot.json");
+        return destination(DomainStorage.inDefaultLocation(), name);
+    }
+
+    static File destination(DomainStorage storage, String name) {
+        return new File(storage.directory("transform"), sanitize(name) + ".snapshot.json");
     }
 }

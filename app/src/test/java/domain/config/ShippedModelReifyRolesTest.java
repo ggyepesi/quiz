@@ -90,7 +90,7 @@ class ShippedModelReifyRolesTest {
         // happens to be that month, which is exactly how this broke.
         GeneratedProjectModel model = new GeneratedProjectModelStore().load(OSCARS);
 
-        for (GeneratedClassModel c : allClasses(model)) {
+        for (GeneratedClassModel c : model.classes()) {
             if (c.statementSource() == null) continue;
             for (GeneratedFieldModel f : c.fields()) {
                 if (!StatementFieldSemantics.supportsMissingQualifierPolicy(c, f)) continue;
@@ -145,16 +145,6 @@ class ShippedModelReifyRolesTest {
         assertTrue(!GeneratedProjectModelValidator.validate(project).format()
                         .contains("No missing-qualifier policy"),
                 "stating it — with any of the three answers — is what the warning asks for");
-    }
-
-    private static List<GeneratedClassModel> allClasses(GeneratedProjectModel model) {
-        // rootClass and the same-named entry in classes() deserialize as DISTINCT
-        // instances, so a migration that touched only one would leave the other behind.
-        List<GeneratedClassModel> all = new java.util.ArrayList<>(model.classes());
-        if (model.rootClass() != null) {
-            all.add(model.rootClass());
-        }
-        return all;
     }
 
     private static ReifyConstruct nominationReify(GeneratedProjectModel model) {

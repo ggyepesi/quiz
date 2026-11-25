@@ -7,6 +7,7 @@ import wikidata.WikidataIds;
 import objectview.utils.swing.GridBagUtils;
 
 import domain.compile.codegen.GeneratedViewableSourceGenerator;
+import domain.compile.filter.WikidataValueFilterOperator;
 import domain.compile.rule.RuleNode;
 import wikidata.explore.WikidataProperty;
 import wikidata.explore.WikidataPropertyScore;
@@ -25,6 +26,7 @@ import domain.workbench.ui.WikipediaCategoryPicker;
 import domain.workbench.ui.WikipediaInfoboxPicker;
 import domain.workbench.ui.ConfigurationTreePanel;
 import domain.datasource.graph.GraphExpansionPolicy;
+import process.swing.Dialogs;
 
 public class FieldSourcePanel extends JPanel {
 
@@ -253,6 +255,15 @@ public class FieldSourcePanel extends JPanel {
     private final JButton clearSourceOverrideButton =
             new JButton("Use shared default");
     private boolean updatingSourceContext;
+    private boolean fieldEditsOnly;
+    private int shownSourceContext = -1;
+    private ConfigurationNode.Id shownConfigurationNode;
+    private boolean switchingSourceContext;
+    private boolean restoringConfigurationSelection;
+    private final GeneratedProjectModelStore modelStore = new GeneratedProjectModelStore();
+    private java.util.function.BiFunction<String, String, process.swing.Dialogs.UnappliedEdits>
+            unappliedDecision = (construct, action) ->
+                    process.swing.Dialogs.unappliedEdits(this, construct, action);
 
     record SourceContext(String label, OwnedComponentSite site) {
         @Override public String toString() { return label; }
@@ -545,6 +556,14 @@ public class FieldSourcePanel extends JPanel {
         discoverExternalButton.addActionListener(e -> discoverExternalProperty());
     }
 
+    /** The configuration and plan host has no sampling or query session of its own. */
+    void showLocalFieldEditor() {
+        fieldEditsOnly = true;
+        fallbackButton.setVisible(false);
+        categoryButton.setVisible(false);
+        reloadFieldButton.setVisible(false);
+    }
+
     /** Discover the PRIMARY source's property, from whichever structure it names. The
      *  fallback path already offered both; a primary source could only ever discover a
      *  DBpedia property, so choosing the native infobox left the field to be typed by
@@ -779,6 +798,7 @@ public class FieldSourcePanel extends JPanel {
     public void edit(GeneratedFieldModel field) {
         OwnedComponentSite previousSite = this.field == field
                 ? selectedSourceSite() : null;
+        if (this.field != field) shownConfigurationNode = null;
         this.field = field;
 
         if (field == null) {
@@ -828,6 +848,7 @@ public class FieldSourcePanel extends JPanel {
         refreshOwnedComponentControls();
         refreshGraphExpansionControl();
         refreshConfigurationTree();
+        markClean();
     }
 
     /** The field-source editor owns this hand-off: discovery produces a neutral typed
@@ -1318,18 +1339,20 @@ public class FieldSourcePanel extends JPanel {
 
     private void writeCandidateEvidenceRule() {
         if (field == null) return;
-        captureSelectedCandidateEvidence();
         FieldSourceBindings.replaceBindings(field,
                 domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE,
-                candidateEvidenceRecipes.values());
+                candidateEvidenceRecipes.valuesWithSelected(editedCandidateEvidence()));
     }
 
     private void captureSelectedCandidateEvidence() {
+        candidateEvidenceRecipes.replaceSelected(editedCandidateEvidence());
+    }
+
+    private domain.datasource.api.SourceBinding editedCandidateEvidence() {
         domain.datasource.api.SourceBinding selected = candidateEvidenceRecipes.selected();
         CandidateEvidenceChoice choice = candidateEvidenceChoice(selected);
-        if (selected == null || choice == CandidateEvidenceChoice.NONE) return;
-        candidateEvidenceRecipes.replaceSelected(candidateEvidenceBinding(
-                choice, selected.target()));
+        return selected == null || choice == CandidateEvidenceChoice.NONE
+                ? null : candidateEvidenceBinding(choice, selected.target());
     }
 
     private domain.datasource.api.SourceBinding newCandidateEvidenceBinding(
@@ -1625,6 +1648,7 @@ public class FieldSourcePanel extends JPanel {
         applicable(datasourceOperationRow, false);
 
         JPanel propRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        propertyPidField.setName("field.source.property");
         propRow.add(propertyPidField);
         wikidata.ui.WikidataLinks.linkify(propertyLabel,
                 () -> RuleNode.cleanPid(propertyPidField.getText()));
@@ -1848,7 +1872,16 @@ public class FieldSourcePanel extends JPanel {
             refreshGraphExpansionControl();
         });
         sourceContextBox.addActionListener(e -> {
-            if (!updatingSourceContext) loadSelectedSourceContext();
+            if (updatingSourceContext) return;
+            int wanted = sourceContextBox.getSelectedIndex();
+            if (fieldEditsOnly && shownSourceContext >= 0
+                    && wanted != shownSourceContext) {
+                restoreSourceContext(shownSourceContext);
+                if (!leaveSourceContext()) return;
+                restoreSourceContext(wanted);
+            }
+            loadSelectedSourceContext();
+            markClean();
         });
         objectTypeBox.addActionListener(e -> {
             if (updatingObjectTypeBox) {
@@ -1987,9 +2020,17 @@ public class FieldSourcePanel extends JPanel {
     }
 
     private void configurationSelected(ConfigurationNode node) {
-        if (node.sourceContext() != null) {
-            selectSourceContext(node.sourceContext());
+        if (switchingSourceContext || restoringConfigurationSelection) return;
+        if (node.sourceContext() != null && !selectSourceContext(node.sourceContext())) {
+            restoringConfigurationSelection = true;
+            try {
+                configuration.select(shownConfigurationNode);
+            } finally {
+                restoringConfigurationSelection = false;
+            }
+            return;
         }
+        shownConfigurationNode = node.id();
         ConfigurationReferenceInventory.BindingSite bindingSite = node.bindingSite();
         if (bindingSite == null) return;
         var target = bindingSite.binding().target();
@@ -2002,7 +2043,7 @@ public class FieldSourcePanel extends JPanel {
      *  The combo reloads every source control from the model whenever it is set, even
      *  to its current value, so setting it unconditionally discarded unapplied edits
      *  each time a source node was selected. */
-    private void selectSourceContext(domain.datasource.api.SourceBindingTarget target) {
+    private boolean selectSourceContext(domain.datasource.api.SourceBindingTarget target) {
         int wanted = -1;
         if (!target.contextual()) {
             if (sourceContextBox.getItemCount() > 0) wanted = 0;
@@ -2020,6 +2061,7 @@ public class FieldSourcePanel extends JPanel {
         if (wanted >= 0 && wanted != sourceContextBox.getSelectedIndex()) {
             sourceContextBox.setSelectedIndex(wanted);
         }
+        return wanted < 0 || wanted == sourceContextBox.getSelectedIndex();
     }
 
     JButton openReferenceButton() { return configuration.openReferenceButton(); }
@@ -2059,21 +2101,82 @@ public class FieldSourcePanel extends JPanel {
         apply(true);
     }
 
-    private void apply(boolean announce) {
+    /** What writing the edited values produced, for the refresh that follows. */
+    private record WriteResult(String refusal, String propertyLabel, boolean autoAdjusted) { }
+
+    private boolean apply(boolean announce) {
         GeneratedClassModel owner = ownerClass();
-        if (field == null || (owner != null && owner.isImported())) {
-            return;
+        if (field == null || (owner != null && owner.isImported())
+                || OwnedClassSemantics.isOwnerReferenceField(owner, field)) {
+            return false;
         }
+        if (fieldEditsOnly) {
+            EditedField draft = editedField();
+            if (draft == null) return false;
+            if (draft.write().refusal() != null) return refuseApply(draft.write().refusal());
+            List<GeneratedProjectModelValidator.Problem> errors =
+                    GeneratedProjectModelValidator.validate(draft.model()).errors();
+            if (!errors.isEmpty()) {
+                var existing = GeneratedProjectModelValidator.validate(projectModel).errors();
+                for (var error : errors) {
+                    if (!existing.contains(error)) return refuseApply(error.toString());
+                }
+            }
+        }
+        WriteResult written = writeEdits();
+        if (written.refusal() != null) {
+            return refuseApply(written.refusal());
+        }
+        captureSelectedCandidateEvidence();
+        if (written.autoAdjusted()) showAutoAdjusted();
+        propertyLabel.setText(written.propertyLabel());
+        missingQualifierBox.setSelectedItem(
+                policyLabel(field.mapping().missingQualifierPolicy()));
+        refreshStatementFieldControls();
+
+        titleLabel.setText("Field: " + field.name());
+
+        updateRecommendation();
+        clearSourceOverrideButton.setEnabled(
+                selectedSourceSite() != null && activeOverride(false) != null);
+        refreshConfigurationTree();
+
+        // The model changed either way — the tree labels and the dirty state depend on it.
+        // Only the ANNOUNCEMENT is optional: a confirmation flash and a re-selection make
+        // sense for someone who pressed Apply, not for a flush on the way to saving.
+        afterChange.accept(null);
+        markClean();
+        if (announce) {
+            flashApplied(field.name());
+            afterApplyField.accept(field);
+        }
+        return true;
+    }
+
+    private boolean refuseApply(String reason) {
+        applyStatusLabel.setText("✗ Not applied: " + reason);
+        return false;
+    }
+
+    /**
+     * Writes the values the controls hold into {@link #field} and its model, and
+     * nothing else: no control changes. Apply calls it on the project model; the
+     * unapplied-edits check calls the same method on a copy (#535), so "has unapplied
+     * edits" means exactly "Apply would change the model".
+     */
+    private WriteResult writeEdits() {
+        GeneratedClassModel owner = ownerClass();
         // Checked before anything is written, so a recipe the operation refuses leaves
         // the model as it was and says why.
-        domain.datasource.api.SourceBinding datasourceBinding = null;
-        if (sourceTypeBox.getSelectedItem() == FieldSourceType.DATASOURCE) {
-            try {
-                datasourceBinding = editedDatasourceBinding();
-            } catch (IllegalArgumentException refused) {
-                applyStatusLabel.setText("✗ Not applied: " + refused.getMessage());
-                return;
-            }
+        domain.datasource.api.SourceBinding datasourceBinding;
+        WikidataValueFilterOperator filter = operatorOf((String) filterOpBox.getSelectedItem());
+        Double filterValue;
+        try {
+            datasourceBinding = sourceTypeBox.getSelectedItem() == FieldSourceType.DATASOURCE
+                    ? editedDatasourceBinding() : null;
+            filterValue = filter == null ? null : editedNumericFilterValue();
+        } catch (IllegalArgumentException refused) {
+            return new WriteResult(refused.getMessage(), "", false);
         }
 
         // Nothing here reads or rewrites the owning class's identity. It used to: the
@@ -2114,7 +2217,8 @@ public class FieldSourcePanel extends JPanel {
                 }
             }
         }
-        Object pk = productionBox.getSelectedItem();
+        FieldProductionKind pk = (FieldProductionKind) productionBox.getSelectedItem();
+        m.productionKind(pk);
         boolean ownedComponent = pk == FieldProductionKind.OWNED_COMPONENT;
         boolean inverse = pk == FieldProductionKind.INVERT;
         boolean union = pk == FieldProductionKind.UNION;
@@ -2162,12 +2266,13 @@ public class FieldSourcePanel extends JPanel {
         // autoAdjustFromProperty inspects a WIKIDATA property. A post-extraction source
         // does not name one — "numbermainstars", "Infobox film.country" — so the source
         // itself says whether there is a PID here to inspect.
+        field.definition(fieldDefinitionPanel.definition());
+        boolean autoAdjusted = false;
         if (typeBox.getSelectedItem() == FieldType.AUTO
                 && source != null && !source.sourceType().filledAfterExtraction()) {
-            autoAdjustFromProperty(source.propertyPid(), source.propertyLabel());
+            autoAdjusted = adjustFromProperty(source.propertyPid(), source.propertyLabel());
         }
 
-        field.definition(fieldDefinitionPanel.definition());
         writeCandidateEvidenceRule();
         if (ownedComponent) {
             field.type(FieldType.ENTITY);
@@ -2210,13 +2315,9 @@ public class FieldSourcePanel extends JPanel {
         field.graphExpansionPolicy(graphTraversable
                 ? (GraphExpansionPolicy) graphExpansionBox.getSelectedItem()
                 : GraphExpansionPolicy.NONE);
-        applyNumericFilter(field);
+        field.filterOperator(filter);
+        field.filterValue(filterValue);
 
-        // The "Load as" dropdown is authoritative — the user's explicit choice
-        // (e.g. "Related objects" for a large collection) wins. autoProduction only
-        // seeds a sensible DEFAULT into the dropdown when a property is picked.
-        m.productionKind(
-                (FieldProductionKind) productionBox.getSelectedItem());
         m.inverseField(m.productionKind() == FieldProductionKind.INVERT
                 && inverseFieldBox.getSelectedItem() != null
                 ? inverseFieldBox.getSelectedItem().toString() : "");
@@ -2227,8 +2328,8 @@ public class FieldSourcePanel extends JPanel {
             m.unionSourcePaths().clear();
             m.unionSourcePaths().addAll(picked);
         }
-        propertyLabel.setText(source == null
-                ? displayedSource.propertyLabel() : source.propertyLabel());
+        String shownLabel = source == null
+                ? displayedSource.propertyLabel() : source.propertyLabel();
 
         if (StatementFieldSemantics.supportsMissingQualifierPolicy(
                 owner,
@@ -2249,29 +2350,101 @@ public class FieldSourcePanel extends JPanel {
         StatementFieldSemantics.normalizeMissingQualifierPolicy(
                 owner,
                 field);
-        missingQualifierBox.setSelectedItem(
-                policyLabel(m.missingQualifierPolicy()));
-        refreshStatementFieldControls();
-
-        titleLabel.setText("Field: " + field.name());
-
-        updateRecommendation();
-        clearSourceOverrideButton.setEnabled(
-                selectedSourceSite() != null && activeOverride(false) != null);
 
         // Apply is the synchronization boundary: the visible tree, validation and the
         // execution plan must agree now, not only after Save model/domain.
         FieldSourceBindings.synchronizeForSave(projectModel);
-        refreshConfigurationTree();
+        return new WriteResult(null, shownLabel, autoAdjusted);
+    }
 
-        // The model changed either way — the tree labels and the dirty state depend on it.
-        // Only the ANNOUNCEMENT is optional: a confirmation flash and a re-selection make
-        // sense for someone who pressed Apply, not for a flush on the way to saving.
-        afterChange.accept(null);
-        if (announce) {
-            flashApplied(field.name());
-            afterApplyField.accept(field);
+    boolean hasUnappliedEdits() {
+        EditedField draft = editedField();
+        if (draft == null) return false;
+        if (draft.write().refusal() != null) return true;
+        GeneratedProjectModel applied = projectModel.copy();
+        FieldSourceBindings.synchronizeForSave(applied);
+        applied.ensureDeclarationIdentities();
+        return !modelStore.sameConfiguration(draft.model(), applied);
+    }
+
+    private record EditedField(GeneratedProjectModel model, WriteResult write) { }
+
+    /** Projects the authored controls without changing the live model or the controls. */
+    private EditedField editedField() {
+        if (field == null || projectModel == null) return null;
+        GeneratedClassModel owner = ownerClass();
+        if (owner == null || owner.isImported()
+                || OwnedClassSemantics.isOwnerReferenceField(owner, field)) return null;
+        String path = domain.config.OwnedFieldSources.declaredFieldPath(owner, field);
+        GeneratedProjectModel copy = projectModel.copy();
+        GeneratedClassModel copiedOwner = copy.resolveClass(owner.declarationId(), owner.className());
+        GeneratedFieldModel copied = copiedOwner == null ? null
+                : domain.config.OwnedFieldSources.declaredField(copy, copiedOwner.className(), path);
+        if (copied == null) return null;
+        GeneratedFieldModel shownField = field;
+        GeneratedProjectModel shownModel = projectModel;
+        GeneratedFieldModel shownUnion = unionPickerField;
+        field = copied;
+        projectModel = copy;
+        if (shownUnion == shownField) unionPickerField = copied;
+        try {
+            WriteResult write = writeEdits();
+            copy.ensureDeclarationIdentities();
+            return new EditedField(copy, write);
+        } finally {
+            field = shownField;
+            projectModel = shownModel;
+            unionPickerField = shownUnion;
         }
+    }
+
+    /** Applies as the Apply button does; false when Apply refused and the edits remain. */
+    boolean applyUnappliedEdits() {
+        return apply(false);
+    }
+
+    String editedConstructName() {
+        GeneratedClassModel owner = ownerClass();
+        return field == null ? "This field" : "Field "
+                + (owner == null ? "" : owner.className() + ".") + field.name();
+    }
+
+    void unappliedDecision(java.util.function.BiFunction<String, String,
+            process.swing.Dialogs.UnappliedEdits> decision) {
+        unappliedDecision = decision;
+    }
+
+    private boolean leaveSourceContext() {
+        if (!hasUnappliedEdits()) return true;
+        Dialogs.UnappliedEdits answer = unappliedDecision.apply(editedConstructName(),
+                "switching to another production site");
+        switchingSourceContext = true;
+        try {
+            return switch (answer) {
+                case APPLY -> applyUnappliedEdits();
+                case DISCARD -> {
+                    edit(field);
+                    yield true;
+                }
+                case STAY -> false;
+            };
+        } finally {
+            switchingSourceContext = false;
+        }
+    }
+
+    private void restoreSourceContext(int index) {
+        boolean was = updatingSourceContext;
+        updatingSourceContext = true;
+        try {
+            sourceContextBox.setSelectedIndex(index);
+        } finally {
+            updatingSourceContext = was;
+        }
+    }
+
+    private void markClean() {
+        shownSourceContext = sourceContextBox.getSelectedIndex();
     }
 
     // Brief "✓ Applied" confirmation so it's obvious the edit took (the change
@@ -2285,8 +2458,22 @@ public class FieldSourcePanel extends JPanel {
     }
 
     private void autoAdjustFromProperty(String pid, String label) {
+        if (adjustFromProperty(pid, label)) showAutoAdjusted();
+    }
+
+    /** Shows what {@link #adjustFromProperty} wrote. */
+    private void showAutoAdjusted() {
+        typeBox.setSelectedItem(field.type());
+        shapeBox.setSelectedItem(field.cardinality());
+        renderModeBox.setSelectedItem(field.renderMode());
+        refreshObjectTypeBox(field.entityClassName());
+        productionBox.setSelectedItem(field.mapping().productionKind()); // …show it
+    }
+
+    /** The model half of the property-based adjustment; changes no control. */
+    private boolean adjustFromProperty(String pid, String label) {
         if (field == null) {
-            return;
+            return false;
         }
 
         String cleanPid = RuleNode.cleanPid(pid);
@@ -2314,13 +2501,8 @@ public class FieldSourcePanel extends JPanel {
             field.entityClassName(suggestEntityClassName(lower));
         }
 
-        typeBox.setSelectedItem(field.type());
-        shapeBox.setSelectedItem(field.cardinality());
-        renderModeBox.setSelectedItem(field.renderMode());
-        refreshObjectTypeBox(field.entityClassName());
-
         autoProduction(field.mapping());            // seed a default…
-        productionBox.setSelectedItem(field.mapping().productionKind()); // …show it
+        return true;
     }
 
     // Per-"Load as" explanation + a concrete example, shown as a floating
@@ -2862,8 +3044,10 @@ public class FieldSourcePanel extends JPanel {
                     }
                 }
             }
-            objectTypeBox.addItem(NEW_CLASS_SENTINEL);
-            objectTypeBox.addItem(NEW_VOCAB_SENTINEL);
+            if (!fieldEditsOnly) {
+                objectTypeBox.addItem(NEW_CLASS_SENTINEL);
+                objectTypeBox.addItem(NEW_VOCAB_SENTINEL);
+            }
             if (selectedClass != null && !selectedClass.isBlank()
                     && !NEW_CLASS_SENTINEL.equals(selectedClass)
                     && !NEW_VOCAB_SENTINEL.equals(selectedClass)) {
@@ -2876,7 +3060,8 @@ public class FieldSourcePanel extends JPanel {
                     }
                 }
                 if (!found) {
-                    objectTypeBox.insertItemAt(selectedClass, objectTypeBox.getItemCount() - 1);
+                    objectTypeBox.insertItemAt(selectedClass,
+                            objectTypeBox.getItemCount() - (fieldEditsOnly ? 0 : 1));
                 }
                 objectTypeBox.setSelectedItem(selectedClass);
             } else {
@@ -2929,26 +3114,14 @@ public class FieldSourcePanel extends JPanel {
         refreshConfigurationTree();
     }
 
-    // Reads the operator + value controls onto the field. Invalid/empty = no
-    // filter.
-    private void applyNumericFilter(GeneratedFieldModel field) {
-        domain.compile.filter.WikidataValueFilterOperator op =
-                operatorOf((String) filterOpBox.getSelectedItem());
-        Double value = null;
-        String txt = filterValueField.getText().trim();
-        if (!txt.isEmpty()) {
-            try {
-                value = Double.parseDouble(txt);
-            } catch (NumberFormatException ignored) {
-            }
+    private double editedNumericFilterValue() {
+        try {
+            double value = Double.parseDouble(filterValueField.getText().trim());
+            if (Double.isFinite(value)) return value;
+        } catch (NumberFormatException ignored) {
+            // The selected operator needs a number. Leave the previous filter intact.
         }
-        if (op == null || value == null) {
-            field.filterOperator(null);
-            field.filterValue(null);
-        } else {
-            field.filterOperator(op);
-            field.filterValue(value);
-        }
+        throw new IllegalArgumentException("Enter a number for the numeric filter.");
     }
 
     private static domain.compile.filter.WikidataValueFilterOperator operatorOf(String symbol) {

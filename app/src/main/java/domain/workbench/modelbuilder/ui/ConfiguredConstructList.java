@@ -132,6 +132,14 @@ final class ConfiguredConstructList<T, K> extends JPanel {
 
     T selected() { return configured.getSelectedValue(); }
 
+    List<T> valuesWithSelected(T value) {
+        int index = configured.getSelectedIndex();
+        if (index < 0 || value == null) return values();
+        var result = new java.util.ArrayList<>(values());
+        result.set(index, value);
+        return List.copyOf(result);
+    }
+
     void selectIndex(int index) {
         if (index < 0 || index >= model.size()) return;
         configured.setSelectedIndex(index);

@@ -100,7 +100,8 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
     private boolean updatingKind = false;
     private boolean editingEnabled = true;
-    private boolean configurationInspection;
+    private enum ConfigurationAccess { MODEL_BUILDER, INSPECT, EDIT_FIELDS }
+    private ConfigurationAccess configurationAccess = ConfigurationAccess.MODEL_BUILDER;
 
     private final JPanel cardPanel =
             new JPanel(new CardLayout());
@@ -262,6 +263,24 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                         : consumer;
     }
 
+    /** Unapplied edits in the editor this host lets the user change (#535). */
+    public boolean hasUnappliedEdits() {
+        return selected instanceof GeneratedFieldModel && canEditSelectedConstruct()
+                && fieldSourcePanel.hasUnappliedEdits();
+    }
+
+    /** Applies them as the editor's Apply does; false when Apply refused. */
+    public boolean applyUnappliedEdits() {
+        return !hasUnappliedEdits() || fieldSourcePanel.applyUnappliedEdits();
+    }
+
+    public String editedConstructName() { return fieldSourcePanel.editedConstructName(); }
+
+    public void unappliedDecision(java.util.function.BiFunction<String, String,
+            process.swing.Dialogs.UnappliedEdits> decision) {
+        fieldSourcePanel.unappliedDecision(decision);
+    }
+
     public Object selected() {
         return selected;
     }
@@ -350,21 +369,34 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     /** Shows the same editors without ModelBuilder's source-authoring or execution actions. */
     public void inspectConfiguration(TransformationConfigurationEditor.Fields fields,
             Consumer<GeneratedClassModel> transformationApplied) {
-        configurationInspection = true;
+        configurationAccess = ConfigurationAccess.INSPECT;
         classSourcePanel.transformationEditor(fields, transformationApplied);
+        configureLocalEditor("Edit class, field and datasource declarations in ModelBuilder.");
+    }
+
+    /** The first unified workbench owns field edits and plans over the applied model. */
+    public void editFieldConfiguration() {
+        configurationAccess = ConfigurationAccess.EDIT_FIELDS;
+        fieldSourcePanel.showLocalFieldEditor();
+        configureLocalEditor("Apply field source to update the acquisition plan.");
+    }
+
+    private void configureLocalEditor(String message) {
         editorTabs.remove(samplePanel);
         reusableSelectionsPanel.removeAll();
-        var notice = new JLabel("Edit class, field and datasource declarations in ModelBuilder.");
+        var notice = new JLabel(message);
         notice.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
         reusableSelectionsPanel.add(notice);
         for (var tree : configurationTrees()) {
             tree.selectionScope(load -> wikidata.ui.WikidataLabels.withCachedLabels(() -> {
                 load.run();
-                tree.editorDetails().forEach(detail -> EditableComponents.setEditable(detail, false));
+                if (tree != fieldSourcePanel.configurationTree() || !canEditSelectedConstruct()) {
+                    tree.editorDetails().forEach(detail -> EditableComponents.setEditable(detail, false));
+                }
                 classSourcePanel.refreshTransformationAccess();
             }));
         }
-        setEditingEnabled(false);
+        applySelectionEditability();
     }
 
     public boolean hasTransformationDrafts() { return classSourcePanel.hasTransformationDrafts(); }
@@ -466,19 +498,32 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
      * whole card with {@code true} used to reopen an imported declaration after a
      * domain load or process-state refresh.
      */
-    private void applySelectionEditability() {
+    private boolean canEditSelectedConstruct() {
         boolean declarationOwnedHere = selected == null || switch (selected) {
             case GeneratedClassModel clazz -> !clazz.isImported();
             case GeneratedFieldModel field -> {
                 GeneratedClassModel owner = owningClassOf(field);
-                yield owner == null || !owner.isImported();
+                yield (owner == null || !owner.isImported())
+                        && !domain.config.OwnedClassSemantics.isOwnerReferenceField(owner, field);
             }
             case domain.config.Selection selection -> !selection.isImported();
             default -> true;
         };
-        boolean editable = editingEnabled && declarationOwnedHere && !configurationInspection;
+        return editingEnabled && declarationOwnedHere && switch (configurationAccess) {
+            case MODEL_BUILDER -> true;
+            case INSPECT -> false;
+            case EDIT_FIELDS -> selected instanceof GeneratedFieldModel;
+        };
+    }
+
+    private boolean localConfiguration() {
+        return configurationAccess != ConfigurationAccess.MODEL_BUILDER;
+    }
+
+    private void applySelectionEditability() {
+        boolean editable = canEditSelectedConstruct();
         for (Component editor : cardPanel.getComponents()) {
-            if (configurationInspection && editor == selectionEditor) continue;
+            if (localConfiguration() && editor == selectionEditor) continue;
             EditableComponents.setEditable(editor, editable);
         }
         EditableComponents.setEditable(kindHeader, editable);
@@ -486,7 +531,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     }
 
     public void edit(Object selected) {
-        if (configurationInspection) {
+        if (localConfiguration()) {
             wikidata.ui.WikidataLabels.withCachedLabels(() -> showConstruct(selected));
         } else {
             showConstruct(selected);
@@ -554,7 +599,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             if (selection.isImported()) importedNotice.setText("Imported from "
                     + selection.importedFrom() + " — owned and edited there.");
             selectionEditor.edit(selection);
-            if (!configurationInspection) EditableComponents.setEditable(selectionEditor,
+            if (!localConfiguration()) EditableComponents.setEditable(selectionEditor,
                     editingEnabled && !selection.isImported());
             layout.show(cardPanel, "selection");
         } else if (selected == SingleRootClassModelPanel.ConfigurationSection.VOCABULARIES
@@ -585,7 +630,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         subclassDiscoveryPanel.showClass(projectModel, classForExplorerMembership());
         graphPatternPanel.refreshPatterns();
         graphConfigurationDiagram.selection(selected);
-        reusableSelectionsPanel.setVisible(configurationInspection
+        reusableSelectionsPanel.setVisible(localConfiguration()
                 || !(selected instanceof GeneratedClassModel clazz)
                 || clazz.classKind() != domain.config.ClassKind.AGGREGATE);
 
@@ -810,7 +855,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     }
 
     public void applyEdits() {
-        if (configurationInspection) return;
+        if (localConfiguration()) return;
         if (selected instanceof GeneratedClassModel clazz) flushEditor(clazz);
 
         // A field editor keeps pending Swing values even after another tree node
@@ -1143,7 +1188,9 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                     selected = field;
                     fieldSourcePanel.edit(field);
                     afterApplyField.accept(field);
-                    afterChange.accept(null);
+                    if (configurationAccess != ConfigurationAccess.EDIT_FIELDS) {
+                        afterChange.accept(null);
+                    }
                 });
 
         discoveryPanel.setNodeSupplier(

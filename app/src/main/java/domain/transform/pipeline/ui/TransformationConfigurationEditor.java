@@ -26,8 +26,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.BiFunction;
+import java.util.function.IntConsumer;
 
 /** Detail for the transformation branch of the shared class configuration tree. */
 public final class TransformationConfigurationEditor extends JPanel {
@@ -49,17 +51,22 @@ public final class TransformationConfigurationEditor extends JPanel {
     private final JButton discard = new JButton("Discard changes");
     private final Map<GeneratedClassModel, TransformationClassSource> drafts =
             new IdentityHashMap<>();
+    private final Set<GeneratedClassModel> appliedOutputs =
+            Collections.newSetFromMap(new IdentityHashMap<>());
     private final Runnable refreshTree;
+    private final IntConsumer selectStep;
     private final Consumer<GeneratedClassModel> applied;
     private Fields fields;
     private GeneratedProjectModel project;
     private GeneratedClassModel output;
     private ConfigurationNode node;
 
-    public TransformationConfigurationEditor(Runnable refreshTree,
+    public TransformationConfigurationEditor(Runnable refreshTree, IntConsumer selectStep,
             Consumer<GeneratedClassModel> applied) {
         this.refreshTree = refreshTree;
+        this.selectStep = selectStep;
         this.applied = applied;
+        status.setName("transformation.status");
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         for (var row : java.util.List.of(input, detail, actions, status)) {
             row.setAlignmentX(LEFT_ALIGNMENT);
@@ -119,8 +126,10 @@ public final class TransformationConfigurationEditor extends JPanel {
         status.setText(!editing ? "Edit the population transformation in TransformApp."
                 : pending && !source.configured() ? "A transformation needs at least one filter."
                 : pending ? "Apply the filter changes to the working model."
-                : "Applied to the working model. Save, then Build project in ModelBuilder to "
-                        + "run this recipe; the loaded instances still show the previous result.");
+                : appliedOutputs.contains(output)
+                        ? "<html>Applied to the working model. Save, then Build project in ModelBuilder "
+                                + "to run this recipe. The loaded instances still show the previous result.</html>"
+                        : "Select a filter to edit it, or add a filter to the transformation.");
     }
 
     private int index() { return ClassConfigurationProjection.transformationStepIndex(node); }
@@ -186,8 +195,11 @@ public final class TransformationConfigurationEditor extends JPanel {
     }
 
     private void move(int offset) {
+        if (!canEdit()) return;
         int current = index();
-        changeSteps(steps -> Collections.swap(steps, current, current + offset));
+        int target = current + offset;
+        changeSteps(steps -> Collections.swap(steps, current, target));
+        selectStep.accept(target);
     }
 
     private void changeSteps(Consumer<ArrayList<TransformationStep>> change) {
@@ -202,6 +214,7 @@ public final class TransformationConfigurationEditor extends JPanel {
     private void apply() {
         if (!canEdit() || !drafts.containsKey(output) || !transformation().configured()) return;
         output.transformationSource(drafts.remove(output));
+        appliedOutputs.add(output);
         applied.accept(output);
         refreshTree.run();
     }

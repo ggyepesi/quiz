@@ -143,11 +143,15 @@ public final class GeneratedProjectModelStore {
         return mapper.writeValueAsString(model);
     }
 
+    /** Compares authored values even while either model is incomplete or invalid. */
+    public boolean sameConfiguration(GeneratedProjectModel first, GeneratedProjectModel second) {
+        return mapper.valueToTree(first).equals(mapper.valueToTree(second));
+    }
+
     public GeneratedProjectModel load(
             File file) throws IOException {
 
         GeneratedProjectModel authored = loadRaw(file);
-        if (authored.imports().isEmpty()) return authored;
         File root = file.getParentFile() == null ? null : file.getParentFile().getParentFile();
         try {
             return ModelImportResolver.resolve(authored, name -> {

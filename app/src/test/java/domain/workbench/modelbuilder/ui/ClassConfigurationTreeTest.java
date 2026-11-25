@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 
 import javax.swing.SwingUtilities;
 import javax.swing.JButton;
+import javax.swing.JLabel;
 import javax.swing.JList;
 import java.awt.Component;
 import java.awt.Container;
@@ -186,6 +187,44 @@ class ClassConfigurationTreeTest {
                 constructs.selectClass(imported);
                 transformTree.selectDetail(ClassConfigurationProjection.TRANSFORMATION);
                 assertFalse(button(transformEditor, "Add filter…").isEnabled());
+            }
+        });
+    }
+
+    @Test void movingAFilterTwiceKeepsItSelectedAndTheStatusReportsOnlyAppliedChanges()
+            throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            var backing = transformationProject();
+            var output = backing.projectModel().findClass("SelectedPosition");
+            output.transformationSource().addStep(TransformationStep.filter(
+                    "holderCount", FilterOperator.GREATER_THAN, 10, null));
+            var controller = new TransformController(new SnapshotDomain(List.of()), null);
+            try (var transform = new ProjectConfigurationPanel(backing, controller,
+                    WorkbenchPurpose.TRANSFORM, List.of(), output, () -> { })) {
+                var tree = find(transform, ClassSourcePanel.class).configurationEditor().tree();
+                var editor = find(transform, TransformationConfigurationEditor.class);
+                var status = java.util.Arrays.stream(editor.getComponents())
+                        .filter(component -> "transformation.status".equals(component.getName()))
+                        .map(JLabel.class::cast).findFirst().orElseThrow();
+                assertFalse(status.getText().contains("Applied"));
+                tree.select(tree.nodes().stream().filter(node ->
+                        ClassConfigurationProjection.transformationStepIndex(node) == 2)
+                        .findFirst().orElseThrow().id());
+
+                button(editor, "Move up").doClick();
+                assertEquals("2. holderCount > 10", tree.selectedNode().caption());
+                button(editor, "Move up").doClick();
+                assertEquals("1. holderCount > 10", tree.selectedNode().caption());
+                assertFalse(status.getText().contains("Applied"));
+                button(editor, "Discard changes").doClick();
+                assertFalse(transform.hasDrafts());
+                assertFalse(status.getText().contains("Applied"));
+                assertTrue(backing.unsavedModelChanges().isEmpty());
+
+                button(editor, "Move down").doClick();
+                button(editor, "Apply transformation").doClick();
+                assertTrue(status.getText().contains("Applied to the working model"));
+                assertTrue(status.getText().contains("Build project"));
             }
         });
     }

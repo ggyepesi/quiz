@@ -38,13 +38,7 @@ public final class DomainCatalog {
     }
 
     public static List<DomainEntry> all() {
-        DatasetRegistry registry = DatasetRegistry.load();
-        List<DomainEntry> out = new ArrayList<>(registered(registry, false));
-        java.util.Set<String> registeredNames = out.stream().map(DomainEntry::name)
-                .collect(java.util.stream.Collectors.toSet());
-
-        out.addAll(unregisteredProjects(dataset.DomainStorage.inDefaultLocation(),
-                registeredNames, DomainSaver::destination));
+        List<DomainEntry> out = new ArrayList<>(savedProjects(DomainStorage.inDefaultLocation(), false));
 
         // Live hand-written domains remain available here as conversion inputs. They
         // are not QuizFactory products until TransformApp saves their configured snapshot.
@@ -57,10 +51,35 @@ public final class DomainCatalog {
         return out;
     }
 
+    /** Saved model-backed projects with an instance snapshot. */
+    public static List<DomainEntry> modelBacked() {
+        return modelBacked(DomainStorage.inDefaultLocation());
+    }
+
+    public static List<DomainEntry> modelBacked(DomainStorage storage) {
+        return savedProjects(storage, true);
+    }
+
+    private static List<DomainEntry> savedProjects(DomainStorage storage, boolean modelBackedOnly) {
+        List<DomainEntry> out = new ArrayList<>(
+                registered(DatasetRegistry.load(storage.registryFile()), false, modelBackedOnly, storage));
+        java.util.Set<String> registeredNames = out.stream().map(DomainEntry::name)
+                .collect(java.util.stream.Collectors.toSet());
+        out.addAll(unregisteredProjects(storage, registeredNames,
+                name -> DomainSaver.destination(storage, name)));
+        return out;
+    }
+
     /** Registry-backed entries. Package-visible overload lets the catalogue rule be
      * forced without replacing the user's real datasets.json. */
     static List<DomainEntry> registered(
             DatasetRegistry registry, boolean servedOnly) {
+        return registered(registry, servedOnly, false, DomainStorage.inDefaultLocation());
+    }
+
+    private static List<DomainEntry> registered(
+            DatasetRegistry registry, boolean servedOnly, boolean modelBackedOnly,
+            DomainStorage storage) {
         List<DomainEntry> out = new ArrayList<>();
         List<DatasetRegistry.Dataset> saved = registry == null
                 ? List.of() : registry.datasets().stream()
@@ -72,6 +91,7 @@ public final class DomainCatalog {
 
         for (DatasetRegistry.Dataset d : saved) {
             if (consumed.contains(d)) continue;
+            if (modelBackedOnly && !d.isModelBacked()) continue;
             if (servedOnly && !d.served()) {
                 if (d.isModelBacked()) {
                     saved.stream()
@@ -106,13 +126,14 @@ public final class DomainCatalog {
                     ? "" : snapshotOwner.snapshotPath());
             if (snap.isFile()) {
                 File model = new File(modelOwner == null ? "" : modelOwner.modelPath());
+                if (modelBackedOnly && !model.isFile()) continue;
                 File selectedSnapshot = snap;
                 File selectedModel = model;
                 out.add(new DomainEntry(d.name(), "generated",
                         "Load domain \"" + d.name() + "\", its instances and saved model from "
                                 + snap.getPath() + (model.isFile()
                                 ? " and " + model.getPath() : "") + ".",
-                        () -> open(selectedSnapshot, selectedModel, DomainStorage.inDefaultLocation())));
+                        () -> open(selectedSnapshot, selectedModel, storage)));
             }
             consumed.add(d);
         }

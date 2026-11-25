@@ -1,9 +1,12 @@
 package domain.workbench.modelbuilder.ui;
 
 import org.junit.jupiter.api.Test;
+import domain.DomainCapability;
+import domain.DelegatingDomainModel;
 import domain.config.AggregateClassSource;
 import domain.config.EntityBound;
 import domain.config.FieldCardinality;
+import domain.config.FieldConfigurationProjection;
 import domain.config.FieldProductionKind;
 import domain.datasource.schema.FieldType;
 import domain.config.GeneratedClassModel;
@@ -12,7 +15,9 @@ import domain.config.GeneratedProjectModel;
 import domain.config.StatementClassSource;
 import domain.config.RuleDirection;
 import domain.transform.ui.WorkbenchPurpose;
+import domain.transform.ui.ProjectBacking;
 import domain.workbench.configuration.ui.ProjectConfigurationPanel;
+import domain.workbench.unified.ui.UnifiedWorkbenchPanel;
 
 import javax.swing.AbstractButton;
 import javax.swing.JComboBox;
@@ -134,6 +139,20 @@ class PanelLayoutIsCheckedInTest {
                 WorkbenchPurpose.TRANSFORM);
         describeConfigurationHost(actual, "DataSourceApp", backing, output, transform,
                 WorkbenchPurpose.DATASOURCE);
+        backing.projectModel().rootClass().fields().getFirst().mapping().propertyPid("P1082");
+        domain.config.FieldSourceBindings.synchronizeForSave(backing.projectModel());
+        var opened = new DelegatingDomainModel(transform.domain()) {
+            @Override public <T extends DomainCapability> T capability(Class<T> type) {
+                return type == ProjectBacking.class ? type.cast(backing) : super.capability(type);
+            }
+        };
+        try (var unified = new UnifiedWorkbenchPanel(opened)) {
+            find(unified, SingleRootClassModelPanel.class)
+                    .selectField(backing.projectModel().rootClass().fields().getFirst());
+            var editor = find(unified, FieldSourcePanel.class);
+            editor.selectConfigurationDetail(FieldConfigurationProjection.PRIMARY);
+            describe(actual, "Unified Workbench / Field source and acquisition plan", unified);
+        }
 
         Path golden = Files.isRegularFile(GOLDEN) ? GOLDEN : Path.of("docs/panel-layout.txt");
         if (Boolean.getBoolean("panel.layout.write")) {
@@ -245,7 +264,11 @@ class PanelLayoutIsCheckedInTest {
             return "text: [" + plain(field.getText()) + "]"
                     + (field.isEnabled() ? "" : "  (disabled)");
         }
-        if (component instanceof JTextArea) return "textarea";
+        if (component instanceof JTextArea area) {
+            return "field.acquisition.plan".equals(area.getName())
+                    ? "plan: " + plain(area.getText()).replaceAll("\\s+", " ")
+                    : "textarea";
+        }
         if (component instanceof JList<?>) return "list";
         return null;
     }
