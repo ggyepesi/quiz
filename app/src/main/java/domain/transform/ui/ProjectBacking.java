@@ -22,6 +22,9 @@ public interface ProjectBacking extends DomainCapability {
     File modelFile();
     File snapshotFile();
 
+    /** Version of the saved files this session opened or last wrote. */
+    default ProjectSaveGuard saveGuard() { return null; }
+
     /** The working model: read once when the domain opened, edited in memory since. */
     GeneratedProjectModel projectModel();
 

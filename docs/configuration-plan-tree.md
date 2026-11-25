@@ -356,7 +356,12 @@ choose **Transform → Preview population** in **Actions and results**. The expl
 the loaded input instances with the same membership and filter evaluator as **Build project**, and
 shows the matching instance cards and the count examined. Preview makes no datasource requests and
 writes no files. **Save model** or **Save domain** writes the applied recipe to `.model.json`.
-**Build project** still runs in ModelBuilder to refresh produced instances and publish the population.
+Under **Project → Build project**, **Plan build** shows the saved steps and the files the build
+may read or write. Apply and save recipe changes before building. **Execute** uses the same
+build, progress view and report as ModelBuilder. A completed build reloads its saved model and
+snapshot into the open workbench before publishing **Instances**, **Steps** and **Files written**
+in the action tree. The results are for inspection. Build-step authoring and graph decision review
+are still in ModelBuilder.
 
 ## Forcing tests and checked artifacts
 

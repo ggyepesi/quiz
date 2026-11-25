@@ -174,6 +174,14 @@ class PanelLayoutIsCheckedInTest {
                 }
             }
             describe(actual, "Unified Workbench / Edit transformation and preview population", unified);
+            for (var nodes = root.depthFirstEnumeration(); nodes.hasMoreElements();) {
+                var node = (javax.swing.tree.DefaultMutableTreeNode) nodes.nextElement();
+                if ("Build project".equals(node.toString())) {
+                    tree.setSelectionPath(new javax.swing.tree.TreePath(node.getPath()));
+                    break;
+                }
+            }
+            describe(actual, "Unified Workbench / Build project", unified);
         }
 
         Path golden = Files.isRegularFile(GOLDEN) ? GOLDEN : Path.of("docs/panel-layout.txt");

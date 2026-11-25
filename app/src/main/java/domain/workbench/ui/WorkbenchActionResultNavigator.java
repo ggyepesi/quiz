@@ -100,7 +100,8 @@ public final class WorkbenchActionResultNavigator extends JPanel {
     private final Map<NodeId, ActionGroup> actionGroups = new LinkedHashMap<>();
     private final Map<NodeId, ResultTarget> results = new LinkedHashMap<>();
     private final IdentityHashMap<JTabbedPane, Action> tabOwners = new IdentityHashMap<>();
-    private final IdentityHashMap<JTabbedPane, Boolean> tabListeners = new IdentityHashMap<>();
+    private final IdentityHashMap<JTabbedPane, javax.swing.event.ChangeListener> tabListeners =
+            new IdentityHashMap<>();
     private java.util.function.Consumer<Selection> selectionListener = ignored -> { };
     private boolean synchronizing;
 
@@ -210,7 +211,7 @@ public final class WorkbenchActionResultNavigator extends JPanel {
     public void clearResults(Action action) {
         if (action == null) return;
         shell.removeChildren(action.id()).forEach(this::forget);
-        tabOwners.entrySet().removeIf(entry -> entry.getValue() == action);
+        detachTabs(action);
     }
 
     public void clearAllResults() {
@@ -268,13 +269,23 @@ public final class WorkbenchActionResultNavigator extends JPanel {
     }
 
     private void installTabListener(JTabbedPane tabs) {
-        if (tabListeners.putIfAbsent(tabs, Boolean.TRUE) != null) return;
-        tabs.addChangeListener(event -> {
+        javax.swing.event.ChangeListener listener = event -> {
             if (synchronizing) return;
             Action owner = tabOwners.get(tabs);
             if (owner != null && tabs.getSelectedIndex() >= 0) {
                 selectResult(owner, tabs.getSelectedIndex());
             }
+        };
+        tabListeners.put(tabs, listener);
+        tabs.addChangeListener(listener);
+    }
+
+    private void detachTabs(Action action) {
+        tabOwners.entrySet().removeIf(entry -> {
+            if (entry.getValue() != action) return false;
+            JTabbedPane tabs = entry.getKey();
+            tabs.removeChangeListener(tabListeners.remove(tabs));
+            return true;
         });
     }
 
@@ -300,7 +311,7 @@ public final class WorkbenchActionResultNavigator extends JPanel {
         Action action = actions.remove(id);
         if (action != null) {
             results.entrySet().removeIf(entry -> entry.getValue().action == action);
-            tabOwners.entrySet().removeIf(entry -> entry.getValue() == action);
+            detachTabs(action);
         }
         actionGroups.remove(id);
         results.remove(id);

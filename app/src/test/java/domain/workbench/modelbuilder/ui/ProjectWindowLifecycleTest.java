@@ -41,10 +41,10 @@ class ProjectWindowLifecycleTest {
 
         String synchronizedBuild = source.substring(
                 source.indexOf("private void synchronizeCompletedBuild("),
-                source.indexOf("/** The build's report as result tabs"));
+                source.indexOf("private void openPipelineReference("));
         assertTrue(source.contains("synchronizeCompletedBuild(modelFile, read)"),
                 "a successful build must synchronize without waiting for Apply");
-        assertTrue(source.contains("readBuiltProject(modelFile, context::message)"),
+        assertTrue(source.contains("readBuiltProject(modelFile, say)"),
                 "the built files are read as the build's own last phase, in its worker");
         assertTrue(synchronizedBuild.contains("installOpenProject(built.model(), built.ledger())"));
         assertTrue(synchronizedBuild.contains(

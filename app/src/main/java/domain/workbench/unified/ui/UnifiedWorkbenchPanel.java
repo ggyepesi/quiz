@@ -6,6 +6,7 @@ import domain.compile.transform.TransformationExecution;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedFieldModel;
 import domain.config.GeneratedProjectModel;
+import domain.config.GeneratedProjectModelStore;
 import domain.config.ModelSourceExecutionPlan;
 import domain.config.OwnedFieldSources;
 import domain.datasource.Datasources;
@@ -15,15 +16,21 @@ import domain.datasource.api.SourceExecutionPlan;
 import domain.transform.ui.ProjectBacking;
 import domain.transform.ui.FieldDefinitions;
 import domain.transform.ui.TransformController;
+import domain.transform.app.DomainCatalog;
 import domain.transform.ui.ValidationPanel;
 import domain.transform.ui.WorkbenchPurpose;
 import domain.workbench.configuration.ui.ProjectConfigurationPanel;
+import domain.workbench.execution.ui.BuildProjectWorkflow;
+import domain.workbench.execution.ui.QueryObjectResultPanel;
 import domain.workbench.execution.ui.SwingQuerySession;
 import domain.workbench.ui.WorkbenchActionResultNavigator;
 import domain.workbench.ui.WorkbenchResultViews;
 import objectview.view.SearchableView;
 import process.swing.Dialogs;
 import process.swing.SwingCancellationConfirmation;
+import process.swing.SwingProcessInputHandler;
+import process.swing.SwingProcessRunner;
+import process.swing.workflow.SwingProcessWorkflow;
 import work.QueryContext;
 import work.Query;
 
@@ -33,6 +40,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
+import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingWorker;
 import java.awt.BorderLayout;
@@ -46,13 +54,19 @@ import java.util.Objects;
 
 /** One opened project for field acquisition and local transformations. */
 public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable {
-    private final DomainModel domain;
-    private final ProjectBacking project;
+    private DomainModel domain;
+    private ProjectBacking project;
     private final SwingQuerySession queries;
-    private final ProjectConfigurationPanel configuration;
-    private final TransformController transform;
+    private ProjectConfigurationPanel configuration;
+    private TransformController transform;
     private final WorkbenchActionResultNavigator actions = new WorkbenchActionResultNavigator();
     private final WorkbenchActionResultNavigator.Action previewAction;
+    private final WorkbenchActionResultNavigator.Action buildAction;
+    private final SwingProcessRunner buildRunner;
+    private final JPanel buildDetail = new JPanel(new BorderLayout());
+    private final JLabel buildStatus = new JLabel();
+    private final JButton planBuild = new JButton("Plan build");
+    private final JSplitPane workspace;
     private final WorkbenchResultViews previewResults = new WorkbenchResultViews();
     private final JButton preview = new JButton("Preview population");
     private final JLabel previewStatus = new JLabel();
@@ -69,6 +83,10 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private boolean saving;
     private boolean loadingValues;
     private boolean previewing;
+    private boolean building;
+    private boolean buildPlanOpen;
+    private boolean buildActionSelected;
+    private DomainModel builtDomain;
     private boolean previewCompleted;
     private boolean previewActionSelected;
     private boolean loadActionSelected;
@@ -86,6 +104,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         super(new BorderLayout(4, 4));
         this.domain = domain;
         this.queries = queries;
+        buildRunner = new SwingProcessRunner(queries.runner().context(), queries.logs(),
+                new SwingProcessInputHandler(this));
         transform = new TransformController(domain, null);
         project = Objects.requireNonNull(domain.capability(ProjectBacking.class),
                 "Open a model-backed project to edit field configuration");
@@ -105,10 +125,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         var load = actions.addAction(source, "field-values", "Load field values", acquisitionDetail, null);
         var logs = new JButton("Query logs…");
         logs.addActionListener(event -> queries.showLogs(this));
-        var acquisitionTools = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        acquisitionTools.add(logs);
         acquisitionDetail.add(acquisitionValues, BorderLayout.CENTER);
-        acquisitionDetail.add(acquisitionTools, BorderLayout.SOUTH);
         var transformSource = actions.addSource("transform", "Transform", null);
         var previewDetail = new JPanel(new BorderLayout());
         var previewTools = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -125,10 +142,21 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         queries.runner().onRunningChanged(running -> {
             if (!running && previewing) finishPreview();
         });
+        var projectActions = actions.addSource("project", "Project", null);
+        buildAction = actions.addAction(projectActions, "build-project", "Build project", buildDetail, null);
+        planBuild.addActionListener(event -> planBuild());
+        buildRunner.onRunningChanged(running -> {
+            building = running;
+            configuration.setEditingEnabled(!running);
+            updateSave();
+        });
+        resetBuild("");
         actions.setSelectionListener(selection -> {
             loadActionSelected = load.id().equals(selection.id());
             previewActionSelected = previewAction.id().source().equals(selection.id().source())
                     && previewAction.id().action().equals(selection.id().action());
+            buildActionSelected = buildAction.id().source().equals(selection.id().source())
+                    && buildAction.id().action().equals(selection.id().action());
             if (loadActionSelected) refreshAcquisition();
         });
         actions.expandSources();
@@ -136,17 +164,133 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         compilePlan();
         configuration = ProjectConfigurationPanel.editWorkingConfiguration(project, transform,
                 this::constructSelected, this::fieldApplied, this::refreshPreview);
-        var workspace = new JSplitPane(JSplitPane.VERTICAL_SPLIT, configuration, actions);
+        workspace = new JSplitPane(JSplitPane.VERTICAL_SPLIT, configuration, actions);
         workspace.setResizeWeight(0.72);
         workspace.setDividerLocation(510);
         add(workspace, BorderLayout.CENTER);
 
         var footer = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         footer.add(saveStatus);
+        footer.add(logs);
         footer.add(save);
         add(footer, BorderLayout.SOUTH);
         updateSave();
     }
+
+    private void resetBuild(String message) {
+        buildPlanOpen = false;
+        builtDomain = null;
+        if (buildActionSelected) actions.selectAction(buildAction);
+        actions.clearResults(buildAction);
+        buildStatus.setText(message.isBlank() ? "Plan the saved build of " + project.modelFile().getPath() : message);
+        var start = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        start.add(planBuild);
+        start.add(buildStatus);
+        buildDetail.removeAll();
+        buildDetail.add(start, BorderLayout.NORTH);
+        buildDetail.revalidate();
+        buildDetail.repaint();
+    }
+
+    private boolean buildReady(String activity) {
+        if (busy() || !configuration.resolveUnappliedEdits(activity)) return false;
+        if (!project.unsavedModelChanges().isEmpty()) {
+            resetBuild("Use " + saveVerb + " to write " + project.modelFile().getPath() + " before building.");
+            return false;
+        }
+        return true;
+    }
+
+    private void planBuild() {
+        if (!buildReady("planning the build")) return;
+        var sessionGuard = project.saveGuard();
+        if (sessionGuard == null) {
+            resetBuild("Open a saved project to build it.");
+            return;
+        }
+        try {
+            var guard = sessionGuard.copy();
+            var modelFile = project.modelFile();
+            var storage = guard.storage();
+            var saved = new GeneratedProjectModelStore().load(modelFile);
+            guard.check();
+            if (saved.buildOperations().isEmpty()) {
+                resetBuild("No build steps in " + modelFile.getName() + ". Configure Build in ModelBuilder.");
+                return;
+            }
+            var snapshot = storage.snapshotFile(saved.name());
+            var action = BuildProjectWorkflow.action(saved, modelFile, storage, guard,
+                    "Load " + modelFile.getName() + " and " + snapshot.getName(), say -> {
+                        say.accept("Reading " + modelFile.getPath() + " and " + snapshot.getPath());
+                        guard.check();
+                        var loaded = DomainCatalog.open(snapshot, modelFile, storage);
+                        guard.check();
+                        return new BuildProjectWorkflow.Loaded<>(loaded, loaded.memberRoots().size()
+                                + " saved instances loaded from " + snapshot.getPath());
+                    }, this::installBuiltDomain,
+                    "The open project has been refreshed. Select Instances to inspect it.");
+            buildPlanOpen = true;
+            SwingProcessWorkflow.embed(buildRunner, action, new SwingProcessWorkflow.Embedded(
+                    buildDetail, () -> {
+                        if (!buildPlanOpen || !buildReady("running the build")) return false;
+                        buildPlanOpen = false;
+                        queries.logs().registerPipeline("Build project — " + saved.name(), action.pipeline(),
+                                saved.name(), snapshot.getAbsoluteFile().getParentFile().toPath());
+                        return true;
+                    }, () -> resetBuild(""), WorkbenchResultViews::new, this::publishBuildResults));
+        } catch (Exception failure) {
+            resetBuild("Could not plan build: " + failure.getMessage());
+        }
+    }
+
+    private void installBuiltDomain(DomainModel loaded) {
+        var activeClass = selectedField == null ? selectedClass : project.projectModel().declaringClass(selectedField);
+        String activeField = selectedField == null ? null : selectedField.name();
+        configuration.close();
+        domain = loaded;
+        project = Objects.requireNonNull(loaded.capability(ProjectBacking.class));
+        transform = new TransformController(loaded, null);
+        valuePanel = null;
+        selectedField = null;
+        selectedClass = null;
+        acquisitionTargetCurrent = false;
+        acquisitionValues.removeAll();
+        compilePlan();
+        configuration = ProjectConfigurationPanel.editWorkingConfiguration(project, transform,
+                this::constructSelected, this::fieldApplied, this::refreshPreview);
+        if (activeClass != null) {
+            var restored = project.projectModel().resolveClass(activeClass.declarationId(), activeClass.className());
+            if (restored != null) {
+                Object target = restored.fields().stream().filter(field -> field.name().equals(activeField))
+                        .findFirst().<Object>map(field -> field).orElse(restored);
+                configuration.selectConstruct(target);
+            }
+        }
+        if (loadActionSelected) refreshAcquisition();
+        configuration.setEditingEnabled(false);
+        int divider = workspace.getDividerLocation();
+        workspace.setTopComponent(configuration);
+        workspace.setDividerLocation(divider);
+        builtDomain = loaded;
+    }
+
+    private void publishBuildResults(JTabbedPane tabs) {
+        if (builtDomain != null) {
+            var instances = new QueryObjectResultPanel();
+            var loaded = builtDomain;
+            tabs.addTab("Instances (" + loaded.memberRoots().size() + ")", instances);
+            tabs.addChangeListener(new javax.swing.event.ChangeListener() {
+                @Override public void stateChanged(javax.swing.event.ChangeEvent event) {
+                    if (tabs.getSelectedComponent() != instances) return;
+                    tabs.removeChangeListener(this);
+                    instances.acceptDomain(loaded);
+                }
+            });
+        }
+        actions.publishResults(buildAction, tabs, 0, buildActionSelected);
+    }
+
+    private boolean busy() { return saving || loadingValues || previewing || building; }
 
     private void constructSelected(Object construct) {
         var clazz = construct instanceof GeneratedClassModel value ? value : null;
@@ -173,7 +317,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     }
 
     private void previewPopulation() {
-        if (previewInput == null || saving || loadingValues || previewing || queries.runner().isRunning()
+        if (previewInput == null || busy() || queries.runner().isRunning()
                 || !configuration.resolveUnappliedEdits("previewing the population")) return;
         clearPreviewResults();
         var input = previewInput;
@@ -279,7 +423,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     }
 
     private boolean prepareAcquisition() {
-        return !saving && !previewing && configuration.resolveUnappliedEdits("loading values")
+        return !busy() && configuration.resolveUnappliedEdits("loading values")
                 && valuePanel.getParent() == acquisitionValues;
     }
 
@@ -374,7 +518,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
      * writes something other than what the form shows.
      */
     private void confirmSave() {
-        if (saving || loadingValues || previewing) return;
+        if (busy()) return;
         boolean draft = configuration.hasUnappliedEdits();
         boolean applyDraft = false;
         if (draft) {
@@ -434,6 +578,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                 try {
                     get();
                     saved = true;
+                    if (buildPlanOpen) resetBuild("");
                     if (afterSuccess == null && showSaveSuccess) {
                         Dialogs.showPersistenceSuccess(UnifiedWorkbenchPanel.this, saveVerb,
                                 project.projectName(), project.modelFile().getPath());
@@ -460,12 +605,15 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         boolean dirty = !project.unsavedModelChanges().isEmpty();
         // Enabled whenever not saving: unapplied edits can be the only change, and the
         // form cannot announce every keystroke. Save itself says when there is nothing.
-        save.setEnabled(!saving && !loadingValues && !previewing);
-        preview.setEnabled(previewInput != null && !saving && !loadingValues && !previewing);
+        save.setEnabled(!busy());
+        preview.setEnabled(previewInput != null && !busy());
+        planBuild.setEnabled(!busy());
         if (loadingValues) {
             saveStatus.setText("Loading and reviewing field values");
         } else if (previewing) {
             saveStatus.setText("Previewing population for " + selectedClass.className());
+        } else if (building) {
+            saveStatus.setText("Building " + project.projectName());
         } else if (!saving) {
             saveStatus.setText(dirty ? "Applied configuration has unsaved changes" : " ");
         }
@@ -501,6 +649,10 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
      */
     public void requestClose(Runnable closeWindow) {
         if (saving) return;
+        if (building) {
+            SwingCancellationConfirmation.requestForVisibleRun(this, buildRunner::cancel);
+            return;
+        }
         if (previewing) {
             SwingCancellationConfirmation.requestForVisibleRun(this, queries.runner()::cancel);
             return;

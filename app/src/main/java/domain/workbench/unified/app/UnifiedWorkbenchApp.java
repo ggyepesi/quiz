@@ -21,7 +21,8 @@ public final class UnifiedWorkbenchApp {
                 "Open in Unified Workbench", (domain, name) -> {
                     var client = new WikidataSparqlClient(USER_AGENT, 2);
                     var factory = new QueryFactory(client, new WikidataApiClient(USER_AGENT), USER_AGENT);
-                    var panel = new UnifiedWorkbenchPanel(domain, new SwingQuerySession(factory.newContext()));
+                    var panel = new UnifiedWorkbenchPanel(domain, new SwingQuerySession(factory.newContext(
+                            java.nio.file.Path.of(aux.Constants.wikidataDataDirectory))));
                     var frame = new JFrame("Unified Workbench — " + name);
                     frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
                     frame.add(panel);

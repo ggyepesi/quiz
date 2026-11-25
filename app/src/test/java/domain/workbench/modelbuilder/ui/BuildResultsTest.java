@@ -6,6 +6,7 @@ import domain.transform.DynamicViewable;
 import domain.build.ProjectBuild;
 import domain.config.BuildOperation;
 import domain.config.GeneratedProjectModel;
+import domain.workbench.execution.ui.BuildProjectWorkflow;
 
 import java.io.File;
 import java.util.List;
@@ -24,12 +25,11 @@ class BuildResultsTest {
                 List.of(), ProjectBuild.State.CURRENT, List.of(),
                 new File("offices.build.json"));
 
-        var results = ModelBuilderFrame.buildResults(project,
-                ProcessOutcome.succeeded(report, "built"));
+        var results = BuildProjectWorkflow.results(project,
+                ProcessOutcome.succeeded(report, "built"), "Use Show instances to inspect it.");
 
         assertNull(results.resultDecision());
         assertTrue(results.summary().contains("completed and saved"), results.summary());
-        assertTrue(results.summary().contains("nothing to accept"), results.summary());
         assertEquals("Close — build already saved", results.closeVerb());
     }
 
@@ -45,13 +45,15 @@ class BuildResultsTest {
                 ProjectBuild.State.AWAITING_DECISION, List.of("Instances: 12 -> offices.snapshot.json"),
                 new File("offices.build.json"));
 
-        var results = ModelBuilderFrame.buildResults(project,
-                ProcessOutcome.partial(report, null, "stopped"));
+        var results = BuildProjectWorkflow.results(project,
+                ProcessOutcome.partial(report, null, "stopped"), "Use Show instances to inspect it.");
 
         assertEquals("Build already saved", results.applyVerb());
         assertNull(results.resultDecision(),
                 "a completed build is inspection-only; it must not need Apply to synchronize");
         var card = (DynamicViewable) results.tabs().getFirst().cards().getFirst().view();
+        assertNull(results.tabs().getFirst().cards().getFirst().decision().get(),
+                "selecting a build step must not offer Apply");
         assertEquals("RAN", card.get("Done"));
         assertEquals("STALE", card.get("State before"));
         assertEquals("the model changed since the snapshot was generated", card.get("Because"));

@@ -213,6 +213,8 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
 
     @Override public java.io.File modelFile() { return modelFile; }
 
+    @Override public ProjectSaveGuard saveGuard() { return saveGuard; }
+
     @Override public domain.config.GeneratedProjectModel projectModel() {
         return workingModel;
     }

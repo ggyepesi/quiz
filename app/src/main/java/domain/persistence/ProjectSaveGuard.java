@@ -62,6 +62,15 @@ public final class ProjectSaveGuard {
         return new ProjectSaveGuard(storage, name, List.of());
     }
 
+    public DomainStorage storage() { return storage; }
+
+    /** An operation can advance its save version without marking the open editor current. */
+    public ProjectSaveGuard copy() {
+        var copy = new ProjectSaveGuard(storage, name, additionalFiles);
+        copy.baseline = baseline;
+        return copy;
+    }
+
     /** A save may only write the project key this session opened or created. */
     public void requireDestination(DomainStorage destination, String project) throws IOException {
         File expected = storage.modelFile(name).getCanonicalFile();

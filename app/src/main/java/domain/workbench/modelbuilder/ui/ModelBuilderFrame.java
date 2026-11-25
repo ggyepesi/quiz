@@ -1633,7 +1633,7 @@ public class ModelBuilderFrame extends JFrame {
      * rather than building something other than what is open. The plan names the steps
      * and the files; each step's state and reasons are in the log and the results, because
      * reading the snapshot to judge them takes seconds and the plan is shown at once.
-     * Applying the results loads what the build saved, by the ordinary Load instances.
+     * Completion loads what the build saved, by the ordinary Load instances.
      */
     private void buildProject() {
         if (processRunner.isRunning() || querySession.runner().isRunning()) return;
@@ -1672,81 +1672,18 @@ public class ModelBuilderFrame extends JFrame {
                     "Build project", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        java.util.List<objectview.Viewable> steps = saved.buildOperations().stream()
-                .map(operation -> {
-                    domain.transform.DynamicViewable card = new domain.transform.DynamicViewable(
-                            operation.declarationId(), operation.describe(saved));
-                    card.type("Build step");
-                    return (objectview.Viewable) card;
-                }).toList();
-        java.util.List<objectview.Viewable> files = java.util.stream.Stream.of(
-                        modelFile, storage.snapshotFile(saved.name()),
-                        storage.constructManifestFile(saved.name()),
-                        storage.buildManifestFile(saved.name()))
-                .map(file -> {
-                    domain.transform.DynamicViewable card = new domain.transform.DynamicViewable(
-                            file.getPath(), file.getName());
-                    card.type("File");
-                    card.put("Path", file.getPath());
-                    return (objectview.Viewable) card;
-                }).toList();
-        File builtSnapshot = snapshotBesideModel(modelFile);
-        java.util.concurrent.atomic.AtomicReference<BuiltProject> built =
-                new java.util.concurrent.atomic.AtomicReference<>();
-        domain.build.BuildProcess build = new domain.build.BuildProcess(
-                saved, storage, buildGuard, new domain.build.BuildProcess.Completion(
-                        "Load the built project into ModelBuilder from " + modelFile.getName()
-                                + " and " + (builtSnapshot == null
-                                        ? "its snapshot" : builtSnapshot.getName()),
-                        (report, context) -> {
-                            BuiltProject read = readBuiltProject(modelFile, context::message);
-                            built.set(read);
-                            return read.loaded().run().dynamicObjects().size()
-                                    + " saved object(s) read; mapped "
-                                    + read.loaded().run().instances().size() + " instance(s)";
-                        }));
-        process.swing.workflow.ProcessWorkflowAction<
-                domain.build.ProjectBuild.Report,
-                domain.build.ProjectBuild.Report> action =
-                new process.swing.workflow.ProcessWorkflowAction<>() {
-                    @Override public String id() { return "build-project"; }
-                    @Override public process.ProcessWorkflowPipeline pipeline() {
-                        return build.pipeline();
-                    }
-                    @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
-                        return new process.swing.workflow.ProcessWorkflowPlan(
-                                "Build " + saved.name(),
-                                "Run the saved build in order. A step whose saved output is "
-                                        + "current is reused; the rest run, and every step "
-                                        + "after one that runs runs too. The build stops "
-                                        + "without saving at a graph result awaiting a "
-                                        + "decision, an incomplete generation or a save "
-                                        + "warning, and records what it did in "
-                                        + storage.buildManifestFile(saved.name()).getPath() + ".",
-                                java.util.List.of(
-                                        new process.swing.workflow.ProcessWorkflowPlan.Tab(
-                                                "Steps", steps),
-                                        new process.swing.workflow.ProcessWorkflowPlan.Tab(
-                                                "Files it may read or write", files)));
-                    }
-                    @Override public process.Process<domain.build.ProjectBuild.Report>
-                            process() { return build; }
-                    @Override public void afterCompletion(process.ProcessOutcome<
-                            domain.build.ProjectBuild.Report> outcome)
-                            throws Exception {
-                        BuiltProject read = built.getAndSet(null);
-                        if (read != null) synchronizeCompletedBuild(modelFile, read);
-                    }
-                    @Override public process.swing.workflow.ProcessWorkflowResults<
-                            domain.build.ProjectBuild.Report> results(
-                            process.ProcessOutcome<domain.build.ProjectBuild.Report>
-                                    outcome) {
-                        return buildResults(saved, outcome);
-                    }
-                    @Override public void apply(
-                            java.util.List<domain.build.ProjectBuild.Report> ignored) { }
-                };
-        logWindow.registerPipeline("Build project — " + saved.name(), build.pipeline(),
+        File builtSnapshot = storage.snapshotFile(saved.name());
+        var action = domain.workbench.execution.ui.BuildProjectWorkflow.action(
+                saved, modelFile, storage, buildGuard,
+                "Load " + modelFile.getName() + " and " + builtSnapshot.getName(),
+                say -> {
+                    BuiltProject read = readBuiltProject(modelFile, say);
+                    return new domain.workbench.execution.ui.BuildProjectWorkflow.Loaded<>(read,
+                            read.loaded().run().dynamicObjects().size() + " saved object(s) read; mapped "
+                                    + read.loaded().run().instances().size() + " instance(s)");
+                }, read -> synchronizeCompletedBuild(modelFile, read),
+                "The open project has been refreshed. Use Show instances to inspect it.");
+        logWindow.registerPipeline("Build project — " + saved.name(), action.pipeline(),
                 saved.name(), storage.snapshotFile(saved.name()).getParentFile().toPath());
         process.swing.workflow.SwingProcessWorkflow.start(this, processRunner, action);
     }
@@ -1807,62 +1744,6 @@ public class ModelBuilderFrame extends JFrame {
         installSavedInstances(built.snapshot(), built.loaded(), false);
         logWindow.info("Synchronized the completed build from " + modelFile.getPath()
                 + "; the open configuration and instances now match its saved files.\n");
-    }
-
-    /** The build's report as result tabs: every step as the build left it, and every file
-     *  it wrote. */
-    static process.swing.workflow.ProcessWorkflowResults<domain.build.ProjectBuild.Report>
-            buildResults(GeneratedProjectModel project,
-                         process.ProcessOutcome<domain.build.ProjectBuild.Report> outcome) {
-        domain.build.ProjectBuild.Report report = outcome.result();
-        if (report == null) {
-            return new process.swing.workflow.ProcessWorkflowResults<>(
-                    "Build " + project.name() + " — failed",
-                    outcome.error() == null ? outcome.summary() : outcome.error().getMessage(),
-                    java.util.List.of());
-        }
-        java.util.List<process.swing.workflow.ProcessWorkflowResults.Card<
-                domain.build.ProjectBuild.Report>> steps = new java.util.ArrayList<>();
-        for (domain.build.ProjectBuild.Done done : report.steps()) {
-            domain.transform.DynamicViewable card = new domain.transform.DynamicViewable(
-                    done.planned().operation().declarationId(), done.planned().description());
-            card.type("Build step");
-            card.put("Done", done.action().name());
-            card.put("State before", done.planned().state().name());
-            if (!done.planned().because().isEmpty()) {
-                card.put("Because", String.join("; ", done.planned().because()));
-            }
-            if (!done.detail().isBlank()) card.put("Detail", done.detail());
-            steps.add(new process.swing.workflow.ProcessWorkflowResults.Card<>(
-                    card, () -> report, false));
-        }
-        java.util.List<process.swing.workflow.ProcessWorkflowResults.Card<
-                domain.build.ProjectBuild.Report>> files = new java.util.ArrayList<>();
-        for (String line : report.files()) {
-            domain.transform.DynamicViewable card = new domain.transform.DynamicViewable(line, line);
-            card.type("Written");
-            files.add(new process.swing.workflow.ProcessWorkflowResults.Card<>(
-                    card, () -> report, false));
-        }
-        String summary = switch (report.outcome()) {
-            case CURRENT -> "Build completed and saved. The completed build has already "
-                    + "been synchronized into ModelBuilder; there is nothing to accept. "
-                    + "Use Show instances to inspect what it produced.";
-            case AWAITING_DECISION -> "Stopped: a graph result is awaiting a decision, and the "
-                    + "snapshot was not replaced. Load the built instances, accept or reject "
-                    + "the Review entries named in the steps on that graph's tab, save, and "
-                    + "build again.";
-            case INCOMPLETE -> "Stopped: generation was incomplete, so nothing was saved.";
-            default -> "Stopped: a step failed, so nothing after it ran.";
-        } + " Manifest: " + report.manifest().getPath();
-        return new process.swing.workflow.ProcessWorkflowResults<>(
-                "Build " + project.name() + " — " + report.outcome(), summary,
-                "Build already saved",
-                java.util.List.of(
-                        new process.swing.workflow.ProcessWorkflowResults.Tab<>("Steps", steps),
-                        new process.swing.workflow.ProcessWorkflowResults.Tab<>("Files written", files)),
-                null, report.outcome() == domain.build.ProjectBuild.State.CURRENT
-                        ? "Close — build already saved" : "Close");
     }
 
     /** Turns the pipeline explanation into a map back to the configuration that

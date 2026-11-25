@@ -803,6 +803,7 @@
   button: Apply field source
   box: Actions and results
   plan: Position.holderCount Statement property Property: P1082
+  button: Query logs…
   button: Save domain…
 
 == Unified Workbench / Load field values ==
@@ -861,4 +862,26 @@
   button: Preview population
   button: Cancel preview  (disabled)
   label: Check loaded Position instances for SelectedPosition.
+  button: Query logs…
+  button: Save domain…
+
+== Unified Workbench / Build project ==
+  label: Class kind:
+  combo: 5 item(s)  (disabled)
+  label: Use Actions and results to check the applied configuration.
+  box: Configuration
+  label: Input class: Position
+  label: 2 filter step(s)
+  button: Add filter…
+  button: Edit filter…  (disabled)
+  button: Remove filter  (disabled)
+  button: Move up  (disabled)
+  button: Move down  (disabled)
+  button: Apply transformation  (disabled)
+  button: Discard changes  (disabled)
+  label: Select a filter to edit it, or add a filter to the transformation.
+  box: Actions and results
+  button: Plan build
+  label: Plan the saved build of positions.model.json
+  button: Query logs…
   button: Save domain…

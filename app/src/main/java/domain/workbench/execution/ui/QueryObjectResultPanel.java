@@ -144,6 +144,22 @@ public class QueryObjectResultPanel
         acceptGrouped(result, Map.of());
     }
 
+    /** Opens the ordinary roots of a saved domain in the shared multi-instance view. */
+    public void acceptDomain(domain.DomainModel domain) {
+        Map<String, List<Viewable>> sections = new LinkedHashMap<>();
+        for (Viewable member : domain.memberRoots()) {
+            sections.computeIfAbsent(member.typeName(), ignored -> new ArrayList<>()).add(member);
+        }
+        SwingUtilities.invokeLater(() -> {
+            holder.removeAll();
+            holder.add(sections.isEmpty() ? new JLabel("No saved instances.") : multiView(sections),
+                    BorderLayout.CENTER);
+            holder.revalidate();
+            holder.repaint();
+            displayedObjectsListener.run();
+        });
+    }
+
     /**
      * One peer section: a class shown beside the result's own types, optionally
      * partitioned into subtabs. Peers are roots in their own right — unlike references

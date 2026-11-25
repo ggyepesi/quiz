@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /** One Plan → Running → Results → Apply Swing skeleton for every curation action. */
 public final class SwingProcessWorkflow {
@@ -93,11 +94,23 @@ public final class SwingProcessWorkflow {
                 return SwingWindowActivation.showAndFocus(existing);
             }
         }
-        Session<R, D> session = new Session<>(owner, runner, action, navigateReference);
+        Session<R, D> session = new Session<>(owner, runner, action, navigateReference, null);
         ProcessOutcome<R> prepared = action.preparedOutcome();
         if (prepared == null) session.showPlan();
         else session.review(prepared);
         return SwingWindowActivation.showAndFocus(session.window);
+    }
+
+    /** Hosts the same workflow inside an action navigator. The host owns its result deck and close action. */
+    public record Embedded(JPanel view, BooleanSupplier beforeExecute, Runnable close,
+            Supplier<JTabbedPane> resultViews, Consumer<JTabbedPane> publishResults) { }
+
+    public static <R, D> void embed(SwingProcessRunner runner,
+            ProcessWorkflowAction<R, D> action, Embedded host) {
+        Session<R, D> session = new Session<>(host.view(), runner, action, null, host);
+        ProcessOutcome<R> prepared = action.preparedOutcome();
+        if (prepared == null) session.showPlan();
+        else session.review(prepared);
     }
 
     /** One visible lifecycle per user action on one subject. A completed workflow may
@@ -172,16 +185,22 @@ public final class SwingProcessWorkflow {
         final JFrame window;
         final ProcessWorkflowPipeline pipeline;
         final ProcessWorkflowPipelinePanel pipelinePanel;
+        final Embedded embedded;
         boolean reviewingPrepared;
 
         Session(Component owner, SwingProcessRunner runner, ProcessWorkflowAction<R, D> action,
-                Consumer<ModelReference> navigateReference) {
+                Consumer<ModelReference> navigateReference, Embedded embedded) {
             this.owner = owner; this.runner = runner; this.action = action;
+            this.embedded = embedded;
             this.pipeline = action.pipeline();
             this.pipelinePanel = pipeline == null ? null
                     : new ProcessWorkflowPipelinePanel(pipeline);
             if (pipelinePanel != null) {
                 pipelinePanel.onNavigateReference(navigateReference);
+            }
+            if (embedded != null) {
+                window = null;
+                return;
             }
             Window workflowOwner = SwingUtilities.getWindowAncestor(owner);
             window = new JFrame(action.plan().title());
@@ -242,14 +261,15 @@ public final class SwingProcessWorkflow {
             JButton execute = new JButton(plan.executable()
                     ? "Execute" : plan.noWorkMessage());
             execute.setEnabled(plan.executable());
-            cancel.addActionListener(e -> window.dispose());
+            cancel.addActionListener(e -> dismiss());
             execute.addActionListener(e -> execute());
             panel.add(buttons(cancel, execute), BorderLayout.SOUTH);
             install(plan.title(), panel);
         }
 
         void execute() {
-            if (!action.plan().executable()) return;
+            if (!action.plan().executable() || runner.isRunning()
+                    || (embedded != null && !embedded.beforeExecute().getAsBoolean())) return;
             state.execute();
             if (pipeline != null) pipeline.reset();
             JPanel panel = page("2 · Running", action.process().plan().description());
@@ -258,7 +278,7 @@ public final class SwingProcessWorkflow {
                     : pipelinePanel, BorderLayout.CENTER);
             JButton cancel = new JButton("Cancel process");
             SwingCancellationConfirmation.wire(
-                    cancel, window, runner::isRunning, runner::cancel);
+                    cancel, dialogParent(), runner::isRunning, runner::cancel);
             panel.add(buttons(cancel), BorderLayout.SOUTH);
             // The window is named for what the reader started, not for whichever
             // component is currently talking. Expanding graph-frontier nodes runs a
@@ -274,7 +294,7 @@ public final class SwingProcessWorkflow {
                                 failureMessage(error));
                         JOptionPane.showMessageDialog(owner,
                                 "Process failed: " + failureMessage(error));
-                        window.dispose();
+                        dismiss();
                     });
         }
 
@@ -285,11 +305,13 @@ public final class SwingProcessWorkflow {
             try {
                 action.afterCompletion(outcome);
             } catch (Exception synchronizationFailure) {
-                JOptionPane.showMessageDialog(owner,
-                        "Process completed, but its saved result could not be synchronized: "
-                                + failureMessage(synchronizationFailure),
-                        "Could not synchronize completed process",
-                        JOptionPane.ERROR_MESSAGE);
+                String message = "Could not open the completed result: " + failureMessage(synchronizationFailure);
+                if (outcome != null && outcome.result() != null) {
+                    outcome = ProcessOutcome.partial(outcome.result(), synchronizationFailure, message);
+                } else {
+                    JOptionPane.showMessageDialog(dialogParent(), message,
+                            "Could not open completed result", JOptionPane.ERROR_MESSAGE);
+                }
             }
             state.results();
             presentResults(outcome);
@@ -308,10 +330,19 @@ public final class SwingProcessWorkflow {
                 String message = failed ? failedOutcomeMessage(outcome)
                         : outcome.error() != null ? failureMessage(outcome.error())
                         : "No result was produced.";
-                JOptionPane.showMessageDialog(window, message,
+                if (embedded != null) {
+                    JPanel panel = page(failed ? "Process failed" : "Process stopped", message);
+                    if (pipelinePanel != null) panel.add(pipelinePanel, BorderLayout.CENTER);
+                    JButton close = new JButton("Close");
+                    close.addActionListener(event -> dismiss());
+                    panel.add(buttons(close), BorderLayout.SOUTH);
+                    install(action.plan().title(), panel);
+                    return;
+                }
+                JOptionPane.showMessageDialog(dialogParent(), message,
                         failed ? "Process failed" : "No result",
                         failed ? JOptionPane.ERROR_MESSAGE : JOptionPane.WARNING_MESSAGE);
-                window.dispose();
+                dismiss();
                 return;
             }
             ProcessWorkflowResults<D> results;
@@ -342,7 +373,7 @@ public final class SwingProcessWorkflow {
             boolean wholeResult = results != null && results.resultDecision() != null;
             JButton accept = new JButton(wholeResult
                     ? results.applyVerb() : "Accept completed result");
-            close.addActionListener(e -> window.dispose());
+            close.addActionListener(e -> dismiss());
             List<ProcessWorkflowResults.Card<D>> safe = results == null ? List.of()
                     : results.tabs().stream().flatMap(tab -> tab.cards().stream())
                             .filter(ProcessWorkflowResults.Card::includeInApplyAll).toList();
@@ -373,7 +404,7 @@ public final class SwingProcessWorkflow {
             List<ProcessWorkflowResults.Card<D>> bulk = results.tabs().stream()
                     .flatMap(tab -> tab.cards().stream())
                     .filter(ProcessWorkflowResults.Card::includeInApplyAll).toList();
-            JTabbedPane tabs = new JTabbedPane();
+            JTabbedPane tabs = embedded == null ? new JTabbedPane() : embedded.resultViews().get();
             int fixedTabCount = 0;
             if (pipelinePanel != null) {
                 tabs.addTab("Pipeline", pipelinePanel);
@@ -424,7 +455,7 @@ public final class SwingProcessWorkflow {
             syncApplyToTab.run();
             panel.add(tabs, BorderLayout.CENTER);
             JButton close = new JButton(results.closeVerb());
-            close.addActionListener(e -> window.dispose());
+            close.addActionListener(e -> dismiss());
             applySelected.addActionListener(e -> apply(selected.get()));
             // Offered only when some result opted into it. A workflow whose every
             // decision is deliberate marks none — expanding the whole graph frontier
@@ -449,6 +480,7 @@ public final class SwingProcessWorkflow {
                 panel.add(buttons(close, applySelected, applyAll), BorderLayout.SOUTH);
             }
             install(action.plan().title(), panel);
+            if (embedded != null) embedded.publishResults().accept(tabs);
         }
 
         /** Whether applying from this tab could do anything: some card decides. */
@@ -559,7 +591,7 @@ public final class SwingProcessWorkflow {
                 JOptionPane.showMessageDialog(owner,
                         wholeResult ? applyVerb + " completed."
                                 : applyVerb + ": " + decisions.size() + " decision(s).");
-                window.dispose();
+                dismiss();
             } catch (Exception error) {
                 state.retryApply();
                 JOptionPane.showMessageDialog(owner,
@@ -610,9 +642,24 @@ public final class SwingProcessWorkflow {
         }
 
         private void install(String title, JPanel panel) {
+            if (embedded != null) {
+                JPanel view = embedded.view();
+                view.removeAll();
+                view.add(panel, BorderLayout.CENTER);
+                view.revalidate();
+                view.repaint();
+                return;
+            }
             window.setTitle(title);
             window.setContentPane(panel);
             window.revalidate(); window.repaint();
+        }
+
+        private Component dialogParent() { return window == null ? owner : window; }
+
+        private void dismiss() {
+            if (embedded == null) window.dispose();
+            else embedded.close().run();
         }
 
         private static JPanel buttons(JButton... values) {

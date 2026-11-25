@@ -145,7 +145,7 @@ public final class DomainCatalog {
      * into a typed {@link ProductDomain} (model-authoritative schema); a dataset
      * without a model uses the snapshot's persisted field graph.
      */
-    private static DomainModel open(File snap, File model, DomainStorage storage)
+    public static DomainModel open(File snap, File model, DomainStorage storage)
             throws Exception {
         ProjectSaveGuard guard = null;
         GeneratedProjectModel project = null;

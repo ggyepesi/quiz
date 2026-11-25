@@ -1,7 +1,10 @@
 package domain.workbench.unified.ui;
 
 import dataset.DomainStorage;
+import domain.build.GenerationStepOutputStore;
 import domain.build.ProjectSave;
+import domain.compile.transform.SelfReferenceLedger;
+import domain.config.BuildOperation;
 import domain.config.ClassConfigurationProjection;
 import domain.config.ClassPopulationMode;
 import domain.config.FieldCardinality;
@@ -10,15 +13,19 @@ import domain.config.FieldSourceType;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedFieldModel;
 import domain.config.GeneratedProjectModel;
+import domain.config.GeneratedProjectModelStore;
+import domain.config.PopulationSelection;
 import domain.config.TransformationClassSource;
 import domain.config.TransformationStep;
 import domain.datasource.schema.FieldType;
+import domain.datasource.graph.GraphDiscoveryState;
 import domain.runtime.WikidataDynamicObject;
 import domain.transform.FilterOperator;
 import domain.transform.app.DomainCatalog;
 import domain.transform.pipeline.ui.TransformationConfigurationEditor;
 import domain.transform.ui.ProjectBacking;
 import domain.workbench.modelbuilder.ui.SingleRootClassModelPanel;
+import domain.workbench.execution.ui.QueryObjectResultPanel;
 import domain.workbench.ui.ConfigurationTreePanel;
 import domain.workbench.ui.WorkbenchActionResultNavigator;
 import domain.workbench.ui.WorkbenchResultViews;
@@ -28,6 +35,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JLabel;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
@@ -39,6 +47,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
@@ -178,12 +187,12 @@ class UnifiedWorkbenchPanelTest {
         assertEquals(2, working.transformationSource().steps().size());
     }
 
-    @Test void previewResolvesTheRecipeDraftAndSavePersistsOnlyTheRecipe() throws Exception {
+    @Test void editPreviewSaveAndBuildUpdateTheSameOpenProject() throws Exception {
         var storage = DomainStorage.in(root.toFile());
         var model = new GeneratedProjectModel();
         model.name("Positions");
         var input = new GeneratedClassModel("Position");
-        input.seedQids().addAll(List.of("Q1", "Q2"));
+        input.seedQids().addAll(List.of("Q1", "Q2", "Q3"));
         input.addField("holderCount", FieldType.NUMBER, FieldCardinality.SINGLE);
         input.addField("siteCount", FieldType.NUMBER, FieldCardinality.SINGLE);
         model.rootClass(input);
@@ -196,6 +205,14 @@ class UnifiedWorkbenchPanelTest {
         recipe.addStep(TransformationStep.filter("siteCount", FilterOperator.GREATER_THAN, 2, null));
         output.transformationSource(recipe);
         model.addClass(output);
+        var population = new PopulationSelection("Positions to publish");
+        population.className(output.className());
+        model.addSelection(population);
+        var generate = new BuildOperation(BuildOperation.Kind.GENERATE_PROJECT, "");
+        model.buildOperations(List.of(generate,
+                new BuildOperation(BuildOperation.Kind.RUN_TRANSFORMATION, output.declarationId()),
+                new BuildOperation(BuildOperation.Kind.PUBLISH_POPULATION, population.declarationId()),
+                new BuildOperation(BuildOperation.Kind.SAVE_PROJECT_RESULT, "")));
         var first = new WikidataDynamicObject("Q1", "First position");
         first.type(output.className());
         first.put("holderCount", 5);
@@ -204,8 +221,18 @@ class UnifiedWorkbenchPanelTest {
         second.type(input.className());
         second.put("holderCount", 8);
         second.put("siteCount", 1);
-        var run = new ProjectSave.Run(List.of(first, second), List.of(), null, model);
+        var third = new WikidataDynamicObject("Q3", "Third position");
+        third.type(input.className());
+        third.put("holderCount", 0);
+        var run = new ProjectSave.Run(List.of(first, second, third), List.of(), null, model);
         ProjectSave.plan(new ProjectSave.Input(model, run, null, List.of()), storage).write();
+        var baseFirst = first.copyWithoutFields();
+        baseFirst.removeClass(output.className());
+        baseFirst.type(input.className());
+        baseFirst.dynamicFields().putAll(first.dynamicFields());
+        GenerationStepOutputStore.of(storage, model.name(), generate.declarationId())
+                .save(model, List.of(baseFirst, second, third), List.of(), SelfReferenceLedger.EMPTY,
+                        GraphDiscoveryState.EMPTY, Map.of());
         Path modelFile = storage.modelFile(model.name()).toPath();
         Path snapshot = storage.snapshotFile(model.name()).toPath();
         String savedRecipe = Files.readString(modelFile);
@@ -228,13 +255,7 @@ class UnifiedWorkbenchPanelTest {
             var editor = find(workbench, TransformationConfigurationEditor.class, unused -> true);
             find(editor, JButton.class, button -> "Remove filter".equals(button.getText())).doClick();
 
-            var actions = find(workbench, WorkbenchActionResultNavigator.class, unused -> true);
-            var actionTree = actions.tree();
-            var rootNode = (DefaultMutableTreeNode) actionTree.getModel().getRoot();
-            var previewNode = java.util.Collections.list(rootNode.depthFirstEnumeration()).stream()
-                    .map(DefaultMutableTreeNode.class::cast)
-                    .filter(node -> "Preview population".equals(node.toString())).findFirst().orElseThrow();
-            actionTree.setSelectionPath(new TreePath(previewNode.getPath()));
+            selectAction(workbench, "Preview population");
             var preview = find(workbench, JButton.class, button -> "Preview population".equals(button.getText()));
             results.set(find(workbench, WorkbenchResultViews.class, unused -> true));
             workbench.unappliedDecision((construct, action) -> process.swing.Dialogs.UnappliedEdits.STAY);
@@ -259,6 +280,10 @@ class UnifiedWorkbenchPanelTest {
             SwingUtilities.invokeAndWait(() -> {
                 assertEquals("Matching instances (2)", results.get().getTitleAt(0));
                 assertTrue(results.get().getComponentAt(0) instanceof SearchableView);
+                selectAction(workbench, "Build project");
+                find(workbench, JButton.class, button -> "Plan build".equals(button.getText())).doClick();
+                find(workbench, JLabel.class, label -> label.getText().contains("before building.")
+                        && label.getText().contains(modelFile.toString()));
                 workbench.persistenceConfirmation(message -> message.contains(modelFile.toString()));
                 workbench.showSaveSuccess(false);
                 find(workbench, JButton.class, button -> "Save domain…".equals(button.getText())).doClick();
@@ -269,6 +294,96 @@ class UnifiedWorkbenchPanelTest {
             var persisted = reopened.capability(ProjectBacking.class).projectModel().findClass(output.className());
             assertEquals(List.of("holderCount"), persisted.transformationSource().steps().stream()
                     .map(TransformationStep::fieldPath).toList());
+
+            SwingUtilities.invokeAndWait(() -> {
+                find(workbench, JButton.class, button -> "Plan build".equals(button.getText())).doClick();
+                find(workbench, JLabel.class, label -> label.getText().contains("Run the saved build of")
+                        && label.getText().contains(modelFile.toString()));
+                find(workbench, JButton.class, button -> "Execute".equals(button.getText())).doClick();
+                assertFalse(find(workbench, JButton.class, button -> "Save domain…".equals(button.getText()))
+                        .isEnabled());
+            });
+            await(() -> find(workbench, JButton.class, button -> "Save domain…".equals(button.getText()))
+                    .isEnabled(), "build did not finish");
+            var manifest = storage.buildManifestFile(model.name()).toPath();
+            String report = Files.isRegularFile(manifest) ? Files.readString(manifest) : "No build manifest was written";
+            SwingUtilities.invokeAndWait(() -> {
+                var messages = descendants(workbench).filter(JLabel.class::isInstance).map(JLabel.class::cast)
+                        .map(JLabel::getText).filter(java.util.Objects::nonNull)
+                        .filter(message -> message.contains("Results") || message.contains("Process failed"))
+                        .toList();
+                assertTrue(actionNode(workbench, "Instances (3)") != null, () -> report + "\n" + messages);
+                selectAction(workbench, "Instances (3)");
+            });
+            var built = find(workbench, QueryObjectResultPanel.class, unused -> true);
+            await(() -> built.displayedObjectsByType().containsKey(output.className()),
+                    "built instance cards did not render");
+            SwingUtilities.invokeAndWait(() -> {
+                assertEquals(List.of("Q1", "Q2"), built.displayedObjectsByType().get(output.className()).stream()
+                        .map(objectview.Viewable::getIdentifier).sorted().toList());
+                var selection = find(workbench, SingleRootClassModelPanel.class, unused -> true).selectedUserObject();
+                assertEquals(output.className(), ((GeneratedClassModel) selection).className());
+                assertFalse(selection == working, "the navigator is over the refreshed working model");
+                assertFalse(descendants(workbench).filter(Component::isVisible)
+                        .filter(JButton.class::isInstance).map(JButton.class::cast)
+                        .anyMatch(button -> button.getText().startsWith("Build already saved selected")));
+            });
+            // Saving again uses the re-opened version and cannot overwrite the publication.
+            workbench.saveProject();
+            var builtModel = new GeneratedProjectModelStore().load(modelFile.toFile());
+            assertEquals(List.of("Q1", "Q2"), ((PopulationSelection) builtModel.findSelection(population.name()))
+                    .instanceQids().stream().sorted().toList());
+        } finally {
+            SwingUtilities.invokeAndWait(panel.get()::close);
+        }
+    }
+
+    private static DefaultMutableTreeNode actionNode(UnifiedWorkbenchPanel workbench, String caption) {
+        var tree = find(workbench, WorkbenchActionResultNavigator.class, unused -> true).tree();
+        var rootNode = (DefaultMutableTreeNode) tree.getModel().getRoot();
+        return java.util.Collections.list(rootNode.depthFirstEnumeration()).stream()
+                .map(DefaultMutableTreeNode.class::cast)
+                .filter(node -> caption.equals(node.toString())).findFirst().orElse(null);
+    }
+
+    private static void selectAction(UnifiedWorkbenchPanel workbench, String caption) {
+        var tree = find(workbench, WorkbenchActionResultNavigator.class, unused -> true).tree();
+        var node = actionNode(workbench, caption);
+        assertTrue(node != null, "missing action or result " + caption);
+        tree.setSelectionPath(new TreePath(node.getPath()));
+    }
+
+    @Test void aSaveOutsideTheWorkbenchAfterPlanningRefusesTheBuild() throws Exception {
+        var opened = open();
+        var storage = DomainStorage.in(root.toFile());
+        var modelFile = opened.modelPath().toFile();
+        var snapshot = storage.snapshotFile(opened.working().name());
+        var store = new GeneratedProjectModelStore();
+        var saved = store.load(modelFile);
+        saved.buildOperations(List.of(new BuildOperation(BuildOperation.Kind.SAVE_PROJECT_RESULT, "")));
+        store.save(saved, modelFile);
+        var domain = DomainCatalog.open(snapshot, modelFile, storage);
+        var panel = new AtomicReference<UnifiedWorkbenchPanel>();
+        SwingUtilities.invokeAndWait(() -> {
+            var workbench = new UnifiedWorkbenchPanel(domain);
+            panel.set(workbench);
+            selectAction(workbench, "Build project");
+            find(workbench, JButton.class, button -> "Plan build".equals(button.getText())).doClick();
+        });
+        try {
+            String previousSnapshot = Files.readString(snapshot.toPath());
+            named(saved, "symbol").mapping().propertyPid("Rendered.External");
+            store.save(saved, modelFile);
+            String externalSave = Files.readString(modelFile.toPath());
+
+            SwingUtilities.invokeAndWait(() -> find(panel.get(), JButton.class,
+                    button -> "Execute".equals(button.getText())).doClick());
+            await(() -> descendants(panel.get()).filter(JLabel.class::isInstance).map(JLabel.class::cast)
+                    .anyMatch(label -> label.getText() != null && label.getText().contains("since this copy")),
+                    "the stale build did not report the external save");
+            assertFalse(storage.buildManifestFile(saved.name()).isFile());
+            assertEquals(externalSave, Files.readString(modelFile.toPath()));
+            assertEquals(previousSnapshot, Files.readString(snapshot.toPath()));
         } finally {
             SwingUtilities.invokeAndWait(panel.get()::close);
         }

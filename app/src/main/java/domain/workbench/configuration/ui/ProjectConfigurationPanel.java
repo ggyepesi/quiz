@@ -138,6 +138,8 @@ public final class ProjectConfigurationPanel extends JPanel implements AutoClose
 
     public boolean hasDrafts() { return details.hasTransformationDrafts(); }
 
+    public void selectConstruct(Object construct) { constructs.selectConstruct(construct); }
+
     public void setEditingEnabled(boolean enabled) {
         editingAllowed = enabled;
         details.setEditingEnabled(enabled);
