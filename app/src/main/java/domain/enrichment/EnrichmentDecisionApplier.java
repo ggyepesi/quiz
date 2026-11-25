@@ -9,6 +9,7 @@ import domain.curation.Correction;
 import domain.curation.CorrectionPolicy;
 import domain.curation.Corrections;
 import domain.curation.CuratedInstance;
+import domain.curation.Curatable;
 import domain.curation.CurationStaging;
 import domain.curation.IdentityLink;
 import domain.curation.ManualCuration;
@@ -20,6 +21,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import domain.DomainSchemas;
 
@@ -123,7 +125,8 @@ public final class EnrichmentDecisionApplier {
 
         String type = decision.subject().type();
         String targetId = decision.subject().targetId();
-        Prepared prepared = prepare(domain, decision);
+        Prepared prepared = prepare(domain, decision, acceptedCorrections(
+                domain, curation, List.of(decision)));
         Set<String> sourceKinds = new LinkedHashSet<>();
         decision.identities().stream().map(i -> i.source().kind()).forEach(sourceKinds::add);
 
@@ -170,7 +173,8 @@ public final class EnrichmentDecisionApplier {
         return Corrections.apply(domain.instances(), List.of(curation));
     }
 
-    private static Prepared prepare(DomainModel domain, EnrichmentDecision decision) {
+    private static Prepared prepare(DomainModel domain, EnrichmentDecision decision,
+            Map<Corrections.Target, Correction> acceptedCorrections) {
         String type = decision.subject().type();
         String targetId = decision.subject().targetId();
         List<IdentityLink> identities = decision.identities().stream().map(identity -> {
@@ -203,6 +207,17 @@ public final class EnrichmentDecisionApplier {
             SourceRef candidateSource = candidate.source();
             ValueSource source = valueSource(candidateSource, candidate.evidence());
             StoredValue stored = storedValue(value, candidate.targetCollection());
+            Correction existing = candidate.sourceUpdate() ? acceptedCorrections.get(
+                    new Corrections.Target(type, targetId, candidate.field())) : null;
+            if (existing != null && type.equals(existing.type())
+                    && java.util.Objects.equals(existing.value(), stored.value())
+                    && java.util.Objects.equals(existing.valueKind(), stored.kind())
+                    && existing.referenceType().equals(stored.referenceType())) {
+                corrections.add(new Correction(type, targetId, candidate.field(), existing.value(),
+                        existing.origin(), existing.valueKind(), existing.effectivePolicy(), source,
+                        existing.referenceType()));
+                continue;
+            }
             corrections.add(new Correction(type, targetId, candidate.field(), stored.value(),
                     origin(candidateSource.kind()), stored.kind(), policy(fieldDecision.action()),
                     source, stored.referenceType()));
@@ -225,16 +240,32 @@ public final class EnrichmentDecisionApplier {
         List<Correction> corrections = new ArrayList<>();
         List<IdentityLink> identities = new ArrayList<>();
         List<CuratedInstance> instances = new ArrayList<>();
+        var curatable = domain.capability(Curatable.class);
+        var accepted = acceptedCorrections(
+                domain, curatable == null ? null : curatable.curation(), decisions);
         for (EnrichmentDecision decision : decisions == null
                 ? List.<EnrichmentDecision>of() : decisions) {
             if (decision == null) continue;
-            Prepared prepared = prepare(domain, decision);
+            Prepared prepared = prepare(domain, decision, accepted);
             corrections.addAll(prepared.corrections());
             identities.addAll(prepared.identities());
             instances.addAll(prepared.instances());
         }
         return new Prepared(List.copyOf(corrections), List.copyOf(identities),
                 List.copyOf(instances));
+    }
+
+    private static Map<Corrections.Target, Correction> acceptedCorrections(
+            DomainModel domain, ManualCuration curation, List<EnrichmentDecision> decisions) {
+        if (curation == null || decisions == null) return Map.of();
+        var fields = decisions.stream()
+                .filter(java.util.Objects::nonNull)
+                .flatMap(decision -> decision.fields().stream())
+                .map(EnrichmentDecision.FieldDecision::candidate)
+                .filter(EnrichmentProposal.FieldCandidate::sourceUpdate)
+                .map(EnrichmentProposal.FieldCandidate::field)
+                .collect(java.util.stream.Collectors.toSet());
+        return Corrections.acceptedFieldCorrections(domain.instances(), curation, fields);
     }
 
     private static int stage(CurationStaging staging, Prepared prepared) {

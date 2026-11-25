@@ -1,8 +1,11 @@
 package domain.curation;
 
+import domain.datasource.SourceRef;
 import domain.datasource.evidence.ExtractedClaim;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Durable provenance of one accepted field value. Entity identity and field-value
@@ -51,6 +54,24 @@ public final class ValueSource {
     public String recordUrl() { return recordUrl; }
     public List<ExtractedClaim> evidence() {
         return evidence == null ? List.of() : List.copyOf(evidence);
+    }
+
+    /** Compare source identity and accepted evidence independently of retrieval time. */
+    public boolean matches(SourceRef source, List<ExtractedClaim> claims) {
+        return source != null && source.kind().equalsIgnoreCase(text(kind))
+                && source.sourceId().equals(text(entityId))
+                && source.propertyId().equals(text(propertyId))
+                && source.direction().equals(text(direction))
+                && source.recordUrl().equals(text(recordUrl))
+                && assessments(evidence()).equals(assessments(claims));
+    }
+
+    private static Set<String> assessments(List<ExtractedClaim> claims) {
+        return claims.stream().map(ExtractedClaim::assessmentId).collect(Collectors.toSet());
+    }
+
+    private static String text(String value) {
+        return value == null ? "" : value.trim();
     }
 
     @com.fasterxml.jackson.annotation.JsonIgnore

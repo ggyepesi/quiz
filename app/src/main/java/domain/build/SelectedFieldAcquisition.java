@@ -5,6 +5,7 @@ import domain.config.GeneratedProjectModel;
 import domain.datasource.SourceRef;
 import domain.datasource.api.SourceExecutionPlan;
 import domain.datasource.api.SourceRuntimeServices;
+import domain.datasource.evidence.ExtractedClaim;
 import domain.datasource.evidence.SourceDocument;
 import domain.datasource.wikidata.WikidataDatasourceProvider;
 import domain.runtime.GenerationLog;
@@ -27,8 +28,8 @@ public final class SelectedFieldAcquisition {
                         .anyMatch(family -> family.configured(plan));
     }
 
-    public record Read(WikidataDynamicObject member, Object value, SourceRef source, SourceDocument document,
-            boolean answered, boolean failed) { }
+    public record Read(WikidataDynamicObject member, Object value, SourceRef source,
+            SourceDocument document, List<ExtractedClaim> claims, boolean answered, boolean failed) { }
 
     public record Result(List<Read> reads, List<String> failures, boolean cancelled) { }
 
@@ -81,8 +82,8 @@ public final class SelectedFieldAcquisition {
                         + " was loaded without a recorded source and is not offered for review");
                 value = null;
             }
-            reads.add(new Read(member, value, source, copy.capturedFieldDocument(), copy.capturedFieldAnswered(),
-                    copy.capturedFieldFailed()));
+            reads.add(new Read(member, value, source, copy.capturedFieldDocument(),
+                    copy.capturedFieldClaims(), copy.capturedFieldAnswered(), copy.capturedFieldFailed()));
         }
         return new Result(List.copyOf(reads), List.copyOf(failures),
                 cancelled || cancellation.isCancelled());

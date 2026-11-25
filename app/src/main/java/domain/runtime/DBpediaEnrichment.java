@@ -2,8 +2,12 @@ package domain.runtime;
 
 import wikidata.WikidataIds;
 
-import domain.runtime.WikidataDynamicObject;
-
+import domain.datasource.EntityRef;
+import domain.datasource.SourceRef;
+import domain.datasource.evidence.ContentDigest;
+import domain.datasource.evidence.EvidenceFragment;
+import domain.datasource.evidence.ExtractedClaim;
+import domain.datasource.evidence.SourceDocument;
 import wikidata.WikidataBinding;
 import wikidata.WikidataSparqlClient;
 import domain.config.GeneratedClassModel;
@@ -14,6 +18,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.time.Instant;
 
 /**
  * Fills a class's DBpedia-sourced fields (Wikipedia infobox data that isn't in
@@ -60,12 +66,17 @@ public class DBpediaEnrichment {
             GeneratedFieldModel f = declaration.field();
             String prop = declaration.property();
             int merged = 0;
+            boolean captureSources = byQid.values().stream()
+                    .anyMatch(object -> object.capturesFieldSource(f.name()));
 
             for (int i = 0; i < qids.size(); i += BATCH) {
                 List<String> batch = qids.subList(i, Math.min(i + BATCH, qids.size()));
                 String sparql = query(prop, batch);
 
-                for (WikidataBinding b : dbpedia.query(sparql)) {
+                List<WikidataBinding> rows = dbpedia.query(sparql);
+                Map<String, SourceDocument> documents = captureSources
+                        ? sourceDocuments(rows, prop) : Map.of();
+                for (WikidataBinding b : rows) {
                     String wd = qidFromUri(b.value("wd"));
                     if (wd == null) {
                         continue;
@@ -81,14 +92,21 @@ public class DBpediaEnrichment {
                     String val = label != null && !label.isBlank()
                             ? label : b.value("val");
                     if (val != null && !val.isBlank()) {
-                        obj.merge(f.name(), val.trim());
+                        String value = val.trim();
                         if (obj.capturesFieldSource(f.name())) {
-                            String record = b.value("dbr");
-                            if (record != null && !record.isBlank()) {
-                                obj.recordFieldSource(f.name(), new domain.datasource.SourceRef(
-                                        "DBpedia", record, record, prop));
+                            SourceDocument document = documents.get(b.value("dbr"));
+                            if (document == null) {
+                                throw new IllegalStateException(
+                                        "DBpedia returned a value without its record for " + wd);
                             }
+                            SourceRef source = new SourceRef("DBpedia", "",
+                                    "http://dbpedia.org/property/" + prop, prop);
+                            obj.recordFieldClaim(f.name(), source, new ExtractedClaim(
+                                    EntityRef.wikidata(wd), prop, value, null,
+                                    List.of(EvidenceFragment.excerpt(document, prop, value)),
+                                    "DBpedia property query", "1", "", 1, List.of()));
                         }
+                        obj.merge(f.name(), value);
                         merged++;
                     }
                 }
@@ -99,6 +117,23 @@ public class DBpediaEnrichment {
             total += merged;
         }
         return total;
+    }
+
+    private static Map<String, SourceDocument> sourceDocuments(List<WikidataBinding> rows,
+            String property) {
+        String retrievedAt = Instant.now().toString();
+        return rows.stream().filter(row -> row.value("dbr") != null && !row.value("dbr").isBlank())
+                .collect(Collectors.groupingBy(row -> row.value("dbr"), Collectors.collectingAndThen(
+                        Collectors.toList(), recordRows -> {
+                            String record = recordRows.getFirst().value("dbr");
+                            String returnedValues = recordRows.stream()
+                                    .map(row -> List.of(
+                                            java.util.Objects.toString(row.value("val"), ""),
+                                            java.util.Objects.toString(row.value("valLabel"), "")).toString())
+                                    .distinct().sorted().collect(Collectors.joining("\n"));
+                            return new SourceDocument("DBpedia", record, record, record, "",
+                                    ContentDigest.sha256(property + "\n" + returnedValues), retrievedAt);
+                        })));
     }
 
     public record FieldRequest(

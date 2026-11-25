@@ -1,6 +1,7 @@
 package domain.runtime;
 
 import domain.datasource.SourceRef;
+import domain.datasource.evidence.ExtractedClaim;
 import domain.datasource.evidence.SourceDocument;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import objectview.annotations.Hidden;
@@ -44,6 +45,7 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         final String field;
         SourceRef source;
         SourceDocument document;
+        List<ExtractedClaim> claims;
         boolean answered;
         boolean failed;
 
@@ -64,10 +66,25 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         if (!capturesFieldSource(field)) return;
         fieldRead.source = source;
         fieldRead.document = document;
+        fieldRead.claims = null;
+    }
+
+    /** A merged value retains its own evidence alongside the other contributions. */
+    public void recordFieldClaim(String field, SourceRef source, ExtractedClaim claim) {
+        if (!capturesFieldSource(field)) return;
+        if (!source.equals(fieldRead.source) || fieldRead.claims == null) {
+            recordFieldSource(field, source);
+            fieldRead.claims = new ArrayList<>();
+        }
+        fieldRead.claims.add(claim);
     }
 
     public SourceRef capturedFieldSource() { return fieldRead == null ? null : fieldRead.source; }
     public SourceDocument capturedFieldDocument() { return fieldRead == null ? null : fieldRead.document; }
+    public List<ExtractedClaim> capturedFieldClaims() {
+        return fieldRead == null || fieldRead.claims == null
+                ? List.of() : List.copyOf(fieldRead.claims);
+    }
 
     public void recordFieldAnswer(String field, boolean answered) {
         if (!capturesFieldSource(field)) return;

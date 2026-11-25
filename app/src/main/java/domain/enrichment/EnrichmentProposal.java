@@ -199,6 +199,12 @@ public record EnrichmentProposal(
                     source, suggestedAction, compatibilityError, targetCollection, List.of());
         }
         public boolean compatible() { return compatibilityError.isBlank(); }
+
+        /** Accept the recorded source while keeping the field value. */
+        public boolean sourceUpdate() {
+            return suggestedAction == ReviewAction.REPLACE && currentValue != null
+                    && Objects.equals(currentValue, proposedValue);
+        }
     }
 
     public record MediaCandidate(
@@ -366,12 +372,12 @@ public record EnrichmentProposal(
         return values == null ? List.of() : values.stream().filter(Objects::nonNull).toList();
     }
     private static boolean sameProposedValue(Object evidence, Object candidate) {
-        Object value = candidate;
-        if (candidate instanceof java.util.Collection<?> values && values.size() == 1) {
-            value = values.iterator().next();
+        if (Objects.equals(evidence, candidate) || ExtractedClaim.sameStableValue(evidence, candidate)) {
+            return true;
         }
-        return Objects.equals(evidence, value)
-                || ExtractedClaim.sameStableValue(evidence, value);
+        return candidate instanceof java.util.Collection<?> values && values.stream()
+                .anyMatch(value -> Objects.equals(evidence, value)
+                        || ExtractedClaim.sameStableValue(evidence, value));
     }
     private static List<String> strings(List<String> values) {
         return values == null ? List.of() : values.stream().filter(Objects::nonNull)

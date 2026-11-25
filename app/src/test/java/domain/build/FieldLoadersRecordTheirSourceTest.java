@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Load field values reviews what Enrich's own loaders write, and the review needs to show
  * where each value came from. Every loader reports that source on the staged copy
- * ({@code AcquiredFieldSource} or {@code recordFieldSource}); a value written without one
+ * (a source for the field or evidence for its individual contributions); a value written without one
  * is refused at run time as a reported failure. This guard makes a new family decide which
  * loader writes its values before it can ship, and checks that loader reports sources.
  */
@@ -47,7 +47,8 @@ class FieldLoadersRecordTheirSourceTest {
         for (String loader : loaders) {
             if (loader.isEmpty()) continue;
             String source = Files.readString(Path.of("src/main/java", loader));
-            assertTrue(source.contains("AcquiredFieldSource.") || source.contains("recordFieldSource("),
+            assertTrue(source.contains("AcquiredFieldSource.") || source.contains("recordFieldSource(")
+                            || source.contains("recordFieldClaim("),
                     loader + " writes field values but records no source for review");
         }
     }

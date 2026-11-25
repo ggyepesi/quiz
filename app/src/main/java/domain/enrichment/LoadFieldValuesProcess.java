@@ -5,6 +5,8 @@ import domain.DomainSchemas;
 import domain.build.SelectedFieldAcquisition;
 import domain.build.StandardExternalSourceFamilies;
 import domain.config.GeneratedProjectModel;
+import domain.curation.Corrections;
+import domain.curation.Curatable;
 import domain.datasource.EntityRef;
 import domain.datasource.api.SourceExecutionPlan;
 import domain.datasource.evidence.EvidenceFragment;
@@ -26,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /** Run the selected generation bindings and offer their staged values for ordinary review. */
@@ -73,8 +76,12 @@ public record LoadFieldValuesProcess(DomainModel domain, GeneratedProjectModel m
                 ? pool.stream().collect(Collectors.groupingBy(Viewable::getIdentifier)) : Map.of();
         List<EnrichmentProposal> proposals = new ArrayList<>();
         List<String> notices = new ArrayList<>(acquired.failures());
+        var curatable = domain.capability(Curatable.class);
+        var acceptedValues = Corrections.acceptedFieldCorrections(domain.instances(),
+                curatable == null ? null : curatable.curation(), Set.of(field));
         int empty = 0;
         int unchanged = 0;
+        int sourceUpdates = 0;
         int unchecked = members.size() - stagedMembers.size();
         for (var read : acquired.reads()) {
             var member = read.member();
@@ -94,21 +101,31 @@ public record LoadFieldValuesProcess(DomainModel domain, GeneratedProjectModel m
                 value = List.of(value);
             }
             var current = member.get(field);
-            if (Objects.equals(current, value)) {
+            var evidence = evidence(read, value);
+            var accepted = acceptedValues.get(new Corrections.Target(member, field));
+            var acceptedSource = accepted == null ? null : accepted.source();
+            boolean sameValue = Objects.equals(current, value);
+            // A same-value read is a source update only for a curated value whose accepted
+            // source no longer matches. A generated value the source still agrees with is
+            // confirmed, not a decision: storing it would copy the snapshot into curation.
+            if (sameValue && (acceptedSource == null
+                    || acceptedSource.matches(read.source(), evidence))) {
                 unchanged++;
                 continue;
             }
+            if (sameValue) sourceUpdates++;
             var action = current == null ? EnrichmentProposal.ReviewAction.FILL_IF_EMPTY
                     : EnrichmentProposal.ReviewAction.REPLACE;
             var candidate = new EnrichmentProposal.FieldCandidate("acquired:" + field, "",
                     field, current, value, read.source(), action,
                     FieldValueCompatibility.problem(domain, schema, value),
-                    schema != null && schema.collection(), evidence(read, value));
+                    schema != null && schema.collection(), evidence);
             var subject = new EnrichmentProposal.Subject(member.identityTypeName(),
                     member.getIdentifier(), member.qid(), member.getDisplayName());
             proposals.add(new EnrichmentProposal(subject, List.of(), List.of(candidate), List.of()));
         }
-        String summary = proposals.size() + " changed value(s), " + unchanged + " unchanged, "
+        String summary = (proposals.size() - sourceUpdates) + " changed value(s), "
+                + sourceUpdates + " source update(s), " + unchanged + " unchanged, "
                 + empty + " examined empty, " + unchecked + " not read";
         notices.addFirst(summary);
         var result = new Result(List.copyOf(proposals), List.copyOf(notices));
@@ -119,6 +136,8 @@ public record LoadFieldValuesProcess(DomainModel domain, GeneratedProjectModel m
     }
 
     private static List<ExtractedClaim> evidence(SelectedFieldAcquisition.Read read, Object value) {
+        if (!read.claims().isEmpty()) return read.claims();
+        if (value instanceof List<?> values && values.size() == 1) value = values.getFirst();
         if (read.document() == null || !(value instanceof String text) || text.isBlank()
                 || read.member().qid().isBlank()) return List.of();
         String property = read.source().propertyId();

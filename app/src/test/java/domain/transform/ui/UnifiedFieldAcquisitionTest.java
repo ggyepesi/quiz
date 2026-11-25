@@ -9,8 +9,11 @@ import domain.config.GeneratedClassModel;
 import domain.config.GeneratedProjectModel;
 import domain.config.RuleDirection;
 import domain.curation.Curatable;
+import domain.curation.CorrectionPolicy;
+import domain.curation.ManualCuration;
 import domain.datasource.schema.FieldType;
 import domain.datasource.evidence.ArticleIntroduction;
+import domain.datasource.evidence.ExtractedClaim;
 import domain.datasource.evidence.SourceDocument;
 import domain.enrichment.EnrichmentDecision;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -28,8 +31,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import process.swing.Dialogs.UnappliedEdits;
 import wikidata.api.WikidataApiClient;
+import wikidata.WikidataBinding;
+import wikidata.WikidataSparqlClient;
+import wikidata.query.core.Datasource;
 import wikidata.query.core.WikidataAccess;
 
 import javax.swing.JButton;
@@ -45,6 +52,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -67,18 +75,29 @@ class UnifiedFieldAcquisitionTest {
     }
 
     private DomainStorage saveProject(FieldSourceType source, String property) throws Exception {
+        return saveProject(source, property, FieldCardinality.SINGLE);
+    }
+
+    private DomainStorage saveProject(FieldSourceType source, String property, FieldCardinality cardinality)
+            throws Exception {
+        return saveProject(source, property, cardinality, null);
+    }
+
+    private DomainStorage saveProject(FieldSourceType source, String property, FieldCardinality cardinality,
+            String generatedValue) throws Exception {
         DomainStorage storage = DomainStorage.in(directory.toFile());
         var project = new GeneratedProjectModel();
         project.name("Egyptian Gods");
         var deity = new GeneratedClassModel("EgyptianDeity");
         deity.seedQids().add("Q47534");
-        var mapping = deity.addField("givenLabel", FieldType.TEXT, FieldCardinality.SINGLE).mapping();
+        var mapping = deity.addField("givenLabel", FieldType.TEXT, cardinality).mapping();
         mapping.sourceType(source);
         mapping.propertyPid(property);
         mapping.direction(RuleDirection.ROOT_TO_ITEM);
         project.rootClass(deity);
         var member = new WikidataDynamicObject("Q47534", "Anubis");
         member.type("EgyptianDeity");
+        if (generatedValue != null) member.put("givenLabel", generatedValue);
         if (source == FieldSourceType.WIKIPEDIA_ARTICLE_LEAD_SENTENCE) {
             member.articleIntroductionEvidence(new ArticleIntroduction(
                     "Anubis guards the dead. It has another sentence.", new SourceDocument(
@@ -88,6 +107,65 @@ class UnifiedFieldAcquisitionTest {
         var run = new ProjectSave.Run(List.of(member), List.of(), null, project);
         ProjectSave.plan(new ProjectSave.Input(project, run, null, List.of()), storage).write();
         return storage;
+    }
+
+    @Test void dbpediaCollectionReviewPersistsTheRecordForEachValue() throws Exception {
+        var storage = saveProject(FieldSourceType.DBPEDIA, "name", FieldCardinality.COLLECTION);
+        var open = DomainCatalog.modelBacked(storage).getFirst().opener();
+        var opened = open.open();
+        var backing = opened.capability(ProjectBacking.class);
+        String first = "http://dbpedia.org/resource/Anubis";
+        String second = "http://dbpedia.org/resource/Anpu";
+        var expected = Map.of("Anubis", first, "Anpu", second);
+        var completed = new CountDownLatch(1);
+        var reviewError = new AtomicReference<Throwable>();
+        var workbench = new AtomicReference<UnifiedWorkbenchPanel>();
+        try (var dbpedia = new WikidataSparqlClient("test", 1, "https://example.test/sparql") {
+            @Override public List<WikidataBinding> query(String sparql) {
+                return List.of(
+                        new WikidataBinding(Map.of("wd", "http://www.wikidata.org/entity/Q47534",
+                                "val", "Anubis", "dbr", first)),
+                        new WikidataBinding(Map.of("wd", "http://www.wikidata.org/entity/Q47534",
+                                "val", "Anpu", "dbr", second)));
+            }
+        }) {
+            var queries = WikidataAccess.of(null, new WikidataApiClient("test"))
+                    .with(Datasource.DBPEDIA, dbpedia).bind();
+            SwingUtilities.invokeAndWait(() -> {
+                var panel = new UnifiedWorkbenchPanel(opened, new SwingQuerySession(queries));
+                workbench.set(panel);
+                var values = openLoadAction(panel, backing);
+                values.loadConfirmation(plan -> true);
+                values.acquisitionReview((title, prompt, proposals, report, accept) -> {
+                    try {
+                        assertNull(value(opened));
+                        var decision = EnrichmentDecision.acceptDefault(proposals.getFirst());
+                        var candidate = decision.fields().getFirst().candidate();
+                        assertEquals(List.of("Anubis", "Anpu"), candidate.proposedValue());
+                        assertEquals(expected, recordUrls(candidate.evidence()));
+                        assertTrue(accept.test(List.of(decision)));
+                    } catch (Throwable failure) {
+                        reviewError.set(failure);
+                    } finally {
+                        completed.countDown();
+                    }
+                });
+                loadButton(values).doClick();
+            });
+            assertTrue(completed.await(10, TimeUnit.SECONDS));
+            assertNull(reviewError.get(), () -> String.valueOf(reviewError.get()));
+            var reopened = open.open();
+            assertEquals(List.of("Anubis", "Anpu"), value(reopened));
+            assertEquals(expected, recordUrls(reopened.capability(Curatable.class).curation()
+                    .corrections().getFirst().source().evidence()));
+        } finally {
+            if (workbench.get() != null) SwingUtilities.invokeAndWait(workbench.get()::close);
+        }
+    }
+
+    private static Map<Object, String> recordUrls(List<ExtractedClaim> claims) {
+        return claims.stream().collect(java.util.stream.Collectors.toMap(
+                ExtractedClaim::proposedValue, claim -> claim.evidence().getFirst().document().url()));
     }
 
     @Test void loadExecutesTheConfiguredWikipediaLeadProjectionAndKeepsTheArticleVersion()
@@ -224,10 +302,21 @@ class UnifiedFieldAcquisitionTest {
         });
     }
 
-    @Test void applyThenLoadUsesTheNewPropertyAndAcceptedValuesSurviveReopening() throws Exception {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void applyThenLoadUsesTheNewPropertyAndAcceptedValuesSurviveReopening(boolean alreadyHasValue)
+            throws Exception {
         DomainStorage storage = saveProject();
         var modelFile = storage.modelFile("Egyptian Gods").toPath();
         var originalModel = Files.readString(modelFile);
+        String existing = alreadyHasValue ? "New source value" : null;
+        if (alreadyHasValue) {
+            var curation = ManualCuration.forSnapshot(storage.snapshotFile("Egyptian Gods"));
+            curation.put("EgyptianDeity", "Q47534", "givenLabel", existing, "wikidata", null,
+                    CorrectionPolicy.FILL_IF_EMPTY, new domain.curation.ValueSource(
+                            "Wikidata", "Q47534", "P1559", "https://www.wikidata.org/wiki/Q47534"));
+            curation.save();
+        }
         var open = DomainCatalog.modelBacked(storage).getFirst().opener();
         DomainModel opened = open.open();
         var backing = opened.capability(ProjectBacking.class);
@@ -263,16 +352,26 @@ class UnifiedFieldAcquisitionTest {
                 find(panel, JButton.class, item -> "Apply field source".equals(item.getText())).doClick();
                 assertEquals(0, reads.get(), "applying configuration performs no lookup");
                 assertEquals("P2561", field.mapping().propertyPid());
-                values.loadConfirmation(plan -> plan.contains("P2561") && !plan.contains("P1559"));
+                values.loadConfirmation(plan -> {
+                    assertTrue(plan.contains("P2561"));
+                    assertFalse(plan.contains("P1559"));
+                    assertTrue(plan.contains("even where it already has a value"));
+                    return true;
+                });
                 values.acquisitionReview((title, prompt, proposals, report, accept) -> {
                     try {
-                        assertNull(value(opened), "the lookup is read-only until accepted");
+                        assertEquals(existing, value(opened), "the lookup is read-only until accepted");
+                        if (alreadyHasValue) {
+                            assertEquals("P1559", opened.capability(Curatable.class).curation()
+                                    .corrections().getFirst().source().propertyId());
+                        }
                         assertEquals(1, proposals.size());
                         var decision = EnrichmentDecision.acceptDefault(proposals.getFirst());
                         assertNotNull(decision);
                         var proposal = decision.fields().getFirst().candidate();
                         assertEquals("P2561", proposal.source().propertyId());
                         assertEquals("New source value", proposal.proposedValue());
+                        assertEquals(alreadyHasValue, proposal.sourceUpdate());
                         assertTrue(accept.test(List.of(decision)));
                         assertEquals("New source value", value(opened));
                     } catch (Throwable failure) {
@@ -298,6 +397,66 @@ class UnifiedFieldAcquisitionTest {
             assertEquals("New source value", value(reopened));
             assertEquals("P2561", reopened.capability(Curatable.class).curation()
                     .corrections().getFirst().source().propertyId());
+            assertEquals(CorrectionPolicy.FILL_IF_EMPTY, reopened.capability(Curatable.class).curation()
+                    .corrections().getFirst().effectivePolicy());
+            var sameSource = new CountDownLatch(1);
+            SwingUtilities.invokeAndWait(() -> {
+                var values = find(workbench.get(), ValidationPanel.class, item -> true);
+                values.acquisitionReview((title, prompt, proposals, report, accept) -> {
+                    try {
+                        assertTrue(proposals.isEmpty(), "the accepted source is unchanged");
+                    } catch (Throwable failure) {
+                        reviewError.set(failure);
+                    } finally {
+                        sameSource.countDown();
+                    }
+                });
+                loadButton(values).doClick();
+            });
+            assertTrue(sameSource.await(10, TimeUnit.SECONDS));
+            assertNull(reviewError.get(), () -> String.valueOf(reviewError.get()));
+        } finally {
+            if (workbench.get() != null) SwingUtilities.invokeAndWait(workbench.get()::close);
+        }
+    }
+
+    /** A generated value the source still agrees with is confirmed, not offered as a
+     *  source update: accepting one would copy the snapshot into curation for every member. */
+    @Test void aGeneratedValueTheSourceStillGivesIsUnchangedNotASourceUpdate() throws Exception {
+        DomainStorage storage = saveProject(FieldSourceType.SPARQL, "P1559", FieldCardinality.SINGLE,
+                "Original source value");
+        DomainModel opened = DomainCatalog.modelBacked(storage).getFirst().opener().open();
+        var backing = opened.capability(ProjectBacking.class);
+        var queries = new SwingQuerySession(WikidataAccess.of(null, new WikidataApiClient("test") {
+            @Override protected JsonNode getEntitiesBatchWithRetry(
+                    List<String> qids, boolean withClaims, List<String> pids) throws Exception {
+                return new ObjectMapper().readTree("""
+                        {"entities":{"Q47534":{"id":"Q47534","claims":{
+                         "P1559":[{"rank":"normal","mainsnak":{"snaktype":"value","datatype":"string",
+                              "datavalue":{"type":"string","value":"Original source value"}}}]
+                        }}}}
+                        """);
+            }
+        }).bind());
+        var workbench = new AtomicReference<UnifiedWorkbenchPanel>();
+        var reviewed = new CountDownLatch(1);
+        var proposalsSeen = new AtomicReference<List<?>>();
+        try {
+            SwingUtilities.invokeAndWait(() -> {
+                var panel = new UnifiedWorkbenchPanel(opened, queries);
+                workbench.set(panel);
+                var values = openLoadAction(panel, backing);
+                values.loadConfirmation(plan -> true);
+                values.acquisitionReview((title, prompt, proposals, report, accept) -> {
+                    proposalsSeen.set(List.copyOf(proposals));
+                    reviewed.countDown();
+                });
+                loadButton(values).doClick();
+            });
+            assertTrue(reviewed.await(10, TimeUnit.SECONDS), "the load reached its review");
+            assertEquals(List.of(), proposalsSeen.get());
+            assertTrue(opened.capability(Curatable.class).curation().corrections().isEmpty(),
+                    "nothing is written to curation");
         } finally {
             if (workbench.get() != null) SwingUtilities.invokeAndWait(workbench.get()::close);
         }

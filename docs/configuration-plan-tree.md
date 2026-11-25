@@ -340,9 +340,11 @@ Acquired references must resolve to compatible loaded instances for acceptance. 
 evidence recipes remain a separate review action.
 
 If the field has unapplied edits, **Load values** first asks **Apply**, **Discard**, or **Stay**.
-It then confirms the scope and the resulting plan. Query Logs shows the batches. The review
-shows the proposed changes and their sources, and reports examined-empty and failed acquisitions
-separately. Accepting results updates the cards and writes the project's `.curation.json`.
+It then confirms the scope and the resulting plan and reads populated fields too. Query Logs
+shows the batches. Review offers new values, replacements and source updates for values that
+stay the same. It reports examined-empty and failed acquisitions separately. When DBpedia
+supplies a collection from several records, review and saved curation retain which record
+supplied each value. Accepting results updates the cards and writes the project's `.curation.json`.
 **Save model** or **Save domain** writes the applied configuration to `.model.json` through the
 shared save guard. Reopening shows the saved recipe and the accepted values with their provenance.
 

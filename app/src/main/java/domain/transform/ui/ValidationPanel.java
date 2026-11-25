@@ -1196,7 +1196,8 @@ public final class ValidationPanel extends JPanel {
         if (!confirmLoad.test("<html><b>Load values for " + selectedFieldType + "." + selectedFieldPath
                 + "</b><br>Members: <b>" + members.size() + "</b> " + selection
                 + "<br><br>" + description
-                + "<br><br>Use the field's Enrich rules for existing values.</html>")) return;
+                + "<br><br>Read this field even where it already has a value. "
+                + "Accept a proposal to apply a replacement or update its source.</html>")) return;
         var process = new LoadFieldValuesProcess(domain, configuredValueModel, selectedFieldType,
                 selectedFieldPath, configuredValues, members);
         runReview(process, result -> new ReviewResults(result.proposals(),
@@ -2266,12 +2267,14 @@ public final class ValidationPanel extends JPanel {
             EnrichmentDecisionApplier.StagedPreview preview, String savedTo) {
         int changes = 0;
         int created = 0;
+        int sourceUpdates = 0;
         Map<String, Integer> createdByType = new LinkedHashMap<>();
         for (EnrichmentDecision decision : decisions == null
                 ? List.<EnrichmentDecision>of() : decisions) {
             if (decision == null) continue;
             List<EnrichmentProposal.FieldCandidate> fields = decision.fields().stream()
                     .map(EnrichmentDecision.FieldDecision::candidate).toList();
+            sourceUpdates += (int) fields.stream().filter(EnrichmentProposal.FieldCandidate::sourceUpdate).count();
             changes += EnrichmentProposal.logicalChangeCount(
                     fields,
                     decision.media() == null ? List.of() : List.of(decision.media()),
@@ -2291,12 +2294,15 @@ public final class ValidationPanel extends JPanel {
         } else if (created > 0) {
             what = "Accepted and saved " + changes + " change"
                     + (changes == 1 ? "" : "s") + ", including " + createdText;
+        } else if (sourceUpdates > 0 && changes == sourceUpdates) {
+            what = "Accepted and saved " + sourceUpdates + " source update"
+                    + (sourceUpdates == 1 ? "" : "s");
         } else {
             what = "Accepted and saved " + changes + " change"
                     + (changes == 1 ? "" : "s");
         }
         if (savedTo != null && !savedTo.isBlank()) what += " to " + savedTo;
-        return preview.appliedValues() == 0
+        return preview.appliedValues() == 0 && (sourceUpdates == 0 || sourceUpdates < changes)
                 ? what + ", but none changed the loaded instances — check the field and "
                         + "its target class."
                 : what + ".";

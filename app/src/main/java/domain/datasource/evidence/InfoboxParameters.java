@@ -3,9 +3,7 @@ package domain.datasource.evidence;
 import java.util.LinkedHashMap;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.Instant;
-import java.util.HexFormat;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -130,7 +128,7 @@ public record InfoboxParameters(String template, Map<String, String> parameters,
                                 .collect(java.util.stream.Collectors.joining("|"))));
         SourceDocument document = new SourceDocument("Wikipedia (English)",
                 cleanTitle, cleanTitle, articleUrl(cleanTitle), revision,
-                new ContentDigest("sha256", sha256(material.toString())),
+                ContentDigest.sha256(material.toString()),
                 Instant.now().toString());
         return new InfoboxParameters(cleanTemplate, cleanParameters, Map.of(),
                 cleanRendered, document);
@@ -139,15 +137,6 @@ public record InfoboxParameters(String template, Map<String, String> parameters,
     private static String articleUrl(String title) {
         return "https://en.wikipedia.org/wiki/" + URLEncoder
                 .encode(title.replace(' ', '_'), StandardCharsets.UTF_8).replace("+", "%20");
-    }
-
-    private static String sha256(String value) {
-        try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                    .digest(value.getBytes(StandardCharsets.UTF_8)));
-        } catch (Exception impossible) {
-            throw new IllegalStateException("SHA-256 is unavailable", impossible);
-        }
     }
 
     /** What this page said for a declared key, or null when it says nothing — including

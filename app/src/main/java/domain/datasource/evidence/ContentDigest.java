@@ -1,5 +1,10 @@
 package domain.datasource.evidence;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+
 /** Algorithm-qualified document digest. */
 public record ContentDigest(String algorithm, String value) {
     public ContentDigest {
@@ -16,6 +21,16 @@ public record ContentDigest(String algorithm, String value) {
         return split > 0
                 ? new ContentDigest(value.substring(0, split), value.substring(split + 1))
                 : new ContentDigest("sha256", value);
+    }
+
+    public static ContentDigest sha256(String text) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(text.getBytes(StandardCharsets.UTF_8));
+            return new ContentDigest("sha256", HexFormat.of().formatHex(digest));
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException("SHA-256 is unavailable", impossible);
+        }
     }
 
     public String encoded() { return algorithm + ':' + value; }

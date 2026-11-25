@@ -24,6 +24,33 @@ public final class Corrections {
 
     private Corrections() {}
 
+    public record Target(String type, String identifier, String field) {
+        public Target(Viewable member, String field) {
+            this(member.identityTypeName(), member.getIdentifier(), field);
+        }
+    }
+
+    /** Complete accepted value corrections. Additive histories have no single
+     * whole-field correction whose provenance can be updated in place. */
+    public static Map<Target, Correction> acceptedFieldCorrections(
+            Collection<? extends Viewable> pool, CorrectionSource curation, Set<String> fields) {
+        if (curation == null || fields.isEmpty()) return Map.of();
+        var entries = curation.corrections().stream().filter(entry -> fields.contains(entry.field())).toList();
+        if (entries.isEmpty()) return Map.of();
+        var index = TypedInstanceIndex.<Viewable>of(pool);
+        Map<Target, Correction> corrections = new HashMap<>();
+        for (var entry : entries) {
+            for (var member : targets(entry, index)) {
+                var target = new Target(member, entry.field());
+                switch (entry.effectivePolicy()) {
+                    case REPLACE, FILL_IF_EMPTY -> corrections.put(target, entry);
+                    case ADD_TO_COLLECTION, EVIDENCE_ONLY -> corrections.remove(target);
+                }
+            }
+        }
+        return corrections;
+    }
+
     /** Overlay {@code sources} onto {@code pool}; returns how many values actually changed. */
     public static int apply(Collection<? extends Viewable> pool, List<CorrectionSource> sources) {
         if (pool == null || sources == null) {

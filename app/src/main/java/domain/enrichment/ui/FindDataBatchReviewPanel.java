@@ -76,6 +76,7 @@ public final class FindDataBatchReviewPanel {
             card.type(EnrichmentDecision.requiresIdentityChoice(proposal)
                     ? "Needs identity choice"
                     : corroborationOnly(decision) ? "Corroborated"
+                    : sourceUpdateOnly(decision) ? "Source update"
                     : decision == null ? "Not found" : overwrite ? "Overwrite" : "Found");
             card.put("Outcome", card.typeName());
             card.put("Summary", detail(proposal));
@@ -210,7 +211,14 @@ public final class FindDataBatchReviewPanel {
     private static boolean overwrites(EnrichmentProposal proposal) {
         EnrichmentDecision decision = EnrichmentDecision.acceptDefault(proposal);
         return decision != null && decision.fields().stream().anyMatch(
-                field -> field.action() == EnrichmentProposal.ReviewAction.REPLACE);
+                field -> field.action() == EnrichmentProposal.ReviewAction.REPLACE
+                        && !field.candidate().sourceUpdate());
+    }
+
+    private static boolean sourceUpdateOnly(EnrichmentDecision decision) {
+        return decision != null && decision.media() == null && decision.instances().isEmpty()
+                && !decision.fields().isEmpty()
+                && decision.fields().stream().allMatch(field -> field.candidate().sourceUpdate());
     }
 
     private static boolean corroborationOnly(EnrichmentDecision decision) {
@@ -247,6 +255,10 @@ public final class FindDataBatchReviewPanel {
         }
         if (accepted != null && !accepted.fields().isEmpty()) {
             EnrichmentProposal.FieldCandidate field = accepted.fields().get(0).candidate();
+            if (field.sourceUpdate()) {
+                return "Update the source for " + field.field() + " and keep "
+                        + proposedValueCaption(field.proposedValue()) + sourceSuffix(field.source());
+            }
             return (field.suggestedAction() == EnrichmentProposal.ReviewAction.CORROBORATE
                     ? field.field() + " already contains "
                             + proposedValueCaption(field.proposedValue())
@@ -275,7 +287,7 @@ public final class FindDataBatchReviewPanel {
 
     static {
         // The fields of the review cards, stated once (#363).
-        for (String outcome : List.of("Needs identity choice", "Corroborated", "Not found",
+        for (String outcome : List.of("Needs identity choice", "Corroborated", "Source update", "Not found",
                 "Overwrite", "Found")) {
             objectview.field.RecordTypes.declare(outcome,
                     objectview.field.RecordTypes.text("Outcome"),
@@ -328,7 +340,8 @@ public final class FindDataBatchReviewPanel {
                 .map(EnrichmentDecision.FieldDecision::candidate).toList();
         for (EnrichmentProposal.FieldCandidate field : fields) {
             DynamicViewable change = changeCard(prefix + "field-" + ordinal++, field.field(),
-                    field.proposedValue(), field.source(), field.suggestedAction().name(),
+                    field.proposedValue(), field.source(),
+                    field.sourceUpdate() ? "Update source" : field.suggestedAction().name(),
                     field.evidence());
             if (!field.compatible()) change.put("Compatibility", field.compatibilityError());
             result.add(change);
@@ -471,8 +484,13 @@ public final class FindDataBatchReviewPanel {
     static LinkedTextSequence proposalSource(EnrichmentProposal proposal) {
         if (proposal == null) return null;
         java.util.LinkedHashSet<String> urls = new java.util.LinkedHashSet<>();
-        proposal.fields().stream().map(EnrichmentProposal.FieldCandidate::source)
-                .map(SourceRef::recordUrl).filter(url -> !url.isBlank()).forEach(urls::add);
+        for (var field : proposal.fields()) {
+            var source = field.source();
+            var documents = field.evidence().stream().flatMap(claim -> claim.evidence().stream())
+                    .map(fragment -> fragment.document().url()).filter(url -> !url.isBlank()).toList();
+            if (source.sourceId().isBlank() && !documents.isEmpty()) urls.addAll(documents);
+            else if (!source.recordUrl().isBlank()) urls.add(source.recordUrl());
+        }
         proposal.instances().stream().map(EnrichmentProposal.InstanceCandidate::source)
                 .map(SourceRef::recordUrl).filter(url -> !url.isBlank()).forEach(urls::add);
         proposal.identities().stream().map(EnrichmentProposal.IdentityCandidate::source)
@@ -541,7 +559,7 @@ public final class FindDataBatchReviewPanel {
                 evidence.put("Document", fragment.document().title().isBlank()
                         ? fragment.document().documentId() : fragment.document().title());
                 if (!fragment.document().url().isBlank()) {
-                    evidence.put("Source URL", fragment.document().url());
+                    evidence.put("Source URL", link(fragment.document().url(), fragment.document().url()));
                 }
                 evidence.put("Document version", fragment.document().versionId());
                 evidence.put("Retrieved", fragment.document().retrievedAt());
