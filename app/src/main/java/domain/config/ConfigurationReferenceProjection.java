@@ -5,15 +5,15 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 
-/** Projects the reference inventory into the same Needs and Used by branches for each editor. */
+/** Projects the reference inventory into the same Uses and Used by branches for each editor. */
 final class ConfigurationReferenceProjection {
     static final String DETAIL = "reference";
 
     private ConfigurationReferenceProjection() { }
 
-    static Optional<ConfigurationNode> needs(ConfigurationReferenceInventory.Site owner,
+    static Optional<ConfigurationNode> uses(ConfigurationReferenceInventory.Site owner,
             List<ConfigurationReferenceInventory.Reference> references) {
-        return group(owner, "needs", "Needs", references, true);
+        return group(owner, "needs", "Uses", references, true);
     }
 
     static Optional<ConfigurationNode> usedBy(ConfigurationReferenceInventory.Site owner,

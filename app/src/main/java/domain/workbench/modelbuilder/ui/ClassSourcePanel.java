@@ -58,8 +58,6 @@ public class ClassSourcePanel extends JPanel {
     private Consumer<String> log = s -> {};
     private Consumer<Void> afterChange = v -> {};
 
-    private final JLabel titleLabel = new JLabel("Class");
-
     private final ClassHeaderEditor header =
             new ClassHeaderEditor(() -> projectModel);
     // Subclass discriminator: a (property, value) pair narrowing the inherited
@@ -103,6 +101,7 @@ public class ClassSourcePanel extends JPanel {
                     recipe -> !domain.datasource.wikidata.WikidataDatasourceProvider.ID.equals(
                             recipe.providerId()));
     private final JComboBox<Object> populationSource = new JComboBox<>();
+    private FormRow populationSourceRow;
     private final JLabel populationReplaces = new JLabel();
     private final JLabel excludeTypesLabel = new JLabel("Exclude instances of:");
     private final JLabel ownPopulationLimitLabel = new JLabel("Own population limit:");
@@ -133,6 +132,8 @@ public class ClassSourcePanel extends JPanel {
 
     private final JTextField searchTextField = new JTextField(18);
     private final JButton searchTypeButton = new JButton("Search");
+    private final JPanel membershipSearch = new JPanel(new GridBagLayout());
+    private boolean membershipSearchActive;
 
     private final SearchTableModel searchModel = new SearchTableModel();
     private final JTable searchTable = new JTable(searchModel);
@@ -156,8 +157,6 @@ public class ClassSourcePanel extends JPanel {
     private final JCheckBox aliasesBox = new JCheckBox("Add aliases (Also known as)");
     private final JCheckBox wikipediaArticleBox =
             new JCheckBox("Add English Wikipedia source link");
-    private static final String NOT_A_GROUP = "(not a group)";
-    private final JComboBox<String> groupMembersField = new JComboBox<>();
     private boolean shownAliases;
     private boolean shownWikipediaArticle;
     private boolean configurationDirty;
@@ -201,7 +200,6 @@ public class ClassSourcePanel extends JPanel {
         watchConfiguration(rankDescBox);
         watchConfiguration(aliasesBox);
         watchConfiguration(wikipediaArticleBox);
-        watchConfiguration(groupMembersField);
         watchConfiguration(displayNameEditor);
         watchConfiguration(identityEditor);
     }
@@ -252,13 +250,10 @@ public class ClassSourcePanel extends JPanel {
 
         FieldSourceMapping m = clazz.instanceMapping();
 
-        titleLabel.setText("Class: " + clazz.className());
-
         header.show(clazz);
         searchTextField.setText(clazz.className());
 
         populateClassDetails();
-        populateGroupMembersField();
         populateRepresentations();
 
         // The property's label is set AFTER the PID, whose document listener blanks it
@@ -360,6 +355,7 @@ public class ClassSourcePanel extends JPanel {
         populationReplaces.setVisible(!replaces.isEmpty());
         alternativePopulationSource.setVisible(!wikidata);
         triple.setVisible(wikidata);
+        populationSourceRow.applicable(!wikidata || triple.showsTripleControls());
         excludeTypesLabel.setVisible(wikidata);
         if (excludeTypesRow != null) excludeTypesRow.setVisible(wikidata);
         ownPopulationLimitLabel.setVisible(wikidata);
@@ -393,33 +389,6 @@ public class ClassSourcePanel extends JPanel {
             if (WikidataIds.isQid(qid) && !result.contains(qid)) result.add(qid);
         }
         return result;
-    }
-
-    private void populateGroupMembersField() {
-        groupMembersField.removeAllItems();
-        groupMembersField.addItem(NOT_A_GROUP);
-        if (clazz == null) return;
-        for (GeneratedFieldModel field : clazz.effectiveFields(projectModel)) {
-            if (field != null
-                    && field.type() == FieldType.ENTITY
-                    && field.cardinality() == domain.config.FieldCardinality.COLLECTION) {
-                groupMembersField.addItem(field.name());
-            }
-        }
-        if (clazz.groupSpec() != null) {
-            String configured = clazz.groupSpec().membersField();
-            boolean offered = false;
-            for (int i = 0; i < groupMembersField.getItemCount(); i++) {
-                if (configured.equals(groupMembersField.getItemAt(i))) {
-                    offered = true;
-                    break;
-                }
-            }
-            if (!offered) groupMembersField.addItem(configured);
-            groupMembersField.setSelectedItem(configured);
-        } else {
-            groupMembersField.setSelectedItem(NOT_A_GROUP);
-        }
     }
 
     private void updateSubclassConditionControls() {
@@ -542,22 +511,15 @@ public class ClassSourcePanel extends JPanel {
     }
 
     private void buildUi() {
-        groupMembersField.setName("class.groupMembersField");
-        JPanel form = configuration.form(ClassConfigurationProjection.DEFINITION);
+        configuration.header(header);
 
         GridBagConstraints c = new GridBagConstraints();
         c.insets = new Insets(4, 4, 4, 4);
         c.anchor = GridBagConstraints.WEST;
         c.fill = GridBagConstraints.HORIZONTAL;
 
+        JPanel form = configuration.form(ClassConfigurationProjection.PRODUCTION);
         int y = 0;
-
-        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 16f));
-        GridBagUtils.wideRow(form, y++, titleLabel);
-        GridBagUtils.wideRow(form, y, header);
-
-        form = configuration.form(ClassConfigurationProjection.PRODUCTION);
-        y = 0;
         JLabel question =
                 new JLabel("How do we find instances of this class?");
         question.setFont(question.getFont().deriveFont(Font.ITALIC));
@@ -567,7 +529,7 @@ public class ClassSourcePanel extends JPanel {
                 + "the Wikidata population triple, or another registered domain.datasource.<br>"
                 + "Choosing another datasource and pressing Apply clears the Wikidata "
                 + "triple and explicit seed QIDs, which it replaces.</html>");
-        GridBagUtils.labeledRow(form, c, y++, "Population source:", populationSource);
+        populationSourceRow = FormRow.add(form, c, y++, "Population source:", populationSource);
         populationReplaces.setName("class.populationSource.replaces");
         GridBagUtils.wideRow(form, y++, populationReplaces);
         GridBagUtils.wideRow(form, y++, alternativePopulationSource);
@@ -575,13 +537,6 @@ public class ClassSourcePanel extends JPanel {
         GridBagUtils.wideRow(form, y, summaryLabel);
         configuration.detail(ClassConfigurationProjection.TRANSFORMATION, transformation);
         configuration.detail(ClassConfigurationProjection.DISPLAY_NAME, displayNameEditor);
-
-        form = configuration.form(ClassConfigurationProjection.GROUP);
-        y = 0;
-        groupMembersField.setToolTipText("Declare each class instance as a group whose "
-                + "members come from the selected list field. This changes presentation, "
-                + "not how the class population is generated.");
-        GridBagUtils.labeledRow(form, c, y, "Group members field:", groupMembersField);
 
         form = configuration.form(ClassConfigurationProjection.REPRESENTATION);
         y = 0;
@@ -673,7 +628,8 @@ public class ClassSourcePanel extends JPanel {
         triple.actions(List.of(findRelationButton),
                 List.of(fromPartsButton));
 
-        form = configuration.form(ClassConfigurationProjection.MEMBERSHIP_SEARCH);
+        form = membershipSearch;
+        form.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
         y = 0;
         JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         searchRow.add(new JLabel("Search:"));
@@ -727,13 +683,20 @@ public class ClassSourcePanel extends JPanel {
         searchTextField.addActionListener(e -> searchTypeButton.doClick());
         useSelectedButton.addActionListener(e -> useSelectedSearchRow());
 
-        searchTable.getSelectionModel().addListSelectionListener(e ->
-                                                                         useSelectedButton.setEnabled(searchTable.getSelectedRow() >= 0));
+        searchTable.getSelectionModel().addListSelectionListener(e -> updateSearchButtonState());
 
         updateSearchButtonState();
     }
 
     ClassConfigurationEditor configurationEditor() { return configuration; }
+
+    JComponent membershipSearch() { return membershipSearch; }
+
+    void membershipSearchActive(boolean active) {
+        membershipSearchActive = active;
+        searchModel.setRows(List.of());
+        updateSearchButtonState();
+    }
 
     void transformationEditor(TransformationConfigurationEditor.Fields fields,
             Consumer<GeneratedClassModel> applied) {
@@ -987,14 +950,15 @@ public class ClassSourcePanel extends JPanel {
 
     private void updateSearchButtonState() {
         boolean ready = clazz != null && queryRunner != null;
-        searchTypeButton.setEnabled(ready);
+        searchTypeButton.setEnabled(ready && membershipSearchActive);
+        useSelectedButton.setEnabled(ready && membershipSearchActive && searchTable.getSelectedRow() >= 0);
         fromPartsButton.setEnabled(ready);
     }
 
     private void useSelectedSearchRow() {
         int row = searchTable.getSelectedRow();
 
-        if (row < 0) {
+        if (row < 0 || !membershipSearchActive) {
             return;
         }
 
@@ -1102,13 +1066,6 @@ public class ClassSourcePanel extends JPanel {
             projectModel.representationClasses(clazz, representations.chosen());
         }
 
-        Object selectedGroupField = groupMembersField.getSelectedItem();
-        String groupField = selectedGroupField == null ? ""
-                : selectedGroupField.toString().trim();
-        clazz.groupSpec(groupField.isBlank() || NOT_A_GROUP.equals(groupField)
-                ? null : new domain.config.GroupClassSpec(groupField));
-
-        titleLabel.setText("Class: " + clazz.className());
         triple.objectQids(clazz.membership().qids());
 
         applyCanonical();
@@ -1248,7 +1205,6 @@ public class ClassSourcePanel extends JPanel {
     }
 
     private void clear() {
-        titleLabel.setText("Class");
         header.show(null);
         searchTextField.setText("");
         triple.show(null, projectModel);

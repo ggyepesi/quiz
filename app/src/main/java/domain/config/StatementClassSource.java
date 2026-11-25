@@ -13,14 +13,8 @@ import domain.datasource.graph.GraphExpansionPolicy;
  * source class). The source class names the already-extracted members whose
  * statements are loaded.</p>
  *
- * <p>The model treats the source class as <i>structurally</i> optional — a blank
- * {@code sourceClassName} is meant to load statement subjects directly (see
- * {@link #discoversSubjectsDirectly()}). That direct-discovery load phase is NOT
- * yet implemented: generation and validation currently require a source class, so
- * a blank one is a configuration error today. The optionality is groundwork for
- * folding a backbone class into its statement class later; until the loader
- * exists, always configure a source class (e.g. {@code OscarNominations} for
- * {@code Nomination}'s {@code P1411}).</p>
+ * <p>With a blank source class, matching statements supply the subjects directly.
+ * A project that acquires instances must then bound the discovery.</p>
  */
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public final class StatementClassSource {
@@ -113,6 +107,16 @@ public final class StatementClassSource {
         String pid = propertyPid();
         if (pid.isBlank()) return "";
         return LabelledId.display(propertyLabel(), pid);
+    }
+
+    /** Summarizes the saved triple, keeping retained objects separate from discovery. */
+    public String describeTriple() {
+        return describeProperty() + " · objects: " + objectBound().describe()
+                + (hasSourceClass() ? " · subjects from " + sourceClassName
+                        : " · subjects discovered directly")
+                + (subjectBound().bounded() ? " · subject filter: " + subjectBound().describe() : "")
+                + (discoveryObjectBound().bounded()
+                        ? " · additional objects for finding subjects: " + discoveryObjectBound().describe() : "");
     }
 
     public String propertyPid() {

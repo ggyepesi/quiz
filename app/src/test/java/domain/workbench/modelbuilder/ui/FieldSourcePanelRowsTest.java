@@ -583,7 +583,7 @@ class FieldSourcePanelRowsTest {
         panel.selectConfigurationDetail(domain.config.FieldConfigurationProjection.PRIMARY);
         List<String> shown = visibleRowLabels(panel);
 
-        assertTrue(shown.contains("Qualifier of:"), shown.toString());
+        assertTrue(shown.contains("Statement qualifier:"), shown.toString());
         assertTrue(!shown.contains("Reify role:"), shown.toString());
     }
 

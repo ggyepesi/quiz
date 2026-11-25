@@ -86,6 +86,9 @@ public class FieldSourcePanel extends JPanel {
     // Rows hidden when they cannot apply to the field being configured. Only rows
     // whose rule ALREADY exists are held here; inventing a relevance rule in the
     // editor is how it drifts from what actually compiles.
+    private FormRow productionRow;
+    private FormRow directPropertyRow;
+    private FormRow propertyDirectionRow;
     private FormRow inverseFieldRow;
     private FormRow unionSourcesRow;
     private FormRow graphExpansionRow;
@@ -117,14 +120,14 @@ public class FieldSourcePanel extends JPanel {
     private Consumer<String> onReloadField = key -> {};
 
     private final ConfigurationTreePanel configuration =
-            new ConfigurationTreePanel("modelbuilder.field.configuration", "Configuration");
+            new ConfigurationTreePanel("modelbuilder.field.configuration", "Field settings");
+    private JPanel acquisitionForm;
     private final Map<String, JComponent> configurationDetails =
             new java.util.LinkedHashMap<>();
 
     private Map<String, WikidataProperty> propertyCache = Map.of();
     private boolean updatingObjectTypeBox = false;
 
-    private final JLabel titleLabel = new JLabel("Field");
 
     private final FieldDefinitionPanel fieldDefinitionPanel = new FieldDefinitionPanel();
     private final JTextField fieldNameField = fieldDefinitionPanel.nameField();
@@ -386,12 +389,15 @@ public class FieldSourcePanel extends JPanel {
         propertyPidField.getDocument().addDocumentListener(
                 new javax.swing.event.DocumentListener() {
                     public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                        refreshDirectPropertyRows();
                         refreshGraphExpansionControl();
                     }
                     public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                        refreshDirectPropertyRows();
                         refreshGraphExpansionControl();
                     }
                     public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                        refreshDirectPropertyRows();
                         refreshGraphExpansionControl();
                     }
                 });
@@ -450,15 +456,8 @@ public class FieldSourcePanel extends JPanel {
     private void refreshOwnedComponentControls() {
         refreshProducedBy();
         GeneratedClassModel owningClass = ownerClass();
-        // What the recipe fills, the recipe also shapes: a grouped field holds the
-        // source field's values, so its type and target class are that field's, and a
-        // key groups one value while the members field holds many. Offering those as
-        // choices offered a way to make the class invalid from the editor that cannot
-        // see the recipe.
-        boolean shapedByRecipe = filledByRecipe(owningClass);
-        typeBox.setEnabled(!shapedByRecipe);
-        objectTypeBox.setEnabled(!shapedByRecipe);
-        shapeBox.setEnabled(!shapedByRecipe);
+        refreshRecipeShapeAccess();
+        applicable(productionRow, owningClass == null || owningClass.aggregateSource() == null);
         // An aggregate is assembled from records that already exist, so none of its
         // fields is acquired — the same "derived, not fetched" state owned and inverted
         // fields are already shown in.
@@ -473,9 +472,10 @@ public class FieldSourcePanel extends JPanel {
                 || productionBox.getSelectedItem()
                 == FieldProductionKind.STATEMENT_OBJECT;
         boolean acquired = acquiredFromOwnProperty();
-        GeneratedClassModel conditionOwner = ownerClass();
+        acquisitionForm.setVisible(acquired);
+        reloadFieldButton.setVisible(acquired && !fieldEditsOnly);
         applicable(qualifierConditionRow, acquired
-                && (conditionOwner == null || !conditionOwner.reifiesStatements()));
+                && (owningClass == null || !owningClass.reifiesStatements()));
         sourceTypeBox.setEnabled(acquired);
         directionBox.setEnabled(acquired);
         requiredBox.setEnabled(acquired);
@@ -513,6 +513,19 @@ public class FieldSourcePanel extends JPanel {
         }
     }
 
+    /** The aggregate recipe determines the type, target class and cardinality. */
+    private void refreshRecipeShapeAccess() {
+        boolean canSetShape = !filledByRecipe(ownerClass());
+        typeBox.setEnabled(canSetShape);
+        objectTypeBox.setEnabled(canSetShape);
+        shapeBox.setEnabled(canSetShape);
+    }
+
+    void setEditingEnabled(boolean editable) {
+        EditableComponents.setEditable(this, editable);
+        if (editable) refreshRecipeShapeAccess();
+    }
+
     /** Whether this field is fetched through its own property. Only then do the
      *  acquisition controls (property, direction, "only related of type") apply. */
     private boolean acquiredFromOwnProperty() {
@@ -524,6 +537,7 @@ public class FieldSourcePanel extends JPanel {
                 && production != FieldProductionKind.OWNED_COMPONENT
                 && production != FieldProductionKind.INVERT
                 && production != FieldProductionKind.UNION
+                && production != FieldProductionKind.OWNER_REFERENCE
                 && production != FieldProductionKind.STATEMENT_SUBJECT
                 && production != FieldProductionKind.STATEMENT_OBJECT;
     }
@@ -816,7 +830,6 @@ public class FieldSourcePanel extends JPanel {
 
         FieldSourceMapping m = field.mapping();
 
-        titleLabel.setText("Field: " + field.name());
 
         fieldDefinitionPanel.edit(field.definition());
         refreshSourceContexts(previousSite);
@@ -1623,17 +1636,10 @@ public class FieldSourcePanel extends JPanel {
         int y = 0;
         int definitionStart = y;
 
-        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 16f));
-        GridBagUtils.wideRow(form, y++, titleLabel);
-
-        JLabel question = new JLabel("How do we fill this field?");
-        question.setFont(question.getFont().deriveFont(Font.ITALIC));
-        GridBagUtils.wideRow(form, y++, question);
-
         // The source-independent definition is shared with TransformApp's New Field.
         GridBagUtils.wideRow(form, y++, fieldDefinitionPanel);
         GridBagUtils.wideRow(form, y++, producedBy);
-        GridBagUtils.labeledRow(form, c, y++, "Load as:", productionBox);
+        productionRow = FormRow.add(form, c, y++, "Load as:", productionBox);
         inverseFieldRow = FormRow.add(form, c, y++, "Inverse of:", inverseFieldBox);
         unionSourcesRow = FormRow.add(form, c, y++, "Union of fields:",
                 unionSourcesHolder);
@@ -1658,6 +1664,11 @@ public class FieldSourcePanel extends JPanel {
                 form, c, y++, "Operation:", datasourceOperationForm);
         applicable(datasourceOperationRow, false);
 
+        qualifierPidField.setToolTipText("Read this qualifier on the owning class's Wikidata statement. "
+                + "For example, P585 (point in time) on an award received statement.");
+        qualifierPidField.setName("field.source.qualifier");
+        GridBagUtils.labeledRow(form, c, y++, "Statement qualifier:",
+                WikidataIdLines.pid(qualifierPidField));
         JPanel propRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         propertyPidField.setName("field.source.property");
         propRow.add(propertyPidField);
@@ -1666,7 +1677,7 @@ public class FieldSourcePanel extends JPanel {
         propRow.add(propertyLabel);
         discoverExternalButton.setVisible(false);
         propRow.add(discoverExternalButton);
-        GridBagUtils.labeledRow(form, c, y++, "Property:", propRow);
+        directPropertyRow = FormRow.add(form, c, y++, "Property:", propRow);
         valueLanguageField.setToolTipText("Optional language for the value. Entity "
                 + "values accept a Wikidata language QID and use their P407 qualifier; "
                 + "monolingual text uses a language code on the literal ('en', with "
@@ -1769,13 +1780,6 @@ public class FieldSourcePanel extends JPanel {
                 "Article block kind:", passageBlockKindBox);
         assignRows(detailForRow, evidenceStart, y, FieldConfigurationProjection.EVIDENCE);
         int primaryContinuation = y;
-        qualifierPidField.setToolTipText("<html>For a field of a <b>statement "
-                                                 + "reification</b> class (the class \"Reifies statements of\" "
-                                                 + "another): the <b>qualifier</b> PID this field draws from "
-                                                 + "(e.g. P585 → year, P1686 → for work, P2453 → nominee). "
-                                                 + "Blank = a direct/value field.</html>");
-        GridBagUtils.labeledRow(form, c, y++, "Qualifier of:",
-                WikidataIdLines.pid(qualifierPidField));
         qualifierDateModeBox.setToolTipText("YEAR keeps the legacy year-only "
                 + "projection; DATE retains Wikidata's stated precision and calendar.");
         qualifierTimeRow = FormRow.add(
@@ -1805,7 +1809,7 @@ public class FieldSourcePanel extends JPanel {
         // made CanonicalSpec and the runtime key drift apart.
 
         // COMPANION_MATCH rows: Property = companion property (e.g. P166 award
-        // received), Qualifier of = the companion role qualifier (e.g. P1686 for
+        // received), Statement qualifier = the companion role qualifier (e.g. P1686 for
         // work); Subject/value/role pick which of this record's fields to match on.
         subjectBox.setToolTipText("<html>Companion match: this record's field "
                                           + "holding the entity that <b>carries</b> the companion statement "
@@ -1826,7 +1830,7 @@ public class FieldSourcePanel extends JPanel {
                                             + "<b>this entity</b> (outgoing, ?this P ?value)<br>"
                                             + "<b>related entities</b> (incoming, ?other P ?this) — e.g. "
                                             + "stars whose constellation P59 = this.</html>");
-        GridBagUtils.labeledRow(form, c, y++, "Found on:", directionBox);
+        propertyDirectionRow = FormRow.add(form, c, y++, "Found on:", directionBox);
         assignRows(detailForRow, primaryContinuation, y,
                 FieldConfigurationProjection.PRIMARY);
 
@@ -1882,6 +1886,7 @@ public class FieldSourcePanel extends JPanel {
         sourceTypeBox.addActionListener(e -> {
             applicable(datasourceOperationRow,
                     sourceTypeBox.getSelectedItem() == FieldSourceType.DATASOURCE);
+            refreshDirectPropertyRows();
             updateRecommendation();
             refreshGraphExpansionControl();
             requestAdvancedRefresh();
@@ -2017,9 +2022,18 @@ public class FieldSourcePanel extends JPanel {
             filler.weighty = 1.0;
             filler.fill = GridBagConstraints.VERTICAL;
             entry.getValue().add(Box.createVerticalGlue(), filler);
-            configurationDetails.put(entry.getKey(),
-                    ConfigurationTreePanel.scrollDetail(entry.getValue()));
+            if (!entry.getKey().equals(FieldConfigurationProjection.DEFINITION)
+                    && !entry.getKey().equals(FieldConfigurationProjection.PRIMARY)) {
+                configurationDetails.put(entry.getKey(),
+                        ConfigurationTreePanel.scrollDetail(entry.getValue()));
+            }
         }
+        JPanel primary = new JPanel(new BorderLayout());
+        primary.add(forms.get(FieldConfigurationProjection.DEFINITION), BorderLayout.NORTH);
+        acquisitionForm = forms.get(FieldConfigurationProjection.PRIMARY);
+        primary.add(acquisitionForm, BorderLayout.CENTER);
+        configurationDetails.put(FieldConfigurationProjection.PRIMARY,
+                ConfigurationTreePanel.scrollDetail(primary));
         JPanel advanced = new JPanel(new BorderLayout(4, 8));
         advanced.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         advanced.add(datasourceOperationForm.advancedDetail(), BorderLayout.NORTH);
@@ -2038,9 +2052,7 @@ public class FieldSourcePanel extends JPanel {
         ConfigurationNode root = FieldConfigurationProjection.project(
                 projectModel, owner, field, datasources, projectedSourceDraft);
         if (refreshingAdvancedTree && configuration.refreshCaptions(root)) return;
-        configuration.show(root, node -> configurationDetails.getOrDefault(
-                node.detailKey(), configurationDetails.get(
-                        FieldConfigurationProjection.DEFINITION)));
+        configuration.show(root, node -> configurationDetails.get(node.detailKey()));
     }
 
     private FieldConfigurationProjection.SourceDraft sourceDraft() {
@@ -2192,7 +2204,6 @@ public class FieldSourcePanel extends JPanel {
                 policyLabel(field.mapping().missingQualifierPolicy()));
         refreshStatementFieldControls();
 
-        titleLabel.setText("Field: " + field.name());
 
         updateRecommendation();
         clearSourceOverrideButton.setEnabled(
@@ -2854,6 +2865,7 @@ public class FieldSourcePanel extends JPanel {
         // A qualifier source is meaningful only on a StatementClass. The field
         // remains visible so the class/field relationship is explicit.
         qualifierPidField.setEnabled(statementClass && runtimeField);
+        refreshDirectPropertyRows();
         boolean dateQualifier = statementClass
                 && validQualifier
                 && typeBox.getSelectedItem() == FieldType.DATE
@@ -2884,6 +2896,18 @@ public class FieldSourcePanel extends JPanel {
                         : "<html>Available only for scalar ENTITY qualifier "
                           + "fields of a StatementClass loaded with "
                           + "Auto production.</html>");
+    }
+
+    private void refreshDirectPropertyRows() {
+        GeneratedClassModel owner = ownerClass();
+        boolean qualifierOnly = owner != null && owner.reifiesStatements()
+                && StatementFieldSemantics.isRuntimeProduction(
+                        (FieldProductionKind) productionBox.getSelectedItem())
+                && sourceTypeBox.getSelectedItem() == FieldSourceType.SPARQL
+                && WikidataIds.isPid(RuleNode.cleanPid(qualifierPidField.getText()))
+                && propertyPidField.getText().isBlank();
+        applicable(directPropertyRow, !qualifierOnly);
+        applicable(propertyDirectionRow, !qualifierOnly);
     }
 
     private void updateRecommendation() {
@@ -3139,7 +3163,6 @@ public class FieldSourcePanel extends JPanel {
     }
 
     private void clear() {
-        titleLabel.setText("Field");
         updatingSourceContext = true;
         sourceContextBox.removeAllItems();
         sourceContextBox.addItem(new SourceContext("Shared default", null));

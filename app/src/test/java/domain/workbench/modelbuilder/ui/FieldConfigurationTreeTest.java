@@ -84,7 +84,7 @@ class FieldConfigurationTreeTest {
         });
     }
 
-    /** Arrowing through "Needs: …" used to leave the field for that class. Selecting a
+    /** Arrowing through "Uses: …" used to leave the field for that class. Selecting a
      *  reference only names it; Open (or Enter, or a double click) navigates. */
     @Test void aReferenceOpensOnlyOnAnExplicitOpen() throws Exception {
         GeneratedProjectModel project = new GeneratedProjectModelStore().load(

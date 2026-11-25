@@ -28,9 +28,8 @@
     combo: 3 item(s)
   label: Select a class, field, or vocabulary below the domain to configure it.
 
-== Source class / Definition ==
-  box: Configuration
-  label: Class: Person
+== Source class / Population: Single type ==
+  box: Class settings
   piece: ClassHeaderEditor
     label: Class name:
     text: [Person]
@@ -38,13 +37,11 @@
     text: []
     label: Extends:
     combo: 4 item(s)
-
-== Source class / Population: Single type ==
-  box: Configuration
   label: How do we find instances of this class?
   label: Population source:
   combo: 2 item(s)
   piece: TripleEditor  [Triple — subject · property · object]
+    label: ✓ Ready — property P31 points to Q5
     label: Instances produced: Person
     label: Restrict to these subject QIDs:
     ids: []
@@ -82,10 +79,42 @@
       label: Bounding the object restricts WHICH entities become instances of this class.
     button: Find related objects…  (disabled)
     label: Matching subjects become instances of this class.
-    label: ✓ Ready — property P31 points to Q5
+
+== Source class / Population limits and filters ==
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Person]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 4 item(s)
+  label: Exclude instances of:
+  ids: []
+    text: []
+    button: Add  (disabled)
+    list
+    button: Remove  (disabled)
+    button: Open  (disabled)
+  label: Own population limit:
+  text: [200]
+  check: Require label
+  label: lang:
+  text: [en]
+  check: Notable only (require Wikipedia article)
+  label: Rank by:
+  combo: 3 item(s)
+  check: highest first
 
 == Source class / Identity ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Person]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 4 item(s)
   piece: ClassIdentityEditor  [Identity]
     label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
     piece: OrderedChoiceList
@@ -111,7 +140,14 @@
   check: Add aliases (Also known as)
 
 == Source class / Display name ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Person]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 4 item(s)
   piece: DisplayNameEditor  [Display name]
     piece: OrderedChoiceList  [Named by, in order — empty means the name it already has]
       list
@@ -123,7 +159,14 @@
       combo: 3 item(s)
 
 == Source class / + Add subclass condition or representation ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Person]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 4 item(s)
   label: Represent matching entities as:
   piece: OrderedChoiceList
     list
@@ -134,52 +177,32 @@
     label: Available:
     combo: 1 item(s)
 
-== Source class / + Configure group members ==
-  box: Configuration
-  label: Group members field:
-  combo: 1 item(s)
-
-== Source class / Population limits and filters ==
-  box: Configuration
-  label: Exclude instances of:
-  ids: []
-    text: []
-    button: Add  (disabled)
-    list
-    button: Remove  (disabled)
-    button: Open  (disabled)
-  label: Own population limit:
-  text: [200]
-  check: Require label
-  label: lang:
-  text: [en]
-  check: Notable only (require Wikipedia article)
-  label: Rank by:
-  combo: 3 item(s)
-  check: highest first
-
 == Source class / + Add source link ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Person]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 4 item(s)
   label: Source links:
   check: Add English Wikipedia source link
 
-== Source class / + Find membership types ==
-  box: Configuration
-  label: Search:
-  text: [Person]
-  label: Method:
-  combo: 3 item(s)
-  button: Search  (disabled)
-  button: Use selected  (disabled)
-
 == Source class / Used by ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Person]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 4 item(s)
   label: Select a reference to open it.
   button: Open  (disabled)
 
-== Statement class / Definition ==
-  box: Configuration
-  label: Statement class: Award
+== Statement class / Statement triple: P166 · objects: Q35637 · subjects from Person ==
+  box: Class settings
   piece: ClassHeaderEditor
     label: Class name:
     text: [Award]
@@ -187,10 +210,10 @@
     text: []
     label: Extends:
     combo: 4 item(s)
-
-== Statement class / Statement triple: P166 ==
-  box: Configuration
   piece: TripleEditor  [Triple — subject · property · object]
+    label: ✓ Ready — statement property P166
+objects: Q35637
+subjects from Person
     piece: EntityEndEditor  [Subject]
       label: Entities allowed:
       combo: 4 item(s)
@@ -210,14 +233,20 @@
         button: Remove  (disabled)
         button: Open  (disabled)
       label: Bounding the object restricts WHICH statements are collected.
-    piece: EntityEndEditor  [Find subjects using objects from]
+    piece: EntityEndEditor  [Additional objects for finding subjects]
       label: Entities allowed:
       combo: 3 item(s)
-      label: These objects find the subjects to load; they do not restrict which object values are retained on those subjects.
-    label: ✓ Ready — statement property P166
+      label: Used only to find subjects. The Object section controls which statement values are retained.
 
 == Statement class / Identity ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Award]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 4 item(s)
   piece: ClassIdentityEditor  [Identity]
     label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
     piece: OrderedChoiceList
@@ -241,7 +270,14 @@
   combo: 1 item(s)
 
 == Statement class / Display name ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Award]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 4 item(s)
   piece: DisplayNameEditor  [Display name]
     piece: OrderedChoiceList  [Named by, in order — empty means the name it already has]
       list
@@ -254,7 +290,14 @@
     label: These instances have no name of their own — name them by a field.
 
 == Statement class / Graph expansion ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Award]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 4 item(s)
   box: Graph discovery
     label: Expansion policy:
     combo: 2 item(s)
@@ -262,7 +305,14 @@
     label: Disabled — statements are still generated normally.
 
 == Statement class / Derived runtime recipe ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Award]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 4 item(s)
   box: Derived runtime recipe
     label: Identity:
     label: derived natural key
@@ -274,19 +324,32 @@
     label: —
     box: Qualifier fields
 
-== Statement class / Needs ==
-  box: Configuration
+== Statement class / Uses ==
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Award]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 4 item(s)
   label: Select a reference to open it.
   button: Open  (disabled)
 
 == Statement class / Used by ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Award]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 4 item(s)
   label: Select a reference to open it.
   button: Open  (disabled)
 
-== Owned class / Definition ==
-  box: Configuration
-  label: Owned class — instances are created by fields that target this class.
+== Owned class / Ownership sites ==
+  box: Class settings
   piece: ClassHeaderEditor
     label: Class name:
     text: [Name]
@@ -294,18 +357,22 @@
     text: []
     label: Extends:
     combo: 1 item(s)
-
-== Owned class / Ownership sites ==
-  box: Configuration
   piece: TripleEditor  [Triple — subject · property · object]
+    label: ✓ Ready — produced by Person.structuredName
     box: Property
       label: Wikidata property:
       text: [Person.structuredName]  (disabled)
     label: Given: authored on Person, where the field is.
-    label: ✓ Ready — produced by Person.structuredName
 
 == Owned class / Identity ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Name]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 1 item(s)
   piece: ClassIdentityEditor  [Identity]
     label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
     piece: OrderedChoiceList
@@ -323,7 +390,14 @@
       combo: 2 item(s)
 
 == Owned class / Display name ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Name]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 1 item(s)
   piece: DisplayNameEditor  [Display name]
     piece: OrderedChoiceList  [Named by, in order — empty means the name it already has]
       list
@@ -335,12 +409,19 @@
       combo: 2 item(s)
 
 == Owned class / Used by ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Name]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 1 item(s)
   label: Select a reference to open it.
   button: Open  (disabled)
 
-== Aggregate class / Definition ==
-  box: Configuration
+== Aggregate class / Aggregate from Award ==
+  box: Class settings
   piece: ClassHeaderEditor
     label: Class name:
     text: [Prize]
@@ -348,9 +429,8 @@
     text: []
     label: Extends:
     combo: 4 item(s)
-
-== Aggregate class / Aggregate from Award ==
-  box: Configuration
+    label: Group members field:
+    combo: 2 item(s)
   label: From class:
   combo: 4 item(s)
   piece: OrderedChoiceList  [Aggregated fields]
@@ -370,7 +450,16 @@
   label: Choices come from compatible fields on this class and its source class.
 
 == Aggregate class / Identity ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Prize]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 4 item(s)
+    label: Group members field:
+    combo: 2 item(s)
   piece: ClassIdentityEditor  [Identity]
     label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
     piece: OrderedChoiceList
@@ -388,7 +477,16 @@
       combo: 2 item(s)
 
 == Aggregate class / Display name ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Prize]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 4 item(s)
+    label: Group members field:
+    combo: 2 item(s)
   piece: DisplayNameEditor  [Display name]
     piece: OrderedChoiceList  [Named by, in order — empty means the name it already has]
       list
@@ -400,20 +498,36 @@
       combo: 2 item(s)
     label: These instances have no name of their own — name them by a field.
 
-== Aggregate class / Needs ==
-  box: Configuration
+== Aggregate class / Uses ==
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Prize]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 4 item(s)
+    label: Group members field:
+    combo: 2 item(s)
   label: Select a reference to open it.
   button: Open  (disabled)
 
 == Aggregate class / Used by ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [Prize]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 4 item(s)
+    label: Group members field:
+    combo: 2 item(s)
   label: Select a reference to open it.
   button: Open  (disabled)
 
 == Field - FieldSourcePanel ==
-  box: Configuration
-  label: Field: birthDate
-  label: How do we fill this field?
+  box: Field settings
   box: Field definition
     label: Field name:
     text: [birthDate]
@@ -429,38 +543,14 @@
     combo: 3 item(s)
   label: Load as:
   combo: 11 item(s)
-  button: Examples…
-  button: Re-fetch on next enrich
-  button: Apply field source
-
-== Field section field-definition ==
-  box: Configuration
-  label: Field: birthDate
-  label: How do we fill this field?
-  box: Field definition
-    label: Field name:
-    text: [birthDate]
-    label: Holds:
-    combo: 8 item(s)
-    label: Of class:
-    combo: 7 item(s)
-      text: [(none)]
-    check: no class (keep label)  (disabled)
-    label: Count:
-    combo: 2 item(s)
-    label: Display:
-    combo: 3 item(s)
-  label: Load as:
-  combo: 11 item(s)
-  button: Examples…
-  button: Re-fetch on next enrich
-  button: Apply field source
-
-== Field section field-primary-source ==
-  box: Configuration
   label: Source
   label: From:
   combo: 11 item(s)
+  label: Statement qualifier:
+  ids: []
+    text: []
+    button: Set  (disabled)
+    button: Cancel  (disabled)
   label: Property:
   text: [P569]
   label: date of birth
@@ -479,11 +569,60 @@
     list
     button: Remove  (disabled)
     button: Open  (disabled)
-  label: Qualifier of:
+  label: Subject field:
+  combo: 2 item(s)
+  label: Match value field:
+  combo: 2 item(s)
+    text: []
+  label: Found on:
+  combo: 2 item(s)
+  button: Examples…
+  button: Re-fetch on next enrich
+  button: Apply field source
+
+== Field section field-primary-source ==
+  box: Field settings
+  box: Field definition
+    label: Field name:
+    text: [birthDate]
+    label: Holds:
+    combo: 8 item(s)
+    label: Of class:
+    combo: 7 item(s)
+      text: [(none)]
+    check: no class (keep label)  (disabled)
+    label: Count:
+    combo: 2 item(s)
+    label: Display:
+    combo: 3 item(s)
+  label: Load as:
+  combo: 11 item(s)
+  label: Source
+  label: From:
+  combo: 11 item(s)
+  label: Statement qualifier:
   ids: []
     text: []
     button: Set  (disabled)
     button: Cancel  (disabled)
+  label: Property:
+  text: [P569]
+  label: date of birth
+  label: Value language:
+  text: []
+  label: Only statements where:
+  label: qualifier
+  ids: []
+    text: []
+    button: Set  (disabled)
+    button: Cancel  (disabled)
+  label: is one of
+  ids: []
+    text: []
+    button: Add  (disabled)
+    list
+    button: Remove  (disabled)
+    button: Open  (disabled)
   label: Subject field:
   combo: 2 item(s)
   label: Match value field:
@@ -496,7 +635,7 @@
   button: Apply field source
 
 == Field section field-fallback-source ==
-  box: Configuration
+  box: Field settings
   label: Wikipedia fallback:
   label: none
   button: Set Wikipedia fallback…
@@ -508,7 +647,7 @@
 == Field section field-category-source - no node offers it ==
 
 == Field section field-candidate-evidence ==
-  box: Configuration
+  box: Field settings
   label: Wikipedia evidence:
   box: Configured evidence recipes
     list
@@ -523,7 +662,7 @@
   button: Apply field source
 
 == Field section field-refine ==
-  box: Configuration
+  box: Field settings
   label: Refine
   check: Required (membership filter — drops entities without it)
   label: Expectation:
@@ -536,8 +675,8 @@
   button: Re-fetch on next enrich
   button: Apply field source
 
-== Graph section graph-definition ==
-  box: Configuration
+== Graph section graph-start ==
+  box: Class settings
   piece: ClassHeaderEditor
     label: Class name:
     text: [PositionRelevance]
@@ -545,13 +684,6 @@
     text: []
     label: Extends:
     combo: 2 item(s)
-  label: No discovery graph configured.
-  button: Run graph  (disabled)
-  button: Clear draft
-  button: Apply graph
-
-== Graph section graph-start ==
-  box: Configuration
   box: Start node
     label: Start with:
     combo: 1 item(s)
@@ -566,7 +698,14 @@
   button: Apply graph
 
 == Graph section graph-path ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [PositionRelevance]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 2 item(s)
   box: Path after the start node
     list
     button: Add node to path
@@ -578,7 +717,14 @@
   button: Apply graph
 
 == Graph section graph-edge ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [PositionRelevance]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 2 item(s)
   box: Incoming edge of next node
     label: ── property out ──▶
     label: Property:
@@ -604,7 +750,14 @@
   button: Apply graph
 
 == Graph section graph-node ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [PositionRelevance]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 2 item(s)
   box: Selected path node
     label: Use reached entities as:
     combo: 2 item(s)
@@ -621,7 +774,14 @@
   button: Apply graph
 
 == Graph section graph-evidence ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [PositionRelevance]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 2 item(s)
   box: Evidence for selected node
     label: Evidence relations from this node (one or more may reach evidence)
     label: Property:
@@ -660,7 +820,14 @@
   button: Apply graph
 
 == Graph section graph-identity ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [PositionRelevance]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 2 item(s)
   piece: ClassIdentityEditor  [Identity]
     label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
     piece: OrderedChoiceList
@@ -681,7 +848,14 @@
   button: Apply graph
 
 == Graph section graph-display-name ==
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [PositionRelevance]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 2 item(s)
   piece: DisplayNameEditor  [Display name]
     piece: OrderedChoiceList  [Named by, in order — empty means the name it already has]
       list
@@ -697,10 +871,18 @@
   button: Apply graph
 
 == TransformApp configuration / Population transformation ==
+  box: Project
   label: Class kind:
   combo: 5 item(s)  (disabled)
   label: Edit class, field and datasource declarations in ModelBuilder.
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [SelectedPosition]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 3 item(s)  (disabled)
   label: Input class: Position
   label: 2 filter step(s)
   button: Add filter…
@@ -713,10 +895,9 @@
   label: Select a filter to edit it, or add a filter to the transformation.
 
 == TransformApp configuration / Field definition ==
+  box: Project
   label: Edit class, field and datasource declarations in ModelBuilder.
-  box: Configuration
-  label: Field: holderCount
-  label: How do we fill this field?
+  box: Field settings
   box: Field definition
     label: Field name:
     text: [holderCount]
@@ -732,24 +913,58 @@
     combo: 3 item(s)  (disabled)
   label: Load as:
   combo: 11 item(s)  (disabled)
+  label: Source
+  label: From:
+  combo: 11 item(s)  (disabled)
+  label: Statement qualifier:
+  ids: []  (read-only)
+    text: []
+    button: Set  (disabled)
+    button: Cancel  (disabled)
+  label: Property:
+  text: []
+  label: Value language:
+  text: []
+  label: Only statements where:
+  label: qualifier
+  ids: []  (read-only)
+    text: []
+    button: Set  (disabled)
+    button: Cancel  (disabled)
+  label: is one of
+  ids: []  (read-only)
+    text: []
+    button: Add  (disabled)
+    list
+    button: Remove  (disabled)
+    button: Open  (disabled)
+  label: Found on:
+  combo: 2 item(s)  (disabled)
   button: Examples…  (disabled)
   button: Re-fetch on next enrich  (disabled)
   button: Apply field source  (disabled)
 
 == DataSourceApp configuration / Population transformation ==
+  box: Project
   label: Class kind:
   combo: 5 item(s)  (disabled)
   label: Edit class, field and datasource declarations in ModelBuilder.
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [SelectedPosition]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 3 item(s)  (disabled)
   label: Input class: Position
   label: 2 filter step(s)
   label: Edit the population transformation in TransformApp.
 
 == DataSourceApp configuration / Field definition ==
+  box: Project
   label: Edit class, field and datasource declarations in ModelBuilder.
-  box: Configuration
-  label: Field: holderCount
-  label: How do we fill this field?
+  box: Field settings
   box: Field definition
     label: Field name:
     text: [holderCount]
@@ -765,16 +980,64 @@
     combo: 3 item(s)  (disabled)
   label: Load as:
   combo: 11 item(s)  (disabled)
+  label: Source
+  label: From:
+  combo: 11 item(s)  (disabled)
+  label: Statement qualifier:
+  ids: []  (read-only)
+    text: []
+    button: Set  (disabled)
+    button: Cancel  (disabled)
+  label: Property:
+  text: []
+  label: Value language:
+  text: []
+  label: Only statements where:
+  label: qualifier
+  ids: []  (read-only)
+    text: []
+    button: Set  (disabled)
+    button: Cancel  (disabled)
+  label: is one of
+  ids: []  (read-only)
+    text: []
+    button: Add  (disabled)
+    list
+    button: Remove  (disabled)
+    button: Open  (disabled)
+  label: Found on:
+  combo: 2 item(s)  (disabled)
   button: Examples…  (disabled)
   button: Re-fetch on next enrich  (disabled)
   button: Apply field source  (disabled)
 
 == Unified Workbench / Field source and acquisition plan ==
+  box: Project
   label: Use Actions and results to check the applied configuration.
-  box: Configuration
+  box: Field settings
+  box: Field definition
+    label: Field name:
+    text: [holderCount]
+    label: Holds:
+    combo: 8 item(s)
+    label: Of class:
+    combo: 4 item(s)
+      text: [(none)]
+    check: no class (keep label)
+    label: Count:
+    combo: 2 item(s)
+    label: Display:
+    combo: 3 item(s)
+  label: Load as:
+  combo: 11 item(s)
   label: Source
   label: From:
   combo: 11 item(s)
+  label: Statement qualifier:
+  ids: []
+    text: []
+    button: Set  (disabled)
+    button: Cancel  (disabled)
   label: Property:
   text: [P1082]
   label: Value language:
@@ -792,11 +1055,6 @@
     list
     button: Remove  (disabled)
     button: Open  (disabled)
-  label: Qualifier of:
-  ids: []
-    text: []
-    button: Set  (disabled)
-    button: Cancel  (disabled)
   label: Found on:
   combo: 2 item(s)
   button: Examples…
@@ -807,11 +1065,32 @@
   button: Save domain…
 
 == Unified Workbench / Load field values ==
+  box: Project
   label: Use Actions and results to check the applied configuration.
-  box: Configuration
+  box: Field settings
+  box: Field definition
+    label: Field name:
+    text: [holderCount]
+    label: Holds:
+    combo: 8 item(s)
+    label: Of class:
+    combo: 4 item(s)
+      text: [(none)]
+    check: no class (keep label)
+    label: Count:
+    combo: 2 item(s)
+    label: Display:
+    combo: 3 item(s)
+  label: Load as:
+  combo: 11 item(s)
   label: Source
   label: From:
   combo: 11 item(s)
+  label: Statement qualifier:
+  ids: []
+    text: []
+    button: Set  (disabled)
+    button: Cancel  (disabled)
   label: Property:
   text: [P1082]
   label: Value language:
@@ -829,11 +1108,6 @@
     list
     button: Remove  (disabled)
     button: Open  (disabled)
-  label: Qualifier of:
-  ids: []
-    text: []
-    button: Set  (disabled)
-    button: Cancel  (disabled)
   label: Found on:
   combo: 2 item(s)
   button: Examples…
@@ -844,10 +1118,18 @@
   button: Save domain…
 
 == Unified Workbench / Edit transformation and preview population ==
+  box: Project
   label: Class kind:
   combo: 5 item(s)  (disabled)
   label: Use Actions and results to check the applied configuration.
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [SelectedPosition]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 3 item(s)  (disabled)
   label: Input class: Position
   label: 2 filter step(s)
   button: Add filter…
@@ -866,10 +1148,18 @@
   button: Save domain…
 
 == Unified Workbench / Build project ==
+  box: Project
   label: Class kind:
   combo: 5 item(s)  (disabled)
   label: Use Actions and results to check the applied configuration.
-  box: Configuration
+  box: Class settings
+  piece: ClassHeaderEditor
+    label: Class name:
+    text: [SelectedPosition]
+    label: Alias:
+    text: []
+    label: Extends:
+    combo: 3 item(s)  (disabled)
   label: Input class: Position
   label: 2 filter step(s)
   button: Add filter…
@@ -888,6 +1178,7 @@
   button: Save domain…
 
 == Unified Workbench / Edit build steps ==
+  box: Project
   label: Use Actions and results to check the applied configuration.
   label: Project overview
   label: Name:
@@ -925,6 +1216,7 @@
   button: Save domain…
 
 == Unified Workbench / Review graph decisions ==
+  box: Project
   label: Use Actions and results to check the applied configuration.
   label: Project overview
   label: Name:
@@ -960,6 +1252,7 @@
   button: Save domain…
 
 == Unified Workbench / Run graph ==
+  box: Project
   label: Use Actions and results to check the applied configuration.
   label: Project overview
   label: Name:

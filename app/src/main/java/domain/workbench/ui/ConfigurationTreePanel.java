@@ -44,6 +44,7 @@ public final class ConfigurationTreePanel extends JPanel {
             new LinkedHashMap<>();
     private ConfigurationNode root;
     private final LinkedHashSet<JComponent> editorDetails = new LinkedHashSet<>();
+    private JComponent detailHeader;
     private final JPanel referenceDetail = new JPanel(new BorderLayout());
     private final JLabel referenceLabel =
             new JLabel("Select a reference to open it.");
@@ -95,22 +96,27 @@ public final class ConfigurationTreePanel extends JPanel {
         updateReferenceDetail(selectedNode());
     }
 
+    public void setDetailHeader(JComponent header) {
+        detailHeader = header;
+        tree.setDetailHeader(header);
+    }
+
     /** Replaces one complete projection while the neutral shell preserves layout state. */
     public void show(ConfigurationNode root,
             Function<ConfigurationNode, JComponent> detailFor) {
         this.root = root;
         nodes.clear();
         editorDetails.clear();
+        if (detailHeader != null) editorDetails.add(detailHeader);
         selectedReference = null;
         updateReferenceDetail(null);
         if (root == null) {
             tree.replaceRoots(List.of());
             return;
         }
-        tree.replaceRoots(List.of(branch(root, detailFor)));
-        tree.expand(root.id());
+        tree.replaceRoots(root.children().stream().map(node -> branch(node, detailFor)).toList());
         if (tree.selectedId() == null) {
-            tree.select(root.id());
+            if (!root.children().isEmpty()) tree.select(root.children().getFirst().id());
         } else {
             // Projection replacement intentionally suppresses the neutral shell's
             // selection callback. Restore the semantic state (notably the explicit
@@ -126,7 +132,7 @@ public final class ConfigurationTreePanel extends JPanel {
     public boolean refreshCaptions(ConfigurationNode updated) {
         if (root == null || updated == null || !sameStructure(root, updated)) return false;
         root = updated;
-        updateCaptions(updated);
+        updated.children().forEach(this::updateCaptions);
         updateReferenceDetail(selectedNode());
         return true;
     }

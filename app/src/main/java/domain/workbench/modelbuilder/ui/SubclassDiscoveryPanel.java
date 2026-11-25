@@ -47,7 +47,7 @@ import java.util.function.Function;
  * subclasses; explicit examples search upward through P31/P279. Both routes produce the
  * same candidate cards, bounded member preview and explicit configuration actions.
  */
-final class SubclassDiscoveryPanel extends JPanel {
+public final class SubclassDiscoveryPanel extends JPanel {
 
     private static final String ADD_NEEDS_A_RELATION =
             "The selected Source class has no membership relation yet. Use one selected "
@@ -88,6 +88,8 @@ final class SubclassDiscoveryPanel extends JPanel {
     private JComponent exampleView;
     private JComponent candidateView;
     private SwingQueryRunner runner;
+    private final boolean authoring;
+    private boolean discoveryEnabled = true;
     private WorkbenchSelections selections;
     private Consumer<String> onAddMembershipTarget = ignored -> { };
     private Function<WorkbenchSelections.Entity, String> onUseMembershipType =
@@ -105,7 +107,12 @@ final class SubclassDiscoveryPanel extends JPanel {
     private String addRefusal = ADD_NEEDS_A_RELATION;
 
     SubclassDiscoveryPanel() {
+        this(true);
+    }
+
+    public SubclassDiscoveryPanel(boolean authoring) {
         super(new BorderLayout(6, 6));
+        this.authoring = authoring;
 
         starts.addTab("From broad type", broadTypePanel());
         starts.addTab("From examples", examplesPanel());
@@ -121,6 +128,8 @@ final class SubclassDiscoveryPanel extends JPanel {
         preview.setEnabled(false);
         use.setEnabled(false);
         add.setEnabled(false);
+        use.setVisible(authoring);
+        add.setVisible(authoring);
         previewDescendants.setEnabled(false);
         candidateActions.add(previewDescendants);
         candidateActions.add(preview);
@@ -227,7 +236,7 @@ final class SubclassDiscoveryPanel extends JPanel {
         selectionsHolder.repaint();
     }
 
-    void setQueryRunner(SwingQueryRunner runner) {
+    public void setQueryRunner(SwingQueryRunner runner) {
         if (runner == null || this.runner != null) return;
         this.runner = runner;
         runner.registerCancelButton(cancel);
@@ -252,9 +261,9 @@ final class SubclassDiscoveryPanel extends JPanel {
                 ? ignored -> "No membership editor is connected." : handler;
     }
 
-    void showClass(GeneratedProjectModel project, GeneratedClassModel clazz) {
+    public void showClass(GeneratedProjectModel project, GeneratedClassModel clazz) {
         selectedClassName = clazz == null ? "" : clazz.className();
-        boolean editableSource = clazz != null
+        boolean editableSource = authoring && clazz != null
                 && clazz.classKind() == domain.config.ClassKind.SOURCE
                 && !clazz.isImported();
         populationProject = editableSource ? project : null;
@@ -292,13 +301,21 @@ final class SubclassDiscoveryPanel extends JPanel {
                 "Read-only: preview uses the selected class's saved membership setting.");
         use.setToolTipText(usable ? null : useRefusal);
         add.setToolTipText(addable ? null : addRefusal);
-        status.setText(selectedClassName.isBlank()
+        status.setText(!authoring ? "Membership discovery"
+                + (selectedClassName.isBlank() ? "" : " for " + selectedClassName)
+                : selectedClassName.isBlank()
                 ? "Select a Source class before using a candidate."
                 : usable && addable
                         ? "Candidates can be used for " + selectedClassName + "."
                         : usable ? selectedClassName + " has no membership relation yet; "
                                 + "use one selected candidate as its membership type first."
                 : "Use unavailable for " + selectedClassName + ": " + useRefusal);
+        updateActions();
+    }
+
+    public void setDiscoveryEnabled(boolean enabled) {
+        if (discoveryEnabled == enabled) return;
+        discoveryEnabled = enabled;
         updateActions();
     }
 
@@ -713,27 +730,28 @@ final class SubclassDiscoveryPanel extends JPanel {
 
     private void updateActions() {
         boolean running = runner != null && runner.isRunning();
-        findBroadType.setEnabled(!running);
-        findExample.setEnabled(!running);
-        searchText.setEnabled(!running);
-        textPhrase.setEnabled(!running);
+        boolean available = discoveryEnabled && !running;
+        findBroadType.setEnabled(available);
+        findExample.setEnabled(available);
+        searchText.setEnabled(available);
+        textPhrase.setEnabled(available);
         boolean textExamplesFit = examples.size() + additionalTextExampleCount()
                 <= DiscoverCommonMembershipTypesQuery.MAX_EXAMPLES;
-        addTextExamples.setEnabled(!running && !selectedTextResults.isEmpty()
+        addTextExamples.setEnabled(available && !selectedTextResults.isEmpty()
                 && textExamplesFit);
         addTextExamples.setToolTipText(textExamplesFit ? null
                 : "Adding these candidates would exceed the 20-example limit.");
-        rootQid.setEnabled(!running);
-        selectionsHolder.setEnabled(!running);
+        rootQid.setEnabled(available);
+        selectionsHolder.setEnabled(available);
         for (Component component : selectionsHolder.getComponents()) {
-            component.setEnabled(!running);
+            component.setEnabled(available);
         }
-        removeExamples.setEnabled(!running && !selectedExamples.isEmpty());
-        runSubtypes.setEnabled(!running
+        removeExamples.setEnabled(available && !selectedExamples.isEmpty());
+        runSubtypes.setEnabled(available
                 && WikidataIds.isQid(RuleNode.cleanQid(rootQid.getText())));
         boolean validExampleCount = !examples.isEmpty()
                 && examples.size() <= DiscoverCommonMembershipTypesQuery.MAX_EXAMPLES;
-        findCommonTypes.setEnabled(!running && validExampleCount);
+        findCommonTypes.setEnabled(available && validExampleCount);
         findCommonTypes.setToolTipText(examples.size()
                 > DiscoverCommonMembershipTypesQuery.MAX_EXAMPLES
                         ? "Choose at most "
@@ -745,9 +763,9 @@ final class SubclassDiscoveryPanel extends JPanel {
                 && workflowStages.getSelectedIndex() == 1;
         candidateActions.setVisible(candidatesVisible);
         cancel.setVisible(running);
-        preview.setEnabled(!running && candidatesVisible && one != null);
-        use.setEnabled(!running && candidatesVisible && usable && one != null);
-        add.setEnabled(!running && candidatesVisible && addable
+        preview.setEnabled(available && candidatesVisible && one != null);
+        use.setEnabled(available && candidatesVisible && usable && one != null);
+        add.setEnabled(available && candidatesVisible && addable
                 && !selectedCandidates.isEmpty());
     }
 

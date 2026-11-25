@@ -110,7 +110,6 @@ class PanelLayoutIsCheckedInTest {
         // The editor's rows live in one detail section per configuration node and only
         // the selected section is visible, so each section is rendered on its own.
         for (String section : List.of(
-                domain.config.FieldConfigurationProjection.DEFINITION,
                 domain.config.FieldConfigurationProjection.PRIMARY,
                 domain.config.FieldConfigurationProjection.FALLBACK,
                 domain.config.FieldConfigurationProjection.CATEGORY,
@@ -138,7 +137,6 @@ class PanelLayoutIsCheckedInTest {
         GraphConstraintsPanel graph = new GraphConstraintsPanel(graphProject);
         graph.edit(relevance);
         for (String section : List.of(
-                domain.config.GraphConfigurationProjection.DEFINITION,
                 domain.config.GraphConfigurationProjection.START,
                 domain.config.GraphConfigurationProjection.PATH,
                 domain.config.GraphConfigurationProjection.EDGE,
@@ -247,7 +245,8 @@ class PanelLayoutIsCheckedInTest {
     private static void describeClass(StringBuilder out, String title, Container panel,
             ClassConfigurationEditor editor) {
         var tree = editor.tree();
-        for (var section : tree.nodes().getFirst().children()) {
+        for (var section : tree.nodes()) {
+            if (section.referenceTarget() != null) continue;
             tree.select(section.id());
             describe(out, title + " / " + section.caption(), panel);
         }

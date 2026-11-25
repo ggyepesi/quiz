@@ -63,9 +63,8 @@ final class TripleEditor extends JPanel {
     private final EntityEndEditor object = new EntityEndEditor("Object",
             "Bounding the object restricts WHICH statements are collected.");
     private final EntityEndEditor discoveryObject = new EntityEndEditor(
-            "Find subjects using objects from",
-            "These objects find the subjects to load; they do not restrict which "
-                    + "object values are retained on those subjects.");
+            "Additional objects for finding subjects",
+            "Used only to find subjects. The Object section controls which statement values are retained.");
     private final JTextField property = new JTextField(6);
     private final JLabel propertyLabel = new JLabel(" ");
     private final JTextField membershipQualifierProperty = new JTextField(6);
@@ -82,6 +81,7 @@ final class TripleEditor extends JPanel {
     private final JLabel sourceSubject = new JLabel(" ");
     /** Says which elements are given, and by what. Blank when the kind authors them. */
     private final JLabel given = new JLabel(" ");
+    private final JPanel tripleControls = new JPanel(new GridBagLayout());
     /** One visible answer to whether this triple can produce instances. */
     private final wikidata.ui.WikidataIdText configurationStatus = WikidataIdLines.text();
     /** Invalid text remains an editor draft, but Apply must say that it was not
@@ -91,6 +91,7 @@ final class TripleEditor extends JPanel {
     TripleEditor() {
         super(new GridBagLayout());
         setBorder(BorderFactory.createTitledBorder(TITLE));
+        discoveryObject.unboundedLabel("No additional filter");
 
         GridBagConstraints c = new GridBagConstraints();
         c.insets = new Insets(3, 4, 3, 4);
@@ -153,27 +154,29 @@ final class TripleEditor extends JPanel {
         wide.fill = GridBagConstraints.HORIZONTAL;
         wide.weightx = 1;
         wide.gridy = 0;
-        add(subjectSection, wide);
+        tripleControls.add(subjectSection, wide);
 
         GridBagConstraints propertyCell = (GridBagConstraints) wide.clone();
         propertyCell.gridy = 1;
-        add(propertyColumn, propertyCell);
+        tripleControls.add(propertyColumn, propertyCell);
 
         GridBagConstraints objectCell = (GridBagConstraints) wide.clone();
         objectCell.gridy = 2;
-        add(objectRow, objectCell);
+        tripleControls.add(objectRow, objectCell);
 
         GridBagConstraints discoveryCell = (GridBagConstraints) wide.clone();
         discoveryCell.gridy = 3;
-        add(discoveryObject, discoveryCell);
+        tripleControls.add(discoveryObject, discoveryCell);
 
         GridBagConstraints givenCell = (GridBagConstraints) wide.clone();
         givenCell.gridy = 4;
-        add(given, givenCell);
+        tripleControls.add(given, givenCell);
 
         GridBagConstraints statusCell = (GridBagConstraints) wide.clone();
-        statusCell.gridy = 5;
+        configurationStatus.setName("class.population.status");
         add(configurationStatus, statusCell);
+        wide.gridy = 1;
+        add(tripleControls, wide);
 
         propertyActions.setOpaque(false);
         objectActions.setOpaque(false);
@@ -201,6 +204,9 @@ final class TripleEditor extends JPanel {
     /** This class's triple, with whatever it does not author shown and disabled. */
     void show(GeneratedClassModel clazz, GeneratedProjectModel project) {
         unappliedDetail = "";
+        tripleControls.setVisible(clazz == null || !clazz.isImported()
+                || clazz.classKind() != ClassKind.SOURCE || clazz.membership().bounded()
+                || !clazz.seedQids().isEmpty());
         if (clazz == null) {
             clear();
             return;
@@ -223,6 +229,8 @@ final class TripleEditor extends JPanel {
         }
         refreshConfigurationStatus(clazz, project);
     }
+
+    boolean showsTripleControls() { return tripleControls.isVisible(); }
 
     /** Writes back whatever this class's kind authors here, and nothing else. */
     void applyEdits(GeneratedClassModel clazz) {
@@ -466,7 +474,7 @@ final class TripleEditor extends JPanel {
         } else if (clazz.classKind() == ClassKind.STATEMENT) {
             StatementClassSource source = clazz.statementSource();
             ready = source != null && source.isConfigured();
-            detail = ready ? "statement property " + source.propertyPid()
+            detail = ready ? "statement property " + source.describeTriple().replace(" · ", "\n")
                     : "choose a statement property";
         } else {
             boolean seeds = !clazz.seedQids().isEmpty();
@@ -474,23 +482,28 @@ final class TripleEditor extends JPanel {
             List<String> representedRoles =
                     EntityRepresentations.rolesRepresentedAs(project, clazz);
             boolean represented = !representedRoles.isEmpty();
-            ready = seeds || relation || represented;
+            MembershipPattern pattern = MembershipPattern.of(clazz, project);
+            ready = seeds || relation || represented || pattern != MembershipPattern.UNCONFIGURED;
             if (seeds && relation) {
-                detail = membershipDetail(clazz.membership()) + ", restricted to "
+                detail = clazz.membership().describe() + ", restricted to "
                         + clazz.seedQids().size()
                         + " explicit QID" + (clazz.seedQids().size() == 1 ? "" : "s");
             } else if (relation) {
-                detail = membershipDetail(clazz.membership());
+                detail = clazz.membership().describe();
             } else if (seeds) {
                 detail = clazz.seedQids().size() + " explicit QID"
                         + (clazz.seedQids().size() == 1 ? "" : "s");
             } else if (represented) {
                 EntityKindRule admission = MembershipPattern.kindRule(clazz, project);
-                detail = "represented from " + String.join(", ", representedRoles)
+                detail = (pattern == MembershipPattern.REFERENCED ? pattern.label() + " — " : "")
+                        + "represented from " + String.join(", ", representedRoles)
                         + (admission == null ? "" : " when "
                         + admission.propertyPid() + " contains "
                         + String.join(", ", admission.evidenceQids()))
                         + "; own population limit is unused";
+            } else if (ready) {
+                detail = (pattern == MembershipPattern.REFERENCED ? pattern.label() + " — " : "")
+                        + MembershipPattern.describe(clazz, project);
             } else {
                 detail = "add explicit QIDs, or choose both a property and object";
             }
@@ -503,19 +516,6 @@ final class TripleEditor extends JPanel {
         configurationStatus.setForeground(ready
                 ? new java.awt.Color(0x18, 0x65, 0x2A)
                 : new java.awt.Color(0xB0, 0x00, 0x20));
-    }
-
-    private static String membershipDetail(EntityBound membership) {
-        wikidata.QualifierCondition condition = membership.qualifierCondition();
-        if (condition != null) {
-            String mainValues = membership.qids().isEmpty() ? ""
-                    : ", main value in " + String.join(", ", membership.qids());
-            return "statement " + membership.relationPid() + " where qualifier "
-                    + condition.qualifierPid() + " is one of "
-                    + String.join(", ", condition.allowedQids()) + mainValues;
-        }
-        return "property " + membership.relationPid() + " points to "
-                + String.join(", ", membership.qids());
     }
 
     /** The property as typed — blank is blank, because blank means something here. */

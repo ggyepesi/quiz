@@ -32,8 +32,6 @@ public final class EditableComponents {
 
     private static final String ORIGINAL_BACKGROUND =
             EditableComponents.class.getName() + ".originalBackground";
-    private static final String ORIGINAL_FOREGROUND =
-            EditableComponents.class.getName() + ".originalForeground";
     private static final String INACTIVE_STYLE =
             EditableComponents.class.getName() + ".inactiveStyle";
     private static final String ALWAYS_READ_ONLY =
@@ -110,30 +108,23 @@ public final class EditableComponents {
         }
     }
 
-    /** Read-only text remains selectable, but should not look writable. Disabled text
-     *  already gets this distinction from the look and feel; {@code setEditable(false)}
-     *  does not do so consistently (notably on macOS). */
+    /** The background distinguishes read-only text while the foreground stays legible
+     *  and retains colors that report status. */
     private static void styleText(JTextComponent text, boolean editable) {
         if (!editable) {
             if (!Boolean.TRUE.equals(text.getClientProperty(INACTIVE_STYLE))) {
                 text.putClientProperty(ORIGINAL_BACKGROUND, text.getBackground());
-                text.putClientProperty(ORIGINAL_FOREGROUND, text.getForeground());
                 text.putClientProperty(INACTIVE_STYLE, Boolean.TRUE);
             }
             Color background = inactiveColor(text, "inactiveBackground");
-            Color foreground = inactiveColor(text, "inactiveForeground");
             if (background != null) text.setBackground(background);
-            if (foreground != null) text.setForeground(foreground);
             return;
         }
 
         if (Boolean.TRUE.equals(text.getClientProperty(INACTIVE_STYLE))) {
             Object background = text.getClientProperty(ORIGINAL_BACKGROUND);
-            Object foreground = text.getClientProperty(ORIGINAL_FOREGROUND);
             if (background instanceof Color color) text.setBackground(color);
-            if (foreground instanceof Color color) text.setForeground(color);
             text.putClientProperty(ORIGINAL_BACKGROUND, null);
-            text.putClientProperty(ORIGINAL_FOREGROUND, null);
             text.putClientProperty(INACTIVE_STYLE, null);
         }
     }

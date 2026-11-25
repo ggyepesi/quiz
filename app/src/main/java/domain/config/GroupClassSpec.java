@@ -1,5 +1,7 @@
 package domain.config;
 
+import domain.datasource.schema.FieldType;
+
 /**
  * Declares that each instance of a class is a group whose members are held by one
  * ordinary collection field.
@@ -16,6 +18,12 @@ public record GroupClassSpec(String membersField) {
         if (membersField.isBlank()) {
             throw new IllegalArgumentException("A group members field is required");
         }
+    }
+
+    public static boolean acceptsMembersField(GeneratedFieldModel field) {
+        return field != null && field.type() == FieldType.ENTITY
+                && field.cardinality() == FieldCardinality.COLLECTION
+                && !field.entityClassName().isBlank();
     }
 
     private static String clean(String value) {

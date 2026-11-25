@@ -63,8 +63,6 @@ public final class GraphConfigurationProjection {
                 : List.of();
 
         List<ConfigurationNode> children = new ArrayList<>();
-        children.add(node(graphClass, "definition", ConfigurationNode.Kind.STORED_CONFIGURATION,
-                "Definition", DEFINITION, List.of()));
         children.add(start(graphClass, start, references));
         children.add(path(graphClass, path, references));
         children.add(node(graphClass, "identity", ConfigurationNode.Kind.STORED_CONFIGURATION,

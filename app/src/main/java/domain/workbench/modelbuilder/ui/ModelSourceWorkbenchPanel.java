@@ -547,7 +547,8 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         for (Component editor : cardPanel.getComponents()) {
             if (editor == domainOverview) continue;
             if (localConfiguration() && editor == selectionEditor) continue;
-            EditableComponents.setEditable(editor, editable);
+            if (editor == fieldSourcePanel) fieldSourcePanel.setEditingEnabled(editable);
+            else EditableComponents.setEditable(editor, editable);
         }
         boolean editingProject = editingEnabled && selected instanceof GeneratedProjectModel;
         domainOverview.setEditingEnabled(editingProject && configurationAccess == ConfigurationAccess.MODEL_BUILDER,
@@ -605,16 +606,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             kindHeader.setVisible(false);
             showImportedNotice(null);
             fieldSourcePanel.edit(field);
-            // A field of an imported class is readable but not editable: it is
-            // configuration owned by the model the class comes from. Set on every
-            // selection so moving to this project's own field restores editing.
-            GeneratedClassModel fieldOwner = owningClassOf(field);
-            boolean derivedOwner = domain.config.OwnedClassSemantics
-                    .isOwnerReferenceField(fieldOwner, field);
-            EditableComponents.setEditable(fieldSourcePanel,
-                    editingEnabled && !derivedOwner
-                            && (fieldOwner == null || !fieldOwner.isImported()));
-            showImportedNotice(fieldOwner);
+            showImportedNotice(owningClassOf(field));
             layout.show(cardPanel, "field");
         } else if (selected instanceof domain.config.Selection selection
                 && selectionEditor != null) {
@@ -654,6 +646,8 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         discoveryPanel.refreshNodeTitle();
         discoveryPanel.refreshRelationRouteTarget();
         subclassDiscoveryPanel.showClass(projectModel, classForExplorerMembership());
+        classSourcePanel.membershipSearchActive(selected instanceof GeneratedClassModel clazz
+                && clazz.classKind() == domain.config.ClassKind.SOURCE && !clazz.isImported());
         graphPatternPanel.refreshPatterns();
         graphConfigurationDiagram.selection(selected);
         reusableSelectionsPanel.setVisible(localConfiguration()
@@ -1287,6 +1281,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         wikidataTools.addTab(
                 "Membership",
                 subclassDiscoveryPanel);
+        wikidataTools.addTab("Type search", classSourcePanel.membershipSearch());
         wikidataTools.addTab(
                 "Graph patterns",
                 graphPatternPanel);

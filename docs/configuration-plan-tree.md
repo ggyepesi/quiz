@@ -17,10 +17,10 @@ inventory: validation, `ClassDependencies`, class/selection rename discovery and
 references consume it. Datasource operations declare references hidden inside their own recipe
 grammar, and prepared input requirements are resolved to model sites such as an article
 correspondence. `TreeAndDetailPanel` is the neutral shell, and the existing action/result navigator
-uses it. The field editor now projects Definition, production, fallback, category, candidate
-evidence, references and Refine into that shell while retaining one set of editor controls and one
-field-level Apply. Relation-route steps and Wikipedia table-row structure come from their provider
-operations rather than being decoded by Swing. The graph editor uses the same configuration-tree
+uses it. Selecting a field opens its definition and primary source together. The Field settings
+outline navigates production, fallback, category, candidate evidence, references and Refine, with
+one set of editor controls and one field-level Apply. Provider operations supply relation-route
+steps and Wikipedia table-row structure. The graph editor uses the same configuration-tree
 presentation for its start, ordered path nodes, incoming and alternative edges, admission/output
 references, evidence, identity and display name; its existing graph draft and single Apply remain
 the only authoring path.
@@ -30,10 +30,13 @@ class editors. A class's population node reads the same membership decision gene
 declared non-Wikidata population first, then `MembershipPattern`), so a subclass condition, seeds
 or being referenced never appear as an empty slot. Optional sections with nothing set are `+ Add …`
 lines. Unlike the graph tree, which projects the unapplied graph, a class tree shows the last
-applied class: an edited triple or option reaches its caption on Apply. Definition, population or production, identity and display name have separate
-details. Class references use the shared Needs and Used by branches, including links to the
-exact graph node that produces a class. Transformation steps are visible on their output class
-and remain editable in TransformApp.
+applied class: an edited triple or option reaches its caption on Apply. Selecting a class reveals
+its declared fields in the project tree and opens its production settings. Its name, alias,
+base class and group members field are shared class properties. The group members field is
+shown when applicable and selects the collection that supplies group members. Identity and
+display name have separate sections. Class references use the shared Uses and Used by
+branches, including links to the exact graph node that produces a class. Transformation steps
+are visible on their output class and remain editable in TransformApp.
 
 Related: [ModelBuilder Constructs](modelbuilder-constructs.md),
 [Effective Class Explanation and Uniform Sampling](effective-class-explanation-and-sampling.md),
@@ -73,17 +76,20 @@ results.
 
 ## Placement
 
-ModelBuilder's main construct tree remains the compact project/class/field/selection navigator.
-Selecting one construct opens a **local configuration tree on the left and the selected detail
-editor on the right** inside that construct's editor pane.
+The project tree contains classes, their declared fields and project-level constructs. The
+**Class settings** and **Field settings** outlines show the selected declaration's sections.
+The project tree supplies the declaration name, so the settings outline begins at the sections.
 
 ```text
-project/class/field navigator | local configuration tree | selected detail editor
+Project tree | Class or Field settings | selected settings editor
+Actions and results (Unified Workbench)
 ```
 
 Configuration sections do not become grandchildren of every field in the main tree; doing so
 would swamp project navigation with fields × slots × steps. The local tree is rebuilt from the
 current construct draft and uses the same projection in ModelBuilderApp and the unified workbench.
+Membership discovery is in Actions and results in the Unified Workbench and Explorer tools in
+ModelBuilder. Selecting a discovery action exposes its controls. A run starts from its button.
 
 ## Configuration node contract
 
@@ -94,7 +100,7 @@ target. Its kind controls appearance and allowed interaction.
    Selecting it opens its editor.
 2. **Available slot** — a visible `+ Add …` line for an allowed but unconfigured slot. Selecting it
    reveals compatible choices and changes nothing until the user explicitly adds one.
-3. **Reference** — a read-only `Needs` or `Used by` link to another configured site. Selecting it
+3. **Reference** — a read-only `Uses` or `Used by` link to another configured site. Selecting it
    only names the target; its detail's **Open …** command (or Enter, or a double click) navigates
    there. Arrowing through the tree must never leave the construct being edited.
 4. **Inventory summary** — a read-only count or status, such as curation decisions or last-run
@@ -107,9 +113,8 @@ their `+ Add …` nodes.
 ### Field example
 
 ```text
-birthDate
-├ Definition                    holds · class · cardinality · display
-├ Produced by: datasource value
+Field settings for birthDate
+├ Produced by: datasource value  opens the field definition together with its source
 │  ├ Primary: Wikidata › statement value (P569)
 │  │  └ Filter: qualifier P… is one of …
 │  ├ Fallback: + Add …
@@ -118,7 +123,7 @@ birthDate
 │  └ Wikipedia table rows — Assessors of Maat
 │     ├ Section / table / display column
 │     └ Field mapping
-├ Needs
+├ Uses
 │  └ EgyptianDeity article correspondence
 ├ Used by
 │  └ canonical identity key …
@@ -163,7 +168,7 @@ The graph tree edits one draft. Synchronizing that draft and its selection with
 ## One draft and one Apply
 
 One selected construct owns one draft, shared by all of its local configuration nodes. Switching
-between Definition, Primary source and Refine does not apply partial edits to the project. Apply
+between Produced by, a fallback source and Refine does not apply partial edits to the project. Apply
 commits the complete construct draft and rebuilds its projection from the model.
 
 There are no per-node drafts. A half-edited route step or evidence recipe never reaches execution,
@@ -220,14 +225,14 @@ It covers at least:
 - resolved datasource-operation inputs.
 
 `ClassDependencies` remains the class-to-class existence/reference graph. The typed inventory
-projects its class-level edges there while retaining field-level `Needs` / `Used by` navigation.
+projects its class-level edges there while retaining field-level `Uses` / `Used by` navigation.
 Intra-class field references do not become fake class-cycle edges. Rename propagation uses typed
 writable sites or one centralized rewrite operation; a display-only string is insufficient.
 
 `DatasourceOperation.inputReferences()` describes source-native inputs. Preparing a configured
 operation resolves those schemas into provider-neutral `SourceInputRequirement`s; the model-layer
 inventory maps the requirements to concrete model sites, such as a class's article correspondence,
-before they appear under `Needs`. The UI never guesses that mapping.
+before they appear under `Uses`. The UI never guesses that mapping.
 
 ## Datasource binding-site inventory
 
@@ -302,7 +307,7 @@ and no reconciliation step.
 
 For a model-backed project, **Configuration…** in TransformApp and DataSourceApp opens the
 ModelBuilder construct navigator and the same local class, field and graph trees over that
-session's working model. **Needs** and **Used by** open the same referenced declarations. Inspection
+session's working model. **Uses** and **Used by** open the same referenced declarations. Inspection
 uses cached Wikidata labels. Of the standalone apps, ModelBuilder edits source fields, class and
 graph settings, and the project build list. DataSourceApp runs configured acquisitions and reviews values through its
 action/result navigator. TransformApp edits local groups in the group view and can add or remove

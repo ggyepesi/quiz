@@ -68,6 +68,9 @@ class GraphConfigurationProjectionTest {
         List<ConfigurationNode> nodes = flatten(root);
         List<String> captions = nodes.stream().map(ConfigurationNode::caption).toList();
 
+        assertEquals(List.of(root), nodes.stream()
+                .filter(node -> node.detailKey().equals(GraphConfigurationProjection.DEFINITION))
+                .toList());
         assertTrue(captions.contains("Start: population PositionsWithHolders"));
         assertTrue(captions.contains("Path — 2 nodes"));
         assertTrue(captions.contains("Node 2 — P39 in"));

@@ -17,6 +17,8 @@ import java.util.Map;
 
 /** Mounts each class editor's existing controls as sections of its local tree. */
 final class ClassConfigurationEditor extends JPanel {
+    static final String OUTLINE_TITLE = "Class settings";
+
     private final ClassKind kind;
     private final ConfigurationTreePanel tree;
     private final Map<String, JComponent> details = new LinkedHashMap<>();
@@ -25,7 +27,7 @@ final class ClassConfigurationEditor extends JPanel {
         super(new BorderLayout());
         this.kind = kind;
         tree = new ConfigurationTreePanel("modelbuilder." + kind.name().toLowerCase(
-                java.util.Locale.ROOT) + ".configuration", "Configuration");
+                java.util.Locale.ROOT) + ".configuration", OUTLINE_TITLE);
         add(tree, BorderLayout.CENTER);
     }
 
@@ -37,9 +39,17 @@ final class ClassConfigurationEditor extends JPanel {
     }
 
     void detail(String section, JComponent component) {
+        details.put(section, topAlignedDetail(component));
+    }
+
+    void header(ClassHeaderEditor header) {
+        tree.setDetailHeader(header);
+    }
+
+    private static JComponent topAlignedDetail(JComponent component) {
         JPanel top = new JPanel(new BorderLayout());
         top.add(component, BorderLayout.NORTH);
-        details.put(section, ConfigurationTreePanel.scrollDetail(top));
+        return ConfigurationTreePanel.scrollDetail(top);
     }
 
     void showClass(GeneratedProjectModel project, GeneratedClassModel clazz) {

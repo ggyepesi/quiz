@@ -7,12 +7,15 @@ import domain.config.FieldCardinality;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedFieldModel;
 import domain.config.GeneratedProjectModel;
+import domain.config.GeneratedProjectModelStore;
 import domain.config.GeneratedProjectModelValidator;
 
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.SwingUtilities;
 import java.awt.Component;
 import java.awt.Container;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,6 +34,34 @@ import static org.junit.jupiter.api.Assertions.*;
  * recipe.
  */
 class AnAggregateFieldIsShapedByItsRecipeTest {
+
+    @Test void modelBuilderShowsTheActualProducerWithoutAnEmptyAcquisitionForm() throws Exception {
+        var project = new GeneratedProjectModelStore().load(new File(
+                "../data/wikidata/nobelprizes/nobelprizes.model.json"));
+        var category = project.findClass("NobelPrize").fields().stream()
+                .filter(field -> field.name().equals("category")).findFirst().orElseThrow();
+        var birth = project.findClass("Person").fields().stream()
+                .filter(field -> field.name().equals("dateOfBirth")).findFirst().orElseThrow();
+
+        SwingUtilities.invokeAndWait(() -> {
+            try (var workbench = new ModelSourceWorkbenchPanel(project)) {
+                workbench.edit(category);
+                var editor = findFieldEditor(workbench);
+                assertNotNull(editor);
+                assertTrue(labels(editor).stream().anyMatch(line ->
+                        line.contains("grouped from") && line.contains("LaureatesWithMotivation.category")));
+                assertFalse(visibleIn(editor.propertyPidField(), editor));
+                assertTrue(combos(editor).stream()
+                        .filter(combo -> combo.getSelectedItem() == FieldType.ENTITY
+                                || combo.getSelectedItem() == FieldCardinality.SINGLE)
+                        .noneMatch(JComboBox::isEnabled));
+
+                workbench.changeSelection(birth);
+                assertTrue(visibleIn(editor.propertyPidField(), editor));
+                assertEquals("P569", editor.propertyPidField().getText());
+            }
+        });
+    }
 
     private static GeneratedProjectModel nobel() {
         GeneratedProjectModel project = new GeneratedProjectModel();
@@ -157,6 +188,25 @@ class AnAggregateFieldIsShapedByItsRecipeTest {
             if (child instanceof Container nested) found.addAll(combos(nested));
         }
         return found;
+    }
+
+    private static FieldSourcePanel findFieldEditor(Container root) {
+        for (Component child : root.getComponents()) {
+            if (child instanceof FieldSourcePanel editor) return editor;
+            if (child instanceof Container nested) {
+                FieldSourcePanel found = findFieldEditor(nested);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static boolean visibleIn(Component component, Container ancestor) {
+        for (Component current = component; current != null; current = current.getParent()) {
+            if (!current.isVisible()) return false;
+            if (current == ancestor) return true;
+        }
+        return false;
     }
 
     private static void collect(Container root, Class<?> type, List<String> into,

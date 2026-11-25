@@ -115,6 +115,13 @@ public final class TreeAndDetailPanel<K> extends JPanel {
         add(null, id, caption, detail);
     }
 
+    void setDetailHeader(JComponent header) {
+        JPanel content = new JPanel(new BorderLayout());
+        content.add(header, BorderLayout.NORTH);
+        content.add(detailHost, BorderLayout.CENTER);
+        split.setRightComponent(content);
+    }
+
     public void addChild(K parentId, K id, String caption, JComponent detail) {
         Objects.requireNonNull(parentId, "Parent id");
         add(parentId, id, caption, detail);

@@ -78,7 +78,7 @@ final class AggregateClassPanel extends JPanel {
         c.insets = new Insets(4, 6, 4, 6);
         c.fill = GridBagConstraints.HORIZONTAL;
         c.weightx = 1;
-        configuration.detail(ClassConfigurationProjection.DEFINITION, header);
+        configuration.header(header);
         configuration.detail(ClassConfigurationProjection.IDENTITY, identityEditor);
         configuration.detail(ClassConfigurationProjection.DISPLAY_NAME, displayNameEditor);
         GridBagUtils.labeledRow(form, c, 0, "From class:", sourceClass);

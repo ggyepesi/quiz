@@ -3,6 +3,7 @@ package domain.workbench.modelbuilder.ui;
 import domain.config.BuildOperation;
 import domain.config.ClassConfigurationProjection;
 import domain.config.ClassKind;
+import domain.config.EntityBound;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedProjectModel;
 import domain.config.GeneratedProjectModelStore;
@@ -10,6 +11,9 @@ import domain.config.GraphClassSource;
 import domain.config.ClassPopulationMode;
 import domain.config.FieldCardinality;
 import domain.config.PopulationSelection;
+import domain.config.QualifierDateMode;
+import domain.config.FieldProductionKind;
+import domain.config.StatementClassSource;
 import domain.config.TransformationClassSource;
 import domain.config.TransformationStep;
 import domain.datasource.schema.FieldType;
@@ -23,14 +27,21 @@ import domain.transform.ui.TransformController;
 import domain.transform.ui.WorkbenchPurpose;
 import domain.workbench.configuration.ui.ProjectConfigurationPanel;
 import domain.datasource.graph.GraphDiscoveryConfiguration;
+import domain.datasource.graph.GraphExpansionPolicy;
 import domain.datasource.graph.GraphRelation;
 import domain.datasource.graph.GraphTraversalDirection;
 import org.junit.jupiter.api.Test;
 
 import javax.swing.SwingUtilities;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JTree;
+import javax.swing.JTextField;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.TreePath;
 import java.awt.Component;
 import java.awt.Container;
 import java.io.File;
@@ -41,9 +52,183 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ClassConfigurationTreeTest {
+    @Test void savedNobelStatementAndAllItsFieldsShowTheirConfiguration() throws Exception {
+        var store = new GeneratedProjectModelStore();
+        var model = store.load(new File("../data/wikidata/nobelprizes/nobelprizes.model.json"));
+        var before = model.copy();
+        var laureates = model.findClass("LaureatesWithMotivation");
+
+        SwingUtilities.invokeAndWait(() -> {
+            try (var workbench = new ModelSourceWorkbenchPanel(model)) {
+                workbench.edit(laureates);
+                assertTrue(showsChoice(workbench, ClassKind.STATEMENT));
+                var statement = find(workbench, StatementSourcePanel.class);
+                var tree = statement.configurationEditor().tree();
+                var triple = find(statement, TripleEditor.class);
+                assertEquals("P166", triple.propertyPid());
+                assertEquals("award received", triple.propertyLabelText());
+                assertEquals(EntityBound.unbounded(), triple.subjectBound());
+                assertEquals("", triple.subjectPopulation());
+                assertEquals(EntityBound.vocabulary("Categories"), triple.objectBound());
+                assertEquals(EntityBound.unbounded(), all(triple, EntityEndEditor.class).get(2).bound());
+                assertTrue(tree.selectedNode().caption().contains("Categories"));
+                assertTrue(summary(triple).contains("objects: selection 'Categories'"));
+
+                assertTrue(tree.selectDetail(ClassConfigurationProjection.IDENTITY));
+                var identity = find(statement, ClassIdentityEditor.class);
+                assertTrue(visibleIn(identity, statement));
+                assertEquals(List.of("category", "year", "motivation"), find(identity, OrderedChoiceList.class).chosen());
+                assertTrue(showsChoice(identity, laureates.canonical().missingKeyPolicy()));
+
+                assertTrue(tree.selectDetail(ClassConfigurationProjection.DISPLAY_NAME));
+                var display = find(statement, DisplayNameEditor.class);
+                assertTrue(visibleIn(display, statement));
+                assertEquals(laureates.canonical().displayNameMode(), display.mode());
+                assertEquals(List.of("laureates", "category"), find(display, OrderedChoiceList.class).chosen());
+
+                assertTrue(tree.selectDetail(ClassConfigurationProjection.GRAPH_EXPANSION));
+                assertTrue(showsChoice(statement, GraphExpansionPolicy.NONE));
+
+                assertEquals(List.of("category", "year", "laureates", "motivation"),
+                        laureates.fields().stream().map(field -> field.name()).toList());
+                for (var field : laureates.fields()) {
+                    workbench.edit(field);
+                    var editor = find(workbench, FieldSourcePanel.class);
+                    assertEquals("Produced by", editor.configurationTree().selectedNode().caption());
+                    assertTrue(all(editor, JTextField.class).stream().anyMatch(input ->
+                            visibleIn(input, editor) && field.name().equals(input.getText())));
+                    assertTrue(showsChoice(editor, field.type()));
+                    assertTrue(showsChoice(editor, field.cardinality()));
+                    assertTrue(showsChoice(editor, field.renderMode()));
+                    assertTrue(showsChoice(editor, field.mapping().productionKind()));
+                    if (!field.entityClassName().isBlank()) {
+                        assertTrue(showsChoice(editor, field.entityClassName()));
+                    }
+                    assertFalse(visibleIn(editor.propertyPidField(), editor));
+                    assertFalse(all(editor, JLabel.class).stream().anyMatch(label ->
+                            visibleIn(label, editor) && "Found on:".equals(label.getText())));
+                    String qualifier = field.mapping().qualifierPid();
+                    if (qualifier.isBlank()) {
+                        assertEquals(FieldProductionKind.STATEMENT_OBJECT, field.mapping().productionKind());
+                        assertTrue(editor.configurationTree().nodes().stream().anyMatch(node ->
+                                node.caption().equals("Primary: Statement object")));
+                    } else {
+                        assertTrue(editor.configurationTree().nodes().stream().anyMatch(node ->
+                                node.caption().startsWith("Primary: Wikidata qualifier")
+                                        && node.caption().contains(qualifier)));
+                        assertTrue(all(editor, wikidata.ui.WikidataIdText.class).stream().anyMatch(link ->
+                                visibleIn(link, editor) && qualifier.equals(link.plainText())));
+                    }
+                    if (field.name().equals("year")) assertTrue(showsChoice(editor, QualifierDateMode.DATE));
+                    assertTrue(editor.selectConfigurationDetail(domain.config.FieldConfigurationProjection.REFINE));
+                    assertTrue(showsChoice(editor, field.expectation()));
+                    var required = all(editor, JCheckBox.class).stream()
+                            .filter(check -> visibleIn(check, editor) && check.getText().startsWith("Required ("))
+                            .findFirst().orElseThrow();
+                    assertEquals(field.required(), required.isSelected());
+                }
+                assertTrue(store.sameConfiguration(before, model));
+            }
+        });
+    }
+
+    @Test void eachSupportedStatementBoundCombinationReachesTheEditor() throws Exception {
+        var model = new GeneratedProjectModel();
+        var statement = new GeneratedClassModel("Award");
+        statement.classKind(ClassKind.STATEMENT);
+        model.rootClass(statement);
+        model.addSelection(new domain.config.VocabularySelection("Categories"));
+        var bounds = List.of(EntityBound.unbounded(), EntityBound.explicit(List.of("Q1", "Q2")),
+                EntityBound.vocabulary("Categories"), EntityBound.relation("P31", List.of("Q5"), true));
+
+        SwingUtilities.invokeAndWait(() -> {
+            var editor = new TripleEditor();
+            for (var subject : bounds) {
+                for (var object : bounds) {
+                    for (var discovery : bounds.subList(0, 3)) {
+                        var source = new StatementClassSource("P166");
+                        source.subjectBound(subject);
+                        source.objectBound(object);
+                        source.discoveryObjectBound(discovery);
+                        statement.statementSource(source);
+                        editor.show(statement, model);
+                        assertEquals(subject, editor.subjectBound());
+                        assertEquals(object, editor.objectBound());
+                        assertEquals(discovery, all(editor, EntityEndEditor.class).get(2).bound());
+                        assertTrue(summary(editor).replace("\n", " · ").endsWith(source.describeTriple()));
+                    }
+                }
+            }
+        });
+    }
+
+    @Test void nobelOpensTheSelectedClassProductionAndTheSelectedFieldSource() throws Exception {
+        var model = new GeneratedProjectModelStore().load(new File(
+                "../data/wikidata/nobelprizes/nobelprizes.model.json"));
+        var person = model.findClass("Person");
+        var birth = person.fields().stream().filter(field -> field.name().equals("dateOfBirth"))
+                .findFirst().orElseThrow();
+        assertTrue(person.isImported());
+
+        SwingUtilities.invokeAndWait(() -> {
+            var backing = new FixtureProject(model, new ArrayList<>());
+            var controller = new TransformController(new SnapshotDomain(List.of()), null);
+            try (var panel = ProjectConfigurationPanel.editWorkingConfiguration(backing, controller,
+                    ignored -> { }, ignored -> { }, () -> { }, () -> { })) {
+                var navigator = find(panel, SingleRootClassModelPanel.class);
+                var projectTree = find(navigator, JTree.class);
+                var aggregate = find(panel, AggregateClassPanel.class);
+                var aggregateSettings = aggregate.configurationEditor().tree();
+                assertEquals("Aggregate from LaureatesWithMotivation", aggregateSettings.selectedNode().caption());
+                var grouping = aggregateSettings.editorDetails().stream()
+                        .filter(Component::isVisible)
+                        .filter(detail -> find(detail, OrderedChoiceList.class) != null)
+                        .findFirst().orElseThrow();
+                assertEquals("LaureatesWithMotivation", find(grouping, JComboBox.class).getSelectedItem());
+                var groups = all(grouping, OrderedChoiceList.class);
+                assertEquals(List.of("laureatesWithMotivation"), groups.get(0).chosen());
+                assertEquals(List.of("category", "year"), groups.get(1).chosen());
+                assertTrue(aggregateSettings.nodes().stream().noneMatch(node -> "NobelPrize".equals(node.caption())));
+
+                var root = (DefaultMutableTreeNode) projectTree.getModel().getRoot();
+                var personNode = java.util.Collections.list(root.children()).stream()
+                        .map(DefaultMutableTreeNode.class::cast).filter(node -> node.getUserObject() == person)
+                        .findFirst().orElseThrow();
+                var personPath = new TreePath(personNode.getPath());
+                projectTree.collapsePath(personPath);
+                projectTree.setSelectionPath(personPath);
+                assertTrue(projectTree.isExpanded(personPath));
+                var source = find(panel, ClassSourcePanel.class);
+                assertEquals("Population: Referenced only", source.configurationEditor().tree().selectedNode().caption());
+                var triple = find(source, TripleEditor.class);
+                assertFalse(triple.showsTripleControls());
+                var status = all(triple, wikidata.ui.WikidataIdText.class).stream()
+                        .filter(label -> "class.population.status".equals(label.getName()))
+                        .findFirst().orElseThrow();
+                assertTrue(status.plainText().contains("Ready — Referenced only"), status.plainText());
+
+                var birthNode = java.util.Collections.list(personNode.children()).stream()
+                        .map(DefaultMutableTreeNode.class::cast).filter(node -> node.getUserObject() == birth)
+                        .findFirst().orElseThrow();
+                var birthPath = new TreePath(birthNode.getPath());
+                assertTrue(projectTree.isVisible(birthPath));
+                projectTree.setSelectionPath(birthPath);
+                assertSame(birth, panel.selectedConstruct());
+                var editor = find(panel, FieldSourcePanel.class);
+                assertEquals("Produced by", editor.configurationTree().selectedNode().caption());
+                assertEquals("P569", editor.propertyPidField().getText());
+                assertFalse(editor.propertyPidField().isEditable());
+                assertTrue(editor.configurationTree().editorDetails().stream()
+                        .filter(Component::isVisible)
+                        .anyMatch(detail -> SwingUtilities.isDescendingFrom(editor.propertyPidField(), detail)));
+            }
+        });
+    }
+
     @Test void theHistoricalPositionsTransformationShowsItsFilterAndInput() throws Exception {
         var project = new GeneratedProjectModelStore().load(new File(
                 "../data/wikidata/historicalpositions/historicalpositions.model.json"));
@@ -55,9 +240,9 @@ class ClassConfigurationTreeTest {
                 .findFirst().orElseThrow();
         assertEquals(List.of("1. holderCount > 0"),
                 population.children().stream().map(node -> node.caption()).toList());
-        var needs = tree.children().stream().filter(node -> node.caption().equals("Needs"))
+        var uses = tree.children().stream().filter(node -> node.caption().equals("Uses"))
                 .findFirst().orElseThrow();
-        assertTrue(needs.children().stream().anyMatch(
+        assertTrue(uses.children().stream().anyMatch(
                 node -> node.caption().equals("transformation input class: Position")));
     }
 
@@ -257,7 +442,9 @@ class ClassConfigurationTreeTest {
                 var tree = source.configurationEditor().tree();
                 tree.selectDetail(ClassConfigurationProjection.IDENTITY);
                 var identity = tree.editorDetails().stream()
-                        .filter(Component::isVisible).findFirst().orElseThrow();
+                        .filter(Component::isVisible)
+                        .filter(detail -> find(detail, OrderedChoiceList.class) != null)
+                        .findFirst().orElseThrow();
                 var list = find(identity, OrderedChoiceList.class);
                 assertNotNull(list);
                 find(list, JList.class).setSelectedIndex(0);
@@ -349,5 +536,33 @@ class ClassConfigurationTreeTest {
             }
         }
         return null;
+    }
+
+    private static <T extends Component> List<T> all(Container container, Class<T> type) {
+        List<T> found = new ArrayList<>();
+        for (Component child : container.getComponents()) {
+            if (type.isInstance(child)) found.add(type.cast(child));
+            if (child instanceof Container nested) found.addAll(all(nested, type));
+        }
+        return found;
+    }
+
+    private static String summary(TripleEditor editor) {
+        return all(editor, wikidata.ui.WikidataIdText.class).stream()
+                .filter(label -> "class.population.status".equals(label.getName()))
+                .findFirst().orElseThrow().plainText();
+    }
+
+    private static boolean showsChoice(Container panel, Object value) {
+        return all(panel, JComboBox.class).stream().anyMatch(combo ->
+                visibleIn(combo, panel) && value.equals(combo.getSelectedItem()));
+    }
+
+    private static boolean visibleIn(Component component, Container ancestor) {
+        for (Component current = component; current != null; current = current.getParent()) {
+            if (!current.isVisible()) return false;
+            if (current == ancestor) return true;
+        }
+        return false;
     }
 }

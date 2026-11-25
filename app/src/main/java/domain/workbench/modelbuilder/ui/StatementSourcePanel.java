@@ -58,7 +58,6 @@ public class StatementSourcePanel extends JPanel {
     private static final String INSTANCES_OF = "Instances of";
     private static final String A_VOCABULARY = "A vocabulary";
 
-    private final JLabel titleLabel = new JLabel("Statement class");
     /** The "no declaration — infer it" choice, shown instead of a blank row. */
     private static final String INFER_PRIMARY_LIST = "(infer)";
 
@@ -133,8 +132,6 @@ public class StatementSourcePanel extends JPanel {
             return;
         }
 
-        titleLabel.setText(
-                "Statement class: " + clazz.className());
         header.show(clazz);
 
         StatementClassSource source =
@@ -515,7 +512,6 @@ public class StatementSourcePanel extends JPanel {
     }
 
     private void clear() {
-        titleLabel.setText("Statement class");
         header.show(null);
         triple.clear();
         graphExpansionBox.setSelectedItem(GraphExpansionPolicy.NONE);
@@ -532,15 +528,7 @@ public class StatementSourcePanel extends JPanel {
     }
 
     private void buildUi() {
-        JPanel definition = configuration.form(ClassConfigurationProjection.DEFINITION);
-
-        titleLabel.setFont(
-                titleLabel.getFont()
-                          .deriveFont(
-                                  Font.BOLD,
-                                  16f));
-        GridBagUtils.wideRow(definition, 0, titleLabel);
-        GridBagUtils.wideRow(definition, 1, header);
+        configuration.header(header);
         configuration.detail(ClassConfigurationProjection.PRODUCTION, triple);
 
         JPanel graphDiscovery = new JPanel(new GridBagLayout());

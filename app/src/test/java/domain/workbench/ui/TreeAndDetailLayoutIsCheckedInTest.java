@@ -141,7 +141,7 @@ class TreeAndDetailLayoutIsCheckedInTest {
         shell.addChild(produced, new FixtureId(Kind.AVAILABLE_SLOT, "fallback"),
                 "+ Add fallback source", detail("Compatible fallback choices"));
         shell.addChild(field, new FixtureId(Kind.REFERENCE, "needs"),
-                "Needs: DeityGroupMember", detail("Open DeityGroupMember"));
+                "Uses: DeityGroupMember", detail("Open DeityGroupMember"));
         shell.addChild(field, new FixtureId(Kind.INVENTORY_SUMMARY, "curation"),
                 "Curation: 42 decisions", detail("Open curation inventory"));
         shell.expand(field);

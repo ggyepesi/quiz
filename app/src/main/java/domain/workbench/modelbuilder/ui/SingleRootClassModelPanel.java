@@ -63,6 +63,9 @@ public class SingleRootClassModelPanel extends JPanel {
         this.treeModel = new DefaultTreeModel(rootTreeNode);
         this.tree = new JTree(treeModel);
         this.tree.addTreeSelectionListener(event -> {
+            if (selectedUserObject() instanceof GeneratedClassModel) {
+                tree.expandPath(tree.getSelectionPath());
+            }
             if (refreshing) return;
             updateActionState();
             for (TreeSelectionListener listener : List.copyOf(selectionListeners)) {
@@ -355,6 +358,7 @@ public class SingleRootClassModelPanel extends JPanel {
 
     private void buildUi(boolean structuralEdits) {
         tree.setRootVisible(true);
+        tree.setShowsRootHandles(true);
         // Double-click expands, the Swing default. Nothing here claims double-click, and
         // with 0 the ONLY way to open a class was the expand handle — invisible in some
         // themes, which makes a class with fields look like a class with none.
@@ -363,7 +367,9 @@ public class SingleRootClassModelPanel extends JPanel {
         tree.setFont(tree.getFont().deriveFont(14f));
         tree.setCellRenderer(new ClassPatternTreeRenderer(projectModel));
 
-        add(new JScrollPane(tree), BorderLayout.CENTER);
+        JScrollPane outline = new JScrollPane(tree);
+        outline.setBorder(BorderFactory.createTitledBorder("Project"));
+        add(outline, BorderLayout.CENTER);
         if (!structuralEdits) return;
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));

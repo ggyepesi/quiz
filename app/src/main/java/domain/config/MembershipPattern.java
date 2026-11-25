@@ -540,14 +540,7 @@ public enum MembershipPattern {
         return switch (p) {
             case REIFIED -> {
                 StatementClassSource s = clazz.statementSource();
-                String prop = s == null ? "" : s.describeProperty();
-                String origin = s != null && s.hasSourceClass()
-                        ? " of " + s.sourceClassName()
-                        : " · subjects found from the property itself";
-                String domain = s != null && s.hasValueSelection()
-                        ? " → Selection '" + s.valueSelectionName() + "'"
-                        : "";
-                yield p.label + " (" + prop + origin + domain + ")";
+                yield s == null ? p.label : p.label + " (" + s.describeTriple() + ")";
             }
             case SINGLE_TYPE -> p.label + " ("
                     + (membership.qids().isEmpty() ? "" : membership.qids().get(0)) + ")";

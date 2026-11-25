@@ -4,9 +4,11 @@ import objectview.utils.swing.GridBagUtils;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedProjectModel;
 import domain.config.ClassExtensionRules;
+import domain.config.GroupClassSpec;
 
 import javax.swing.BorderFactory;
 import javax.swing.JComboBox;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import java.awt.GridBagConstraints;
@@ -16,8 +18,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
- * The facts a class has whatever kind it is: its name, its display alias, and what it
- * extends.
+ * The class settings shared by all production kinds.
  *
  * <p>Four kind editors each decided independently how many of these to show. A Statement
  * class had a name and no alias or base; an Aggregate class had none of the three, so it
@@ -32,10 +33,13 @@ import java.util.function.Supplier;
 final class ClassHeaderEditor extends JPanel {
 
     private static final String NO_BASE = "(none)";
+    private static final String NOT_A_GROUP = "(not a group)";
 
     private final JTextField className = new JTextField(18);
     private final JTextField alias = new JTextField(18);
     private final JComboBox<String> baseClass = new JComboBox<>();
+    private final JLabel groupMembersLabel = new JLabel("Group members field:");
+    private final JComboBox<String> groupMembersField = new JComboBox<>();
 
     private final Supplier<GeneratedProjectModel> project;
     private Consumer<Boolean> baseSelectionChanged = ignored -> { };
@@ -71,6 +75,11 @@ final class ClassHeaderEditor extends JPanel {
         baseClass.addActionListener(event ->
                 baseSelectionChanged.accept(hasSelectedBase()));
         GridBagUtils.labeledRow(this, c, 2, "Extends:", baseClass);
+
+        groupMembersField.setName("class.groupMembersField");
+        groupMembersField.setToolTipText("Use each instance of this class as a group, "
+                + "taking its members from the selected collection field.");
+        GridBagUtils.labeledRow(this, c, 3, groupMembersLabel, groupMembersField);
     }
 
     void onBaseSelectionChanged(Consumer<Boolean> listener) {
@@ -98,6 +107,22 @@ final class ClassHeaderEditor extends JPanel {
         String base = value == null ? "" : value.baseClassName();
         baseClass.setSelectedItem(base.isBlank() ? NO_BASE : base);
 
+        var memberFields = value == null ? java.util.List.<String>of()
+                : value.effectiveFields(project.get()).stream()
+                        .filter(GroupClassSpec::acceptsMembersField)
+                        .map(domain.config.GeneratedFieldModel::name).toList();
+        String configured = value == null || value.groupSpec() == null
+                ? NOT_A_GROUP : value.groupSpec().membersField();
+        groupMembersField.removeAllItems();
+        groupMembersField.addItem(NOT_A_GROUP);
+        memberFields.forEach(groupMembersField::addItem);
+        if (!NOT_A_GROUP.equals(configured) && !memberFields.contains(configured)) {
+            groupMembersField.addItem(configured);
+        }
+        groupMembersField.setSelectedItem(configured);
+        boolean canShowGroup = groupMembersField.getItemCount() > 1;
+        groupMembersLabel.setVisible(canShowGroup);
+        groupMembersField.setVisible(canShowGroup);
     }
 
     /**
@@ -111,6 +136,9 @@ final class ClassHeaderEditor extends JPanel {
         Object base = baseClass.getSelectedItem();
         clazz.baseClassName(
                 base == null || NO_BASE.equals(base) ? "" : base.toString());
+        String members = (String) groupMembersField.getSelectedItem();
+        clazz.groupSpec(members == null || NOT_A_GROUP.equals(members)
+                ? null : new GroupClassSpec(members));
     }
 
 }

@@ -209,6 +209,27 @@ public record EntityBound(
         return kind != Kind.UNBOUNDED;
     }
 
+    /** Describes the configured end without expanding a referenced selection. */
+    public String describe() {
+        return switch (kind) {
+            case UNBOUNDED -> "anything";
+            case VOCABULARY -> "selection '" + selectionName + "'";
+            case EXPLICIT -> String.join(", ", qids);
+            case RELATION -> relationDescription();
+        };
+    }
+
+    private String relationDescription() {
+        if (qualifierCondition == null) {
+            return "property " + relationPid + " points to " + String.join(", ", qids)
+                    + (includeDescendants ? " or their subclasses" : "");
+        }
+        String mainValues = qids.isEmpty() ? "" : ", main value in " + String.join(", ", qids);
+        return "statement " + relationPid + " where qualifier "
+                + qualifierCondition.qualifierPid() + " is one of "
+                + String.join(", ", qualifierCondition.allowedQids()) + mainValues;
+    }
+
     /**
      * What a provider is asked to fetch, or empty when this end is unbounded — there is
      * nothing to request, which is not the same as requesting nothing.

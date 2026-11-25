@@ -1,6 +1,5 @@
 package domain.workbench.modelbuilder.ui;
 
-import objectview.utils.swing.GridBagUtils;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedProjectModel;
 import domain.config.ClassConfigurationProjection;
@@ -72,10 +71,7 @@ final class OwnedClassPanel extends JPanel {
     }
 
     private void buildUi() {
-        JPanel definition = configuration.form(ClassConfigurationProjection.DEFINITION);
-        GridBagUtils.wideRow(definition, 0, new JLabel(
-                "<html><b>Owned class</b> — instances are created by fields that target this class.</html>"));
-        GridBagUtils.wideRow(definition, 1, header);
+        configuration.header(header);
         configuration.detail(ClassConfigurationProjection.PRODUCTION, triple);
         configuration.detail(ClassConfigurationProjection.IDENTITY, identity);
         configuration.detail(ClassConfigurationProjection.DISPLAY_NAME, displayName);

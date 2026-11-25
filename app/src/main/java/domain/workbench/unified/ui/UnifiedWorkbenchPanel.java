@@ -27,6 +27,7 @@ import domain.transform.app.DomainCatalog;
 import domain.transform.ui.ValidationPanel;
 import domain.transform.ui.WorkbenchPurpose;
 import domain.workbench.configuration.ui.ProjectConfigurationPanel;
+import domain.workbench.modelbuilder.ui.SubclassDiscoveryPanel;
 import domain.workbench.execution.ui.BuildProjectWorkflow;
 import domain.workbench.execution.ui.QueryObjectResultPanel;
 import domain.workbench.execution.ui.SwingQuerySession;
@@ -70,6 +71,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private ProjectConfigurationPanel configuration;
     private TransformController transform;
     private final WorkbenchActionResultNavigator actions = new WorkbenchActionResultNavigator();
+    private final SubclassDiscoveryPanel membershipDiscovery = new SubclassDiscoveryPanel(false);
     private final WorkbenchActionResultNavigator.Action previewAction;
     private final WorkbenchActionResultNavigator.Action buildAction;
     private final WorkbenchActionResultNavigator.Action graphRunAction;
@@ -153,6 +155,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         var acquisition = actions.addAction(source, "field-acquisition-plan", "Field acquisition plan",
                 new JScrollPane(planText), null);
         var load = actions.addAction(source, "field-values", "Load field values", acquisitionDetail, null);
+        membershipDiscovery.setQueryRunner(queries.runner());
+        actions.addAction(source, "membership-types", "Find membership types", membershipDiscovery, null);
         evidenceActions = new ConfiguredFieldEvidenceActions(actions, source, "field-evidence",
                 this::evidencePanel);
         refreshEvidence();
@@ -173,7 +177,12 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                 previewDetail, null);
         preview.addActionListener(event -> previewPopulation());
         queries.runner().onRunningChanged(running -> {
-            if (!running && previewing) finishPreview();
+            if (previewing) {
+                if (!running) finishPreview();
+            } else {
+                configuration.setEditingEnabled(!running);
+                updateSave();
+            }
         });
         var projectActions = actions.addSource("project", "Project", null);
         buildAction = actions.addAction(projectActions, "build-project", "Build project", buildDetail, null);
@@ -437,13 +446,14 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
 
     private boolean busy() {
         return saving || loadingValues || runningEvidence != null || previewing || building
-                || graphReview.isLoading() || runningGraph;
+                || graphReview.isLoading() || runningGraph || queries.runner().isRunning();
     }
 
     private void constructSelected(Object construct) {
         var clazz = construct instanceof GeneratedClassModel value ? value : null;
         if (selectedClass != clazz) {
             selectedClass = clazz;
+            membershipDiscovery.showClass(project.projectModel(), clazz);
             refreshPreview();
             graphReview.select(clazz);
             resetGraphRun("");
@@ -832,6 +842,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         editBuild.setEnabled(!busy());
         planGraph.setEnabled(!busy() && canRunGraph());
         graphReview.setReviewEnabled(!busy());
+        membershipDiscovery.setDiscoveryEnabled(!busy());
         if (loadingValues) {
             saveStatus.setText("Loading and reviewing field values");
         } else if (runningEvidence != null) {
@@ -844,6 +855,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
             saveStatus.setText("Running " + selectedClass.className());
         } else if (graphReview.isLoading()) {
             saveStatus.setText("Loading graph annotations");
+        } else if (queries.runner().isRunning()) {
+            saveStatus.setText("Finding membership types");
         } else if (!saving) {
             saveStatus.setText(graphReview.editedFiles().isEmpty()
                     ? dirty ? "Applied configuration has unsaved changes" : " "
@@ -889,7 +902,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
             SwingCancellationConfirmation.requestForVisibleRun(this, graphRunner::cancel);
             return;
         }
-        if (previewing) {
+        if (queries.runner().isRunning() || previewing) {
             SwingCancellationConfirmation.requestForVisibleRun(this, queries.runner()::cancel);
             return;
         }

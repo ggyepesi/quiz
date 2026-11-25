@@ -6,10 +6,13 @@ import domain.config.EntityBound;
 import javax.swing.BorderFactory;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
-import java.awt.CardLayout;
+import java.awt.Component;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -55,10 +58,12 @@ final class EntityEndEditor extends JPanel {
             new String[] {ANY, THESE_ENTITIES, A_SELECTION, PROPERTY_INTO});
     private final JTextField qids = new JTextField(16);
     private final JTextField relationPid = new JTextField(6);
+    private final JComponent relationControl = WikidataIdLines.pid(relationPid);
     private final JCheckBox includeDescendants =
             new JCheckBox("include subclasses of these QIDs (P279*)");
     private final JComboBox<String> vocabulary = new JComboBox<>();
-    private final JPanel value = new JPanel(new CardLayout());
+    private final JPanel value = new JPanel(new GridBagLayout());
+    private final JPanel qidRow = new JPanel(new GridBagLayout());
     private boolean descendantOptionForExplicitQids;
     /** What bounding this end does — which differs by the kind of triple being
      * configured, so the shared editor is told rather than assuming statements. */
@@ -74,13 +79,11 @@ final class EntityEndEditor extends JPanel {
         this.end = end;
         setBorder(BorderFactory.createTitledBorder(end));
 
-        value.add(new JPanel(), "none");
-        JPanel qidRow = new JPanel(new GridBagLayout());
         GridBagConstraints qc = new GridBagConstraints();
         qc.insets = new Insets(0, 0, 0, 4);
         relationPid.setToolTipText("The property that must point into those QIDs — P31 "
                 + "for instances, P279 for subclasses, or any other.");
-        qidRow.add(WikidataIdLines.pid(relationPid), qc);
+        qidRow.add(relationControl, qc);
         qc.gridx = 1;
         qc.weightx = 1;
         qc.fill = GridBagConstraints.HORIZONTAL;
@@ -91,8 +94,8 @@ final class EntityEndEditor extends JPanel {
         includeDescendants.setToolTipText(
                 "Follow P279 down from those QIDs as well, so a subclass counts.");
         qidRow.add(includeDescendants, qc);
-        value.add(qidRow, "qids");
-        value.add(vocabulary, "vocabulary");
+        value.add(qidRow, GridBagUtils.row(0, 0, 1));
+        value.add(vocabulary, GridBagUtils.row(0, 0, 1));
 
         GridBagConstraints c = new GridBagConstraints();
         c.insets = new Insets(3, 4, 3, 4);
@@ -131,6 +134,17 @@ final class EntityEndEditor extends JPanel {
         c.fill = GridBagConstraints.HORIZONTAL;
         row.add(value, c);
         return row;
+    }
+
+    /** Uses the caller's wording for the absence of an optional filter. */
+    void unboundedLabel(String label) {
+        mode.setRenderer(new DefaultListCellRenderer() {
+            @Override public Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean selected, boolean focus) {
+                return super.getListCellRendererComponent(list, ANY.equals(value) ? label : value,
+                        index, selected, focus);
+            }
+        });
     }
 
     /**
@@ -297,11 +311,10 @@ final class EntityEndEditor extends JPanel {
 
     private void showValueForMode() {
         String chosen = selected(mode);
-        String card = THESE_ENTITIES.equals(chosen) || PROPERTY_INTO.equals(chosen) ? "qids"
-                : A_SELECTION.equals(chosen) ? "vocabulary" : "none";
-        ((CardLayout) value.getLayout()).show(value, card);
         boolean viaProperty = PROPERTY_INTO.equals(chosen);
-        relationPid.setVisible(viaProperty);
+        qidRow.setVisible(viaProperty || THESE_ENTITIES.equals(chosen));
+        vocabulary.setVisible(A_SELECTION.equals(chosen));
+        relationControl.setVisible(viaProperty);
         includeDescendants.setVisible(viaProperty
                 || descendantOptionForExplicitQids && THESE_ENTITIES.equals(chosen));
         qids.setToolTipText(viaProperty

@@ -14,9 +14,7 @@ public final class ClassConfigurationProjection {
     public static final String IDENTITY = "identity";
     public static final String DISPLAY_NAME = "display-name";
     public static final String REPRESENTATION = "representation";
-    public static final String GROUP = "group";
     public static final String REFINE = "refine";
-    public static final String MEMBERSHIP_SEARCH = "membership-search";
     public static final String GRAPH_EXPANSION = "graph-expansion";
     public static final String RUNTIME_RECIPE = "runtime-recipe";
     public static final String SOURCE_LINKS = "source-links";
@@ -33,28 +31,24 @@ public final class ClassConfigurationProjection {
     public static ConfigurationNode project(GeneratedProjectModel project,
             GeneratedClassModel clazz, ClassKind editorKind, TransformationClassSource draft) {
         List<ConfigurationNode> children = new ArrayList<>();
-        children.add(section(clazz, DEFINITION, "Definition", STORED_CONFIGURATION));
         children.add(production(project, clazz, editorKind, draft));
         children.add(section(clazz, IDENTITY, "Identity", STORED_CONFIGURATION));
         children.add(section(clazz, DISPLAY_NAME, "Display name", STORED_CONFIGURATION));
         if (editorKind == ClassKind.SOURCE) {
             boolean represented = representationConfigured(project, clazz);
-            children.add(section(clazz, REPRESENTATION, represented
-                    ? "Subclass and representation" : "+ Add subclass condition or representation",
-                    represented ? STORED_CONFIGURATION : AVAILABLE_SLOT));
-            boolean group = clazz != null && clazz.groupSpec() != null;
-            children.add(section(clazz, GROUP, group ? "Group members: "
-                    + clazz.groupSpec().membersField() : "+ Configure group members",
-                    group ? STORED_CONFIGURATION : AVAILABLE_SLOT));
-            children.add(section(clazz, REFINE, "Population limits and filters",
-                    STORED_CONFIGURATION));
             boolean linked = clazz != null
                     && ClassSourceBindings.articleCorrespondence(clazz) != null;
-            children.add(section(clazz, SOURCE_LINKS, linked
-                    ? "Source links: English Wikipedia article" : "+ Add source link",
-                    linked ? STORED_CONFIGURATION : AVAILABLE_SLOT));
-            children.add(section(clazz, MEMBERSHIP_SEARCH, "+ Find membership types",
-                    AVAILABLE_SLOT));
+            boolean canConfigure = clazz == null || !clazz.isImported();
+            if (represented || canConfigure) {
+                children.add(section(clazz, REPRESENTATION, represented
+                        ? "Subclass and representation" : "+ Add subclass condition or representation",
+                        represented ? STORED_CONFIGURATION : AVAILABLE_SLOT));
+            }
+            if (linked || canConfigure) {
+                children.add(section(clazz, SOURCE_LINKS, linked
+                        ? "Source links: English Wikipedia article" : "+ Add source link",
+                        linked ? STORED_CONFIGURATION : AVAILABLE_SLOT));
+            }
         } else if (editorKind == ClassKind.STATEMENT) {
             children.add(section(clazz, GRAPH_EXPANSION, "Graph expansion", STORED_CONFIGURATION));
             children.add(section(clazz, RUNTIME_RECIPE, "Derived runtime recipe", INVENTORY_SUMMARY));
@@ -62,7 +56,7 @@ public final class ClassConfigurationProjection {
         if (project != null && clazz != null) {
             var inventory = ConfigurationReferenceInventory.of(project);
             var owner = ConfigurationReferenceInventory.classSite(clazz);
-            ConfigurationReferenceProjection.needs(owner, inventory.from(owner))
+            ConfigurationReferenceProjection.uses(owner, inventory.from(owner))
                     .ifPresent(children::add);
             ConfigurationReferenceProjection.usedBy(owner, inventory.referencesToClass(clazz))
                     .ifPresent(children::add);
@@ -119,13 +113,13 @@ public final class ClassConfigurationProjection {
                 if (clazz != null && project != null) {
                     MembershipPattern pattern = MembershipPattern.of(clazz, project);
                     yield pattern == MembershipPattern.UNCONFIGURED
-                            ? section(clazz, PRODUCTION, "+ Configure population source",
+                            ? wikidataPopulation(clazz, "+ Configure population source",
                                     AVAILABLE_SLOT)
-                            : section(clazz, PRODUCTION, "Population: " + pattern.label(),
+                            : wikidataPopulation(clazz, "Population: " + pattern.label(),
                                     STORED_CONFIGURATION);
                 }
                 boolean configured = clazz != null && clazz.populationSource() != null;
-                yield section(clazz, PRODUCTION, configured
+                yield wikidataPopulation(clazz, configured
                         ? "Population source" : "+ Configure population source",
                         configured ? STORED_CONFIGURATION : AVAILABLE_SLOT);
             }
@@ -133,7 +127,7 @@ public final class ClassConfigurationProjection {
                 var source = clazz == null ? null : clazz.statementSource();
                 boolean configured = source != null && !source.propertyPid().isBlank();
                 yield section(clazz, PRODUCTION, configured
-                        ? "Statement triple: " + source.propertyPid() : "+ Configure statement triple",
+                        ? "Statement triple: " + source.describeTriple() : "+ Configure statement triple",
                         configured ? STORED_CONFIGURATION : AVAILABLE_SLOT);
             }
             case OWNED -> section(clazz, PRODUCTION, "Ownership sites", INVENTORY_SUMMARY);
@@ -146,6 +140,12 @@ public final class ClassConfigurationProjection {
             }
             case GRAPH -> throw new IllegalArgumentException("Use the graph configuration projection");
         };
+    }
+
+    private static ConfigurationNode wikidataPopulation(GeneratedClassModel clazz, String caption,
+            ConfigurationNode.Kind kind) {
+        return new ConfigurationNode(id(clazz, PRODUCTION), kind, caption, PRODUCTION,
+                List.of(section(clazz, REFINE, "Population limits and filters", STORED_CONFIGURATION)));
     }
 
     /** A step's identity carries its order. The caption is presentation only. */

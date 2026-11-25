@@ -9,6 +9,7 @@ import domain.config.GeneratedClassModel;
 
 import javax.swing.JComboBox;
 import java.io.File;
+import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -17,6 +18,24 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * What the aggregate editor offers, and what it says when it can offer nothing.
  */
 class AggregateEditorOffersWhatItCanTest {
+
+    @Test void groupMembersAreIndependentOfAggregateProduction() throws Exception {
+        var project = nobel();
+        var prize = project.findClass("NobelPrize");
+        var panel = new AggregateClassPanel(project);
+        panel.edit(prize);
+        var header = (ClassHeaderEditor) field(panel, "header");
+        var members = Arrays.stream(header.getComponents())
+                .filter(component -> "class.groupMembersField".equals(component.getName()))
+                .map(JComboBox.class::cast).findFirst().orElseThrow();
+
+        members.setSelectedItem("laureatesWithMotivation");
+        panel.applyEdits();
+
+        assertEquals("laureatesWithMotivation", prize.groupSpec().membersField());
+        assertEquals("LaureatesWithMotivation", prize.aggregateSource().sourceClassName());
+        assertEquals(domain.config.ClassKind.AGGREGATE, prize.classKind());
+    }
 
     private static Object field(AggregateClassPanel panel, String name) throws Exception {
         var field = AggregateClassPanel.class.getDeclaredField(name);

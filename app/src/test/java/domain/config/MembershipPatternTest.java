@@ -82,7 +82,7 @@ class MembershipPatternTest {
         s.valueSelectionName("OscarCategories");
         c.statementSource(s);
         assertEquals(MembershipPattern.REIFIED, MembershipPattern.of(c));
-        assertEquals("Reified statements (P1411 · subjects found from the property itself → Selection 'OscarCategories')",
+        assertEquals("Reified statements (P1411 · objects: selection 'OscarCategories' · subjects discovered directly)",
                 MembershipPattern.describe(c));
     }
 
@@ -90,7 +90,7 @@ class MembershipPatternTest {
         GeneratedClassModel c = clazz();
         c.statementSource(new StatementClassSource("OscarNominations", "P1411"));
         assertEquals(MembershipPattern.REIFIED, MembershipPattern.of(c));
-        assertEquals("Reified statements (P1411 of OscarNominations)",
+        assertEquals("Reified statements (P1411 · objects: anything · subjects from OscarNominations)",
                 MembershipPattern.describe(c));
     }
     /** A kind class has no membership query by design — its members are ASSIGNED by

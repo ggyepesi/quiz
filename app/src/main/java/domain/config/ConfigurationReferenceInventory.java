@@ -18,7 +18,7 @@ import java.util.Objects;
  *
  * <p>The inventory is the common fact used by validation, dependency navigation and
  * rename discovery.  It deliberately contains references, not editor nodes: #557's
- * configuration projection can turn the same facts into {@code Needs} and
+ * configuration projection can turn the same facts into {@code Uses} and
  * {@code Used by} nodes without learning how any construct stores them.</p>
  */
 public final class ConfigurationReferenceInventory {

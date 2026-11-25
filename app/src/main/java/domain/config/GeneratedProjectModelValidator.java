@@ -98,9 +98,7 @@ public final class GeneratedProjectModelValidator {
                             + "' does not exist."));
             return;
         }
-        if (members.type() != FieldType.ENTITY
-                || members.cardinality() != FieldCardinality.COLLECTION
-                || members.entityClassName().isBlank()) {
+        if (!GroupClassSpec.acceptsMembersField(members)) {
             problems.add(Problem.error(clazz.className(),
                     "Group members field '" + spec.membersField()
                             + "' must be a list of instances of a configured class."));

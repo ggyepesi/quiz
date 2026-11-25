@@ -75,7 +75,7 @@ final class GraphConstraintsPanel extends JPanel {
 
     private final GeneratedProjectModel model;
     private final ConfigurationTreePanel configuration = new ConfigurationTreePanel(
-            "modelbuilder.graph.configuration", "Configuration");
+            "modelbuilder.graph.configuration", ClassConfigurationEditor.OUTLINE_TITLE);
     private final Map<String, JComponent> configurationDetails = new LinkedHashMap<>();
     /**
      * The GRAPH class being edited. A graph constraint used to be the project's one
@@ -498,8 +498,7 @@ final class GraphConstraintsPanel extends JPanel {
         status.setName("graph.status");
         targetUseBox.setSelectedItem(GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION);
 
-        configurationDetails.put(GraphConfigurationProjection.DEFINITION,
-                ConfigurationTreePanel.scrollDetail(header));
+        configuration.setDetailHeader(header);
         configurationDetails.put(GraphConfigurationProjection.START,
                 ConfigurationTreePanel.scrollDetail(startNodePanel()));
         configurationDetails.put(GraphConfigurationProjection.PATH,
@@ -687,9 +686,7 @@ final class GraphConstraintsPanel extends JPanel {
         }
         ConfigurationNode root = GraphConfigurationProjection.project(
                 model, clazz, draftStart(), elements(nodesModel));
-        configuration.show(root, node -> configurationDetails.getOrDefault(
-                node.detailKey(), configurationDetails.get(
-                        GraphConfigurationProjection.DEFINITION)));
+        configuration.show(root, node -> configurationDetails.get(node.detailKey()));
     }
 
     private GraphDiscoveryConfiguration.StartNode draftStart() {

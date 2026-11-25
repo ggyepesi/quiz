@@ -72,8 +72,6 @@ public final class FieldConfigurationProjection {
                 SourceBindingSlot.PRIMARY_FIELD_VALUE, owner.declarationId());
 
         List<ConfigurationNode> children = new ArrayList<>();
-        children.add(node(owner, path, "definition", ConfigurationNode.Kind.STORED_CONFIGURATION,
-                "Definition", DEFINITION, List.of()));
         SlotFit fit = new SlotFit(fallbackFits(field, registry),
                 WikipediaCategoryRule.fillsFieldOfType(field.type()));
         var sites = contextualSources(project, owner, field, path, allBindings, registry, fit, draft);
@@ -82,7 +80,7 @@ public final class FieldConfigurationProjection {
         children.add(candidateEvidence(owner, path, "", bindings, registry,
                 directContext));
         children.addAll(sites.configured());
-        ConfigurationReferenceProjection.needs(fieldSite,
+        ConfigurationReferenceProjection.uses(fieldSite,
                 referencesFrom(inventory, fieldSite, allBindings)).ifPresent(children::add);
         ConfigurationReferenceProjection.usedBy(fieldSite, inventory.to(fieldSite))
                 .ifPresent(children::add);
@@ -167,12 +165,16 @@ public final class FieldConfigurationProjection {
         String modelProducer = field == null ? "" : modelProducer(owner, field);
         var primarySite = primary.isEmpty() ? null : primary.getFirst();
         if (primarySite == null) {
-            String caption = !modelProducer.isBlank()
+            boolean qualifier = StatementFieldSemantics.isQualifierField(owner, field);
+            String caption = qualifier
+                    ? "Primary: Wikidata qualifier " + wikidata.LabelledId.display(
+                            field.mapping().qualifierLabel(), field.mapping().qualifierPid())
+                    : !modelProducer.isBlank()
                     ? "Primary: " + modelProducer
                     : field != null
                     && field.mapping().sourceType() == FieldSourceType.MANUAL
                     ? "Primary: manual values" : "+ Add primary source";
-            ConfigurationNode.Kind kind = !modelProducer.isBlank() || field != null
+            ConfigurationNode.Kind kind = qualifier || !modelProducer.isBlank() || field != null
                     && field.mapping().sourceType() == FieldSourceType.MANUAL
                     ? ConfigurationNode.Kind.STORED_CONFIGURATION
                     : ConfigurationNode.Kind.AVAILABLE_SLOT;
@@ -206,7 +208,7 @@ public final class FieldConfigurationProjection {
         if (advanced != null) children.add(advanced);
         return node(owner, path, keyPrefix + "produced-by",
                 ConfigurationNode.Kind.STORED_CONFIGURATION, "Produced by", PRIMARY,
-                sourceContext, children);
+                sourceContext.contextual() ? sourceContext : null, children);
     }
 
     private static ConfigurationNode advancedSource(GeneratedClassModel owner, String path, String keyPrefix,
