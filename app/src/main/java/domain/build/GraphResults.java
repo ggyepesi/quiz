@@ -74,10 +74,21 @@ public final class GraphResults {
      */
     public void record(GeneratedClassModel graphClass, GraphDiscoveryResultStore.Artifact result) {
         if (graphClass == null || result == null) return;
-        preserveManualDecisions(of(graphClass), result);
+        prepare(model, graphClass, of(graphClass), result);
+        keep(graphClass, result);
+    }
+
+    /** Prepare a result for review without replacing the project's current result. */
+    public static void prepare(GeneratedProjectModel model, GeneratedClassModel graphClass,
+            GraphDiscoveryResultStore.Artifact previous, GraphDiscoveryResultStore.Artifact result) {
+        preserveManualDecisions(previous, result);
         String signature = configurationSignature(model, graphClass);
         result.instances().forEach(value -> value.put(
                 GraphDiscoveryResultStore.CONFIGURATION_SIGNATURE, signature));
+    }
+
+    /** Keep the reviewed result as-is, including decisions made during that review. */
+    public void keep(GeneratedClassModel graphClass, GraphDiscoveryResultStore.Artifact result) {
         held.put(key(graphClass), result);
     }
 
@@ -105,7 +116,7 @@ public final class GraphResults {
      * annotations only when that file is missing. Each file read and each failure is named.
      */
     public void restore(Collection<WikidataDynamicObject> loadedObjects, Consumer<String> report) {
-        restore(loadedObjects, this::loadSaved, report);
+        restore(loadedObjects, this::readSaved, report);
     }
 
     public void restore(Collection<WikidataDynamicObject> loadedObjects, SavedResultLoader loader,
@@ -124,7 +135,7 @@ public final class GraphResults {
     /** Loads just one saved annotation set when its review is explicitly opened. */
     public GraphDiscoveryResultStore.Artifact restore(
             GeneratedClassModel graphClass, Consumer<String> report) throws Exception {
-        return restore(graphClass, List.of(), this::loadSaved, report == null ? ignored -> { } : report);
+        return restore(graphClass, List.of(), this::readSaved, report == null ? ignored -> { } : report);
     }
 
     public java.io.File destination(GeneratedClassModel graphClass) {
@@ -215,7 +226,8 @@ public final class GraphResults {
         return Map.copyOf(additions);
     }
 
-    private GraphDiscoveryResultStore.Artifact loadSaved(GeneratedClassModel graphClass)
+    /** Reads the saved result without changing the result held by the open project. */
+    public GraphDiscoveryResultStore.Artifact readSaved(GeneratedClassModel graphClass)
             throws Exception {
         domain.config.GraphClassSource source = graphClass.graphSource();
         if (source == null || source.outputClassName().isBlank()) return null;

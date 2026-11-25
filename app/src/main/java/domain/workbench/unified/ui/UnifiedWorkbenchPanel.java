@@ -30,6 +30,7 @@ import domain.workbench.configuration.ui.ProjectConfigurationPanel;
 import domain.workbench.execution.ui.BuildProjectWorkflow;
 import domain.workbench.execution.ui.QueryObjectResultPanel;
 import domain.workbench.execution.ui.SwingQuerySession;
+import domain.workbench.modelbuilder.ui.GraphRunWorkflow;
 import domain.workbench.ui.WorkbenchActionResultNavigator;
 import domain.workbench.ui.WorkbenchResultViews;
 import objectview.view.SearchableView;
@@ -71,10 +72,15 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private final WorkbenchActionResultNavigator actions = new WorkbenchActionResultNavigator();
     private final WorkbenchActionResultNavigator.Action previewAction;
     private final WorkbenchActionResultNavigator.Action buildAction;
+    private final WorkbenchActionResultNavigator.Action graphRunAction;
     private final WorkbenchActionResultNavigator.Action graphReviewAction;
     private final GraphDecisionReviewPanel graphReview;
     private final ConfiguredFieldEvidenceActions evidenceActions;
     private final SwingProcessRunner buildRunner;
+    private final SwingProcessRunner graphRunner;
+    private final JPanel graphRunDetail = new JPanel(new BorderLayout());
+    private final JButton planGraph = new JButton("Plan graph run");
+    private final JLabel graphRunStatus = new JLabel();
     private final JPanel buildDetail = new JPanel(new BorderLayout());
     private final JLabel buildStatus = new JLabel();
     private final JButton planBuild = new JButton("Plan build");
@@ -97,6 +103,9 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private boolean loadingValues;
     private boolean previewing;
     private boolean building;
+    private boolean runningGraph;
+    private boolean graphPlanOpen;
+    private boolean graphRunActionSelected;
     private boolean buildPlanOpen;
     private boolean buildActionSelected;
     private DomainModel builtDomain;
@@ -124,6 +133,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         this.domain = domain;
         this.queries = queries;
         buildRunner = new SwingProcessRunner(queries.runner().context(), queries.logs(),
+                new SwingProcessInputHandler(this));
+        graphRunner = new SwingProcessRunner(queries.runner().context(), queries.logs(),
                 new SwingProcessInputHandler(this));
         transform = new TransformController(domain, null);
         project = Objects.requireNonNull(domain.capability(ProjectBacking.class),
@@ -166,6 +177,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         });
         var projectActions = actions.addSource("project", "Project", null);
         buildAction = actions.addAction(projectActions, "build-project", "Build project", buildDetail, null);
+        graphRunAction = actions.addAction(projectActions, "run-graph", "Run graph", graphRunDetail, null);
+        planGraph.addActionListener(event -> planGraphRun());
         graphReview = new GraphDecisionReviewPanel(project,
                 () -> !busy() && configuration.resolveUnappliedEdits("loading graph annotations"),
                 loading -> {
@@ -181,13 +194,21 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
             configuration.setEditingEnabled(!running);
             updateSave();
         });
+        graphRunner.onRunningChanged(running -> {
+            runningGraph = running;
+            configuration.setEditingEnabled(!running);
+            updateSave();
+        });
         resetBuild("");
+        resetGraphRun("");
         actions.setSelectionListener(selection -> {
             loadActionSelected = load.id().equals(selection.id());
             previewActionSelected = previewAction.id().source().equals(selection.id().source())
                     && previewAction.id().action().equals(selection.id().action());
             buildActionSelected = buildAction.id().source().equals(selection.id().source())
                     && buildAction.id().action().equals(selection.id().action());
+            graphRunActionSelected = graphRunAction.id().source().equals(selection.id().source())
+                    && graphRunAction.id().action().equals(selection.id().action());
             if (loadActionSelected) refreshAcquisition();
         });
         actions.expandSources();
@@ -210,6 +231,56 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private ProjectConfigurationPanel projectConfiguration() {
         return ProjectConfigurationPanel.editWorkingConfiguration(project, transform,
                 this::constructSelected, this::fieldApplied, this::refreshPreview, this::updateSave);
+    }
+
+    private boolean canRunGraph() {
+        return project.saveGuard() != null && GraphRunWorkflow.hasTraversal(selectedClass)
+                && !selectedClass.isImported();
+    }
+
+    private void resetGraphRun(String message) {
+        graphPlanOpen = false;
+        if (graphRunActionSelected) actions.selectAction(graphRunAction);
+        actions.clearResults(graphRunAction);
+        graphRunStatus.setText(message.isBlank() ? (canRunGraph()
+                ? "Plan " + selectedClass.className() + " with its configured start input."
+                : "Select a configured local graph class.") : message);
+        var controls = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        controls.add(planGraph);
+        controls.add(graphRunStatus);
+        graphRunDetail.removeAll();
+        graphRunDetail.add(controls, BorderLayout.NORTH);
+        graphRunDetail.revalidate();
+        graphRunDetail.repaint();
+        planGraph.setEnabled(!busy() && canRunGraph());
+    }
+
+    private void planGraphRun() {
+        if (busy() || !canRunGraph() || !configuration.resolveUnappliedEdits("planning the graph run")) return;
+        var graph = selectedClass;
+        var file = graphReview.annotationFile(graph);
+        try {
+            var action = GraphRunWorkflow.action(project.projectModel(), graph, domain.instances(), file,
+                    new GraphRunWorkflow.ResultHandling("Keep annotations", "Close without keeping annotations",
+                            "Keep annotations adds these decisions to the open project. "
+                                    + saveVerb + " writes " + file.getPath() + ".",
+                            () -> graphReview.previousForRun(graph),
+                            artifact -> graphReview.keepRun(graph, artifact),
+                            () -> actions.selectAction(graphReviewAction)));
+            graphPlanOpen = true;
+            SwingProcessWorkflow.embed(graphRunner, action, new SwingProcessWorkflow.Embedded(
+                    graphRunDetail, () -> {
+                        if (!graphPlanOpen || busy() || selectedClass != graph
+                                || !configuration.resolveUnappliedEdits("running the graph")) return false;
+                        graphPlanOpen = false;
+                        queries.logs().registerPipeline("Run graph — " + graph.className(),
+                                action.pipeline(), project.projectName(), file.getAbsoluteFile().getParentFile().toPath());
+                        return true;
+                    }, () -> resetGraphRun(""), WorkbenchResultViews::new,
+                    tabs -> actions.publishResults(graphRunAction, tabs, 0, graphRunActionSelected)));
+        } catch (Exception failure) {
+            resetGraphRun("Could not plan " + graph.className() + ": " + failure.getMessage());
+        }
     }
 
     private void resetBuild(String message) {
@@ -309,6 +380,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         evidenceTarget = null;
         selectedField = null;
         selectedClass = null;
+        resetGraphRun("");
         acquisitionTargetCurrent = false;
         acquisitionValues.removeAll();
         compilePlan();
@@ -365,7 +437,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
 
     private boolean busy() {
         return saving || loadingValues || runningEvidence != null || previewing || building
-                || graphReview.isLoading();
+                || graphReview.isLoading() || runningGraph;
     }
 
     private void constructSelected(Object construct) {
@@ -374,6 +446,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
             selectedClass = clazz;
             refreshPreview();
             graphReview.select(clazz);
+            resetGraphRun("");
         }
         fieldSelected(construct instanceof GeneratedFieldModel field ? field : null);
     }
@@ -757,6 +830,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         preview.setEnabled(previewInput != null && !busy());
         planBuild.setEnabled(!busy());
         editBuild.setEnabled(!busy());
+        planGraph.setEnabled(!busy() && canRunGraph());
         graphReview.setReviewEnabled(!busy());
         if (loadingValues) {
             saveStatus.setText("Loading and reviewing field values");
@@ -766,12 +840,14 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
             saveStatus.setText("Previewing population for " + selectedClass.className());
         } else if (building) {
             saveStatus.setText("Building " + project.projectName());
+        } else if (runningGraph) {
+            saveStatus.setText("Running " + selectedClass.className());
         } else if (graphReview.isLoading()) {
             saveStatus.setText("Loading graph annotations");
         } else if (!saving) {
             saveStatus.setText(graphReview.editedFiles().isEmpty()
                     ? dirty ? "Applied configuration has unsaved changes" : " "
-                    : "Graph decisions have unsaved changes");
+                    : "Graph annotations have unsaved changes");
         }
     }
 
@@ -807,6 +883,10 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         if (saving || graphReview.isLoading()) return;
         if (building) {
             SwingCancellationConfirmation.requestForVisibleRun(this, buildRunner::cancel);
+            return;
+        }
+        if (runningGraph) {
+            SwingCancellationConfirmation.requestForVisibleRun(this, graphRunner::cancel);
             return;
         }
         if (previewing) {

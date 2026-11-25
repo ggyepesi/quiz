@@ -588,9 +588,11 @@ public final class SwingProcessWorkflow {
             try {
                 action.apply(decisions);
                 state.applied();
-                JOptionPane.showMessageDialog(owner,
-                        wholeResult ? applyVerb + " completed."
-                                : applyVerb + ": " + decisions.size() + " decision(s).");
+                if (embedded == null) {
+                    JOptionPane.showMessageDialog(owner,
+                            wholeResult ? applyVerb + " completed."
+                                    : applyVerb + ": " + decisions.size() + " decision(s).");
+                }
                 dismiss();
             } catch (Exception error) {
                 state.retryApply();

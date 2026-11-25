@@ -391,6 +391,14 @@ build, progress view and report as ModelBuilder. A completed build reloads its s
 snapshot into the open workbench before publishing **Instances**, **Steps** and **Files written**
 in the action tree. The results are for inspection.
 
+Select a local graph class and open **Project → Run graph** to run that graph on its own.
+**Plan graph run** shows ModelBuilder's traversal diagram and scope. **Execute** uses that
+plan's loaded class instances or configured population and the shared graph cache and query.
+The result has the same candidate cards and manual decisions as ModelBuilder. **Keep
+annotations** adds the reviewed result to the open project. **Save model/domain** writes the
+named graph annotation file. A configured **Apply graph decisions** build step applies it
+to the output population.
+
 When a build stops for a graph decision in the open project, its **Graph decisions** result
 offers to load the waiting graph's annotations for review. You can also select a local graph class and open
 **Project → Review graph decisions** directly. **Load graph annotations** reads the displayed

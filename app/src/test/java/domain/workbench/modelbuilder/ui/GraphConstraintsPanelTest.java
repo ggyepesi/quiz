@@ -1046,27 +1046,28 @@ class GraphConstraintsPanelTest {
                 "graph readiness is determined by the graph and its input, not project kind");
     }
 
-    @Test void graphDiscoveryUsesTheSharedPlanRunningResultsWorkflow()
-            throws Exception {
-        String source = Files.readString(Path.of(
-                "src/main/java/domain/workbench/modelbuilder/ui/GraphConstraintsPanel.java"));
+    @Test void graphDiscoveryUsesTheSharedPlanRunningResultsWorkflow() throws Exception {
+        Path workbench = Path.of("src/main/java/domain/workbench");
+        assertTrue(Files.readString(workbench.resolve("modelbuilder/ui/GraphConstraintsPanel.java"))
+                .contains("GraphRunWorkflow.action("));
+        assertTrue(Files.readString(workbench.resolve("unified/ui/UnifiedWorkbenchPanel.java"))
+                .contains("GraphRunWorkflow.action("));
 
-        assertTrue(source.contains("SwingProcessWorkflow.start(this, runner, action)"),
-                "Run graph must open the shared process workflow");
-        assertTrue(source.contains("new ProcessWorkflowPlan("),
-                "the graph must show its scope before execution");
-        assertTrue(source.contains("ProcessWorkflowPlan.Tab.component("),
-                "the plan must show the configured graph as a diagram");
-        assertTrue(source.contains("loadedInstances.get()), true"),
-                "the diagram, not the generic pipeline card, must open first");
-        assertTrue(source.contains(".withoutPipelineTab()"),
-                "the one-step pipeline repeats the graph plan and must stay hidden");
-        assertTrue(source.contains("new ProcessWorkflowResults<>("),
-                "the graph results must remain in the same workflow");
-        assertTrue(source.contains("return WikidataLinks.valueLinker()"),
-                "QIDs in the shared workflow must retain their Wikidata links");
-        assertTrue(!source.contains("runner.wireButton(run"),
-                "the legacy direct-query path must not remain as a second execution path");
+        var project = model();
+        var graph = savedGraph(project, "Position");
+        project.addClass(new GeneratedClassModel("Person"));
+        var person = new WikidataDynamicObject("Q1", "Person Q1");
+        person.type("Person");
+        var action = GraphRunWorkflow.action(project, graph, List.of(person),
+                GraphDiscoveryResultStore.destination(project.name(), graph.className()),
+                new GraphRunWorkflow.ResultHandling("Apply result", "Close", "",
+                        () -> null, ignored -> { }, () -> { }));
+        var plan = action.plan();
+        assertEquals(List.of("Graph", "Scope"), plan.tabs().stream().map(tab -> tab.title()).toList());
+        assertTrue(plan.tabs().getFirst().initiallySelected());
+        assertNotNull(plan.tabs().getFirst().content());
+        assertFalse(plan.pipelineVisible(), "the one-step pipeline repeats the graph plan");
+        assertEquals("https://www.wikidata.org/wiki/Q1", action.valueLinker().apply("Q1"));
     }
 
     @Test void executionPlanDrawsTraversalEvidenceAndTestEdges() throws Exception {
@@ -1080,7 +1081,7 @@ class GraphConstraintsPanelTest {
         button(panel, "Add evidence test").doClick();
         button(panel, "Apply graph").doClick();
 
-        GraphViewModel graph = GraphConstraintsPanel.graphPlanModel(model, model.findClass("PositionGraph"));
+        GraphViewModel graph = GraphRunWorkflow.graphPlanModel(model, model.findClass("PositionGraph"));
 
         assertEquals(List.of("Position", "Position", "Evidence entity",
                         "Has a value"),
@@ -1109,7 +1110,8 @@ class GraphConstraintsPanelTest {
         text(panel, "graph.edgeProperty").setText("P31");
         button(panel, "Apply graph").doClick();
 
-        DynamicViewable summary = GraphConstraintsPanel.graphSummary(model, model.findClass("PositionGraph"));
+        DynamicViewable summary = GraphRunWorkflow.graphSummary(model, model.findClass("PositionGraph"),
+                List.of(), GraphDiscoveryResultStore.destination(model.name(), "PositionGraph"));
 
         assertEquals("Load saved answers from the persistent graph cache; download only missing answers",
                 summary.get("Adjacency facts"));
@@ -1117,7 +1119,7 @@ class GraphConstraintsPanelTest {
                 summary.get("Classification"));
         assertEquals("Fetch again; labels are not stored in the graph cache",
                 summary.get("Labels"));
-        assertEquals("Rebuild and save every start and reached entity for TransformApp",
+        assertEquals("Review the reached candidates. Save the kept annotations with the project.",
                 summary.get("Results"));
         assertEquals("data/wikidata/test/positiongraph.graph.snapshot.json",
                 summary.get("Results file"),
@@ -1230,7 +1232,7 @@ class GraphConstraintsPanelTest {
         assertNotNull(artifact.model().fieldSchema("History")
                 .field("wikidataSource"));
         ProcessWorkflowResults.Tab<GraphDiscoveryResultStore.Artifact> preview =
-                GraphConstraintsPanel.artifactTab("All", artifact, null);
+                GraphRunWorkflow.artifactTab("All", artifact, null);
         ProcessWorkflowResults.Card<GraphDiscoveryResultStore.Artifact> card =
                 preview.cards().getFirst();
         assertTrue(card.view() == artifact.candidates().getFirst(),

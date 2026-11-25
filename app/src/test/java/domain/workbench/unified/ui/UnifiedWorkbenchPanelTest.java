@@ -34,10 +34,14 @@ import domain.transform.pipeline.ui.TransformationConfigurationEditor;
 import domain.transform.ui.ProjectBacking;
 import domain.workbench.modelbuilder.ui.SingleRootClassModelPanel;
 import domain.workbench.execution.ui.QueryObjectResultPanel;
+import domain.workbench.execution.ui.SwingQuerySession;
 import domain.workbench.ui.ConfigurationTreePanel;
 import domain.workbench.ui.WorkbenchActionResultNavigator;
 import domain.workbench.ui.WorkbenchResultViews;
 import objectview.view.SearchableView;
+import wikidata.FakeWikidataSparqlClient;
+import wikidata.api.WikidataApiClient;
+import wikidata.query.core.WikidataAccess;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -59,6 +63,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
@@ -72,8 +77,118 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class UnifiedWorkbenchPanelTest {
     @TempDir Path root;
 
-    @Test void reviewSavesGraphDecisionsAndTheNextBuildAppliesThemInTheSameWindow() throws Exception {
+    @Test void runsTheSelectedGraphAndKeepsAnnotationsOnlyWhenAsked() throws Exception {
         var storage = DomainStorage.in(root.toFile());
+        var model = positionGraphProject();
+        var graph = model.findClass("PositionGraph");
+        var member = new WikidataDynamicObject("Q1", "Position Q1");
+        member.type("Position");
+        var run = new ProjectSave.Run(List.of(member), List.of(), null, model);
+        var previousCandidate = new WikidataDynamicObject("Q2", "Previous position Q2");
+        previousCandidate.type("Position");
+        var previous = new WikidataDynamicObject("Q2", "Previous position Q2");
+        previous.type(graph.className());
+        previous.put(GraphDiscoveryResultStore.ANNOTATED_INSTANCE, previousCandidate);
+        previous.put(GraphDiscoveryResultStore.GRAPH_DECISION, "Accepted");
+        GraphDiscoveryResultStore.manualDecision(previous, "Accepted");
+        var graphResults = new GraphResults(model, storage);
+        graphResults.record(graph, new GraphDiscoveryResultStore.Artifact(model.name(), graph.className(),
+                "Position", List.of(previous), List.of(previousCandidate), new SnapshotDomain(List.of(previous),
+                        GraphDiscoveryResultStore.fieldGraph(graph.className(), "Position", List.of(previous)))));
+        ProjectSave.plan(new ProjectSave.Input(model, run, null, graphResults.all()), storage).write();
+        var snapshot = storage.snapshotFile(model.name()).toPath();
+        var before = Files.readString(snapshot);
+        var graphFile = GraphDiscoveryResultStore.destination(storage, model.name(), graph.className());
+        var beforeGraph = Files.readString(graphFile.toPath());
+        var opened = DomainCatalog.modelBacked(storage).getFirst().opener().open();
+        var backing = opened.capability(ProjectBacking.class);
+        var requests = new AtomicInteger();
+        var api = new WikidataApiClient("test") {
+            @Override public PartialStatements getStatementsByPropertyPartial(
+                    List<String> qids, List<String> pids, BatchLog log,
+                    StatementBatchCommitter committer) throws Exception {
+                assertEquals(List.of("Q1"), qids, "the graph starts from the open project's loaded instances");
+                var statements = Map.of("P31", Map.of("Q1", List.of(
+                        new ApiStatement("Q1$P31", "Q2", Map.of()))));
+                requests.incrementAndGet();
+                committer.commit(qids, statements);
+                return new PartialStatements(statements, 0, List.of());
+            }
+            @Override public PartialEntities getEntitiesBestEffort(
+                    List<String> qids, List<String> pids,
+                    java.util.Collection<wikidata.api.FactDemand.EntityMetadata> metadata, BatchLog log) {
+                return new PartialEntities(Map.of(), 0, List.of());
+            }
+            @Override public Map<String, ApiEntity> getEntities(
+                    List<String> qids, List<String> pids,
+                    java.util.Collection<wikidata.api.FactDemand.EntityMetadata> metadata, BatchLog log) {
+                return Map.of();
+            }
+        };
+        var panel = new AtomicReference<UnifiedWorkbenchPanel>();
+        SwingUtilities.invokeAndWait(() -> {
+            var workbench = new UnifiedWorkbenchPanel(opened,
+                    new SwingQuerySession(WikidataAccess.of(new FakeWikidataSparqlClient(), api).bind()));
+            panel.set(workbench);
+            workbench.showSaveSuccess(false);
+            workbench.persistenceConfirmation(message -> message.contains(graphFile.getPath()));
+            selectAction(workbench, "Run graph");
+            var plan = find(workbench, JButton.class, b -> "Plan graph run".equals(b.getText()));
+            assertFalse(plan.isEnabled(), "ordinary classes do not run as graphs");
+            find(workbench, SingleRootClassModelPanel.class, unused -> true)
+                    .selectClass(backing.projectModel().findClass(graph.className()));
+            plan.doClick();
+            assertEquals(0, requests.get(), "the shared plan only inspects the inputs");
+            find(workbench, JButton.class, b -> "Execute".equals(b.getText())).doClick();
+        });
+        try {
+            var workbench = panel.get();
+            await(() -> hasButton(workbench, "Keep annotations"), "the graph did not finish");
+            SwingUtilities.invokeAndWait(() -> {
+                find(workbench, JButton.class, b -> "Close without keeping annotations".equals(b.getText())).doClick();
+                assertTrue(backing.unsavedModelChanges().isEmpty());
+                selectAction(workbench, "Review graph decisions");
+                find(workbench, JButton.class, b -> "Load graph annotations".equals(b.getText())).doClick();
+            });
+            await(() -> descendants(workbench).filter(QueryObjectResultPanel.class::isInstance)
+                    .map(QueryObjectResultPanel.class::cast)
+                    .anyMatch(view -> view.displayedObjectsByType().containsKey(graph.className())),
+                    "closing the run left the previous saved graph available");
+            assertEquals(beforeGraph, Files.readString(graphFile.toPath()));
+            SwingUtilities.invokeAndWait(() -> {
+                selectAction(workbench, "Run graph");
+                find(workbench, JButton.class, b -> "Plan graph run".equals(b.getText())).doClick();
+                find(workbench, JButton.class, b -> "Execute".equals(b.getText())).doClick();
+            });
+            await(() -> hasButton(workbench, "Keep annotations"), "the second graph run did not finish");
+            SwingUtilities.invokeAndWait(() -> {
+                assertTrue(actionNode(workbench, "Accepted — 1 total (1)") != null);
+                find(workbench, JButton.class, b -> "Keep annotations".equals(b.getText())).doClick();
+                assertEquals(List.of("Graph annotations for PositionGraph"), backing.unsavedModelChanges());
+            });
+            assertEquals(beforeGraph, Files.readString(graphFile.toPath()),
+                    "keeping the annotations changes only the open project");
+            SwingUtilities.invokeAndWait(() ->
+                    find(workbench, JButton.class, b -> "Save domain…".equals(b.getText())).doClick());
+            awaitSaved(workbench);
+            assertEquals(2, requests.get());
+            var saved = new GraphResults(backing.projectModel(), storage)
+                    .restore(backing.projectModel().findClass(graph.className()), ignored -> { });
+            assertEquals(java.util.Set.of("Q2"), saved.acceptedIdentities());
+            assertEquals("Accepted", saved.instances().getFirst().get(GraphDiscoveryResultStore.MANUAL_DECISION));
+            assertFalse(saved.applied(), "the kept annotation result is ready for the build's Apply step");
+            assertEquals(before, Files.readString(snapshot));
+        } finally {
+            SwingUtilities.invokeAndWait(panel.get()::close);
+        }
+    }
+
+    private static boolean hasButton(Component panel, String caption) {
+        return descendants(panel).filter(JButton.class::isInstance).map(JButton.class::cast)
+                .anyMatch(button -> caption.equals(button.getText()));
+    }
+
+    private static GeneratedProjectModel positionGraphProject() {
         var model = new GeneratedProjectModel();
         model.name("Offices");
         var positions = model.getOrCreateClass("Position");
@@ -86,6 +201,14 @@ class UnifiedWorkbenchPanelTest {
                 List.of(new GraphDiscoveryConfiguration.NextNode(new GraphRelation("wikidata", "P31"),
                         GraphTraversalDirection.OUTGOING, GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
                         "Position", null))));
+        return model;
+    }
+
+    @Test void reviewSavesGraphDecisionsAndTheNextBuildAppliesThemInTheSameWindow() throws Exception {
+        var storage = DomainStorage.in(root.toFile());
+        var model = positionGraphProject();
+        var positions = model.rootClass();
+        var graph = model.findClass("PositionGraph");
         model.buildOperations(List.of(new BuildOperation(BuildOperation.Kind.APPLY_GRAPH_DECISIONS,
                 graph.declarationId()), new BuildOperation(BuildOperation.Kind.SAVE_PROJECT_RESULT, "")));
         var members = List.of("Q1", "Q2").stream().map(qid -> {

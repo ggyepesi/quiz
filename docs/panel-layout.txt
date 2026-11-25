@@ -958,3 +958,39 @@
   label: Select a graph class to review its decisions.
   button: Query logs…
   button: Save domain…
+
+== Unified Workbench / Run graph ==
+  label: Use Actions and results to check the applied configuration.
+  label: Project overview
+  label: Name:
+  label: Positions
+  label: Kind:
+  combo: 2 item(s)  (disabled)
+  label: Generation root:
+  label: Position
+  label: Classes:
+  label: 3
+  label: Vocabularies / populations:
+  label: 1
+  label: Entity-kind rules:
+  label: 0 configured / 0
+  label: Model:
+  label: not saved yet
+  label: Snapshot:
+  label: not generated yet
+  label: Current generated objects:
+  label: 0
+  piece: OrderedChoiceList  [Build]
+    list
+    button: Add  (disabled)
+    button: Remove  (disabled)
+    button: Up  (disabled)
+    button: Down  (disabled)
+    label: Available:
+    combo: 4 item(s)
+  label: Select a class, field, or vocabulary below the domain to configure it.
+  box: Actions and results
+  button: Plan graph run  (disabled)
+  label: Select a configured local graph class.
+  button: Query logs…
+  button: Save domain…

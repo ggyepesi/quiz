@@ -78,12 +78,7 @@ public final class ConfiguredGraphDiscoveryQuery
                 throw new IllegalArgumentException("The graph starts from class '"
                         + startClass + "', which this model no longer has");
             }
-            qids = (loadedInstances == null ? List.<objectview.Viewable>of()
-                    : loadedInstances.stream().map(objectview.Viewable.class::cast).toList())
-                    .stream()
-                    .filter(instance -> instance.directClassNames().contains(startClass))
-                    .map(domain.provenance.SourceIdentities::wikidataQid)
-                    .filter(java.util.Objects::nonNull).toList();
+            qids = loadedQids(loadedInstances, startClass);
         }
         start = qids.stream()
                 .filter(WikidataIds::isQid).distinct()
@@ -110,6 +105,15 @@ public final class ConfiguredGraphDiscoveryQuery
                     .collect(java.util.stream.Collectors.toUnmodifiableSet()));
         }
         admissionPopulations = Map.copyOf(admissions);
+    }
+
+    public static List<String> loadedQids(Collection<? extends objectview.Viewable> instances,
+            String className) {
+        if (instances == null) return List.of();
+        return instances.stream()
+                .filter(instance -> instance.directClassNames().contains(className))
+                .map(domain.provenance.SourceIdentities::wikidataQid)
+                .filter(WikidataIds::isQid).distinct().toList();
     }
 
     @Override public String purpose() { return "Run configured graph discovery"; }

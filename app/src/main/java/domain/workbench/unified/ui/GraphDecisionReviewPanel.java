@@ -122,7 +122,7 @@ final class GraphDecisionReviewPanel extends JPanel {
                     if (graph != selected || graphResults != results) {
                         refresh();
                     } else if (artifact == null) {
-                        status.setText("No graph annotations in " + path + ". Run the graph in the build first.");
+                        status.setText("No graph annotations in " + path + ". Use Run graph first.");
                     } else {
                         showResult(graph, artifact);
                     }
@@ -151,11 +151,38 @@ final class GraphDecisionReviewPanel extends JPanel {
         revalidate();
         cards.acceptGrouped(null, Map.of(artifact.type(), GraphResultPresentation.review(
                 artifact, List.of(), () -> {
-                    edited.add(graph);
-                    project.recordModelChange("Graph decisions for " + graph.className());
+                    markEdited(graph, "Graph decisions for " + graph.className());
                     updateStatus(artifact);
-                    onEdit.run();
                 })));
+    }
+
+    GraphDiscoveryResultStore.Artifact previousForRun(GeneratedClassModel graph) throws Exception {
+        var guard = project.saveGuard();
+        guard.check();
+        var previous = results.of(graph);
+        if (previous == null) {
+            var file = results.destination(graph);
+            if (file.isFile()) report.accept("Reading previous graph decisions from " + file.getPath() + ".");
+            previous = results.readSaved(graph);
+        }
+        guard.check();
+        return previous;
+    }
+
+    void keepRun(GeneratedClassModel graph, GraphDiscoveryResultStore.Artifact artifact) {
+        if (!artifact.instances().isEmpty() && !artifact.configurationSignature().equals(
+                GraphResults.configurationSignature(project.projectModel(), graph))) {
+            throw new IllegalStateException("The graph configuration has changed. Run it again.");
+        }
+        results.keep(graph, artifact);
+        markEdited(graph, "Graph annotations for " + graph.className());
+        if (selected == graph) refresh();
+    }
+
+    private void markEdited(GeneratedClassModel graph, String change) {
+        edited.add(graph);
+        project.recordModelChange(change);
+        onEdit.run();
     }
 
     private void updateStatus(GraphDiscoveryResultStore.Artifact artifact) {

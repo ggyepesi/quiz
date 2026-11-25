@@ -215,6 +215,14 @@ class PanelLayoutIsCheckedInTest {
                     }
                 }
                 describe(actual, "Unified Workbench / Review graph decisions", unified);
+                for (var nodes = root.depthFirstEnumeration(); nodes.hasMoreElements();) {
+                    var node = (javax.swing.tree.DefaultMutableTreeNode) nodes.nextElement();
+                    if ("Run graph".equals(node.toString())) {
+                        tree.setSelectionPath(new javax.swing.tree.TreePath(node.getPath()));
+                        break;
+                    }
+                }
+                describe(actual, "Unified Workbench / Run graph", unified);
             }
         });
     }
