@@ -57,8 +57,9 @@ public final class GraphConfigurationProjection {
         // another draft, showing the saved node-N reference on draft node N would be a
         // false dependency after an insertion/removal. The draft still names its target
         // in the node caption; it becomes navigable from the inventory after Apply.
+        ConfigurationReferenceInventory inventory = ConfigurationReferenceInventory.of(project);
         List<ConfigurationReferenceInventory.Reference> references = savedDraft
-                ? ConfigurationReferenceInventory.of(project).fromClass(graphClass)
+                ? inventory.fromClass(graphClass)
                 : List.of();
 
         List<ConfigurationNode> children = new ArrayList<>();
@@ -71,6 +72,9 @@ public final class GraphConfigurationProjection {
         children.add(node(graphClass, "display-name",
                 ConfigurationNode.Kind.STORED_CONFIGURATION,
                 "Display name", DISPLAY_NAME, List.of()));
+        ConfigurationReferenceProjection.usedBy(
+                ConfigurationReferenceInventory.classSite(graphClass),
+                inventory.referencesToClass(graphClass)).ifPresent(children::add);
         return node(graphClass, "graph", ConfigurationNode.Kind.STORED_CONFIGURATION,
                 graphClass.className(), DEFINITION, children);
     }

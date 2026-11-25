@@ -12,7 +12,7 @@ remains runnable as the comparison baseline while both hosts use the same model-
 and editor implementation. Executable operations and their results remain the separate
 action/result tree of #558.
 
-Milestones 1 through 6 are implemented. `ConfigurationReferenceInventory` is the typed model-layer
+Milestones 1 through 7 are implemented. `ConfigurationReferenceInventory` is the typed model-layer
 inventory: validation, `ClassDependencies`, class/selection rename discovery and datasource recipe
 references consume it. Datasource operations declare references hidden inside their own recipe
 grammar, and prepared input requirements are resolved to model sites such as an article
@@ -24,6 +24,16 @@ operations rather than being decoded by Swing. The graph editor uses the same co
 presentation for its start, ordered path nodes, incoming and alternative edges, admission/output
 references, evidence, identity and display name; its existing graph draft and single Apply remain
 the only authoring path.
+
+Source, Statement, Owned and Aggregate classes use the same local tree and existing
+class editors. A class's population node reads the same membership decision generation uses (a
+declared non-Wikidata population first, then `MembershipPattern`), so a subclass condition, seeds
+or being referenced never appear as an empty slot. Optional sections with nothing set are `+ Add …`
+lines. Unlike the graph tree, which projects the unapplied graph, a class tree shows the last
+applied class: an edited triple or option reaches its caption on Apply. Definition, population or production, identity and display name have separate
+details. Class references use the shared Needs and Used by branches, including links to the
+exact graph node that produces a class. Transformation steps are visible on their output class
+and remain editable in TransformApp.
 
 Related: [ModelBuilder Constructs](modelbuilder-constructs.md),
 [Effective Class Explanation and Uniform Sampling](effective-class-explanation-and-sampling.md),
@@ -272,7 +282,7 @@ Follow #557 as checked milestones:
 5. Convert the field editor, covering a datasource field, relation-route field and table-row
    evidence field. **Done.**
 6. Convert the graph editor. **Done.**
-7. Convert the class editors.
+7. Convert the class editors. **Done.**
 8. Complete the separate-process save guard before a second application exposes the complete tree.
 9. Let Transform and Datasource views adopt the same projection with ownership-based editability.
 

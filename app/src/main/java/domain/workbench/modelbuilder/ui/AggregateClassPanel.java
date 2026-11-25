@@ -2,7 +2,7 @@ package domain.workbench.modelbuilder.ui;
 
 import objectview.utils.swing.GridBagUtils;
 import domain.config.AggregateClassSource;
-import domain.config.CanonicalSpec;
+import domain.config.ClassConfigurationProjection;
 import domain.config.ClassKind;
 import domain.config.FieldCardinality;
 import domain.datasource.schema.FieldType;
@@ -20,6 +20,8 @@ import java.util.stream.IntStream;
 /** Editor for the provider-neutral, offline aggregate-class recipe. */
 final class AggregateClassPanel extends JPanel {
     private final GeneratedProjectModel project;
+    private final ClassConfigurationEditor configuration =
+            new ClassConfigurationEditor(ClassKind.AGGREGATE);
     private final JComboBox<String> sourceClass = new JComboBox<>();
     /**
      * The field that receives the grouped records — the same form as the key, unordered.
@@ -71,17 +73,15 @@ final class AggregateClassPanel extends JPanel {
         super(new BorderLayout());
         this.project = project;
         this.header = new ClassHeaderEditor(() -> project);
-        JPanel form = new JPanel(new GridBagLayout());
+        JPanel form = configuration.form(ClassConfigurationProjection.PRODUCTION);
         GridBagConstraints c = new GridBagConstraints();
         c.insets = new Insets(4, 6, 4, 6);
         c.fill = GridBagConstraints.HORIZONTAL;
         c.weightx = 1;
-        // The same order as every other kind, minus the triple it does not have:
-        // what identifies an instance, then what names it, then this kind's own rows.
-        GridBagUtils.wideRow(form, 0, header);
-        GridBagUtils.wideRow(form, 1, identityEditor);
-        GridBagUtils.wideRow(form, 2, displayNameEditor);
-        GridBagUtils.labeledRow(form, c, 3, "From class:", sourceClass);
+        configuration.detail(ClassConfigurationProjection.DEFINITION, header);
+        configuration.detail(ClassConfigurationProjection.IDENTITY, identityEditor);
+        configuration.detail(ClassConfigurationProjection.DISPLAY_NAME, displayNameEditor);
+        GridBagUtils.labeledRow(form, c, 0, "From class:", sourceClass);
         aggregated.title("Aggregated fields");
         aggregated.setToolTipText(
                 "The field that receives the grouped records themselves. Everything the "
@@ -92,7 +92,7 @@ final class AggregateClassPanel extends JPanel {
             applyEdits();
             edit(clazz);
         });
-        GridBagUtils.wideRow(form, 4, aggregated);
+        GridBagUtils.wideRow(form, 1, aggregated);
         // "Key field", not "grouped from": these pairs ARE the key — one instance per
         // distinct combination of their values — and naming them after the mechanism
         // left the reader to work out that the identity list above was the same fact.
@@ -107,10 +107,10 @@ final class AggregateClassPanel extends JPanel {
             applyEdits();
             edit(clazz);
         });
-        GridBagUtils.wideRow(form, 5, keyFields);
-        GridBagUtils.wideRow(form, 6, new JLabel(
+        GridBagUtils.wideRow(form, 2, keyFields);
+        GridBagUtils.wideRow(form, 3, new JLabel(
                 "Choices come from compatible fields on this class and its source class."));
-        add(new JScrollPane(form), BorderLayout.CENTER);
+        add(configuration, BorderLayout.CENTER);
         sourceClass.addActionListener(e -> {
             if (!refreshing) refreshChoices(null);
         });
@@ -135,7 +135,10 @@ final class AggregateClassPanel extends JPanel {
         refreshChoices(spec);
         displayNameEditor.show(value);
         identityEditor.showFixedKey(value);
+        configuration.showClass(project, clazz);
     }
+
+    ClassConfigurationEditor configurationEditor() { return configuration; }
 
     /**
      * Keeps the canonical key to the fields that have a source to group from.
@@ -186,6 +189,7 @@ final class AggregateClassPanel extends JPanel {
         // After the kind is assigned: the editor asks the policy what LABEL means for
         // this kind, and the answer differs by kind.
         displayNameEditor.applyEdits();
+        configuration.showClass(project, clazz);
         afterChange.accept(null);
     }
 

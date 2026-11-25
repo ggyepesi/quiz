@@ -9,6 +9,7 @@ import domain.compile.rule.RuleTreeCompiler;
 import domain.compile.rule.RuleNode;
 import domain.config.RuleDirection;
 import domain.config.CanonicalSpec;
+import domain.config.ClassConfigurationProjection;
 import domain.config.ClassKind;
 import domain.config.ClassSourceBindings;
 import domain.config.EntityBound;
@@ -38,6 +39,8 @@ import java.util.function.Consumer;
 import wikidata.ui.WikidataLinks;
 
 public class ClassSourcePanel extends JPanel {
+    private final ClassConfigurationEditor configuration =
+            new ClassConfigurationEditor(ClassKind.SOURCE);
 
     private final JComboBox<ClassSearchQuery.Mode> searchModeBox =
             new JComboBox<>(ClassSearchQuery.Mode.values());
@@ -206,7 +209,10 @@ public class ClassSourcePanel extends JPanel {
 
     /** Fill the class population relation from the explicit workbench selection. */
     public void usePopulationProperty(String pid, String label) {
-        if (!WikidataIds.isPid(pid)) return;
+        if (!WikidataIds.isPid(pid)
+                || !configuration.tree().selectDetail(ClassConfigurationProjection.PRODUCTION)) {
+            return;
+        }
         triple.propertyPid(pid, label == null || label.isBlank() ? pid : label);
     }
 
@@ -233,6 +239,7 @@ public class ClassSourcePanel extends JPanel {
 
         if (clazz == null) {
             clear();
+            refreshConfiguration();
             return;
         }
 
@@ -264,6 +271,7 @@ public class ClassSourcePanel extends JPanel {
         updateSummary();
         updateSearchButtonState();
         configurationDirty = false;
+        refreshConfiguration();
     }
 
     // Fill the extends combo with the other classes (excluding self), selecting
@@ -476,6 +484,7 @@ public class ClassSourcePanel extends JPanel {
 
         updateSummary();
         triple.refreshConfigurationStatus(clazz, projectModel);
+        refreshConfiguration();
         afterChange.accept(null);
     }
 
@@ -527,12 +536,7 @@ public class ClassSourcePanel extends JPanel {
 
     private void buildUi() {
         groupMembersField.setName("class.groupMembersField");
-        JPanel form = new JPanel(new GridBagLayout());
-        form.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
-
-        JScrollPane scroll = new JScrollPane(form);
-        scroll.setBorder(null);
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        JPanel form = configuration.form(ClassConfigurationProjection.DEFINITION);
 
         GridBagConstraints c = new GridBagConstraints();
         c.insets = new Insets(4, 4, 4, 4);
@@ -543,18 +547,15 @@ public class ClassSourcePanel extends JPanel {
 
         titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 16f));
         GridBagUtils.wideRow(form, y++, titleLabel);
+        GridBagUtils.wideRow(form, y, header);
 
+        form = configuration.form(ClassConfigurationProjection.PRODUCTION);
+        y = 0;
         JLabel question =
                 new JLabel("How do we find instances of this class?");
         question.setFont(question.getFont().deriveFont(Font.ITALIC));
         GridBagUtils.wideRow(form, y++, question);
 
-        GridBagUtils.wideRow(form, y++, header);
-
-        // One order, every kind: the population source (the triple, or the one other
-        // datasource chosen in its place), then what identifies an instance, then what
-        // names it. What only this kind has comes after them — its population knobs,
-        // then the tools that fill them.
         populationSource.setToolTipText("<html>Where this class's instances come from: "
                 + "the Wikidata population triple, or another registered domain.datasource.<br>"
                 + "Choosing another datasource and pressing Apply clears the Wikidata "
@@ -564,16 +565,20 @@ public class ClassSourcePanel extends JPanel {
         GridBagUtils.wideRow(form, y++, populationReplaces);
         GridBagUtils.wideRow(form, y++, alternativePopulationSource);
         GridBagUtils.wideRow(form, y++, triple);
+        GridBagUtils.wideRow(form, y, summaryLabel);
+        configuration.detail(ClassConfigurationProjection.TRANSFORMATION,
+                new JLabel("Edit this class's population transformation in TransformApp."));
+        configuration.detail(ClassConfigurationProjection.DISPLAY_NAME, displayNameEditor);
 
-        GridBagUtils.wideRow(form, y++, identityEditor);
-
-        GridBagUtils.wideRow(form, y++, displayNameEditor);
-
+        form = configuration.form(ClassConfigurationProjection.GROUP);
+        y = 0;
         groupMembersField.setToolTipText("Declare each class instance as a group whose "
                 + "members come from the selected list field. This changes presentation, "
                 + "not how the class population is generated.");
-        GridBagUtils.labeledRow(form, c, y++, "Group members field:", groupMembersField);
+        GridBagUtils.labeledRow(form, c, y, "Group members field:", groupMembersField);
 
+        form = configuration.form(ClassConfigurationProjection.REPRESENTATION);
+        y = 0;
         discriminatorPidField.setToolTipText("Property used to further restrict the "
                 + "instances inherited from the base class; P31 means instance of.");
         discriminatorQidField.setToolTipText("<html>Required value of that property "
@@ -597,9 +602,10 @@ public class ClassSourcePanel extends JPanel {
         representations.describe(this::representationDescription);
         representations.setToolTipText("Explicit alternatives for this role. A target is used "
                 + "only when its class admission rule matches; this class is the fallback.");
-        GridBagUtils.labeledRow(form, c, y++, "Represent matching entities as:", representations);
+        GridBagUtils.labeledRow(form, c, y, "Represent matching entities as:", representations);
 
-
+        form = configuration.form(ClassConfigurationProjection.REFINE);
+        y = 0;
         excludeTypesField.setToolTipText("<html>Type QIDs (space-separated) to "
                 + "EXCLUDE: drop any item that is instance-of (P31) one of these, "
                 + "even if it matched membership.<br>e.g. add Q11688446 (Roman "
@@ -638,7 +644,7 @@ public class ClassSourcePanel extends JPanel {
                 + "population). <b>(none)</b> = arbitrary, ordered by name.</html>");
         rankRow.add(rankByBox);
         rankRow.add(rankDescBox);
-        GridBagUtils.labeledRow(form, c, y++, rankByLabel, rankRow);
+        GridBagUtils.labeledRow(form, c, y, rankByLabel, rankRow);
 
 
         seedQidsArea.setLineWrap(true);
@@ -661,6 +667,8 @@ public class ClassSourcePanel extends JPanel {
         triple.actions(List.of(findRelationButton),
                 List.of(fromPartsButton));
 
+        form = configuration.form(ClassConfigurationProjection.MEMBERSHIP_SEARCH);
+        y = 0;
         JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         searchRow.add(new JLabel("Search:"));
         searchRow.add(searchTextField);
@@ -678,12 +686,11 @@ public class ClassSourcePanel extends JPanel {
         JPanel useRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
         useSelectedButton.setEnabled(false);
         useRow.add(useSelectedButton);
-        GridBagUtils.wideRow(form, y++, useRow);
+        GridBagUtils.wideRow(form, y, useRow);
 
-        // --- Identity & label section ---
-        JLabel canonHeader = new JLabel("Identity & label");
-        canonHeader.setFont(canonHeader.getFont().deriveFont(Font.BOLD, 13f));
-        GridBagUtils.wideRow(form, y++, canonHeader);
+        form = configuration.form(ClassConfigurationProjection.IDENTITY);
+        y = 0;
+        GridBagUtils.wideRow(form, y++, identityEditor);
 
         // No "Kind:" control. Which identity regime a class is in follows from how it
         // is built, so offering it separately only created a second answer that could
@@ -701,15 +708,15 @@ public class ClassSourcePanel extends JPanel {
         aliasesBox.setToolTipText("Retain Wikidata aliases as the minor "
                 + "alternateNames field. They can then be configured for view, search "
                 + "and sort like other fields.");
-        GridBagUtils.labeledRow(form, c, y++, "Additional names:", aliasesBox);
+        GridBagUtils.labeledRow(form, c, y, "Additional names:", aliasesBox);
 
+        form = configuration.form(ClassConfigurationProjection.SOURCE_LINKS);
+        y = 0;
         wikipediaArticleBox.setToolTipText("Retain the entity's enwiki sitelink and "
                 + "render it as the Wikipedia source. This is independent of its fields.");
-        GridBagUtils.labeledRow(form, c, y++, "Source links:", wikipediaArticleBox);
+        GridBagUtils.labeledRow(form, c, y, "Source links:", wikipediaArticleBox);
 
-        GridBagUtils.wideRow(form, y++, summaryLabel);
-
-        add(scroll, BorderLayout.CENTER);
+        add(configuration, BorderLayout.CENTER);
 
         searchTextField.addActionListener(e -> searchTypeButton.doClick());
         useSelectedButton.addActionListener(e -> useSelectedSearchRow());
@@ -719,6 +726,10 @@ public class ClassSourcePanel extends JPanel {
 
         updateSearchButtonState();
     }
+
+    ClassConfigurationEditor configurationEditor() { return configuration; }
+
+    private void refreshConfiguration() { configuration.showClass(projectModel, clazz); }
 
     private void wireQuery() {
         queryRunner.wireButton(
@@ -955,6 +966,7 @@ public class ClassSourcePanel extends JPanel {
                 searchModel.row(searchTable.convertRowIndexToModel(row));
 
         useSourceQid(r.qid(), r.label());
+        configuration.tree().selectDetail(ClassConfigurationProjection.PRODUCTION);
     }
 
     private void installSearchTableBehavior() {
@@ -1083,6 +1095,7 @@ public class ClassSourcePanel extends JPanel {
 
         updateSummary();
         triple.refreshConfigurationStatus(clazz, projectModel);
+        refreshConfiguration();
         afterChange.accept(null);
     }
 
@@ -1195,8 +1208,7 @@ public class ClassSourcePanel extends JPanel {
             }
             return;
         }
-        summaryLabel.setText("Current source: items with instance of "
-                + clazz.instanceMapping().displaySource());
+        summaryLabel.setText(" ");
     }
 
     private void clear() {

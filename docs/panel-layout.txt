@@ -28,9 +28,9 @@
     combo: 3 item(s)
   label: Select a class, field, or vocabulary below the domain to configure it.
 
-== Source class - ClassSourcePanel ==
+== Source class / Definition ==
+  box: Configuration
   label: Class: Person
-  label: How do we find instances of this class?
   piece: ClassHeaderEditor
     label: Class name:
     text: [Person]
@@ -38,6 +38,10 @@
     text: []
     label: Extends:
     combo: 4 item(s)
+
+== Source class / Population: Single type ==
+  box: Configuration
+  label: How do we find instances of this class?
   label: Population source:
   combo: 2 item(s)
   piece: TripleEditor  [Triple — subject · property · object]
@@ -79,6 +83,9 @@
     button: Find related objects…  (disabled)
     label: Matching subjects become instances of this class.
     label: ✓ Ready — property P31 points to Q5
+
+== Source class / Identity ==
+  box: Configuration
   piece: ClassIdentityEditor  [Identity]
     label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
     piece: OrderedChoiceList
@@ -96,6 +103,15 @@
       combo: 2 item(s)
       label: structuredName:
       combo: 2 item(s)
+  label: Identity:
+  label: Source entity (id + label)
+  label: Source bindings:
+  label: Wikidata id (QID) · Label
+  label: Additional names:
+  check: Add aliases (Also known as)
+
+== Source class / Display name ==
+  box: Configuration
   piece: DisplayNameEditor  [Display name]
     piece: OrderedChoiceList  [Named by, in order — empty means the name it already has]
       list
@@ -105,8 +121,9 @@
       button: Down  (disabled)
       label: Available:
       combo: 3 item(s)
-  label: Group members field:
-  combo: 1 item(s)
+
+== Source class / + Add subclass condition or representation ==
+  box: Configuration
   label: Represent matching entities as:
   piece: OrderedChoiceList
     list
@@ -116,6 +133,14 @@
     button: Down  (disabled)
     label: Available:
     combo: 1 item(s)
+
+== Source class / + Configure group members ==
+  box: Configuration
+  label: Group members field:
+  combo: 1 item(s)
+
+== Source class / Population limits and filters ==
+  box: Configuration
   label: Exclude instances of:
   ids: []
     text: []
@@ -132,24 +157,28 @@
   label: Rank by:
   combo: 3 item(s)
   check: highest first
+
+== Source class / + Add source link ==
+  box: Configuration
+  label: Source links:
+  check: Add English Wikipedia source link
+
+== Source class / + Find membership types ==
+  box: Configuration
   label: Search:
   text: [Person]
   label: Method:
   combo: 3 item(s)
   button: Search  (disabled)
   button: Use selected  (disabled)
-  label: Identity & label
-  label: Identity:
-  label: Source entity (id + label)
-  label: Source bindings:
-  label: Wikidata id (QID) · Label
-  label: Additional names:
-  check: Add aliases (Also known as)
-  label: Source links:
-  check: Add English Wikipedia source link
-  label: Current source: items with instance of (not selected)
 
-== Statement class - StatementSourcePanel ==
+== Source class / Used by ==
+  box: Configuration
+  label: Select a reference to open it.
+  button: Open  (disabled)
+
+== Statement class / Definition ==
+  box: Configuration
   label: Statement class: Award
   piece: ClassHeaderEditor
     label: Class name:
@@ -158,6 +187,9 @@
     text: []
     label: Extends:
     combo: 4 item(s)
+
+== Statement class / Statement triple: P166 ==
+  box: Configuration
   piece: TripleEditor  [Triple — subject · property · object]
     piece: EntityEndEditor  [Subject]
       label: Entities allowed:
@@ -183,6 +215,9 @@
       combo: 3 item(s)
       label: These objects find the subjects to load; they do not restrict which object values are retained on those subjects.
     label: ✓ Ready — statement property P166
+
+== Statement class / Identity ==
+  box: Configuration
   piece: ClassIdentityEditor  [Identity]
     label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
     piece: OrderedChoiceList
@@ -200,6 +235,13 @@
     box: When the same key occurs
       label: category:
       combo: 2 item(s)
+  label: When duplicates occur (superseded):
+  combo: 2 item(s)  (disabled)
+  label: Canonical list:
+  combo: 1 item(s)
+
+== Statement class / Display name ==
+  box: Configuration
   piece: DisplayNameEditor  [Display name]
     piece: OrderedChoiceList  [Named by, in order — empty means the name it already has]
       list
@@ -210,10 +252,17 @@
       label: Available:
       combo: 2 item(s)
     label: These instances have no name of their own — name them by a field.
-  label: When duplicates occur (superseded):
-  combo: 2 item(s)  (disabled)
-  label: Canonical list:
-  combo: 1 item(s)
+
+== Statement class / Graph expansion ==
+  box: Configuration
+  box: Graph discovery
+    label: Expansion policy:
+    combo: 2 item(s)
+    label: Resolved pattern:
+    label: Disabled — statements are still generated normally.
+
+== Statement class / Derived runtime recipe ==
+  box: Configuration
   box: Derived runtime recipe
     label: Identity:
     label: derived natural key
@@ -224,13 +273,19 @@
     label: Canonical key:
     label: —
     box: Qualifier fields
-  box: Graph discovery
-    label: Expansion policy:
-    combo: 2 item(s)
-    label: Resolved pattern:
-    label: Disabled — statements are still generated normally.
 
-== Owned class - OwnedClassPanel ==
+== Statement class / Needs ==
+  box: Configuration
+  label: Select a reference to open it.
+  button: Open  (disabled)
+
+== Statement class / Used by ==
+  box: Configuration
+  label: Select a reference to open it.
+  button: Open  (disabled)
+
+== Owned class / Definition ==
+  box: Configuration
   label: Owned class — instances are created by fields that target this class.
   piece: ClassHeaderEditor
     label: Class name:
@@ -239,12 +294,18 @@
     text: []
     label: Extends:
     combo: 1 item(s)
+
+== Owned class / Ownership sites ==
+  box: Configuration
   piece: TripleEditor  [Triple — subject · property · object]
     box: Property
       label: Wikidata property:
       text: [Person.structuredName]  (disabled)
     label: Given: authored on Person, where the field is.
     label: ✓ Ready — produced by Person.structuredName
+
+== Owned class / Identity ==
+  box: Configuration
   piece: ClassIdentityEditor  [Identity]
     label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
     piece: OrderedChoiceList
@@ -260,6 +321,9 @@
     box: When the same key occurs
       label: given:
       combo: 2 item(s)
+
+== Owned class / Display name ==
+  box: Configuration
   piece: DisplayNameEditor  [Display name]
     piece: OrderedChoiceList  [Named by, in order — empty means the name it already has]
       list
@@ -270,7 +334,13 @@
       label: Available:
       combo: 2 item(s)
 
-== Aggregate class - AggregateClassPanel ==
+== Owned class / Used by ==
+  box: Configuration
+  label: Select a reference to open it.
+  button: Open  (disabled)
+
+== Aggregate class / Definition ==
+  box: Configuration
   piece: ClassHeaderEditor
     label: Class name:
     text: [Prize]
@@ -278,31 +348,9 @@
     text: []
     label: Extends:
     combo: 4 item(s)
-  piece: ClassIdentityEditor  [Identity]
-    label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
-    piece: OrderedChoiceList
-      list
-      button: Add  (disabled)
-      button: Remove  (disabled)
-      button: Up  (disabled)
-      button: Down  (disabled)
-      label: Available:
-      combo: 2 item(s)  (disabled)
-    label: When a key cannot be computed:
-    combo: 3 item(s)
-    box: When the same key occurs
-      label: awards:
-      combo: 2 item(s)
-  piece: DisplayNameEditor  [Display name]
-    piece: OrderedChoiceList  [Named by, in order — empty means the name it already has]
-      list
-      button: Add  (disabled)
-      button: Remove  (disabled)
-      button: Up  (disabled)
-      button: Down  (disabled)
-      label: Available:
-      combo: 2 item(s)
-    label: These instances have no name of their own — name them by a field.
+
+== Aggregate class / Aggregate from Award ==
+  box: Configuration
   label: From class:
   combo: 4 item(s)
   piece: OrderedChoiceList  [Aggregated fields]
@@ -320,6 +368,47 @@
     label: Available:
     combo: 2 item(s)
   label: Choices come from compatible fields on this class and its source class.
+
+== Aggregate class / Identity ==
+  box: Configuration
+  piece: ClassIdentityEditor  [Identity]
+    label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
+    piece: OrderedChoiceList
+      list
+      button: Add  (disabled)
+      button: Remove  (disabled)
+      button: Up  (disabled)
+      button: Down  (disabled)
+      label: Available:
+      combo: 2 item(s)  (disabled)
+    label: When a key cannot be computed:
+    combo: 3 item(s)
+    box: When the same key occurs
+      label: awards:
+      combo: 2 item(s)
+
+== Aggregate class / Display name ==
+  box: Configuration
+  piece: DisplayNameEditor  [Display name]
+    piece: OrderedChoiceList  [Named by, in order — empty means the name it already has]
+      list
+      button: Add  (disabled)
+      button: Remove  (disabled)
+      button: Up  (disabled)
+      button: Down  (disabled)
+      label: Available:
+      combo: 2 item(s)
+    label: These instances have no name of their own — name them by a field.
+
+== Aggregate class / Needs ==
+  box: Configuration
+  label: Select a reference to open it.
+  button: Open  (disabled)
+
+== Aggregate class / Used by ==
+  box: Configuration
+  label: Select a reference to open it.
+  button: Open  (disabled)
 
 == Field - FieldSourcePanel ==
   box: Configuration

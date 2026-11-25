@@ -113,8 +113,6 @@ public class FieldSourcePanel extends JPanel {
 
     private Consumer<GeneratedFieldModel> afterApplyField = f -> {};
     private Consumer<String> onReloadField = key -> {};
-    private Consumer<ConfigurationReferenceInventory.Site> onNavigateConfiguration =
-            ignored -> { };
 
     private final ConfigurationTreePanel configuration =
             new ConfigurationTreePanel("modelbuilder.field.configuration", "Configuration");
@@ -520,7 +518,7 @@ public class FieldSourcePanel extends JPanel {
 
     public void onNavigateConfiguration(
             Consumer<ConfigurationReferenceInventory.Site> navigate) {
-        onNavigateConfiguration = navigate == null ? ignored -> { } : navigate;
+        configuration.onNavigate(navigate);
     }
 
     public void setPropertyCache(Map<String, WikidataProperty> cache) {
@@ -747,10 +745,7 @@ public class FieldSourcePanel extends JPanel {
 
     /** Selects the first node whose detail is that section; false when none offers it. */
     boolean selectConfigurationDetail(String detailKey) {
-        var node = configuration.nodes().stream()
-                .filter(value -> value.detailKey().equals(detailKey)).findFirst();
-        node.ifPresent(value -> configuration.select(value.id()));
-        return node.isPresent();
+        return configuration.selectDetail(detailKey);
     }
 
     javax.swing.JTextField tableEvidenceNameField() {
@@ -1842,7 +1837,6 @@ public class FieldSourcePanel extends JPanel {
         add(configuration, BorderLayout.CENTER);
         add(buttons, BorderLayout.SOUTH);
         configuration.onSelection(this::configurationSelected);
-        configuration.onNavigate(site -> onNavigateConfiguration.accept(site));
 
         applyButton.addActionListener(e -> apply());
         reloadFieldButton.addActionListener(e -> requestReload());
@@ -1974,15 +1968,9 @@ public class FieldSourcePanel extends JPanel {
             filler.weighty = 1.0;
             filler.fill = GridBagConstraints.VERTICAL;
             entry.getValue().add(Box.createVerticalGlue(), filler);
-            configurationDetails.put(entry.getKey(), scrollDetail(entry.getValue()));
+            configurationDetails.put(entry.getKey(),
+                    ConfigurationTreePanel.scrollDetail(entry.getValue()));
         }
-    }
-
-    private static JScrollPane scrollDetail(JPanel panel) {
-        JScrollPane scroll = new JScrollPane(panel);
-        scroll.setBorder(null);
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
-        return scroll;
     }
 
     private void refreshConfigurationTree() {
@@ -2072,7 +2060,8 @@ public class FieldSourcePanel extends JPanel {
     }
 
     private void apply(boolean announce) {
-        if (field == null) {
+        GeneratedClassModel owner = ownerClass();
+        if (field == null || (owner != null && owner.isImported())) {
             return;
         }
         // Checked before anything is written, so a recipe the operation refuses leaves
@@ -2087,7 +2076,6 @@ public class FieldSourcePanel extends JPanel {
             }
         }
 
-        GeneratedClassModel owner = ownerClass();
         // Nothing here reads or rewrites the owning class's identity. It used to: the
         // stored key was compared with a fresh suggestion, and where they still matched
         // it was advanced to a new one after the edit — so configuring "nominee" as a

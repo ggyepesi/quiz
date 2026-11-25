@@ -78,8 +78,6 @@ final class GraphConstraintsPanel extends JPanel {
     private final ConfigurationTreePanel configuration = new ConfigurationTreePanel(
             "modelbuilder.graph.configuration", "Configuration");
     private final Map<String, JComponent> configurationDetails = new LinkedHashMap<>();
-    private Consumer<ConfigurationReferenceInventory.Site> onNavigateConfiguration =
-            ignored -> { };
     /**
      * The GRAPH class being edited. A graph constraint used to be the project's one
      * singleton, so this panel edited "the" graph and named it in a field of its own —
@@ -215,8 +213,7 @@ final class GraphConstraintsPanel extends JPanel {
 
     void onNavigateConfiguration(
             Consumer<ConfigurationReferenceInventory.Site> value) {
-        onNavigateConfiguration = value == null ? ignored -> { } : value;
-        configuration.onNavigate(onNavigateConfiguration);
+        configuration.onNavigate(value);
     }
 
     void setProcessRunner(SwingProcessRunner value) {
@@ -466,7 +463,7 @@ final class GraphConstraintsPanel extends JPanel {
         // quietly store a start node naming whichever class happens to be first.
         // Pressing Apply is what turns a start class into a saved graph; once one
         // exists, a flush keeps it up to date like any other editor.
-        if (clazz == null) return;
+        if (clazz == null || clazz.isImported()) return;
         if (clazz.graphSource() == null
                 && nodesModel.isEmpty()
                 && !WikidataIds.isPid(cleanPid(edgePidField.getText()))) {
@@ -578,23 +575,22 @@ final class GraphConstraintsPanel extends JPanel {
         targetUseBox.setSelectedItem(GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION);
 
         configurationDetails.put(GraphConfigurationProjection.DEFINITION,
-                detailScroll(header));
+                ConfigurationTreePanel.scrollDetail(header));
         configurationDetails.put(GraphConfigurationProjection.START,
-                detailScroll(startNodePanel()));
+                ConfigurationTreePanel.scrollDetail(startNodePanel()));
         configurationDetails.put(GraphConfigurationProjection.PATH,
-                detailScroll(pathPanel()));
+                ConfigurationTreePanel.scrollDetail(pathPanel()));
         configurationDetails.put(GraphConfigurationProjection.EDGE,
-                detailScroll(edgePanel()));
+                ConfigurationTreePanel.scrollDetail(edgePanel()));
         configurationDetails.put(GraphConfigurationProjection.NODE,
-                detailScroll(nodeSettingsPanel()));
+                ConfigurationTreePanel.scrollDetail(nodeSettingsPanel()));
         configurationDetails.put(GraphConfigurationProjection.EVIDENCE,
-                detailScroll(evidencePanel()));
+                ConfigurationTreePanel.scrollDetail(evidencePanel()));
         configurationDetails.put(GraphConfigurationProjection.IDENTITY,
-                detailScroll(identityEditor));
+                ConfigurationTreePanel.scrollDetail(identityEditor));
         configurationDetails.put(GraphConfigurationProjection.DISPLAY_NAME,
-                detailScroll(displayNameEditor));
+                ConfigurationTreePanel.scrollDetail(displayNameEditor));
         configuration.onSelection(this::configurationSelected);
-        configuration.onNavigate(onNavigateConfiguration);
         add(configuration, BorderLayout.CENTER);
 
         JPanel bottom = new JPanel(new BorderLayout());
@@ -743,13 +739,6 @@ final class GraphConstraintsPanel extends JPanel {
         return evidencePanel;
     }
 
-    private static JComponent detailScroll(JComponent component) {
-        JScrollPane scroll = new JScrollPane(component);
-        scroll.setBorder(null);
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
-        return scroll;
-    }
-
     private static JPanel nodePanel(String title) {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
@@ -801,20 +790,19 @@ final class GraphConstraintsPanel extends JPanel {
 
     private void selectConfigurationNode(int index) {
         if (index < 0) return;
+        selectConfigurationPath("path/node:" + index);
+    }
+
+    void selectConfigurationPath(String path) {
         configuration.nodes().stream()
-                .filter(node -> node.id().key().equals("path/node:" + index))
+                .filter(node -> node.id().key().equals(path))
                 .findFirst().ifPresent(node -> configuration.select(node.id()));
     }
 
     ConfigurationTreePanel configurationTree() { return configuration; }
 
     boolean selectConfigurationDetail(String detailKey) {
-        var node = configuration.nodes().stream()
-                .filter(value -> value.detailKey().equals(detailKey)
-                        && value.kind() != ConfigurationNode.Kind.REFERENCE)
-                .findFirst();
-        node.ifPresent(value -> configuration.select(value.id()));
-        return node.isPresent();
+        return configuration.selectDetail(detailKey);
     }
 
     private void refreshClasses() {

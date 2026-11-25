@@ -3,8 +3,8 @@ package domain.workbench.modelbuilder.ui;
 import objectview.utils.swing.GridBagUtils;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedProjectModel;
-import domain.config.MembershipPattern;
-import domain.compile.codegen.GeneratedViewableSourceGenerator;
+import domain.config.ClassConfigurationProjection;
+import domain.config.ClassKind;
 
 import javax.swing.*;
 import java.awt.*;
@@ -14,6 +14,8 @@ import java.util.function.Consumer;
 final class OwnedClassPanel extends JPanel {
 
     private final GeneratedProjectModel project;
+    private final ClassConfigurationEditor configuration =
+            new ClassConfigurationEditor(ClassKind.OWNED);
     // Name, alias and extends are class facts, so they are the shared header. What is
     // left here is what an OWNED class adds: where it is produced.
     private final ClassHeaderEditor header;
@@ -49,6 +51,7 @@ final class OwnedClassPanel extends JPanel {
         displayName.show(value);
         identity.show(value);
         refreshSites();
+        configuration.showClass(project, clazz);
     }
 
     void applyEdits() {
@@ -59,6 +62,7 @@ final class OwnedClassPanel extends JPanel {
         clazz.ownedClass(true);
         displayName.applyEdits();
         refreshSites();
+        configuration.showClass(project, clazz);
         afterChange.accept(null);
     }
 
@@ -68,21 +72,15 @@ final class OwnedClassPanel extends JPanel {
     }
 
     private void buildUi() {
-        JPanel form = new JPanel(new GridBagLayout());
-        form.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
-        GridBagConstraints c = new GridBagConstraints();
-        c.insets = new Insets(4, 4, 4, 4);
-        c.anchor = GridBagConstraints.WEST;
-        c.fill = GridBagConstraints.HORIZONTAL;
-        int row = 0;
-        GridBagUtils.wideRow(form, row++, new JLabel(
+        JPanel definition = configuration.form(ClassConfigurationProjection.DEFINITION);
+        GridBagUtils.wideRow(definition, 0, new JLabel(
                 "<html><b>Owned class</b> — instances are created by fields that target this class.</html>"));
-        // The same order as every other kind: the triple, then what identifies an
-        // instance, then what names it.
-        GridBagUtils.wideRow(form, row++, header);
-        GridBagUtils.wideRow(form, row++, triple);
-        GridBagUtils.wideRow(form, row++, identity);
-        GridBagUtils.wideRow(form, row, displayName);
-        add(form, BorderLayout.NORTH);
+        GridBagUtils.wideRow(definition, 1, header);
+        configuration.detail(ClassConfigurationProjection.PRODUCTION, triple);
+        configuration.detail(ClassConfigurationProjection.IDENTITY, identity);
+        configuration.detail(ClassConfigurationProjection.DISPLAY_NAME, displayName);
+        add(configuration, BorderLayout.CENTER);
     }
+
+    ClassConfigurationEditor configurationEditor() { return configuration; }
 }

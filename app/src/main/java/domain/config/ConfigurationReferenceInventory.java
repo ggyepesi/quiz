@@ -192,6 +192,10 @@ public final class ConfigurationReferenceInventory {
 
     /** Resolves a projected navigation target through the same inventory that named it. */
     public Object resolve(Site target) {
+        return resolve(project, target);
+    }
+
+    public static Object resolve(GeneratedProjectModel project, Site target) {
         if (target == null) return null;
         return switch (target.kind()) {
             case CLASS -> project.resolveClass(target.declarationId(), target.className());
@@ -199,8 +203,19 @@ public final class ConfigurationReferenceInventory {
             case SELECTION -> project.resolveSelection(target.declarationId(), target.name());
             case DATASOURCE_INPUT -> project.resolveClass(
                     target.declarationId(), target.className());
-            case CONFIGURATION -> null;
+            case CONFIGURATION -> resolveGraphNodeOwner(project, target);
         };
+    }
+
+    private static GeneratedClassModel resolveGraphNodeOwner(
+            GeneratedProjectModel project, Site target) {
+        if (target.declarationId().isBlank() || target.fieldPath().isBlank()) return null;
+        GeneratedClassModel clazz = project.resolveClass(target.declarationId(), target.className());
+        if (clazz == null || clazz.graphSource() == null) return null;
+        for (int i = 0; i < clazz.graphSource().nextNodes().size(); i++) {
+            if (graphNodeSite(clazz, i).fieldPath().equals(target.fieldPath())) return clazz;
+        }
+        return null;
     }
 
     public List<Reference> fromClass(GeneratedClassModel clazz) {
@@ -439,7 +454,8 @@ public final class ConfigurationReferenceInventory {
         int index = 0;
         for (EntityKindRule rule : project.entityKindRules()) {
             if (rule == null || rule.className().isBlank()) continue;
-            Site source = configurationSite("entity-kind:" + index++);
+            Site source = configurationSite("entity-kind:" + index++,
+                    rule.className() + " entity-kind rule");
             add(entries, source, classTarget(project, rule.classId(), rule.className()),
                     Relation.ENTITY_KIND_CLASS, "classified class", true,
                     rule::classReference);
@@ -447,7 +463,9 @@ public final class ConfigurationReferenceInventory {
         index = 0;
         for (EntityRepresentationRule rule : project.entityRepresentationRules()) {
             if (rule == null) continue;
-            Site source = configurationSite("entity-representation:" + index++);
+            int position = index++;
+            Site source = configurationSite("entity-representation:" + position,
+                    "Representation rule " + (position + 1));
             if (!rule.roleClassName().isBlank()) {
                 add(entries, source, classTarget(project, rule.roleClassId(),
                                 rule.roleClassName()), Relation.REPRESENTATION_ROLE,
@@ -516,8 +534,10 @@ public final class ConfigurationReferenceInventory {
         int index = 0;
         for (BuildOperation operation : project.buildOperations()) {
             if (operation == null) continue;
-            Site source = configurationSite("build:" + index++ + ":"
-                    + operation.declarationId());
+            int position = index++;
+            Site source = configurationSite("build:" + position + ":"
+                    + operation.declarationId(), "Build step " + (position + 1) + " — "
+                            + operation.kind().label());
             if (operation.kind().target() == BuildOperation.Kind.Target.CLASS
                     || operation.kind().target() == BuildOperation.Kind.Target.GRAPH) {
                 GeneratedClassModel target = operation.target(project);
@@ -563,8 +583,7 @@ public final class ConfigurationReferenceInventory {
             if (node.use() == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION) {
                 int at = index;
                 add(entries, nodeSite, classTarget(project, "", node.populationClass()),
-                        Relation.GRAPH_OUTPUT_CLASS, "graph node " + (index + 1)
-                                + " output class", true,
+                        Relation.GRAPH_OUTPUT_CLASS, "output class", true,
                         (id, name) -> replaceGraphNode(graph, at,
                                 graph.nextNodes().get(at).withPopulationClass(name)));
             }
@@ -574,7 +593,7 @@ public final class ConfigurationReferenceInventory {
                                 node.admissionPopulationSelectionId(),
                                 node.admissionPopulationSelection()),
                         Relation.GRAPH_ADMISSION_POPULATION,
-                        "graph node " + (index + 1) + " admission population", true,
+                        "admission population", true,
                         (id, name) -> replaceGraphNode(graph, at,
                                 graph.nextNodes().get(at).withAdmission(id, name)));
             }
@@ -724,7 +743,7 @@ public final class ConfigurationReferenceInventory {
         entries.add(new Entry(new Reference(source, target, relation, role, required), rewriter));
     }
 
-    private static Site classSite(GeneratedClassModel clazz) {
+    static Site classSite(GeneratedClassModel clazz) {
         return new Site(SiteKind.CLASS, clazz.declarationId(), clazz.className(), "", "");
     }
 
@@ -733,8 +752,8 @@ public final class ConfigurationReferenceInventory {
                 selection.name());
     }
 
-    private static Site configurationSite(String name) {
-        return new Site(SiteKind.CONFIGURATION, "", "", "", name);
+    private static Site configurationSite(String path, String name) {
+        return new Site(SiteKind.CONFIGURATION, "", "", path, name);
     }
 
     private static Site bindingSite(Site storage, SourceBindingTarget target, int index) {
@@ -744,10 +763,14 @@ public final class ConfigurationReferenceInventory {
                     ? target.contextClassName() : target.contextClassDeclarationId();
             context = "context:" + owner + ":" + target.contextFieldPath() + "/";
         }
-        String name = context + target.slot().id()
+        String configurationPath = context + target.slot().id()
                 + (target.slot().additive() ? ":" + index : "");
+        String name = storage.displayName() + " — " + target.slot().id().replace('-', ' ')
+                + (target.slot().additive() ? " " + (index + 1) : "");
         return new Site(SiteKind.CONFIGURATION, storage.declarationId(),
-                storage.className(), storage.fieldPath(), name);
+                storage.className(), storage.fieldPath() + "/binding/" + configurationPath,
+                name + (context.isEmpty() ? "" : " (" + target.contextClassName()
+                        + "." + target.contextFieldPath() + ")"));
     }
 
     private static Site classTarget(

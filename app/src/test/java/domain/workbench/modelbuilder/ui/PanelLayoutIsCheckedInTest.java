@@ -58,20 +58,20 @@ class PanelLayoutIsCheckedInTest {
         ClassSourcePanel source = new ClassSourcePanel();
         source.setProjectModel(project);
         source.edit(project.findClass("Person"));
-        describe(actual, "Source class - ClassSourcePanel", source);
+        describeClass(actual, "Source class", source, source.configurationEditor());
 
         StatementSourcePanel statement = new StatementSourcePanel();
         statement.setProjectModel(project);
         statement.edit(project.findClass("Award"));
-        describe(actual, "Statement class - StatementSourcePanel", statement);
+        describeClass(actual, "Statement class", statement, statement.configurationEditor());
 
         OwnedClassPanel owned = new OwnedClassPanel(project);
         owned.edit(project.findClass("Name"));
-        describe(actual, "Owned class - OwnedClassPanel", owned);
+        describeClass(actual, "Owned class", owned, owned.configurationEditor());
 
         AggregateClassPanel aggregate = new AggregateClassPanel(project);
         aggregate.edit(project.findClass("Prize"));
-        describe(actual, "Aggregate class - AggregateClassPanel", aggregate);
+        describeClass(actual, "Aggregate class", aggregate, aggregate.configurationEditor());
 
         FieldSourcePanel field = new FieldSourcePanel();
         field.setProjectModel(project);
@@ -145,6 +145,15 @@ class PanelLayoutIsCheckedInTest {
     }
 
     // --- the walk ---
+
+    private static void describeClass(StringBuilder out, String title, Container panel,
+            ClassConfigurationEditor editor) {
+        var tree = editor.tree();
+        for (var section : tree.nodes().getFirst().children()) {
+            tree.select(section.id());
+            describe(out, title + " / " + section.caption(), panel);
+        }
+    }
 
     private static void describe(StringBuilder out, String title, Container panel) {
         out.append("== ").append(title).append(" ==\n");

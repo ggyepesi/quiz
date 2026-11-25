@@ -250,6 +250,8 @@ class OneTriplePerClassTest {
                         text.contains("Ready — represented from PositionHolder when P31 contains Q5; "
                                 + "own population limit is unused")),
                 "a representation-supplied class is valid and says where it comes from");
+        assertTrue(panel.configurationEditor().tree().selectDetail(
+                domain.config.ClassConfigurationProjection.REFINE));
         assertTrue(labels(panel).contains("Own population limit:"),
                 "the limit must not look like a cap on every way instances reach a class");
     }
@@ -448,6 +450,16 @@ class OneTriplePerClassTest {
     }
 
     private static <T> T find(Container root, Class<T> type) {
+        if (type == TripleEditor.class) {
+            ClassConfigurationEditor editor = switch (root) {
+                case ClassSourcePanel panel -> panel.configurationEditor();
+                case StatementSourcePanel panel -> panel.configurationEditor();
+                case OwnedClassPanel panel -> panel.configurationEditor();
+                default -> null;
+            };
+            if (editor != null) assertTrue(editor.tree().selectDetail(
+                    domain.config.ClassConfigurationProjection.PRODUCTION));
+        }
         List<T> found = new ArrayList<>();
         collect(root, type, found);
         return found.isEmpty() ? null : found.get(0);

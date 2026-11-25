@@ -229,7 +229,7 @@ class FieldConfigurationProjectionTest {
 
     private static boolean bindingRoot(ConfigurationNode node) {
         return node.bindingSite() != null && node.id().key().equals(
-                "binding:" + node.bindingSite().bindingSite().name());
+                "binding:" + node.bindingSite().bindingSite().fieldPath());
     }
 
     private static List<ConfigurationNode.Id> candidateBindingIds(ConfigurationNode root) {

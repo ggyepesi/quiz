@@ -1,5 +1,7 @@
 package domain.workbench.modelbuilder.ui;
 
+import domain.config.ClassConfigurationProjection;
+
 import domain.datasource.graph.GraphExpansionPolicy;
 import org.junit.jupiter.api.Test;
 import domain.config.GeneratedClassModel;
@@ -266,6 +268,7 @@ class ClassSourcePanelTest {
 
         assertTrue(labels(panel).stream().anyMatch(text -> text.contains(
                 "Ready — 1 explicit QID")), labels(panel).toString());
+        assertTrue(panel.configurationEditor().tree().selectDetail(ClassConfigurationProjection.PRODUCTION));
         render(panel, "target/ui-artifacts/class-source-ready-after-apply.png");
     }
 
@@ -282,6 +285,7 @@ class ClassSourcePanelTest {
         assertEquals("P279", triple.propertyPid(), "the draft stays available to finish");
         assertTrue(labels(panel).stream().anyMatch(text -> text.contains(
                 "property P279 was not saved — add an object")), labels(panel).toString());
+        assertTrue(panel.configurationEditor().tree().selectDetail(ClassConfigurationProjection.PRODUCTION));
         render(panel, "target/ui-artifacts/class-source-unapplied-property.png");
     }
 
@@ -293,6 +297,7 @@ class ClassSourcePanelTest {
         ClassSourcePanel panel = panelFor(position);
         panel.edit(position);
 
+        assertTrue(panel.configurationEditor().tree().selectDetail(ClassConfigurationProjection.PRODUCTION));
         JCheckBox descendants = visibleCheckBox(
                 panel, "include subclasses of these QIDs (P279*)");
         assertNotNull(descendants);

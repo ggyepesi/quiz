@@ -10,7 +10,6 @@ import domain.datasource.api.BindingScope;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -23,7 +22,7 @@ public final class FieldConfigurationProjection {
     public static final String CATEGORY = "field-category-source";
     public static final String EVIDENCE = "field-candidate-evidence";
     public static final String REFINE = "field-refine";
-    public static final String REFERENCE = "field-reference";
+    public static final String REFERENCE = ConfigurationReferenceProjection.DETAIL;
 
     private FieldConfigurationProjection() { }
 
@@ -60,9 +59,9 @@ public final class FieldConfigurationProjection {
         children.add(candidateEvidence(owner, path, "", bindings, registry,
                 directContext));
         children.addAll(contextualSources(owner, path, allBindings, registry, fit));
-        referenceGroup(owner, path, "needs", "Needs", referencesFrom(inventory, fieldSite,
-                allBindings), true).ifPresent(children::add);
-        referenceGroup(owner, path, "used-by", "Used by", inventory.to(fieldSite), false)
+        ConfigurationReferenceProjection.needs(fieldSite,
+                referencesFrom(inventory, fieldSite, allBindings)).ifPresent(children::add);
+        ConfigurationReferenceProjection.usedBy(fieldSite, inventory.to(fieldSite))
                 .ifPresent(children::add);
         children.add(node(owner, path, "refine", ConfigurationNode.Kind.STORED_CONFIGURATION,
                 "Refine", REFINE, List.of()));
@@ -202,7 +201,7 @@ public final class FieldConfigurationProjection {
     private static ConfigurationNode bindingNode(GeneratedClassModel owner, String path,
             ConfigurationReferenceInventory.BindingSite site, DatasourceRegistry registry,
             String detail, String prefix) {
-        String key = "binding:" + site.bindingSite().name();
+        String key = "binding:" + site.bindingSite().fieldPath();
         DatasourceOperation operation;
         DatasourceProvider provider;
         try {
@@ -242,33 +241,6 @@ public final class FieldConfigurationProjection {
                 element.caption(), detail, null, site,
                 element.children().stream().map(child -> elementNode(
                         owner, path, key, detail, site, child)).toList());
-    }
-
-    private static java.util.Optional<ConfigurationNode> referenceGroup(
-            GeneratedClassModel owner, String path, String key, String caption,
-            List<ConfigurationReferenceInventory.Reference> references, boolean targetCaption) {
-        LinkedHashSet<String> seen = new LinkedHashSet<>();
-        List<ConfigurationNode> children = new ArrayList<>();
-        for (ConfigurationReferenceInventory.Reference reference : references) {
-            if (reference.relation()
-                    == ConfigurationReferenceInventory.Relation.SOURCE_BINDING_TARGET) continue;
-            ConfigurationReferenceInventory.Site endpoint = targetCaption
-                    ? reference.target() : reference.source();
-            String unique = reference.relation() + "|" + endpoint + "|" + reference.role();
-            if (!seen.add(unique)) continue;
-            // A reference is a model fact, not a row position.  Its identity must
-            // survive another reference being inserted before it so the shared
-            // tree can restore selection and expansion after Apply.
-            String childKey = key + ":" + unique;
-            children.add(new ConfigurationNode(id(owner, path, childKey),
-                    ConfigurationNode.Kind.REFERENCE,
-                    reference.role() + ": " + endpoint.displayName(), REFERENCE,
-                    endpoint, List.of()));
-        }
-        return children.isEmpty() ? java.util.Optional.empty()
-                : java.util.Optional.of(node(owner, path, key,
-                        ConfigurationNode.Kind.REFERENCE,
-                        caption, REFERENCE, children));
     }
 
     private static List<ConfigurationReferenceInventory.Reference> referencesFrom(

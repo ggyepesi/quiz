@@ -1,5 +1,7 @@
 package domain.workbench.modelbuilder.ui;
 
+import domain.workbench.ui.ConfigurationTreePanel;
+
 import javax.swing.AbstractButton;
 import javax.swing.JComboBox;
 import javax.swing.JList;
@@ -58,6 +60,11 @@ public final class EditableComponents {
 
     public static void setEditable(Component component, boolean editable) {
         if (component == null) return;
+
+        if (component instanceof ConfigurationTreePanel configuration) {
+            configuration.editorDetails().forEach(detail -> setEditable(detail, editable));
+            return;
+        }
 
         if (component instanceof TextBackedEditor backed) {
             backed.setEditorEditable(editable);

@@ -10,6 +10,8 @@ import domain.config.StatementIdentity;
 import domain.config.EntityBound;
 import domain.build.WikidataGraphDiscoveryState;
 import domain.config.CanonicalSpec;
+import domain.config.ClassConfigurationProjection;
+import domain.config.ClassKind;
 import domain.config.FieldSourceMapping;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedFieldModel;
@@ -43,6 +45,8 @@ import java.util.function.Supplier;
  * class-level canonical identity.</p>
  */
 public class StatementSourcePanel extends JPanel {
+    private final ClassConfigurationEditor configuration =
+            new ClassConfigurationEditor(ClassKind.STATEMENT);
 
     private GeneratedClassModel clazz;
     private GeneratedProjectModel projectModel;
@@ -125,6 +129,7 @@ public class StatementSourcePanel extends JPanel {
 
         if (clazz == null) {
             clear();
+            refreshConfiguration();
             return;
         }
 
@@ -148,6 +153,7 @@ public class StatementSourcePanel extends JPanel {
         refreshTriple();
         rebuildCanonicalControls();
         refreshDerived();
+        refreshConfiguration();
     }
 
 
@@ -223,6 +229,7 @@ public class StatementSourcePanel extends JPanel {
 
         applyCanonicalControls();
         refreshDerived();
+        refreshConfiguration();
         afterChange.accept(null);
     }
 
@@ -525,29 +532,16 @@ public class StatementSourcePanel extends JPanel {
     }
 
     private void buildUi() {
-        JPanel form =
-                new JPanel(new GridBagLayout());
-        form.setBorder(
-                BorderFactory.createEmptyBorder(
-                        6,
-                        6,
-                        6,
-                        6));
-
-        int row = 0;
+        JPanel definition = configuration.form(ClassConfigurationProjection.DEFINITION);
 
         titleLabel.setFont(
                 titleLabel.getFont()
                           .deriveFont(
                                   Font.BOLD,
                                   16f));
-        GridBagUtils.wideRow(form, row++, titleLabel);
-
-        GridBagUtils.wideRow(form, row++, header);
-
-        GridBagUtils.wideRow(form, row++, triple);
-
-
+        GridBagUtils.wideRow(definition, 0, titleLabel);
+        GridBagUtils.wideRow(definition, 1, header);
+        configuration.detail(ClassConfigurationProjection.PRODUCTION, triple);
 
         JPanel graphDiscovery = new JPanel(new GridBagLayout());
         graphDiscovery.setBorder(BorderFactory.createTitledBorder("Graph discovery"));
@@ -562,9 +556,6 @@ public class StatementSourcePanel extends JPanel {
                 "Expansion policy:", graphExpansionBox);
         GridBagUtils.labeledRow(graphDiscovery, gc, 1,
                 "Resolved pattern:", graphPatternValue);
-        // Added last, below. Graph discovery says how far generation walks OUT from
-        // this class; it is not part of saying what the statement IS, and sitting
-        // between the triple and the identity it separated two halves of one thought.
 
         JPanel canonical =
                 new JPanel(new GridBagLayout());
@@ -581,10 +572,8 @@ public class StatementSourcePanel extends JPanel {
 
         // The shared editor replaces the checkbox grid: an ordered key, and a reducer
         // per field, asked the same way on every construct.
-        // Identity, then the name — the same order every kind uses. What only a
-        // statement class has follows them.
         GridBagUtils.wideRow(canonical, 0, identityEditor);
-        GridBagUtils.wideRow(canonical, 1, displayNameEditor);
+        configuration.detail(ClassConfigurationProjection.DISPLAY_NAME, displayNameEditor);
 
         // Superseded, and shown saying so rather than left looking live. It is a
         // class-wide policy, so it could never express "union the laureates while
@@ -595,7 +584,7 @@ public class StatementSourcePanel extends JPanel {
         duplicatePolicyBox.setEnabled(false);
         duplicatePolicyBox.setToolTipText(
                 "Superseded by the per-field rules above. It no longer affects a run.");
-        GridBagUtils.labeledRow(canonical, cc, 2,
+        GridBagUtils.labeledRow(canonical, cc, 1,
             "When duplicates occur (superseded):", duplicatePolicyBox);
 
         primaryListFieldBox.setToolTipText("<html>Which multi-valued entity qualifier "
@@ -606,7 +595,7 @@ public class StatementSourcePanel extends JPanel {
                 + "duplicates and are dropped.<br><b>" + INFER_PRIMARY_LIST + "</b> takes "
                 + "the first such qualifier — correct with one candidate, decided by "
                 + "field order with two.</html>");
-        GridBagUtils.labeledRow(canonical, cc, 3,
+        GridBagUtils.labeledRow(canonical, cc, 2,
             "Canonical list:",
             primaryListFieldBox);
 
@@ -620,7 +609,7 @@ public class StatementSourcePanel extends JPanel {
         // No "Refresh derived view" either. It called applyEdits() and then a refresh
         // that applyEdits() already ends with — an Apply button wearing an inspection
         // label, which is directive 10 inverted.
-        GridBagUtils.wideRow(form, row++, canonical);
+        configuration.detail(ClassConfigurationProjection.IDENTITY, canonical);
 
         JPanel derived =
                 new JPanel(new GridBagLayout());
@@ -665,28 +654,16 @@ public class StatementSourcePanel extends JPanel {
 
         GridBagUtils.wideRow(derived, derivedRow++,
              qualifiersArea);
-        GridBagUtils.wideRow(form, row++, derived);
-        GridBagUtils.wideRow(form, row++, graphDiscovery);
-
-        GridBagConstraints filler =
-                new GridBagConstraints();
-        filler.gridx = 0;
-        filler.gridy = row;
-        filler.weighty = 1.0;
-        filler.fill = GridBagConstraints.BOTH;
-        filler.gridwidth = 2;
-        form.add(new JLabel(), filler);
+        configuration.detail(ClassConfigurationProjection.RUNTIME_RECIPE, derived);
+        configuration.detail(ClassConfigurationProjection.GRAPH_EXPANSION, graphDiscovery);
 
         setLayout(new BorderLayout());
-
-        JScrollPane scroll =
-                new JScrollPane(form);
-        scroll.setBorder(null);
-        scroll.getVerticalScrollBar()
-              .setUnitIncrement(16);
-
-        add(scroll, BorderLayout.CENTER);
+        add(configuration, BorderLayout.CENTER);
     }
+
+    ClassConfigurationEditor configurationEditor() { return configuration; }
+
+    private void refreshConfiguration() { configuration.showClass(projectModel, clazz); }
 
     private static String display(
             List<String> values) {

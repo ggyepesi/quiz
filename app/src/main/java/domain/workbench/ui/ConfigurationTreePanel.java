@@ -8,6 +8,7 @@ import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTree;
 import javax.swing.KeyStroke;
 import javax.swing.UIManager;
@@ -21,10 +22,12 @@ import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * The shared Swing presentation of a {@link ConfigurationNode} projection.
@@ -38,6 +41,7 @@ public final class ConfigurationTreePanel extends JPanel {
     private final TreeAndDetailPanel<ConfigurationNode.Id> tree;
     private final Map<ConfigurationNode.Id, ConfigurationNode> nodes =
             new LinkedHashMap<>();
+    private final LinkedHashSet<JComponent> editorDetails = new LinkedHashSet<>();
     private final JPanel referenceDetail = new JPanel(new BorderLayout());
     private final JLabel referenceLabel =
             new JLabel("Select a reference to open it.");
@@ -46,6 +50,7 @@ public final class ConfigurationTreePanel extends JPanel {
     private Consumer<ConfigurationNode> selectionListener = ignored -> { };
     private Consumer<ConfigurationReferenceInventory.Site> navigationListener =
             ignored -> { };
+    private Predicate<ConfigurationReferenceInventory.Site> canNavigate = site -> true;
 
     public ConfigurationTreePanel(String componentNamePrefix, String outlineTitle) {
         super(new BorderLayout());
@@ -77,10 +82,16 @@ public final class ConfigurationTreePanel extends JPanel {
         navigationListener = listener == null ? ignored -> { } : listener;
     }
 
+    public void navigationAvailableWhen(Predicate<ConfigurationReferenceInventory.Site> value) {
+        canNavigate = value;
+        updateReferenceDetail(selectedNode());
+    }
+
     /** Replaces one complete projection while the neutral shell preserves layout state. */
     public void show(ConfigurationNode root,
             Function<ConfigurationNode, JComponent> detailFor) {
         nodes.clear();
+        editorDetails.clear();
         selectedReference = null;
         updateReferenceDetail(null);
         if (root == null) {
@@ -109,16 +120,35 @@ public final class ConfigurationTreePanel extends JPanel {
 
     public boolean contains(ConfigurationNode.Id id) { return tree.contains(id); }
 
+    public boolean selectDetail(String detailKey) {
+        var node = nodes.values().stream()
+                .filter(value -> value.kind() != ConfigurationNode.Kind.REFERENCE
+                        && value.detailKey().equals(detailKey)).findFirst();
+        node.ifPresent(value -> select(value.id()));
+        return node.isPresent();
+    }
+
     public JButton openReferenceButton() { return openReference; }
 
     public List<ConfigurationNode> nodes() { return List.copyOf(nodes.values()); }
 
+    /** The controls owned by the editor. Reference navigation remains available for inspection. */
+    public List<JComponent> editorDetails() { return List.copyOf(editorDetails); }
+
+    public static JScrollPane scrollDetail(JComponent component) {
+        JScrollPane scroll = new JScrollPane(component);
+        scroll.setBorder(null);
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        return scroll;
+    }
+
     private TreeAndDetailPanel.Branch<ConfigurationNode.Id> branch(
             ConfigurationNode node, Function<ConfigurationNode, JComponent> detailFor) {
         nodes.put(node.id(), node);
-        JComponent detail = node.kind() == ConfigurationNode.Kind.REFERENCE
-                ? referenceDetail : detailFor.apply(node);
+        boolean reference = node.kind() == ConfigurationNode.Kind.REFERENCE;
+        JComponent detail = reference ? referenceDetail : detailFor.apply(node);
         if (detail == null) detail = new JPanel();
+        if (!reference) editorDetails.add(detail);
         return new TreeAndDetailPanel.Branch<>(node.id(), node.caption(), detail,
                 node.children().stream().map(child -> branch(child, detailFor)).toList());
     }
@@ -141,19 +171,20 @@ public final class ConfigurationTreePanel extends JPanel {
     }
 
     private void updateReferenceDetail(ConfigurationNode node) {
-        openReference.setEnabled(selectedReference != null);
+        boolean available = selectedReference != null && canNavigate.test(selectedReference);
+        openReference.setEnabled(available);
         if (selectedReference == null) {
             referenceLabel.setText("Select a reference to open it.");
             openReference.setText("Open");
         } else {
-            referenceLabel.setText(node == null ? selectedReference.displayName()
-                    : node.caption());
+            String caption = node == null ? selectedReference.displayName() : node.caption();
+            referenceLabel.setText(available ? caption : caption + " — no detail editor here");
             openReference.setText("Open " + selectedReference.displayName());
         }
     }
 
     private void openSelectedReference() {
-        if (selectedReference != null) navigationListener.accept(selectedReference);
+        if (openReference.isEnabled()) navigationListener.accept(selectedReference);
     }
 
     private final class NodeRenderer extends DefaultTreeCellRenderer {

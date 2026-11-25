@@ -320,11 +320,25 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     public void onConfigurationNavigation(Consumer<Object> consumer) {
         Consumer<Object> destination = consumer == null ? ignored -> { } : consumer;
         Consumer<ConfigurationReferenceInventory.Site> navigate = site -> {
-            Object resolved = ConfigurationReferenceInventory.of(projectModel).resolve(site);
-            if (resolved != null) destination.accept(resolved);
+            Object resolved = ConfigurationReferenceInventory.resolve(projectModel, site);
+            if (resolved != null) {
+                destination.accept(resolved);
+                if (resolved == selected && site.kind()
+                        == ConfigurationReferenceInventory.SiteKind.CONFIGURATION) {
+                    graphConstraintsPanel.selectConfigurationPath(site.fieldPath());
+                }
+            }
         };
-        fieldSourcePanel.onNavigateConfiguration(navigate);
-        graphConstraintsPanel.onNavigateConfiguration(navigate);
+        for (var tree : List.of(classSourcePanel.configurationEditor().tree(),
+                statementSourcePanel.configurationEditor().tree(),
+                ownedClassPanel.configurationEditor().tree(),
+                aggregateClassPanel.configurationEditor().tree(),
+                fieldSourcePanel.configurationTree(),
+                graphConstraintsPanel.configurationTree())) {
+            tree.onNavigate(navigate);
+            tree.navigationAvailableWhen(site ->
+                    ConfigurationReferenceInventory.resolve(projectModel, site) != null);
+        }
     }
 
     /** The window's reusable selections, shared with tools that name or consume them. */
@@ -606,6 +620,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     /** Writes the editor that {@link #showEditor} shows for this class. A graph is
      *  flushed by its pending-edits rule, which never creates a graph out of defaults. */
     private void flushEditor(GeneratedClassModel clazz) {
+        if (clazz.isImported()) return;
         switch (clazz.classKind()) {
             case STATEMENT -> statementSourcePanel.applyEdits();
             case OWNED -> ownedClassPanel.applyEdits();
@@ -1253,11 +1268,14 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     }
 
     private boolean canUseSelectedProperty() {
-        return (selected instanceof GeneratedFieldModel
-                || selected instanceof GeneratedClassModel clazz
-                && !clazz.reifiesStatements() && !clazz.ownedClass()
-                && clazz.classKind() != domain.config.ClassKind.AGGREGATE)
-                && editingEnabled;
+        if (!editingEnabled) return false;
+        if (selected instanceof GeneratedFieldModel field) {
+            GeneratedClassModel owner = owningClassOf(field);
+            return owner == null || !owner.isImported();
+        }
+        return selected instanceof GeneratedClassModel clazz
+                && clazz.classKind() == domain.config.ClassKind.SOURCE
+                && !clazz.isImported() && !clazz.materializedByTransformation();
     }
 
     private void useSelectedProperty(WorkbenchSelections.Property property) {
