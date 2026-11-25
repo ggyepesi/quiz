@@ -2,18 +2,27 @@ package domain.workbench.unified.ui;
 
 import dataset.DomainStorage;
 import domain.build.ProjectSave;
+import domain.config.ClassConfigurationProjection;
+import domain.config.ClassPopulationMode;
 import domain.config.FieldCardinality;
 import domain.config.FieldConfigurationProjection;
 import domain.config.FieldSourceType;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedFieldModel;
 import domain.config.GeneratedProjectModel;
+import domain.config.TransformationClassSource;
+import domain.config.TransformationStep;
 import domain.datasource.schema.FieldType;
 import domain.runtime.WikidataDynamicObject;
+import domain.transform.FilterOperator;
 import domain.transform.app.DomainCatalog;
+import domain.transform.pipeline.ui.TransformationConfigurationEditor;
 import domain.transform.ui.ProjectBacking;
 import domain.workbench.modelbuilder.ui.SingleRootClassModelPanel;
 import domain.workbench.ui.ConfigurationTreePanel;
+import domain.workbench.ui.WorkbenchActionResultNavigator;
+import domain.workbench.ui.WorkbenchResultViews;
+import objectview.view.SearchableView;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -22,6 +31,8 @@ import javax.swing.JComboBox;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.TreePath;
 import java.awt.Component;
 import java.awt.Container;
 import java.nio.file.Files;
@@ -29,6 +40,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -107,6 +119,156 @@ class UnifiedWorkbenchPanelTest {
                     assertTrue(plan.getText().contains("Rendered.Consort"), plan.getText());
                 }
             });
+        } finally {
+            SwingUtilities.invokeAndWait(panel.get()::close);
+        }
+    }
+
+    /** #535: a construct is dirty when Apply would change the model. A transformation draft
+     *  that was edited and then put back as it was asks nothing on leaving, saving or closing. */
+    @Test void aRecipeEditThatIsReversedLeavesTheTransformationClean() throws Exception {
+        var storage = DomainStorage.in(root.toFile());
+        var model = new GeneratedProjectModel();
+        model.name("Positions");
+        var input = new GeneratedClassModel("Position");
+        input.seedQids().add("Q1");
+        input.addField("holderCount", FieldType.NUMBER, FieldCardinality.SINGLE);
+        input.addField("siteCount", FieldType.NUMBER, FieldCardinality.SINGLE);
+        model.rootClass(input);
+        var output = new GeneratedClassModel("SelectedPosition");
+        output.baseClassName(input.className());
+        output.populationMode(ClassPopulationMode.MATERIALIZED_TRANSFORM);
+        var recipe = new TransformationClassSource();
+        recipe.inputClassReference(input.declarationId(), input.className());
+        recipe.addStep(TransformationStep.filter("holderCount", FilterOperator.GREATER_THAN, 0, null));
+        recipe.addStep(TransformationStep.filter("siteCount", FilterOperator.GREATER_THAN, 2, null));
+        output.transformationSource(recipe);
+        model.addClass(output);
+        var first = new WikidataDynamicObject("Q1", "First position");
+        first.type(input.className());
+        var run = new ProjectSave.Run(List.of(first), List.of(), null, model);
+        ProjectSave.plan(new ProjectSave.Input(model, run, null, List.of()), storage).write();
+        var domain = DomainCatalog.modelBacked(storage).getFirst().opener().open();
+        var working = domain.capability(ProjectBacking.class).projectModel().findClass(output.className());
+        SwingUtilities.invokeAndWait(() -> {
+            try (var workbench = new UnifiedWorkbenchPanel(domain)) {
+                find(workbench, SingleRootClassModelPanel.class, unused -> true).selectClass(working);
+                var recipeTree = find(workbench, ConfigurationTreePanel.class, tree -> tree.nodes().stream()
+                        .anyMatch(node -> ClassConfigurationProjection.transformationStepIndex(node) == 1));
+                var editor = find(workbench, TransformationConfigurationEditor.class, unused -> true);
+                var up = find(editor, JButton.class, button -> "Move up".equals(button.getText()));
+                Runnable selectSecond = () -> recipeTree.select(recipeTree.nodes().stream()
+                        .filter(node -> ClassConfigurationProjection.transformationStepIndex(node) == 1)
+                        .findFirst().orElseThrow().id());
+
+                selectSecond.run();
+                up.doClick();
+                assertTrue(workbench.hasUnappliedEdits(), "a reordered recipe is a draft");
+                selectSecond.run();
+                up.doClick();
+                assertFalse(workbench.hasUnappliedEdits(), "the original order is the applied recipe");
+                workbench.unappliedDecision((construct, action) -> {
+                    throw new AssertionError("a clean transformation asked: " + action);
+                });
+                boolean[] closed = {false};
+                workbench.requestClose(() -> closed[0] = true);
+                assertTrue(closed[0]);
+            }
+        });
+        assertEquals(2, working.transformationSource().steps().size());
+    }
+
+    @Test void previewResolvesTheRecipeDraftAndSavePersistsOnlyTheRecipe() throws Exception {
+        var storage = DomainStorage.in(root.toFile());
+        var model = new GeneratedProjectModel();
+        model.name("Positions");
+        var input = new GeneratedClassModel("Position");
+        input.seedQids().addAll(List.of("Q1", "Q2"));
+        input.addField("holderCount", FieldType.NUMBER, FieldCardinality.SINGLE);
+        input.addField("siteCount", FieldType.NUMBER, FieldCardinality.SINGLE);
+        model.rootClass(input);
+        var output = new GeneratedClassModel("SelectedPosition");
+        output.baseClassName(input.className());
+        output.populationMode(ClassPopulationMode.MATERIALIZED_TRANSFORM);
+        var recipe = new TransformationClassSource();
+        recipe.inputClassReference(input.declarationId(), input.className());
+        recipe.addStep(TransformationStep.filter("holderCount", FilterOperator.GREATER_THAN, 0, null));
+        recipe.addStep(TransformationStep.filter("siteCount", FilterOperator.GREATER_THAN, 2, null));
+        output.transformationSource(recipe);
+        model.addClass(output);
+        var first = new WikidataDynamicObject("Q1", "First position");
+        first.type(output.className());
+        first.put("holderCount", 5);
+        first.put("siteCount", 3);
+        var second = new WikidataDynamicObject("Q2", "Second position");
+        second.type(input.className());
+        second.put("holderCount", 8);
+        second.put("siteCount", 1);
+        var run = new ProjectSave.Run(List.of(first, second), List.of(), null, model);
+        ProjectSave.plan(new ProjectSave.Input(model, run, null, List.of()), storage).write();
+        Path modelFile = storage.modelFile(model.name()).toPath();
+        Path snapshot = storage.snapshotFile(model.name()).toPath();
+        String savedRecipe = Files.readString(modelFile);
+        String savedInstances = Files.readString(snapshot);
+        var choice = DomainCatalog.modelBacked(storage).getFirst();
+        var domain = choice.opener().open();
+        var working = domain.capability(ProjectBacking.class).projectModel().findClass(output.className());
+        var panel = new AtomicReference<UnifiedWorkbenchPanel>();
+        var results = new AtomicReference<WorkbenchResultViews>();
+        SwingUtilities.invokeAndWait(() -> {
+            var workbench = new UnifiedWorkbenchPanel(domain);
+            panel.set(workbench);
+            var constructs = find(workbench, SingleRootClassModelPanel.class, unused -> true);
+            constructs.selectClass(working);
+            var recipeTree = find(workbench, ConfigurationTreePanel.class, tree -> tree.nodes().stream()
+                    .anyMatch(node -> ClassConfigurationProjection.transformationStepIndex(node) == 1));
+            recipeTree.select(recipeTree.nodes().stream()
+                    .filter(node -> ClassConfigurationProjection.transformationStepIndex(node) == 1)
+                    .findFirst().orElseThrow().id());
+            var editor = find(workbench, TransformationConfigurationEditor.class, unused -> true);
+            find(editor, JButton.class, button -> "Remove filter".equals(button.getText())).doClick();
+
+            var actions = find(workbench, WorkbenchActionResultNavigator.class, unused -> true);
+            var actionTree = actions.tree();
+            var rootNode = (DefaultMutableTreeNode) actionTree.getModel().getRoot();
+            var previewNode = java.util.Collections.list(rootNode.depthFirstEnumeration()).stream()
+                    .map(DefaultMutableTreeNode.class::cast)
+                    .filter(node -> "Preview population".equals(node.toString())).findFirst().orElseThrow();
+            actionTree.setSelectionPath(new TreePath(previewNode.getPath()));
+            var preview = find(workbench, JButton.class, button -> "Preview population".equals(button.getText()));
+            results.set(find(workbench, WorkbenchResultViews.class, unused -> true));
+            workbench.unappliedDecision((construct, action) -> process.swing.Dialogs.UnappliedEdits.STAY);
+            preview.doClick();
+            assertEquals(0, results.get().getTabCount());
+            assertEquals(2, working.transformationSource().steps().size());
+            assertTrue(workbench.hasUnappliedEdits());
+            workbench.unappliedDecision((construct, action) -> process.swing.Dialogs.UnappliedEdits.APPLY);
+            preview.doClick();
+            assertEquals(1, working.transformationSource().steps().size());
+            assertFalse(preview.isEnabled());
+            assertFalse(workbench.hasUnappliedEdits());
+        });
+        try {
+            var workbench = panel.get();
+            await(() -> results.get().getTabCount() == 1
+                    && find(workbench, JButton.class, button -> "Save domain…".equals(button.getText()))
+                            .isEnabled(), "population preview did not finish");
+            assertEquals(savedRecipe, Files.readString(modelFile));
+            assertEquals(savedInstances, Files.readString(snapshot));
+            assertEquals(1, domain.instancesOf(output.className()).size());
+            SwingUtilities.invokeAndWait(() -> {
+                assertEquals("Matching instances (2)", results.get().getTitleAt(0));
+                assertTrue(results.get().getComponentAt(0) instanceof SearchableView);
+                workbench.persistenceConfirmation(message -> message.contains(modelFile.toString()));
+                workbench.showSaveSuccess(false);
+                find(workbench, JButton.class, button -> "Save domain…".equals(button.getText())).doClick();
+            });
+            awaitSaved(workbench);
+            assertEquals(savedInstances, Files.readString(snapshot));
+            var reopened = choice.opener().open();
+            var persisted = reopened.capability(ProjectBacking.class).projectModel().findClass(output.className());
+            assertEquals(List.of("holderCount"), persisted.transformationSource().steps().stream()
+                    .map(TransformationStep::fieldPath).toList());
         } finally {
             SwingUtilities.invokeAndWait(panel.get()::close);
         }
@@ -415,12 +577,16 @@ class UnifiedWorkbenchPanelTest {
     }
 
     private static void awaitSaved(UnifiedWorkbenchPanel workbench) throws Exception {
+        await(() -> !workbench.saving(), "save did not finish");
+    }
+
+    private static void await(BooleanSupplier condition, String message) throws Exception {
         long deadline = System.currentTimeMillis() + 20_000;
         while (true) {
-            boolean[] busy = {true};
-            SwingUtilities.invokeAndWait(() -> busy[0] = workbench.saving());
-            if (!busy[0]) return;
-            if (System.currentTimeMillis() > deadline) throw new AssertionError("save did not finish");
+            boolean[] done = {false};
+            SwingUtilities.invokeAndWait(() -> done[0] = condition.getAsBoolean());
+            if (done[0]) return;
+            if (System.currentTimeMillis() > deadline) throw new AssertionError(message);
             Thread.sleep(50);
         }
     }

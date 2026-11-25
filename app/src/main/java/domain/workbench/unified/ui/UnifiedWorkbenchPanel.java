@@ -2,6 +2,8 @@ package domain.workbench.unified.ui;
 
 import domain.DomainModel;
 import domain.DomainSchemas;
+import domain.compile.transform.TransformationExecution;
+import domain.config.GeneratedClassModel;
 import domain.config.GeneratedFieldModel;
 import domain.config.GeneratedProjectModel;
 import domain.config.ModelSourceExecutionPlan;
@@ -12,14 +14,18 @@ import domain.datasource.api.DatasourceRegistry;
 import domain.datasource.api.SourceExecutionPlan;
 import domain.transform.ui.ProjectBacking;
 import domain.transform.ui.FieldDefinitions;
+import domain.transform.ui.TransformController;
 import domain.transform.ui.ValidationPanel;
 import domain.transform.ui.WorkbenchPurpose;
 import domain.workbench.configuration.ui.ProjectConfigurationPanel;
 import domain.workbench.execution.ui.SwingQuerySession;
 import domain.workbench.ui.WorkbenchActionResultNavigator;
+import domain.workbench.ui.WorkbenchResultViews;
+import objectview.view.SearchableView;
 import process.swing.Dialogs;
 import process.swing.SwingCancellationConfirmation;
 import work.QueryContext;
+import work.Query;
 
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -35,14 +41,21 @@ import java.awt.Cursor;
 import javax.swing.JRootPane;
 import java.awt.FlowLayout;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
-/** One opened project for field configuration, planning and saving. */
+/** One opened project for field acquisition and local transformations. */
 public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable {
     private final DomainModel domain;
     private final ProjectBacking project;
     private final SwingQuerySession queries;
     private final ProjectConfigurationPanel configuration;
+    private final TransformController transform;
+    private final WorkbenchActionResultNavigator actions = new WorkbenchActionResultNavigator();
+    private final WorkbenchActionResultNavigator.Action previewAction;
+    private final WorkbenchResultViews previewResults = new WorkbenchResultViews();
+    private final JButton preview = new JButton("Preview population");
+    private final JLabel previewStatus = new JLabel();
     private final DatasourceRegistry datasources = Datasources.standard();
     private final JTextArea planText = new JTextArea(8, 34);
     private final JButton save;
@@ -55,9 +68,14 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private String planProblem;
     private boolean saving;
     private boolean loadingValues;
+    private boolean previewing;
+    private boolean previewCompleted;
+    private boolean previewActionSelected;
     private boolean loadActionSelected;
     private boolean acquisitionTargetCurrent;
     private GeneratedFieldModel selectedField;
+    private GeneratedClassModel selectedClass;
+    private GeneratedClassModel previewInput;
     private ValidationPanel valuePanel;
 
     public UnifiedWorkbenchPanel(DomainModel domain) {
@@ -68,6 +86,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         super(new BorderLayout(4, 4));
         this.domain = domain;
         this.queries = queries;
+        transform = new TransformController(domain, null);
         project = Objects.requireNonNull(domain.capability(ProjectBacking.class),
                 "Open a model-backed project to edit field configuration");
         queries.logs().saveContext(project.projectName(),
@@ -80,7 +99,6 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         planText.setLineWrap(true);
         planText.setWrapStyleWord(true);
 
-        var actions = new WorkbenchActionResultNavigator();
         var source = actions.addSource("datasources", "Datasources", null);
         var acquisition = actions.addAction(source, "field-acquisition-plan", "Field acquisition plan",
                 new JScrollPane(planText), null);
@@ -91,14 +109,33 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         acquisitionTools.add(logs);
         acquisitionDetail.add(acquisitionValues, BorderLayout.CENTER);
         acquisitionDetail.add(acquisitionTools, BorderLayout.SOUTH);
+        var transformSource = actions.addSource("transform", "Transform", null);
+        var previewDetail = new JPanel(new BorderLayout());
+        var previewTools = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        var cancelPreview = new JButton("Cancel preview");
+        queries.runner().registerCancelButton(cancelPreview);
+        previewTools.add(preview);
+        previewTools.add(cancelPreview);
+        previewTools.add(previewStatus);
+        previewDetail.add(previewTools, BorderLayout.NORTH);
+        previewDetail.add(previewResults, BorderLayout.CENTER);
+        previewAction = actions.addAction(transformSource, "preview-population", "Preview population",
+                previewDetail, null);
+        preview.addActionListener(event -> previewPopulation());
+        queries.runner().onRunningChanged(running -> {
+            if (!running && previewing) finishPreview();
+        });
         actions.setSelectionListener(selection -> {
             loadActionSelected = load.id().equals(selection.id());
+            previewActionSelected = previewAction.id().source().equals(selection.id().source())
+                    && previewAction.id().action().equals(selection.id().action());
             if (loadActionSelected) refreshAcquisition();
         });
+        actions.expandSources();
         actions.selectAction(acquisition);
         compilePlan();
-        configuration = ProjectConfigurationPanel.editFields(project, domain.instances().size(),
-                this::fieldSelected, this::fieldApplied);
+        configuration = ProjectConfigurationPanel.editWorkingConfiguration(project, transform,
+                this::constructSelected, this::fieldApplied, this::refreshPreview);
         var workspace = new JSplitPane(JSplitPane.VERTICAL_SPLIT, configuration, actions);
         workspace.setResizeWeight(0.72);
         workspace.setDividerLocation(510);
@@ -109,6 +146,91 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         footer.add(save);
         add(footer, BorderLayout.SOUTH);
         updateSave();
+    }
+
+    private void constructSelected(Object construct) {
+        var clazz = construct instanceof GeneratedClassModel value ? value : null;
+        if (selectedClass != clazz) {
+            selectedClass = clazz;
+            refreshPreview();
+        }
+        fieldSelected(construct instanceof GeneratedFieldModel field ? field : null);
+    }
+
+    private void refreshPreview() {
+        clearPreviewResults();
+        previewInput = TransformationExecution.inputClass(project.projectModel(), selectedClass);
+        previewStatus.setText(previewInput == null ? "Select a class with a configured transformation."
+                : "Check loaded " + previewInput.className() + " instances for " + selectedClass.className() + ".");
+        updateSave();
+    }
+
+    private void clearPreviewResults() {
+        if (previewResults.getTabCount() == 0) return;
+        if (previewActionSelected) actions.selectAction(previewAction);
+        actions.clearResults(previewAction);
+        previewResults.removeAll();
+    }
+
+    private void previewPopulation() {
+        if (previewInput == null || saving || loadingValues || previewing || queries.runner().isRunning()
+                || !configuration.resolveUnappliedEdits("previewing the population")) return;
+        clearPreviewResults();
+        var input = previewInput;
+        var output = selectedClass;
+        var query = new PreviewPopulation(project.projectModel(), input, output, domain);
+        previewing = true;
+        previewCompleted = false;
+        configuration.setEditingEnabled(false);
+        previewStatus.setText("Checking loaded " + input.className() + " instances for " + output.className() + "…");
+        updateSave();
+        queries.runner().run(query, result -> javax.swing.SwingUtilities.invokeLater(() -> {
+            if (previewing) showPreview(input.className(), result);
+        }), failure -> {
+            previewCompleted = true;
+            previewStatus.setText("Population preview failed: " + failure.getMessage());
+        });
+    }
+
+    private void showPreview(String input, TransformationExecution.Preview result) {
+        previewCompleted = true;
+        var view = SearchableView.builder(result.members())
+                .sample(domain.configSample(input))
+                .hiddenFields(domain.structuralFields(input))
+                .fieldTypes(domain.fieldTypes(input))
+                .fieldSchemas(value -> transform.renderedFieldSchema(value, input))
+                .typeSchemas(domain::fieldSchema)
+                .subtypeConfigs(transform.subtypeConfigs(input))
+                .valueLinker(wikidata.ui.WikidataLinks.valueLinker())
+                .collapsible(true).build();
+        previewStatus.setText(result.members().size() + " of " + result.examined()
+                + " loaded " + input + " instances match.");
+        previewResults.addTab("Matching instances (" + result.members().size() + ")", view);
+        actions.publishResults(previewAction, previewResults, 0, previewActionSelected);
+    }
+
+    private void finishPreview() {
+        previewing = false;
+        if (!previewCompleted) previewStatus.setText("Population preview cancelled.");
+        configuration.setEditingEnabled(true);
+        updateSave();
+    }
+
+    private record PreviewPopulation(GeneratedProjectModel model, GeneratedClassModel input,
+            GeneratedClassModel output, DomainModel domain) implements Query<TransformationExecution.Preview> {
+        @Override public String purpose() { return "Preview population for " + output.className(); }
+        @Override public String skeleton() { return "Apply the configured filters to loaded instances"; }
+        @Override public Map<String, String> parameters() {
+            return Map.of("Input class", input.className(), "Output class", output.className());
+        }
+        @Override public TransformationExecution.Preview execute(QueryContext context) {
+            context.cancellation().throwIfCancelled();
+            return TransformationExecution.preview(model, output, domain.instances());
+        }
+        @Override public int rowCount(TransformationExecution.Preview result) { return result.members().size(); }
+        @Override public String summary(TransformationExecution.Preview result) {
+            return rowCount(result) + " of " + result.examined() + " loaded instances match";
+        }
     }
 
     private void fieldSelected(GeneratedFieldModel field) {
@@ -157,7 +279,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     }
 
     private boolean prepareAcquisition() {
-        return configuration.resolveUnappliedEdits("loading values")
+        return !saving && !previewing && configuration.resolveUnappliedEdits("loading values")
                 && valuePanel.getParent() == acquisitionValues;
     }
 
@@ -252,7 +374,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
      * writes something other than what the form shows.
      */
     private void confirmSave() {
-        if (saving || loadingValues) return;
+        if (saving || loadingValues || previewing) return;
         boolean draft = configuration.hasUnappliedEdits();
         boolean applyDraft = false;
         if (draft) {
@@ -338,9 +460,12 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         boolean dirty = !project.unsavedModelChanges().isEmpty();
         // Enabled whenever not saving: unapplied edits can be the only change, and the
         // form cannot announce every keystroke. Save itself says when there is nothing.
-        save.setEnabled(!saving && !loadingValues);
+        save.setEnabled(!saving && !loadingValues && !previewing);
+        preview.setEnabled(previewInput != null && !saving && !loadingValues && !previewing);
         if (loadingValues) {
             saveStatus.setText("Loading and reviewing field values");
+        } else if (previewing) {
+            saveStatus.setText("Previewing population for " + selectedClass.className());
         } else if (!saving) {
             saveStatus.setText(dirty ? "Applied configuration has unsaved changes" : " ");
         }
@@ -376,6 +501,10 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
      */
     public void requestClose(Runnable closeWindow) {
         if (saving) return;
+        if (previewing) {
+            SwingCancellationConfirmation.requestForVisibleRun(this, queries.runner()::cancel);
+            return;
+        }
         if (loadingValues) {
             SwingCancellationConfirmation.requestForVisibleRun(this, valuePanel::cancelFindData);
             return;

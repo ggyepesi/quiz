@@ -42,6 +42,29 @@ class TransformationExecutionTest {
                 "the copied population retains graph identity, not detached reference stubs");
     }
 
+    @Test void previewAndBuildMatchTheSameMembersWithoutRestampingLoadedInstances() throws Exception {
+        var model = model();
+        var output = model.findClass("PositionWithHolders");
+        var formerMember = object("Q1", output.className());
+        formerMember.put("holderCount", 0);
+        var candidate = object("Q2", "Position");
+        candidate.put("holderCount", 3);
+        var otherType = object("Q3", "Person");
+        otherType.put("holderCount", 3);
+        var source = run(model, List.of(formerMember, candidate, otherType));
+
+        var preview = TransformationExecution.preview(model, output, source.dynamicObjects());
+        var built = TransformationExecution.apply(model, output, source);
+
+        assertEquals(2, preview.examined());
+        assertEquals(List.of(candidate), preview.members());
+        assertEquals(preview.members().stream().map(WikidataDynamicObject::getIdentifier).toList(),
+                built.population().stream().map(WikidataDynamicObject::getIdentifier).toList());
+        assertEquals("PositionWithHolders", formerMember.typeName());
+        assertEquals("Position", candidate.typeName());
+        assertEquals("Position", built.run().dynamicObjects().getFirst().typeName());
+    }
+
     private static GeneratedProjectModel model() {
         GeneratedProjectModel model = new GeneratedProjectModel();
         model.name("Positions");

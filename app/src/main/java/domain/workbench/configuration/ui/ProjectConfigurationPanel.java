@@ -1,6 +1,7 @@
 package domain.workbench.configuration.ui;
 
 import domain.config.GeneratedProjectModel;
+import domain.config.GeneratedClassModel;
 import domain.config.GeneratedFieldModel;
 import domain.config.PopulationSelection;
 import domain.provenance.SourceIdentities;
@@ -48,25 +49,37 @@ public final class ProjectConfigurationPanel extends JPanel implements AutoClose
                 if (selection instanceof PopulationSelection population) project.populationChanged(population);
                 populationChanged.run();
             });
-            var fields = purpose.showsTransformActions() ? new TransformationConfigurationEditor.Fields(
-                    controller.domain(), controller::candidateValueSelection,
-                    controller::sampleFieldValue) : null;
-            details.inspectConfiguration(fields, clazz -> project.recordModelChange(
-                    "Population transformation for " + clazz.className()));
+            var fields = purpose.showsTransformActions() ? transformationFields(controller) : null;
+            details.inspectConfiguration(fields, clazz -> transformationApplied(project, clazz));
         }, ignored -> { });
     }
 
-    /** The shared navigator and editor mounted with ownership of field declarations. */
-    public static ProjectConfigurationPanel editFields(ProjectBacking project, int loadedObjects,
-            Consumer<GeneratedFieldModel> selected, Consumer<GeneratedFieldModel> applied) {
-        return new ProjectConfigurationPanel(project, loadedObjects, project.projectModel().rootClass(),
+    /** Mounts field and transformation editing over the unified workbench's open project. */
+    public static ProjectConfigurationPanel editWorkingConfiguration(ProjectBacking project,
+            TransformController controller, Consumer<Object> selected,
+            Consumer<GeneratedFieldModel> fieldApplied,
+            Runnable recipeApplied) {
+        return new ProjectConfigurationPanel(project, controller.domain().instances().size(),
+                project.projectModel().rootClass(),
                 (details, selections) -> {
             selections.inspect(ignored -> false, ignored -> List.of());
-            details.editFieldConfiguration();
-            details.afterChange(ignored -> {
-                if (details.selected() instanceof GeneratedFieldModel field) applied.accept(field);
+            details.editWorkingConfiguration(transformationFields(controller), clazz -> {
+                transformationApplied(project, clazz);
+                recipeApplied.run();
             });
-        }, value -> selected.accept(value instanceof GeneratedFieldModel field ? field : null));
+            details.afterChange(ignored -> {
+                if (details.selected() instanceof GeneratedFieldModel field) fieldApplied.accept(field);
+            });
+        }, selected);
+    }
+
+    private static TransformationConfigurationEditor.Fields transformationFields(TransformController controller) {
+        return new TransformationConfigurationEditor.Fields(controller.domain(),
+                controller::candidateValueSelection, controller::sampleFieldValue);
+    }
+
+    private static void transformationApplied(ProjectBacking project, GeneratedClassModel clazz) {
+        project.recordModelChange("Population transformation for " + clazz.className());
     }
 
     private boolean restoringSelection;
@@ -155,7 +168,7 @@ public final class ProjectConfigurationPanel extends JPanel implements AutoClose
     public String editedConstructName() { return details.editedConstructName(); }
 
     /** Reloads the open construct from the working model, dropping its draft. */
-    public void discardUnappliedEdits() { details.edit(details.selected()); }
+    public void discardUnappliedEdits() { details.discardUnappliedEdits(); }
 
     /** Lets a test or host answer the question instead of the shared dialog. */
     public void unappliedDecision(java.util.function.BiFunction<String, String,

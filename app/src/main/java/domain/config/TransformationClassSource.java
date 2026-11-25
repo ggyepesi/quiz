@@ -50,6 +50,18 @@ public final class TransformationClassSource {
                 && steps.stream().allMatch(TransformationStep::configured);
     }
 
+    /** Whether the two describe the same recipe: input class and ordered steps. Content
+     *  comparison for a draft check, kept apart from equals because the source is mutable. */
+    public boolean sameRecipe(TransformationClassSource other) {
+        if (other == null) return false;
+        if (!inputClassId.equals(other.inputClassId) || !inputClassName.equals(other.inputClassName)
+                || steps.size() != other.steps.size()) return false;
+        for (int index = 0; index < steps.size(); index++) {
+            if (!steps.get(index).sameStep(other.steps.get(index))) return false;
+        }
+        return true;
+    }
+
     public TransformationClassSource copy() {
         TransformationClassSource copy = new TransformationClassSource();
         copy.inputClassId = inputClassId;

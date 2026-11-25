@@ -100,7 +100,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
     private boolean updatingKind = false;
     private boolean editingEnabled = true;
-    private enum ConfigurationAccess { MODEL_BUILDER, INSPECT, EDIT_FIELDS }
+    private enum ConfigurationAccess { MODEL_BUILDER, INSPECT, UNIFIED_WORKBENCH }
     private ConfigurationAccess configurationAccess = ConfigurationAccess.MODEL_BUILDER;
 
     private final JPanel cardPanel =
@@ -265,16 +265,35 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
     /** Unapplied edits in the editor this host lets the user change (#535). */
     public boolean hasUnappliedEdits() {
-        return selected instanceof GeneratedFieldModel && canEditSelectedConstruct()
-                && fieldSourcePanel.hasUnappliedEdits();
+        return switch (selected) {
+            case GeneratedFieldModel field -> canEditSelectedConstruct()
+                    && fieldSourcePanel.hasUnappliedEdits();
+            case GeneratedClassModel clazz -> configurationAccess == ConfigurationAccess.UNIFIED_WORKBENCH
+                    && clazz.materializedByTransformation()
+                    && classSourcePanel.hasCurrentTransformationDraft();
+            case null, default -> false;
+        };
     }
 
     /** Applies them as the editor's Apply does; false when Apply refused. */
     public boolean applyUnappliedEdits() {
-        return !hasUnappliedEdits() || fieldSourcePanel.applyUnappliedEdits();
+        if (!hasUnappliedEdits()) return true;
+        return selected instanceof GeneratedClassModel ? classSourcePanel.applyTransformationDraft()
+                : fieldSourcePanel.applyUnappliedEdits();
     }
 
-    public String editedConstructName() { return fieldSourcePanel.editedConstructName(); }
+    public void discardUnappliedEdits() {
+        if (selected instanceof GeneratedClassModel && hasUnappliedEdits()) {
+            classSourcePanel.discardTransformationDraft();
+        } else {
+            edit(selected);
+        }
+    }
+
+    public String editedConstructName() {
+        return selected instanceof GeneratedClassModel clazz ? "Transformation for " + clazz.className()
+                : fieldSourcePanel.editedConstructName();
+    }
 
     public void unappliedDecision(java.util.function.BiFunction<String, String,
             process.swing.Dialogs.UnappliedEdits> decision) {
@@ -374,11 +393,13 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         configureLocalEditor("Edit class, field and datasource declarations in ModelBuilder.");
     }
 
-    /** The first unified workbench owns field edits and plans over the applied model. */
-    public void editFieldConfiguration() {
-        configurationAccess = ConfigurationAccess.EDIT_FIELDS;
+    /** The unified workbench edits fields and transformations over the same working model. */
+    public void editWorkingConfiguration(TransformationConfigurationEditor.Fields fields,
+            Consumer<GeneratedClassModel> transformationApplied) {
+        configurationAccess = ConfigurationAccess.UNIFIED_WORKBENCH;
+        classSourcePanel.transformationEditor(fields, transformationApplied);
         fieldSourcePanel.showLocalFieldEditor();
-        configureLocalEditor("Apply field source to update the acquisition plan.");
+        configureLocalEditor("Use Actions and results to check the applied configuration.");
     }
 
     private void configureLocalEditor(String message) {
@@ -489,6 +510,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         editingEnabled = enabled;
         EditableComponents.setEditable(helperTabs, enabled);
         EditableComponents.setEditable(samplePanel, enabled);
+        classSourcePanel.setTransformationEditingEnabled(enabled);
         applySelectionEditability();
     }
 
@@ -512,7 +534,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         return editingEnabled && declarationOwnedHere && switch (configurationAccess) {
             case MODEL_BUILDER -> true;
             case INSPECT -> false;
-            case EDIT_FIELDS -> selected instanceof GeneratedFieldModel;
+            case UNIFIED_WORKBENCH -> selected instanceof GeneratedFieldModel;
         };
     }
 
@@ -1188,7 +1210,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                     selected = field;
                     fieldSourcePanel.edit(field);
                     afterApplyField.accept(field);
-                    if (configurationAccess != ConfigurationAccess.EDIT_FIELDS) {
+                    if (configurationAccess != ConfigurationAccess.UNIFIED_WORKBENCH) {
                         afterChange.accept(null);
                     }
                 });

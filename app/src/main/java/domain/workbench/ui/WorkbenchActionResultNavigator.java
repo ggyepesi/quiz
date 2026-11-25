@@ -175,6 +175,11 @@ public final class WorkbenchActionResultNavigator extends JPanel {
 
     /** Replace one action's result children from the exact tabs its operation produced. */
     public void publishResults(Action action, JTabbedPane tabs, int primaryIndex) {
+        publishResults(action, tabs, primaryIndex, true);
+    }
+
+    /** A background result may be published without taking the user's current selection. */
+    public void publishResults(Action action, JTabbedPane tabs, int primaryIndex, boolean reveal) {
         Objects.requireNonNull(action, "action");
         Objects.requireNonNull(tabs, "tabs");
         clearResults(action);
@@ -193,6 +198,7 @@ public final class WorkbenchActionResultNavigator extends JPanel {
             results.put(key, new ResultTarget(action, tabs, index));
         }
         shell.expand(action.id());
+        if (!reveal) return;
         if (tabs.getTabCount() > 0) {
             int selected = Math.max(0, Math.min(primaryIndex, tabs.getTabCount() - 1));
             selectResult(action, selected);

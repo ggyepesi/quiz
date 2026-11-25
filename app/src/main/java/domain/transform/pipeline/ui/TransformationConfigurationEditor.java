@@ -60,6 +60,7 @@ public final class TransformationConfigurationEditor extends JPanel {
     private GeneratedProjectModel project;
     private GeneratedClassModel output;
     private ConfigurationNode node;
+    private boolean editingEnabled = true;
 
     public TransformationConfigurationEditor(Runnable refreshTree, IntConsumer selectStep,
             Consumer<GeneratedClassModel> applied) {
@@ -81,10 +82,7 @@ public final class TransformationConfigurationEditor extends JPanel {
         up.addActionListener(event -> move(-1));
         down.addActionListener(event -> move(1));
         apply.addActionListener(event -> apply());
-        discard.addActionListener(event -> {
-            drafts.remove(output);
-            refreshTree.run();
-        });
+        discard.addActionListener(event -> discard());
     }
 
     public void fields(Fields fields) { this.fields = fields; }
@@ -100,6 +98,23 @@ public final class TransformationConfigurationEditor extends JPanel {
 
     public boolean hasDrafts() { return !drafts.isEmpty(); }
 
+    /** A draft is unapplied only when it differs from the applied recipe (#535): an edit
+     *  and its reverse leave the transformation clean. */
+    public boolean hasCurrentDraft() {
+        var draft = drafts.get(output);
+        return draft != null && !draft.sameRecipe(output.transformationSource());
+    }
+
+    public void setEditingEnabled(boolean enabled) {
+        editingEnabled = enabled;
+        refresh();
+    }
+
+    public void discard() {
+        drafts.remove(output);
+        refreshTree.run();
+    }
+
     public void selection(ConfigurationNode node) {
         this.node = node;
         refresh();
@@ -109,20 +124,21 @@ public final class TransformationConfigurationEditor extends JPanel {
         var source = transformation();
         int index = index();
         int size = source == null ? 0 : source.steps().size();
-        boolean editing = canEdit();
+        boolean editing = ownsTransformation();
         boolean step = index >= 0 && index < size;
-        boolean pending = output != null && drafts.containsKey(output);
+        boolean pending = output != null && hasCurrentDraft();
         input.setText(source == null ? "No transformation configured"
                 : "Input class: " + source.inputClassName());
         detail.setText(step && node != null ? node.caption() : size + " filter step(s)");
         actions.setVisible(editing);
-        add.setEnabled(editing);
-        edit.setEnabled(editing && step);
-        remove.setEnabled(editing && step);
-        up.setEnabled(editing && step && index > 0);
-        down.setEnabled(editing && step && index + 1 < size);
-        apply.setEnabled(editing && pending && source.configured());
-        discard.setEnabled(editing && pending);
+        boolean enabled = editing && editingEnabled;
+        add.setEnabled(enabled);
+        edit.setEnabled(enabled && step);
+        remove.setEnabled(enabled && step);
+        up.setEnabled(enabled && step && index > 0);
+        down.setEnabled(enabled && step && index + 1 < size);
+        apply.setEnabled(enabled && pending && source.configured());
+        discard.setEnabled(enabled && pending);
         status.setText(!editing ? "Edit the population transformation in TransformApp."
                 : pending && !source.configured() ? "A transformation needs at least one filter."
                 : pending ? "Apply the filter changes to the working model."
@@ -135,6 +151,10 @@ public final class TransformationConfigurationEditor extends JPanel {
     private int index() { return ClassConfigurationProjection.transformationStepIndex(node); }
 
     private boolean canEdit() {
+        return editingEnabled && ownsTransformation();
+    }
+
+    private boolean ownsTransformation() {
         return fields != null && output != null && !output.isImported()
                 && project.classes().contains(output) && transformation() != null;
     }
@@ -211,11 +231,13 @@ public final class TransformationConfigurationEditor extends JPanel {
         refreshTree.run();
     }
 
-    private void apply() {
-        if (!canEdit() || !drafts.containsKey(output) || !transformation().configured()) return;
+    public boolean apply() {
+        if (!hasCurrentDraft()) return true;
+        if (!canEdit() || !transformation().configured()) return false;
         output.transformationSource(drafts.remove(output));
         appliedOutputs.add(output);
         applied.accept(output);
         refreshTree.run();
+        return true;
     }
 }

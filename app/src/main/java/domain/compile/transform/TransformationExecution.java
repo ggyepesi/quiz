@@ -12,7 +12,9 @@ import domain.config.TransformationClassSource;
 import domain.config.TransformationStep;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 
 /** Executes the same saved elementary operations without TransformApp. */
 public final class TransformationExecution {
@@ -24,6 +26,24 @@ public final class TransformationExecution {
         }
     }
 
+    public record Preview(int examined, List<WikidataDynamicObject> members) { }
+
+    /** The input of a runnable recipe, if the class has one. */
+    public static GeneratedClassModel inputClass(GeneratedProjectModel model, GeneratedClassModel output) {
+        if (output == null || !output.materializedByTransformation()) return null;
+        TransformationClassSource source = output.transformationSource();
+        return source != null && source.configured()
+                ? model.resolveClass(source.inputClassId(), source.inputClassName()) : null;
+    }
+
+    /** Evaluates the recipe against the loaded pool without changing any class stamps. */
+    public static Preview preview(GeneratedProjectModel model, GeneratedClassModel output,
+            Collection<? extends Viewable> pool) {
+        var input = requireInputClass(model, output);
+        var evaluated = evaluate(model, input.className(), output, pool);
+        return new Preview(evaluated.candidates().size(), evaluated.members());
+    }
+
     public static Result apply(GeneratedProjectModel model,
                                GeneratedClassModel output,
                                GenerationRun source) throws Exception {
@@ -31,38 +51,17 @@ public final class TransformationExecution {
             throw new IllegalArgumentException(
                     "Model, materialized output class and source run are required");
         }
-        TransformationClassSource transformation = output.transformationSource();
-        if (!output.materializedByTransformation() || transformation == null
-                || !transformation.configured()) {
-            throw new IllegalArgumentException("Transformation source of '"
-                    + output.className() + "' is not fully configured");
-        }
-        GeneratedClassModel input = model.resolveClass(
-                transformation.inputClassId(), transformation.inputClassName());
-        if (input == null) {
-            throw new IllegalArgumentException("Transformation source of '"
-                    + output.className() + "' is not fully configured");
-        }
-
+        String input = requireInputClass(model, output).className();
         List<WikidataDynamicObject> pool = PoolCopy.deepCopy(source.dynamicObjects());
-        List<WikidataDynamicObject> candidates = new ArrayList<>();
-        for (WikidataDynamicObject value : pool) {
-            if (value == null) continue;
-            boolean wasOutput = value.directClassNames().contains(output.className());
-            boolean isInput = wasOutput || value.directClassNames().stream()
-                    .anyMatch(name -> model.isSameOrSubclass(name, input.className()));
-            if (!isInput) continue;
-            if (wasOutput) {
+        var evaluated = evaluate(model, input, output, pool);
+        for (WikidataDynamicObject value : evaluated.candidates()) {
+            if (value.directClassNames().contains(output.className())) {
                 value.removeClass(output.className());
-                if (value.directClassNames().isEmpty()) value.type(input.className());
+                if (!value.hasTypeStamp()) value.type(input);
             }
-            candidates.add(value);
         }
-
-        List<WikidataDynamicObject> selected = candidates.stream()
-                .filter(value -> matches(value, transformation.steps())).toList();
-        selected.forEach(value -> value.assignSubclass(
-                output.className(), input.className()));
+        var selected = evaluated.members();
+        selected.forEach(value -> value.assignSubclass(output.className(), input));
 
         GeneratedProjectModel snapshot = model.copy();
         GenerationPipeline pipeline = new GenerationPipeline();
@@ -75,6 +74,38 @@ public final class TransformationExecution {
                 source.kindClassificationAudit(), source.projectionAudit())
                 .producedLike(source);
         return new Result(transformed, selected);
+    }
+
+    private static GeneratedClassModel requireInputClass(GeneratedProjectModel model,
+            GeneratedClassModel output) {
+        var input = inputClass(model, output);
+        if (input == null) {
+            throw new IllegalArgumentException("Transformation source of '"
+                    + output.className() + "' is not fully configured");
+        }
+        return input;
+    }
+
+    private record Evaluation(List<WikidataDynamicObject> candidates,
+            List<WikidataDynamicObject> members) { }
+
+    private static Evaluation evaluate(GeneratedProjectModel model, String input,
+            GeneratedClassModel output, Collection<? extends Viewable> pool) {
+        var steps = output.transformationSource().steps();
+
+        List<WikidataDynamicObject> candidates = new ArrayList<>();
+        List<WikidataDynamicObject> selected = new ArrayList<>();
+        for (Viewable instance : pool) {
+            if (Thread.currentThread().isInterrupted()) throw new CancellationException();
+            if (!(instance instanceof WikidataDynamicObject value)) continue;
+            var classes = value.directClassNames();
+            if (classes.contains(output.className()) || classes.stream()
+                    .anyMatch(name -> model.isSameOrSubclass(name, input))) {
+                candidates.add(value);
+                if (matches(value, steps)) selected.add(value);
+            }
+        }
+        return new Evaluation(candidates, List.copyOf(selected));
     }
 
     private static boolean matches(

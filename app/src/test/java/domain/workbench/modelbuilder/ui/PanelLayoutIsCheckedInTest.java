@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import domain.DomainCapability;
 import domain.DelegatingDomainModel;
 import domain.config.AggregateClassSource;
+import domain.config.ClassConfigurationProjection;
 import domain.config.EntityBound;
 import domain.config.FieldCardinality;
 import domain.config.FieldConfigurationProjection;
@@ -162,6 +163,17 @@ class PanelLayoutIsCheckedInTest {
                 }
             }
             describe(actual, "Unified Workbench / Load field values", unified);
+            find(unified, SingleRootClassModelPanel.class).selectClass(output);
+            find(unified, ClassSourcePanel.class).configurationEditor().tree()
+                    .selectDetail(ClassConfigurationProjection.TRANSFORMATION);
+            for (var nodes = root.depthFirstEnumeration(); nodes.hasMoreElements();) {
+                var node = (javax.swing.tree.DefaultMutableTreeNode) nodes.nextElement();
+                if ("Preview population".equals(node.toString())) {
+                    tree.setSelectionPath(new javax.swing.tree.TreePath(node.getPath()));
+                    break;
+                }
+            }
+            describe(actual, "Unified Workbench / Edit transformation and preview population", unified);
         }
 
         Path golden = Files.isRegularFile(GOLDEN) ? GOLDEN : Path.of("docs/panel-layout.txt");

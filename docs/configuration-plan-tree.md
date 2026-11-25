@@ -165,7 +165,9 @@ scrolling preserves the draft, and restoring an edited value leaves the field cl
   shared definition included. Stay is the default and keeps the selection and the draft; Apply runs
   the field's Apply and its validation, and a refused Apply stays with the reason shown; Discard
   reloads the whole field from the working model.
-- **Save** is enabled whenever no save runs. With a draft it offers **Apply and save**, **Discard
+- **Leaving a transformation with a draft** asks the same question. Moving between its filter steps
+  keeps the draft. Previewing the population resolves the draft before reading the applied recipe.
+- **Save** is enabled while the workbench is idle. With a draft it offers **Apply and save**, **Discard
   draft and save applied changes**, or **Stay**; the shared file confirmation comes first, so
   cancelling it keeps the draft. A failed write keeps the applied changes in memory.
 - **Close** is one decision: with a draft **Apply, save and close / Discard changes and close /
@@ -293,11 +295,11 @@ members of a local hand-picked population in Configuration. Imported selections 
 produced by a transformation are read-only there.
 
 The transformed class's population branch names the input class and shows the ordered filter
-steps. TransformApp can add, edit, remove and reorder the steps, then **Apply transformation**
+steps. TransformApp and the unified workbench can add, edit, remove and reorder the steps, then **Apply transformation**
 to update the open model. **Save model/domain** persists the applied recipe and **Build project**
-in ModelBuilder executes it to update the produced instances and publication. Inspecting another node keeps the
-draft and starts no build or acquisition. ModelBuilder and DataSourceApp show the same steps
-read-only.
+in ModelBuilder executes it to update the produced instances and publication. Inspecting another
+filter in the same editor keeps the draft and starts no build or acquisition. ModelBuilder and
+DataSourceApp show the same steps read-only.
 
 During the first slice, ModelBuilderApp remains a baseline host of the same configuration component.
 Separate entry points remain until #560 decides whether they become thin single-component launchers
@@ -348,6 +350,13 @@ supplies a collection from several records, review and saved curation retain whi
 supplied each value. Accepting results updates the cards and writes the project's `.curation.json`.
 **Save model** or **Save domain** writes the applied configuration to `.model.json` through the
 shared save guard. Reopening shows the saved recipe and the accepted values with their provenance.
+
+For a transformed class, select **Population: transformation** to edit its ordered filters. Then
+choose **Transform → Preview population** in **Actions and results**. The explicit preview checks
+the loaded input instances with the same membership and filter evaluator as **Build project**, and
+shows the matching instance cards and the count examined. Preview makes no datasource requests and
+writes no files. **Save model** or **Save domain** writes the applied recipe to `.model.json`.
+**Build project** still runs in ModelBuilder to refresh produced instances and publish the population.
 
 ## Forcing tests and checked artifacts
 

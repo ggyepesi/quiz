@@ -743,6 +743,16 @@ public class ClassSourcePanel extends JPanel {
 
     boolean hasTransformationDrafts() { return transformation.hasDrafts(); }
 
+    boolean hasCurrentTransformationDraft() { return transformation.hasCurrentDraft(); }
+
+    boolean applyTransformationDraft() { return transformation.apply(); }
+
+    void discardTransformationDraft() { transformation.discard(); }
+
+    void setTransformationEditingEnabled(boolean enabled) {
+        transformation.setEditingEnabled(enabled);
+    }
+
     void refreshTransformationAccess() { transformation.refresh(); }
 
     private void refreshConfiguration() {

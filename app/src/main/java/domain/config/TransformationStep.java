@@ -43,6 +43,13 @@ public final class TransformationStep {
 
     public boolean configured() { return kind() == Kind.FILTER && !fieldPath().isBlank(); }
 
+    public boolean sameStep(TransformationStep other) {
+        return other != null && kind() == other.kind() && fieldPath().equals(other.fieldPath())
+                && operator() == other.operator()
+                && java.util.Objects.equals(value, other.value)
+                && java.util.Objects.equals(value2, other.value2);
+    }
+
     public TransformationStep copy() {
         return filter(fieldPath(), operator(), value, value2);
     }
