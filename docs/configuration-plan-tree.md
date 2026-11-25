@@ -341,8 +341,9 @@ evidence recipes remain a separate review action.
 
 If the field has unapplied edits, **Load values** first asks **Apply**, **Discard**, or **Stay**.
 It then confirms the scope and the resulting plan and reads populated fields too. Query Logs
-shows the batches. Review offers new values, replacements and source updates for values that
-stay the same. It reports examined-empty and failed acquisitions separately. When DBpedia
+shows the batches. Review offers new values and replacements. A curated value that stays the
+same but whose accepted source no longer matches is offered as a source update; a generated value
+the source still gives is counted as unchanged and writes nothing to curation. It reports examined-empty and failed acquisitions separately. When DBpedia
 supplies a collection from several records, review and saved curation retain which record
 supplied each value. Accepting results updates the cards and writes the project's `.curation.json`.
 **Save model** or **Save domain** writes the applied configuration to `.model.json` through the
