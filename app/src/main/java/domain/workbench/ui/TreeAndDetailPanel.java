@@ -120,6 +120,15 @@ public final class TreeAndDetailPanel<K> extends JPanel {
         add(parentId, id, caption, detail);
     }
 
+    void updateCaption(K id, String caption) {
+        DefaultMutableTreeNode node = nodes.get(id);
+        if (node != null && node.getUserObject() instanceof Item<?> item
+                && !item.caption().equals(caption)) {
+            node.setUserObject(new Item<>(id, caption));
+            model.nodeChanged(node);
+        }
+    }
+
     /** Replaces the complete visible projection. Stable ids preserve the reader's
      * selection and expanded branches; if the selected id disappears, no unrelated
      * detail remains visible. */

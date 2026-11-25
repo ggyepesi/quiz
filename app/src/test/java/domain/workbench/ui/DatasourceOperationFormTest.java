@@ -3,6 +3,8 @@ package domain.workbench.ui;
 import domain.datasource.api.SourceRecipe;
 import org.junit.jupiter.api.Test;
 
+import javax.swing.JComboBox;
+import java.awt.BorderLayout;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -24,7 +26,10 @@ class DatasourceOperationFormTest {
         assertTrue(form.hasOperations());
         assertNull(form.recipe(), "nothing is chosen until the modeller chooses it");
 
-        form.show(new SourceRecipe("wikimedia-pageviews", "article-views", Map.of()));
+        var chooser = (JComboBox<?>) ((BorderLayout) form.getLayout()).getLayoutComponent(BorderLayout.NORTH);
+        var pageviews = form.choices().stream().filter(choice -> "wikimedia-pageviews".equals(choice.provider().id()))
+                .findFirst().orElseThrow();
+        chooser.setSelectedItem(pageviews);
 
         assertEquals(new SourceRecipe("wikimedia-pageviews", "article-views",
                 Map.of("months", "12")), form.recipe());

@@ -4,14 +4,25 @@ import domain.config.FieldCardinality;
 import domain.config.FieldConfigurationProjection;
 import domain.config.FieldProductionKind;
 import domain.config.FieldRenderMode;
+import domain.config.FieldSourceBindings;
+import domain.config.FieldSourceType;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedFieldModel;
 import domain.config.GeneratedProjectModel;
 import domain.config.GeneratedProjectModelStore;
 import domain.config.GroupClassSpec;
+import domain.config.ModelSourceExecutionPlan;
+import domain.config.OwnedFieldSources;
 import domain.compile.filter.WikidataValueFilterOperator;
+import domain.datasource.Datasources;
+import domain.datasource.api.SourceBinding;
+import domain.datasource.api.SourceBindingSlot;
+import domain.datasource.api.SourceBindingTarget;
+import domain.datasource.api.SourceRecipe;
+import domain.datasource.pageviews.PageviewsDatasourceProvider;
 import domain.datasource.schema.FieldType;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import process.swing.Dialogs.UnappliedEdits;
 
 import javax.swing.JCheckBox;
@@ -19,10 +30,16 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.event.HierarchyEvent;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -212,6 +229,196 @@ class FieldUnappliedEditsTest {
             assertEquals("P2561", property(panel).getText());
             assertTrue(panel.hasUnappliedEdits());
         });
+    }
+
+    @Test void advancedValueAndOrdinaryControlsShareOneDraftAndApply() throws Exception {
+        var model = projectWithRoot();
+        var views = model.rootClass().addField("views", FieldType.NUMBER, FieldCardinality.SINGLE);
+        FieldSourceBindings.put(views, new SourceBinding(SourceBindingTarget.fieldValue("Person", "views",
+                SourceBindingSlot.PRIMARY_FIELD_VALUE), new SourceRecipe(PageviewsDatasourceProvider.ID,
+                PageviewsDatasourceProvider.ARTICLE_VIEWS, Map.of())));
+        var editor = new AtomicReference<FieldSourcePanel>();
+        var originalPlan = pageviewsPlan(model);
+        var monthsParentChanges = new AtomicInteger();
+        SwingUtilities.invokeAndWait(() -> {
+            var panel = panel(model, views);
+            editor.set(panel);
+            var tree = panel.configurationTree();
+            assertTrue(tree.selectDetail(FieldConfigurationProjection.PRIMARY));
+            var advanced = tree.nodes().stream().filter(node -> !node.children().isEmpty()
+                    && node.detailKey().equals(FieldConfigurationProjection.ADVANCED)).findFirst().orElseThrow();
+            var months = (JTextField) named(panel, "domain.datasource.parameter.months");
+            assertFalse(visibleIn(months, panel));
+            assertFalse(panel.hasUnappliedEdits(), "opening an omitted default is clean");
+
+            tree.select(advanced.id());
+            assertFalse(tree.tree().isExpanded(tree.tree().getSelectionPath()));
+            assertTrue(visibleIn(months, panel));
+            assertEquals("12", months.getText());
+            required(panel).setSelected(true);
+            months.addHierarchyListener(event -> {
+                if ((event.getChangeFlags() & HierarchyEvent.PARENT_CHANGED) != 0) {
+                    monthsParentChanges.incrementAndGet();
+                }
+            });
+            months.setText("6");
+            tree.select(advanced.children().getFirst().id());
+            tree.tree().collapsePath(tree.tree().getSelectionPath().getParentPath());
+            assertTrue(panel.hasUnappliedEdits());
+            assertFalse(views.required());
+            assertEquals(originalPlan, pageviewsPlan(model));
+        });
+        SwingUtilities.invokeAndWait(() -> {
+            var panel = editor.get();
+            var tree = panel.configurationTree();
+            assertEquals(0, monthsParentChanges.get(), "caption changes keep the editor attached");
+            assertTrue(tree.selectedNode().caption().contains("Complete months: 6"), tree.selectedNode().caption());
+            var months = (JTextField) named(panel, "domain.datasource.parameter.months");
+            assertEquals("6", months.getText());
+            assertTrue(required(panel).isSelected());
+            months.setText("012");
+            required(panel).setSelected(false);
+            assertFalse(panel.hasUnappliedEdits(), "the effective default is unchanged");
+        });
+        SwingUtilities.invokeAndWait(() -> {
+            var panel = editor.get();
+            assertEquals("Advanced settings — Complete months", panel.configurationTree().selectedNode().caption());
+            var months = (JTextField) named(panel, "domain.datasource.parameter.months");
+            months.setText("6");
+            required(panel).setSelected(true);
+            assertTrue(panel.applyUnappliedEdits(), status(panel));
+            assertTrue(views.required());
+            assertTrue(pageviewsPlan(model).contains("last 6 complete month(s)"), pageviewsPlan(model));
+            assertFalse(panel.hasUnappliedEdits());
+        });
+    }
+
+    @Test void choosingAPageviewsSourceRevealsAdvancedSettingsBeforeApply() throws Exception {
+        var model = projectWithRoot();
+        var views = model.rootClass().addField("views", FieldType.NUMBER, FieldCardinality.SINGLE);
+        var editor = new AtomicReference<FieldSourcePanel>();
+        SwingUtilities.invokeAndWait(() -> {
+            var panel = panel(model, views);
+            editor.set(panel);
+            assertTrue(panel.configurationTree().selectDetail(FieldConfigurationProjection.PRIMARY));
+            assertFalse(panel.configurationTree().selectDetail(FieldConfigurationProjection.ADVANCED));
+            combo(panel, "sourceTypeBox").setSelectedItem(FieldSourceType.DATASOURCE);
+            var operations = (JComboBox<?>) named(panel, "domain.datasource.operation");
+            for (int index = 0; index < operations.getItemCount(); index++) {
+                if (operations.getItemAt(index) instanceof domain.workbench.ui.DatasourceOperationForm.Choice choice
+                        && PageviewsDatasourceProvider.ID.equals(choice.provider().id())) {
+                    operations.setSelectedIndex(index);
+                    break;
+                }
+            }
+        });
+        SwingUtilities.invokeAndWait(() -> {
+            var panel = editor.get();
+            assertTrue(panel.configurationTree().nodes().stream().anyMatch(node -> node.caption()
+                    .equals("Advanced settings — Complete months")));
+            var months = (JTextField) named(panel, "domain.datasource.parameter.months");
+            assertEquals("12", months.getText());
+            assertFalse(visibleIn(months, panel));
+            assertTrue(views.sourceBindings().isEmpty());
+            assertTrue(panel.hasUnappliedEdits());
+            assertTrue(panel.applyUnappliedEdits(), status(panel));
+            assertTrue(pageviewsPlan(model).contains("last 12 complete month(s)"), pageviewsPlan(model));
+            assertTrue(panel.configurationTree().selectDetail(FieldConfigurationProjection.PRIMARY));
+            combo(panel, "sourceTypeBox").setSelectedItem(FieldSourceType.SPARQL);
+        });
+        SwingUtilities.invokeAndWait(() -> {
+            var panel = editor.get();
+            assertFalse(panel.configurationTree().selectDetail(FieldConfigurationProjection.ADVANCED));
+            assertTrue(pageviewsPlan(model).contains("last 12 complete month(s)"), pageviewsPlan(model));
+        });
+    }
+
+    @Test void advancedDisclosureKeepsTheDraftAndAnExistingOverrideIsNamed(@TempDir Path directory)
+            throws Exception {
+        var owned = owned();
+        var person = owned.project().rootClass();
+        var ownership = person.fields().getFirst();
+        var override = OwnedFieldSources.ensureOverride(ownership, "text");
+        override.mapping().copyAcquisitionFrom(owned.text().mapping());
+        override.mapping().propertyPid("P2561");
+        var alternate = person.addField("alternateName", FieldType.ENTITY, FieldCardinality.SINGLE);
+        alternate.entityClassName("Name");
+        alternate.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        FieldSourceBindings.synchronizeForSave(owned.project());
+        var siteId = new AtomicReference<domain.config.ConfigurationNode.Id>();
+        SwingUtilities.invokeAndWait(() -> {
+            var panel = panel(owned);
+            var tree = panel.configurationTree();
+            var namedSite = tree.nodes().stream().filter(node -> node.caption().equals(
+                    "When produced by Person.structuredName")).findFirst().orElseThrow();
+            siteId.set(namedSite.id());
+            var advanced = tree.nodes().stream().filter(node -> node.detailKey().equals(FieldConfigurationProjection.ADVANCED))
+                    .findFirst().orElseThrow();
+            assertEquals("Advanced settings — Override available for 1 production site", advanced.caption());
+            var availableSite = advanced.children().stream().filter(node -> node.caption().equals(
+                    "+ Configure override for Person.alternateName")).findFirst().orElseThrow();
+            var asks = new ArrayList<String>();
+            panel.unappliedDecision((construct, action) -> {
+                asks.add(action);
+                return UnappliedEdits.STAY;
+            });
+            property(panel).setText("P1476");
+            tree.select(advanced.id());
+            tree.expand(advanced.id());
+            tree.tree().collapsePath(tree.tree().getSelectionPath());
+            assertEquals(List.of(), asks);
+            assertEquals("P1476", property(panel).getText());
+            tree.select(namedSite.id());
+            assertEquals(List.of("switching to another production site"), asks);
+            assertEquals(advanced.id(), tree.selectedNode().id());
+            assertEquals("P1476", property(panel).getText());
+            assertEquals("P1559", owned.text().mapping().propertyPid());
+            assertEquals("P2561", override.mapping().propertyPid());
+
+            panel.unappliedDecision((construct, action) -> UnappliedEdits.DISCARD);
+            tree.select(availableSite.id());
+            assertEquals("alternateName", panel.selectedSourceSite().ownerField());
+            assertEquals("P1559", property(panel).getText());
+            assertNull(OwnedFieldSources.override(alternate, "text"));
+            property(panel).setText("P1476");
+            assertTrue(panel.applyUnappliedEdits(), status(panel));
+            assertEquals("P1476", OwnedFieldSources.override(alternate, "text").mapping().propertyPid());
+            assertTrue(tree.nodes().stream().anyMatch(node -> node.id().equals(availableSite.id())
+                    && node.caption().equals("When produced by Person.alternateName")));
+        });
+        var store = new GeneratedProjectModelStore();
+        var file = directory.resolve("names.model.json").toFile();
+        store.save(owned.project(), file);
+        var reopened = store.load(file);
+        var name = reopened.findClass("Name");
+        var root = FieldConfigurationProjection.project(reopened, name,
+                OwnedFieldSources.declaredField(reopened, "Name", "text"),
+                Datasources.standard(), new FieldConfigurationProjection.SourceDraft(null, null));
+        assertTrue(root.children().stream().anyMatch(node -> node.id().equals(siteId.get())
+                && node.caption().equals("When produced by Person.structuredName")));
+    }
+
+    private static String pageviewsPlan(GeneratedProjectModel model) {
+        return ModelSourceExecutionPlan.compileStored(model, Datasources.standard())
+                .fieldValues("Person", "views").steps().getFirst().prepared().description();
+    }
+
+    private static Component named(Component parent, String name) {
+        if (name.equals(parent.getName())) return parent;
+        if (parent instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                Component found = named(child, name);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static boolean visibleIn(Component component, Component root) {
+        for (Component current = component; current != root; current = current.getParent()) {
+            if (!current.isVisible()) return false;
+        }
+        return true;
     }
 
     @Test void applyingAnAutoWikidataImageKeepsTheInferredTypeAndRendering() throws Exception {

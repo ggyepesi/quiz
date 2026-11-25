@@ -52,6 +52,10 @@ public interface DatasourceOperation {
         }).filter(java.util.Objects::nonNull).toList();
     }
 
+    default boolean hasAdvancedSettings() {
+        return parameters().stream().anyMatch(ParameterDescriptor::advanced);
+    }
+
     /** Interpret one durable recipe. Providers override when their parameters form a
      * typed executable specification; callers never decode provider keys themselves. */
     default PreparedSourceOperation prepare(SourceBinding binding) {

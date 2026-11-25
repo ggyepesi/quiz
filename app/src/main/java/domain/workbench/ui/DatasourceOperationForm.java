@@ -40,6 +40,7 @@ public final class DatasourceOperationForm extends JPanel {
     private final JLabel advancedHelp = new JLabel(" ");
     private final Map<String, JComponent> inputs = new LinkedHashMap<>();
     private Map<String, String> storedParameters = Map.of();
+    private boolean editingSavedRecipe;
     private boolean separateAdvanced;
     private Runnable changed = () -> { };
 
@@ -76,7 +77,7 @@ public final class DatasourceOperationForm extends JPanel {
         }
         operations.setSelectedIndex(-1);
         operations.addActionListener(event -> {
-            showParameters(Map.of());
+            showParameters(Map.of(), false);
             changed.run();
         });
         add(operations, BorderLayout.NORTH);
@@ -111,6 +112,13 @@ public final class DatasourceOperationForm extends JPanel {
 
     public void showAdvancedSeparately() { separateAdvanced = true; }
 
+    /** Supplies a draft to the Advanced projection only for operations with advanced inputs. */
+    public SourceRecipe recipeWithAdvancedSettings() {
+        Choice choice = (Choice) operations.getSelectedItem();
+        return choice != null && choice.operation().hasAdvancedSettings()
+                ? recipe() : null;
+    }
+
     /** Shows {@code recipe}, or nothing chosen when it is null or not offered here. */
     public void show(SourceRecipe recipe) {
         Choice match = null;
@@ -130,7 +138,7 @@ public final class DatasourceOperationForm extends JPanel {
         for (java.awt.event.ActionListener listener : listeners) {
             operations.addActionListener(listener);
         }
-        showParameters(match == null ? Map.of() : recipe.parameters());
+        showParameters(match == null ? Map.of() : recipe.parameters(), match != null);
     }
 
     /** The edited recipe, or null when no operation is chosen. */
@@ -142,7 +150,8 @@ public final class DatasourceOperationForm extends JPanel {
             String key = parameter.key();
             String edited = value(inputs.get(key));
             String stored = storedParameters.get(key);
-            if (parameter.advanced() && parameter.usesDefault(edited) && parameter.usesDefault(stored)) {
+            if (editingSavedRecipe && parameter.advanced()
+                    && parameter.usesDefault(edited) && parameter.usesDefault(stored)) {
                 if (stored != null) values.put(key, stored);
             } else {
                 values.put(key, edited);
@@ -157,8 +166,9 @@ public final class DatasourceOperationForm extends JPanel {
         inputs.values().forEach(input -> input.setEnabled(enabled));
     }
 
-    private void showParameters(Map<String, String> stored) {
+    private void showParameters(Map<String, String> stored, boolean editingSavedRecipe) {
         storedParameters = stored;
+        this.editingSavedRecipe = editingSavedRecipe;
         parameters.removeAll();
         advancedParameters.removeAll();
         inputs.clear();
@@ -186,6 +196,9 @@ public final class DatasourceOperationForm extends JPanel {
                 c.weightx = 1;
                 c.fill = GridBagConstraints.HORIZONTAL;
                 target.add(input, c);
+                if (advanced && !parameter.defaultValue().isBlank()) {
+                    advancedHelpLines.add(parameter.label() + " defaults to " + parameter.defaultValue() + ".");
+                }
                 if (!parameter.help().isBlank()) {
                     (advanced ? advancedHelpLines : helpLines).add(parameter.label() + ": " + parameter.help());
                 }

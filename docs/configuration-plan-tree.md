@@ -128,6 +128,21 @@ birthDate
 Relation routes, union paths and candidate-evidence recipes are nested stored configuration, not
 encoded into one long caption or hidden behind a combo box.
 
+### Advanced Field Source settings
+
+Unified Workbench pilots one **Advanced settings** branch under **Produced by**. The ordinary
+source controls remain in **Primary**. The provider declares optional settings in its parameter
+descriptors and carries their captions and effective defaults through its configuration elements.
+For Wikimedia Pageviews, the collapsed caption names **Complete months** and shows a value when
+it differs from the default of 12. The Advanced detail edits the same recipe as Primary. The
+existing acquisition plan reads the applied recipe.
+
+Configured relation routes and production-site overrides remain named nodes. The Advanced branch
+lists the available production sites for a new override and says how many are available.
+Disclosure keeps the current field draft.
+Selecting another production site uses **Apply / Discard / Stay**. Apply keeps its existing
+validation feedback on the owning field. Exact-setting problem links require typed validation targets.
+
 ### Graph example
 
 ```text

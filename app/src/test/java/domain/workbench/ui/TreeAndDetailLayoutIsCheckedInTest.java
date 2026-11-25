@@ -1,10 +1,20 @@
 package domain.workbench.ui;
 
 import domain.config.ConfigurationNode;
+import domain.config.ClassKind;
 import domain.config.FieldConfigurationProjection;
+import domain.config.FieldCardinality;
+import domain.config.FieldProductionKind;
+import domain.config.FieldSourceBindings;
 import domain.config.GeneratedProjectModel;
 import domain.config.GeneratedProjectModelStore;
 import domain.datasource.Datasources;
+import domain.datasource.api.SourceBinding;
+import domain.datasource.api.SourceBindingSlot;
+import domain.datasource.api.SourceBindingTarget;
+import domain.datasource.api.SourceRecipe;
+import domain.datasource.pageviews.PageviewsDatasourceProvider;
+import domain.datasource.schema.FieldType;
 import org.junit.jupiter.api.Test;
 
 import javax.swing.JLabel;
@@ -16,6 +26,8 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.io.File;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -50,6 +62,8 @@ class TreeAndDetailLayoutIsCheckedInTest {
             describeCaptions(actual, actions.tree());
             actual.append("\n== Shipped DeityGroup.members projection ==\n");
             describeProjection(actual, projected, 0);
+            actual.append("\n== Field source with Advanced settings folded ==\n");
+            describeAdvancedOutline(actual);
         });
 
         String rendered = actual.toString().stripTrailing() + "\n";
@@ -63,6 +77,36 @@ class TreeAndDetailLayoutIsCheckedInTest {
             assertEquals(checkedIn, rendered, "the neutral tree-and-detail rendering no "
                     + "longer matches " + GOLDEN + "; diff it against " + seen
                     + ", then re-run with -Dtree.detail.layout.write=true to accept");
+        }
+    }
+
+    private static void describeAdvancedOutline(StringBuilder out) {
+        var model = new GeneratedProjectModel();
+        var article = model.getOrCreateClass("Article");
+        model.rootClass(article);
+        var owner = model.getOrCreateClass("ArticleDetails");
+        owner.classKind(ClassKind.OWNED);
+        for (String name : List.of("details", "alternateDetails")) {
+            var site = article.addField(name, FieldType.ENTITY, FieldCardinality.SINGLE);
+            site.entityClassName(owner.className());
+            site.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        }
+        var views = owner.addField("views", FieldType.NUMBER, FieldCardinality.SINGLE);
+        var recipe = new SourceRecipe(PageviewsDatasourceProvider.ID,
+                PageviewsDatasourceProvider.ARTICLE_VIEWS, Map.of(PageviewsDatasourceProvider.MONTHS, "6"));
+        FieldSourceBindings.put(views, new SourceBinding(SourceBindingTarget.fieldValue(owner.className(), views.name(),
+                SourceBindingSlot.PRIMARY_FIELD_VALUE), recipe));
+        var root = FieldConfigurationProjection.project(model, owner, views, Datasources.standard(),
+                new FieldConfigurationProjection.SourceDraft(null, recipe));
+        var panel = new ConfigurationTreePanel("fixture.field", "Configuration");
+        panel.show(root, node -> detail(node.caption()));
+        panel.nodes().stream().filter(node -> "Produced by".equals(node.caption())).findFirst()
+                .ifPresent(node -> panel.expand(node.id()));
+        JTree tree = panel.tree();
+        for (int row = 0; row < tree.getRowCount(); row++) {
+            var path = tree.getPathForRow(row);
+            out.append("  ".repeat(path.getPathCount() - 2))
+                    .append(path.getLastPathComponent()).append('\n');
         }
     }
 

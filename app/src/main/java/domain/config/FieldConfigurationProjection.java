@@ -6,6 +6,8 @@ import domain.datasource.api.DatasourceProvider;
 import domain.datasource.api.DatasourceRegistry;
 import domain.datasource.api.SourceBindingSlot;
 import domain.datasource.api.SourceBindingTarget;
+import domain.datasource.api.SourceBinding;
+import domain.datasource.api.SourceRecipe;
 import domain.datasource.api.BindingScope;
 
 import java.util.ArrayList;
@@ -18,6 +20,7 @@ public final class FieldConfigurationProjection {
 
     public static final String DEFINITION = "field-definition";
     public static final String PRIMARY = "field-primary-source";
+    public static final String ADVANCED = "field-advanced-source";
     public static final String FALLBACK = "field-fallback-source";
     public static final String CATEGORY = "field-category-source";
     public static final String EVIDENCE = "field-candidate-evidence";
@@ -29,6 +32,21 @@ public final class FieldConfigurationProjection {
     public static ConfigurationNode project(GeneratedProjectModel project,
             GeneratedClassModel owner, GeneratedFieldModel field,
             DatasourceRegistry registry) {
+        return project(project, owner, field, registry, null);
+    }
+
+    /** The current production site and its edited advanced recipe, if the draft has one. */
+    public record SourceDraft(OwnedComponentSite site, SourceRecipe recipe) {
+        public boolean edits(SourceBindingTarget target) {
+            return site == null ? !target.contextual()
+                    : site.ownerClass().equals(target.contextClassName())
+                            && site.ownerField().equals(target.contextFieldPath());
+        }
+    }
+
+    public static ConfigurationNode project(GeneratedProjectModel project,
+            GeneratedClassModel owner, GeneratedFieldModel field,
+            DatasourceRegistry registry, SourceDraft draft) {
         if (project == null || owner == null || field == null || registry == null) {
             throw new IllegalArgumentException("Project, owner, field and registry are required");
         }
@@ -42,7 +60,11 @@ public final class FieldConfigurationProjection {
         ConfigurationReferenceInventory.Site fieldSite =
                 ConfigurationReferenceInventory.fieldSite(owner, path);
         List<ConfigurationReferenceInventory.BindingSite> allBindings =
-                inventory.bindingsStoredAt(fieldSite);
+                inventory.bindingSites().stream()
+                        .filter(site -> site.binding().target().scope() == BindingScope.FIELD_VALUE)
+                        .filter(site -> site.binding().target().className().equals(owner.className())
+                                && site.binding().target().fieldPath().equals(path))
+                        .toList();
         List<ConfigurationReferenceInventory.BindingSite> bindings = allBindings.stream()
                 .filter(binding -> !binding.binding().target().contextual()).toList();
         SourceBindingTarget directContext = new SourceBindingTarget(
@@ -54,11 +76,12 @@ public final class FieldConfigurationProjection {
                 "Definition", DEFINITION, List.of()));
         SlotFit fit = new SlotFit(fallbackFits(field, registry),
                 WikipediaCategoryRule.fillsFieldOfType(field.type()));
+        var sites = contextualSources(project, owner, field, path, allBindings, registry, fit, draft);
         children.add(producedBy(owner, path, "", field, bindings, registry,
-                directContext, fit));
+                directContext, fit, draft, sites.available()));
         children.add(candidateEvidence(owner, path, "", bindings, registry,
                 directContext));
-        children.addAll(contextualSources(owner, path, allBindings, registry, fit));
+        children.addAll(sites.configured());
         ConfigurationReferenceProjection.needs(fieldSite,
                 referencesFrom(inventory, fieldSite, allBindings)).ifPresent(children::add);
         ConfigurationReferenceProjection.usedBy(fieldSite, inventory.to(fieldSite))
@@ -69,48 +92,81 @@ public final class FieldConfigurationProjection {
                 owner.className() + "." + path, DEFINITION, children);
     }
 
-    private static List<ConfigurationNode> contextualSources(
-            GeneratedClassModel owner, String path,
+    private record ContextualSources(List<ConfigurationNode> configured, List<ConfigurationNode> available) { }
+
+    private static ContextualSources contextualSources(
+            GeneratedProjectModel project, GeneratedClassModel owner, GeneratedFieldModel field, String path,
             List<ConfigurationReferenceInventory.BindingSite> bindings,
-            DatasourceRegistry registry, SlotFit fit) {
-        Map<String, List<ConfigurationReferenceInventory.BindingSite>> byContext =
+            DatasourceRegistry registry, SlotFit fit, SourceDraft draft) {
+        Map<OwnedComponentSite, List<ConfigurationReferenceInventory.BindingSite>> byContext =
                 new LinkedHashMap<>();
         for (ConfigurationReferenceInventory.BindingSite site : bindings) {
             var target = site.binding().target();
             if (!target.contextual()) continue;
-            String key = target.contextClassDeclarationId() + "|"
-                    + target.contextClassName() + "|" + target.contextFieldPath();
-            byContext.computeIfAbsent(key, ignored -> new ArrayList<>()).add(site);
+            var context = new OwnedComponentSite(owner.className(), target.contextClassName(), target.contextFieldPath());
+            byContext.computeIfAbsent(context, ignored -> new ArrayList<>()).add(site);
         }
         List<ConfigurationNode> result = new ArrayList<>();
         for (List<ConfigurationReferenceInventory.BindingSite> sites : byContext.values()) {
             var target = sites.getFirst().binding().target();
-            String contextId = target.contextClassDeclarationId().isBlank()
-                    ? target.contextClassName() : target.contextClassDeclarationId();
-            String key = "context:" + contextId + ":" + target.contextFieldPath();
+            String key = contextKey(project, target);
             List<ConfigurationNode> children = new ArrayList<>();
             children.add(producedBy(owner, path, key + "/", null, sites, registry,
-                    target, fit));
+                    target, fit, draft, List.of()));
             children.add(candidateEvidence(owner, path, key + "/", sites, registry,
                     target));
             result.add(node(owner, path, key,
                     ConfigurationNode.Kind.STORED_CONFIGURATION,
-                    "When produced by " + target.contextClassName() + "."
-                            + target.contextFieldPath(), PRIMARY, target, children));
+                    "When produced by " + contextName(target), PRIMARY, target, children));
         }
-        return List.copyOf(result);
+        List<ConfigurationNode> available = new ArrayList<>();
+        if (draft != null && owner.ownedClass() && !OwnedClassSemantics.isOwnerReferenceField(owner, field)) {
+            for (var owned : MembershipPattern.ownedBy(owner, project)) {
+                var site = new OwnedComponentSite(owner.className(), owned.ownerClass(), owned.fieldName());
+                if (byContext.containsKey(site)) continue;
+                var target = new SourceBindingTarget(BindingScope.FIELD_VALUE, owner.className(), path,
+                        SourceBindingSlot.PRIMARY_FIELD_VALUE, owner.declarationId(),
+                        owned.ownerClass(), owned.fieldName(), project.findClass(owned.ownerClass()).declarationId());
+                String siteName = contextName(target);
+                var override = OwnedFieldSources.override(OwnedFieldSources.ownershipField(project, site), path);
+                String key = contextKey(project, target);
+                var advanced = advancedSource(owner, path, key + "/", target, null, registry, draft, List.of());
+                List<ConfigurationNode> children = advanced == null ? List.of() : List.of(advanced);
+                if (override != null) {
+                    result.add(node(owner, path, key, ConfigurationNode.Kind.STORED_CONFIGURATION,
+                            "When produced by " + siteName, PRIMARY, target, children));
+                } else {
+                    available.add(node(owner, path, key, ConfigurationNode.Kind.AVAILABLE_SLOT,
+                            "+ Configure override for " + siteName, PRIMARY, target, children));
+                }
+            }
+        }
+        return new ContextualSources(result, available);
+    }
+
+    private static String contextName(SourceBindingTarget target) {
+        return target.contextClassName() + "." + target.contextFieldPath();
+    }
+
+    private static String contextKey(GeneratedProjectModel project, SourceBindingTarget target) {
+        var context = project.resolveClass(target.contextClassDeclarationId(), target.contextClassName());
+        String contextId = context == null ? target.contextClassDeclarationId() : context.declarationId();
+        if (contextId.isBlank()) contextId = target.contextClassName();
+        return "context:" + contextId + ":" + target.contextFieldPath();
     }
 
     private static ConfigurationNode producedBy(GeneratedClassModel owner, String path,
             String keyPrefix,
             GeneratedFieldModel field,
             List<ConfigurationReferenceInventory.BindingSite> bindings,
-            DatasourceRegistry registry, SourceBindingTarget sourceContext, SlotFit fit) {
+            DatasourceRegistry registry, SourceBindingTarget sourceContext, SlotFit fit,
+            SourceDraft draft, List<ConfigurationNode> availableSites) {
         List<ConfigurationNode> children = new ArrayList<>();
         List<ConfigurationReferenceInventory.BindingSite> primary = slot(
                 bindings, SourceBindingSlot.PRIMARY_FIELD_VALUE);
         String modelProducer = field == null ? "" : modelProducer(owner, field);
-        if (primary.isEmpty()) {
+        var primarySite = primary.isEmpty() ? null : primary.getFirst();
+        if (primarySite == null) {
             String caption = !modelProducer.isBlank()
                     ? "Primary: " + modelProducer
                     : field != null
@@ -123,8 +179,7 @@ public final class FieldConfigurationProjection {
             children.add(node(owner, path, keyPrefix + "primary", kind, caption,
                     PRIMARY, sourceContext, List.of()));
         } else {
-            children.add(bindingNode(owner, path, primary.getFirst(), registry, PRIMARY,
-                    "Primary: "));
+            children.add(bindingNode(owner, path, primarySite, registry, PRIMARY, "Primary: ", draft != null));
         }
 
         if (modelProducer.isBlank()) {
@@ -146,9 +201,49 @@ public final class FieldConfigurationProjection {
                     : bindingNode(owner, path, category.getFirst(), registry, CATEGORY,
                             "Category relation: "));
         }
+        var advanced = advancedSource(owner, path, keyPrefix, sourceContext, primarySite, registry, draft,
+                availableSites);
+        if (advanced != null) children.add(advanced);
         return node(owner, path, keyPrefix + "produced-by",
                 ConfigurationNode.Kind.STORED_CONFIGURATION, "Produced by", PRIMARY,
                 sourceContext, children);
+    }
+
+    private static ConfigurationNode advancedSource(GeneratedClassModel owner, String path, String keyPrefix,
+            SourceBindingTarget context, ConfigurationReferenceInventory.BindingSite primary,
+            DatasourceRegistry registry, SourceDraft draft, List<ConfigurationNode> sites) {
+        if (draft == null) return null;
+        SourceRecipe recipe = draft.edits(context) ? draft.recipe()
+                : primary == null ? null : primary.binding().recipe();
+        List<ConfigurationElement> settings = List.of();
+        if (recipe != null) {
+            try {
+                var operation = registry.require(recipe.providerId(), recipe.operationId(), DatasourceOperation.class);
+                if (operation.hasAdvancedSettings()) {
+                    settings = operation.configurationElements(new SourceBinding(context, recipe)).stream()
+                            .filter(ConfigurationElement::advanced).toList();
+                }
+            } catch (IllegalArgumentException | IllegalStateException invalid) {
+                // The primary source and validation already report invalid configuration.
+            }
+        }
+        if (settings.isEmpty() && sites.isEmpty()) return null;
+        String key = keyPrefix + "advanced-source";
+        List<ConfigurationNode> children = new ArrayList<>();
+        List<String> summaries = new ArrayList<>();
+        for (var setting : settings) {
+            summaries.add(setting.advancedSummary());
+            children.add(node(owner, path, key + "/" + setting.key(), ConfigurationNode.Kind.STORED_CONFIGURATION,
+                    setting.caption(), ADVANCED, context, List.of()));
+        }
+        if (!sites.isEmpty()) {
+            summaries.add(sites.size() == 1 ? "Override available for 1 production site"
+                    : "Overrides available for " + sites.size() + " production sites");
+        }
+        children.addAll(sites);
+        return node(owner, path, key, ConfigurationNode.Kind.STORED_CONFIGURATION,
+                "Advanced settings — " + String.join(", ", summaries), ADVANCED,
+                settings.isEmpty() ? null : context, children);
     }
 
     /** Which unconfigured slots this field's type can use. A configured binding is
@@ -201,6 +296,12 @@ public final class FieldConfigurationProjection {
     private static ConfigurationNode bindingNode(GeneratedClassModel owner, String path,
             ConfigurationReferenceInventory.BindingSite site, DatasourceRegistry registry,
             String detail, String prefix) {
+        return bindingNode(owner, path, site, registry, detail, prefix, false);
+    }
+
+    private static ConfigurationNode bindingNode(GeneratedClassModel owner, String path,
+            ConfigurationReferenceInventory.BindingSite site, DatasourceRegistry registry,
+            String detail, String prefix, boolean separateAdvanced) {
         String key = "binding:" + site.bindingSite().fieldPath();
         DatasourceOperation operation;
         DatasourceProvider provider;
@@ -218,7 +319,7 @@ public final class FieldConfigurationProjection {
         String summary;
         try {
             children = operation.configurationElements(site.binding())
-                    .stream().map(element -> elementNode(
+                    .stream().filter(element -> !separateAdvanced || !element.advanced()).map(element -> elementNode(
                             owner, path, key, detail, site, element)).toList();
             summary = operation.summary(site.binding());
         } catch (IllegalArgumentException | IllegalStateException invalid) {

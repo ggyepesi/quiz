@@ -50,3 +50,14 @@ stored configuration: DeityGroup.members
   reference: Used by
     reference: group members field: DeityGroup
   stored configuration: Refine
+
+== Field source with Advanced settings folded ==
+ArticleDetails.views
+  Definition
+  Produced by
+    Primary: Wikimedia Pageviews — English Wikipedia article views
+    + Add fallback source
+    Advanced settings — Complete months: 6, Overrides available for 2 production sites
+  Candidate evidence
+  Needs
+  Refine

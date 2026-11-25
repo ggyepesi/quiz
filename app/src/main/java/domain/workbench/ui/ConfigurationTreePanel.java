@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -41,6 +42,7 @@ public final class ConfigurationTreePanel extends JPanel {
     private final TreeAndDetailPanel<ConfigurationNode.Id> tree;
     private final Map<ConfigurationNode.Id, ConfigurationNode> nodes =
             new LinkedHashMap<>();
+    private ConfigurationNode root;
     private final LinkedHashSet<JComponent> editorDetails = new LinkedHashSet<>();
     private final JPanel referenceDetail = new JPanel(new BorderLayout());
     private final JLabel referenceLabel =
@@ -96,6 +98,7 @@ public final class ConfigurationTreePanel extends JPanel {
     /** Replaces one complete projection while the neutral shell preserves layout state. */
     public void show(ConfigurationNode root,
             Function<ConfigurationNode, JComponent> detailFor) {
+        this.root = root;
         nodes.clear();
         editorDetails.clear();
         selectedReference = null;
@@ -114,6 +117,37 @@ public final class ConfigurationTreePanel extends JPanel {
             // reference Open command) for the selection it preserved by stable id.
             selected(tree.selectedId());
         }
+    }
+
+    /**
+     * Updates draft captions while keeping the editor attached and its selection intact.
+     * Returns false when a change requires reinstalling the projection.
+     */
+    public boolean refreshCaptions(ConfigurationNode updated) {
+        if (root == null || updated == null || !sameStructure(root, updated)) return false;
+        root = updated;
+        updateCaptions(updated);
+        updateReferenceDetail(selectedNode());
+        return true;
+    }
+
+    private static boolean sameStructure(ConfigurationNode shown, ConfigurationNode updated) {
+        if (!shown.id().equals(updated.id()) || shown.kind() != updated.kind()
+                || !shown.detailKey().equals(updated.detailKey())
+                || !Objects.equals(shown.referenceTarget(), updated.referenceTarget())
+                || !Objects.equals(shown.bindingSite(), updated.bindingSite())
+                || !Objects.equals(shown.sourceContext(), updated.sourceContext())
+                || shown.children().size() != updated.children().size()) return false;
+        for (int i = 0; i < shown.children().size(); i++) {
+            if (!sameStructure(shown.children().get(i), updated.children().get(i))) return false;
+        }
+        return true;
+    }
+
+    private void updateCaptions(ConfigurationNode node) {
+        nodes.put(node.id(), node);
+        tree.updateCaption(node.id(), node.caption());
+        node.children().forEach(this::updateCaptions);
     }
 
     public JTree tree() { return tree.tree(); }

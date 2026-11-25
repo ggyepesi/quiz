@@ -245,6 +245,8 @@ public class FieldSourcePanel extends JPanel {
     private final JComboBox<FieldSourceType> sourceTypeBox =
             new JComboBox<>(FieldSourceType.values());
     private final JComboBox<SourceContext> sourceContextBox = new JComboBox<>();
+    private final JLabel sourceContextLabel = new JLabel();
+    private final JLabel chooseProductionSite = new JLabel("Select a production site in the tree to configure an override.");
     // Operations no source type above names; the registry declares them and their inputs.
     private final domain.datasource.api.DatasourceRegistry datasources =
             domain.datasource.Datasources.standard();
@@ -260,6 +262,9 @@ public class FieldSourcePanel extends JPanel {
     private ConfigurationNode.Id shownConfigurationNode;
     private boolean switchingSourceContext;
     private boolean restoringConfigurationSelection;
+    private boolean advancedRefreshPending;
+    private boolean refreshingAdvancedTree;
+    private FieldConfigurationProjection.SourceDraft projectedSourceDraft;
     private final GeneratedProjectModelStore modelStore = new GeneratedProjectModelStore();
     private java.util.function.BiFunction<String, String, process.swing.Dialogs.UnappliedEdits>
             unappliedDecision = (construct, action) ->
@@ -559,6 +564,9 @@ public class FieldSourcePanel extends JPanel {
     /** The configuration and plan host has no sampling or query session of its own. */
     void showLocalFieldEditor() {
         fieldEditsOnly = true;
+        datasourceOperationForm.showAdvancedSeparately();
+        sourceContextBox.setVisible(false);
+        sourceContextLabel.setVisible(true);
         fallbackButton.setVisible(false);
         categoryButton.setVisible(false);
         reloadFieldButton.setVisible(false);
@@ -990,6 +998,7 @@ public class FieldSourcePanel extends JPanel {
         FieldSourceMapping mapping = activeSourceMapping(false);
         if (mapping == null) mapping = field == null ? null : field.mapping();
         if (mapping == null) return;
+        sourceContextLabel.setText(sourceContext().label());
         sourceTypeBox.setSelectedItem(mapping.sourceType());
         datasourceOperationForm.show(storedDatasourceRecipe());
         applicable(datasourceOperationRow,
@@ -1638,6 +1647,8 @@ public class FieldSourcePanel extends JPanel {
                 + "when this owned component is produced by the selected owner field.");
         JPanel sourceContextPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         sourceContextPanel.add(sourceContextBox);
+        sourceContextLabel.setVisible(false);
+        sourceContextPanel.add(sourceContextLabel);
         sourceContextPanel.add(clearSourceOverrideButton);
         clearSourceOverrideButton.addActionListener(e -> clearSourceOverride());
         sourceContextRow = FormRow.add(
@@ -1864,12 +1875,16 @@ public class FieldSourcePanel extends JPanel {
 
         applyButton.addActionListener(e -> apply());
         reloadFieldButton.addActionListener(e -> requestReload());
-        datasourceOperationForm.onChange(this::updateRecommendation);
+        datasourceOperationForm.onChange(() -> {
+            updateRecommendation();
+            requestAdvancedRefresh();
+        });
         sourceTypeBox.addActionListener(e -> {
             applicable(datasourceOperationRow,
                     sourceTypeBox.getSelectedItem() == FieldSourceType.DATASOURCE);
             updateRecommendation();
             refreshGraphExpansionControl();
+            requestAdvancedRefresh();
         });
         sourceContextBox.addActionListener(e -> {
             if (updatingSourceContext) return;
@@ -1882,6 +1897,7 @@ public class FieldSourcePanel extends JPanel {
             }
             loadSelectedSourceContext();
             markClean();
+            requestAdvancedRefresh();
         });
         objectTypeBox.addActionListener(e -> {
             if (updatingObjectTypeBox) {
@@ -2004,6 +2020,12 @@ public class FieldSourcePanel extends JPanel {
             configurationDetails.put(entry.getKey(),
                     ConfigurationTreePanel.scrollDetail(entry.getValue()));
         }
+        JPanel advanced = new JPanel(new BorderLayout(4, 8));
+        advanced.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        advanced.add(datasourceOperationForm.advancedDetail(), BorderLayout.NORTH);
+        advanced.add(chooseProductionSite, BorderLayout.CENTER);
+        configurationDetails.put(FieldConfigurationProjection.ADVANCED,
+                ConfigurationTreePanel.scrollDetail(advanced));
     }
 
     private void refreshConfigurationTree() {
@@ -2012,16 +2034,43 @@ public class FieldSourcePanel extends JPanel {
             configuration.show(null, ignored -> null);
             return;
         }
+        projectedSourceDraft = sourceDraft();
         ConfigurationNode root = FieldConfigurationProjection.project(
-                projectModel, owner, field, datasources);
+                projectModel, owner, field, datasources, projectedSourceDraft);
+        if (refreshingAdvancedTree && configuration.refreshCaptions(root)) return;
         configuration.show(root, node -> configurationDetails.getOrDefault(
                 node.detailKey(), configurationDetails.get(
                         FieldConfigurationProjection.DEFINITION)));
     }
 
+    private FieldConfigurationProjection.SourceDraft sourceDraft() {
+        if (!fieldEditsOnly) return null;
+        var recipe = sourceTypeBox.getSelectedItem() == FieldSourceType.DATASOURCE
+                ? datasourceOperationForm.recipeWithAdvancedSettings() : null;
+        return new FieldConfigurationProjection.SourceDraft(selectedSourceSite(), recipe);
+    }
+
+    private void requestAdvancedRefresh() {
+        if (!fieldEditsOnly || advancedRefreshPending) return;
+        advancedRefreshPending = true;
+        SwingUtilities.invokeLater(() -> {
+            advancedRefreshPending = false;
+            if (field == null || java.util.Objects.equals(projectedSourceDraft, sourceDraft())) return;
+            refreshingAdvancedTree = true;
+            try {
+                refreshConfigurationTree();
+            } finally {
+                refreshingAdvancedTree = false;
+            }
+        });
+    }
+
     private void configurationSelected(ConfigurationNode node) {
         if (switchingSourceContext || restoringConfigurationSelection) return;
-        if (node.sourceContext() != null && !selectSourceContext(node.sourceContext())) {
+        boolean advanced = FieldConfigurationProjection.ADVANCED.equals(node.detailKey());
+        boolean disclosure = advanced && !node.children().isEmpty();
+        var context = node.sourceContext();
+        if (!refreshingAdvancedTree && !disclosure && context != null && !selectSourceContext(context)) {
             restoringConfigurationSelection = true;
             try {
                 configuration.select(shownConfigurationNode);
@@ -2031,6 +2080,15 @@ public class FieldSourcePanel extends JPanel {
             return;
         }
         shownConfigurationNode = node.id();
+        if (advanced) {
+            boolean currentSite = context != null && sourceDraft().edits(context);
+            datasourceOperationForm.advancedDetail().setVisible(currentSite);
+            boolean hasSites = node.children().stream()
+                    .anyMatch(child -> child.kind() == ConfigurationNode.Kind.AVAILABLE_SLOT);
+            chooseProductionSite.setText(hasSites ? "Select a production site in the tree to configure an override."
+                    : "Select the source for this production site to edit its advanced settings.");
+            chooseProductionSite.setVisible(hasSites || !currentSite);
+        }
         ConfigurationReferenceInventory.BindingSite bindingSite = node.bindingSite();
         if (bindingSite == null) return;
         var target = bindingSite.binding().target();

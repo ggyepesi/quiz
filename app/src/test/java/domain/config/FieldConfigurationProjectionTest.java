@@ -1,24 +1,115 @@
 package domain.config;
 
 import domain.datasource.Datasources;
+import domain.datasource.api.BindingScope;
+import domain.datasource.api.ConfigurationElement;
+import domain.datasource.api.DatasourceRegistry;
 import domain.datasource.api.SourceBinding;
 import domain.datasource.api.SourceBindingSlot;
 import domain.datasource.api.SourceBindingTarget;
 import domain.datasource.api.SourceRecipe;
+import domain.datasource.pageviews.PageviewsDatasourceProvider;
 import domain.datasource.schema.FieldType;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Forces the first real construct projection used by #557's field editor. */
 class FieldConfigurationProjectionTest {
+
+    @Test void everyShippedFieldSummarizesItsConfiguredAdvancedSettings() throws Exception {
+        Path models = Path.of("../data/wikidata");
+        try (var paths = Files.walk(models)) {
+            var files = paths.filter(path -> path.getFileName().toString().endsWith(".model.json"))
+                    .sorted().toList();
+            assertFalse(files.isEmpty(), "no shipped models under " + models);
+            for (Path file : files) checkAdvancedSummaries(file);
+        }
+    }
+
+    // The shipped models currently have no Pageviews recipe. Exercise the same guard on
+    // a saved model with distinct settings at the shared source and a production site.
+    @Test void anOwnedFieldsSavedAdvancedValuesAppearInTheirOwnSourceSummaries(@TempDir Path directory)
+            throws Exception {
+        var project = new GeneratedProjectModel();
+        var article = project.getOrCreateClass("Article");
+        project.rootClass(article);
+        var detail = project.getOrCreateClass("ArticleDetails");
+        detail.classKind(ClassKind.OWNED);
+        var details = article.addField("details", FieldType.ENTITY, FieldCardinality.SINGLE);
+        details.entityClassName(detail.className());
+        details.mapping().productionKind(FieldProductionKind.OWNED_COMPONENT);
+        var views = detail.addField("views", FieldType.NUMBER, FieldCardinality.SINGLE);
+        FieldSourceBindings.put(views, new SourceBinding(SourceBindingTarget.fieldValue(
+                detail.className(), views.name(), SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                pageviewsRecipe("6")));
+        FieldSourceBindings.put(OwnedFieldSources.ensureOverride(details, views.name()),
+                new SourceBinding(SourceBindingTarget.ownedFieldValue(detail.className(), views.name(),
+                        article.className(), details.name(), SourceBindingSlot.PRIMARY_FIELD_VALUE),
+                        pageviewsRecipe("3")));
+
+        Path file = directory.resolve("article.model.json");
+        new GeneratedProjectModelStore().save(project, file.toFile());
+        assertEquals(2, checkAdvancedSummaries(file));
+    }
+
+    private static SourceRecipe pageviewsRecipe(String months) {
+        return new SourceRecipe(PageviewsDatasourceProvider.ID, PageviewsDatasourceProvider.ARTICLE_VIEWS,
+                Map.of(PageviewsDatasourceProvider.MONTHS, months));
+    }
+
+    private static int checkAdvancedSummaries(Path file) throws Exception {
+        GeneratedProjectModel project = new GeneratedProjectModelStore().load(file.toFile());
+        DatasourceRegistry registry = Datasources.standard();
+        var inventory = ConfigurationReferenceInventory.of(project, registry);
+        int checked = 0;
+        for (var site : inventory.bindingSites()) {
+            SourceBinding binding = site.binding();
+            SourceBindingTarget target = binding.target();
+            if (target.scope() != BindingScope.FIELD_VALUE) continue;
+            var advanced = flatten(binding.resolve(registry).configurationElements(binding)).stream()
+                    .filter(ConfigurationElement::advanced).toList();
+            if (advanced.isEmpty()) continue;
+
+            var owner = project.resolveClass(target.classDeclarationId(), target.className());
+            assertNotNull(owner, file + " " + target);
+            var field = (GeneratedFieldModel) inventory.resolve(
+                    ConfigurationReferenceInventory.fieldSite(owner, target.fieldPath()));
+            assertNotNull(field, file + " " + target);
+            var shared = FieldSourceBindings.binding(field, SourceBindingSlot.PRIMARY_FIELD_VALUE);
+            var tree = FieldConfigurationProjection.project(project, owner, field, registry,
+                    new FieldConfigurationProjection.SourceDraft(null, shared == null ? null : shared.recipe()));
+            var sections = flatten(tree).stream()
+                    .filter(node -> node.detailKey().equals(FieldConfigurationProjection.ADVANCED))
+                    .filter(node -> node.sourceContext() != null && !node.children().isEmpty())
+                    .filter(node -> sameSource(target, node.sourceContext())).toList();
+            for (var setting : advanced) {
+                String expected = setting.advancedSummary();
+                assertTrue(sections.stream().anyMatch(node -> node.caption().contains(expected)),
+                        () -> file + " " + target + " should summarize " + expected + " in "
+                                + sections.stream().map(ConfigurationNode::caption).toList());
+                checked++;
+            }
+        }
+        return checked;
+    }
+
+    private static boolean sameSource(SourceBindingTarget target, SourceBindingTarget section) {
+        return target.slot() == section.slot()
+                && target.contextClassName().equals(section.contextClassName())
+                && target.contextFieldPath().equals(section.contextFieldPath());
+    }
 
     @Test void deityGroupMembersShowsRoutesAndBothWikipediaEvidenceRecipes()
             throws Exception {
@@ -29,7 +120,8 @@ class FieldConfigurationProjectionTest {
                 .filter(value -> value.name().equals("members")).findFirst().orElseThrow();
 
         ConfigurationNode projection = FieldConfigurationProjection.project(
-                project, owner, field, Datasources.standard());
+                project, owner, field, Datasources.standard(),
+                new FieldConfigurationProjection.SourceDraft(null, null));
         List<ConfigurationNode> nodes = flatten(projection);
         List<String> captions = nodes.stream().map(ConfigurationNode::caption).toList();
 
@@ -212,9 +304,8 @@ class FieldConfigurationProjectionTest {
         return result;
     }
 
-    private static List<domain.datasource.api.ConfigurationElement> flatten(
-            List<domain.datasource.api.ConfigurationElement> roots) {
-        List<domain.datasource.api.ConfigurationElement> result = new ArrayList<>();
+    private static List<ConfigurationElement> flatten(List<ConfigurationElement> roots) {
+        List<ConfigurationElement> result = new ArrayList<>();
         for (var root : roots) {
             result.add(root);
             result.addAll(flatten(root.children()));
