@@ -447,7 +447,8 @@
   button: Re-fetch on next enrich
   button: Apply field source
 
-== Graph class - GraphConstraintsPanel ==
+== Graph section graph-definition ==
+  box: Configuration
   piece: ClassHeaderEditor
     label: Class name:
     text: [PositionRelevance]
@@ -455,6 +456,13 @@
     text: []
     label: Extends:
     combo: 2 item(s)
+  label: No discovery graph configured.
+  button: Run graph  (disabled)
+  button: Clear draft
+  button: Apply graph
+
+== Graph section graph-start ==
+  box: Configuration
   box: Start node
     label: Start with:
     combo: 1 item(s)
@@ -463,6 +471,25 @@
     label: Use these entities as:
     combo: 2 item(s)
     label: A saved population selection is an exact reusable QID set.
+  label: No discovery graph configured.
+  button: Run graph  (disabled)
+  button: Clear draft
+  button: Apply graph
+
+== Graph section graph-path ==
+  box: Configuration
+  box: Path after the start node
+    list
+    button: Add node to path
+    button: New node
+    button: Remove selected node
+  label: No discovery graph configured.
+  button: Run graph  (disabled)
+  button: Clear draft
+  button: Apply graph
+
+== Graph section graph-edge ==
+  box: Configuration
   box: Incoming edge of next node
     label: ── property out ──▶
     label: Property:
@@ -482,12 +509,14 @@
     button: Add alternative edge
     list
     button: Remove selected alternative edge
-  box: Next nodes
-    label: Path after the start node
-    list
-    button: Add node to path
-    button: New node
-    button: Remove selected node
+  label: No discovery graph configured.
+  button: Run graph  (disabled)
+  button: Clear draft
+  button: Apply graph
+
+== Graph section graph-node ==
+  box: Configuration
+  box: Selected path node
     label: Use reached entities as:
     combo: 2 item(s)
     label: Output class:
@@ -497,75 +526,14 @@
     label: Apply result:
     combo: 2 item(s)
     check: Repeat until no new instances are found
-  piece: ClassIdentityEditor  [Identity]
-    label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
-    piece: OrderedChoiceList
-      list
-      button: Add  (disabled)
-      button: Remove  (disabled)
-      button: Up  (disabled)
-      button: Down  (disabled)
-      label: Available:
-      combo: 1 item(s)  (disabled)
-    label: When a key cannot be computed:
-    combo: 3 item(s)
-    box: When the same key occurs
-      label: Every field is part of the key, so nothing is combined.
-  piece: DisplayNameEditor  [Display name]
-    piece: OrderedChoiceList  [Named by, in order — empty means the name it already has]
-      list
-      button: Add  (disabled)
-      button: Remove  (disabled)
-      button: Up  (disabled)
-      button: Down  (disabled)
-      label: Available:
-      combo: 1 item(s)
   label: No discovery graph configured.
   button: Run graph  (disabled)
   button: Clear draft
   button: Apply graph
 
-== Graph class evidence - GraphConstraintsPanel ==
-  piece: ClassHeaderEditor
-    label: Class name:
-    text: [PositionRelevance]
-    label: Alias:
-    text: []
-    label: Extends:
-    combo: 2 item(s)
-  box: Start node
-    label: Start with:
-    combo: 1 item(s)
-    label: Usable Wikidata QIDs:
-    label: 0 QIDs
-    label: Use these entities as:
-    combo: 2 item(s)
-    label: A saved population selection is an exact reusable QID set.
-  box: Incoming edge of next node
-    label: ── property out ──▶
-    label: Property:
-    ids: []
-      text: []
-      button: Set  (disabled)
-      button: Cancel  (disabled)
-    label: Direction from previous node:
-    combo: 2 item(s)
-    label: Equivalent alternative edges (optional; each is followed too)
-    label: Property:
-    ids: []
-      text: []
-      button: Set  (disabled)
-      button: Cancel  (disabled)
-    combo: 2 item(s)
-    button: Add alternative edge
-    list
-    button: Remove selected alternative edge
-  box: Next nodes
-    label: Path after the start node
-    list
-    button: Add node to path
-    button: New node
-    button: Remove selected node
+== Graph section graph-evidence ==
+  box: Configuration
+  box: Evidence for selected node
     label: Evidence relations from this node (one or more may reach evidence)
     label: Property:
     ids: []
@@ -597,6 +565,13 @@
     button: Remove selected evidence test
     label: When evidence is incomplete:
     combo: 3 item(s)
+  label: No discovery graph configured.
+  button: Run graph  (disabled)
+  button: Clear draft
+  button: Apply graph
+
+== Graph section graph-identity ==
+  box: Configuration
   piece: ClassIdentityEditor  [Identity]
     label: What tells two instances apart. The order is part of the identity, because an identifier joins these values in it.
     piece: OrderedChoiceList
@@ -611,6 +586,13 @@
     combo: 3 item(s)
     box: When the same key occurs
       label: Every field is part of the key, so nothing is combined.
+  label: No discovery graph configured.
+  button: Run graph  (disabled)
+  button: Clear draft
+  button: Apply graph
+
+== Graph section graph-display-name ==
+  box: Configuration
   piece: DisplayNameEditor  [Display name]
     piece: OrderedChoiceList  [Named by, in order — empty means the name it already has]
       list

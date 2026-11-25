@@ -27,6 +27,7 @@ import domain.config.*;
 import wikidata.explore.query.logical.ConfiguredGraphDiscoveryQuery;
 import wikidata.ui.WikidataLinks;
 import domain.workbench.ui.SimpleDocumentListener;
+import domain.workbench.ui.ConfigurationTreePanel;
 
 import javax.swing.*;
 import java.awt.*;
@@ -74,6 +75,11 @@ final class GraphConstraintsPanel extends JPanel {
             " Run graph previews the output class; Apply result installs its accepted instances.";
 
     private final GeneratedProjectModel model;
+    private final ConfigurationTreePanel configuration = new ConfigurationTreePanel(
+            "modelbuilder.graph.configuration", "Configuration");
+    private final Map<String, JComponent> configurationDetails = new LinkedHashMap<>();
+    private Consumer<ConfigurationReferenceInventory.Site> onNavigateConfiguration =
+            ignored -> { };
     /**
      * The GRAPH class being edited. A graph constraint used to be the project's one
      * singleton, so this panel edited "the" graph and named it in a field of its own —
@@ -205,6 +211,12 @@ final class GraphConstraintsPanel extends JPanel {
 
     void afterChange(Consumer<Void> value) {
         afterChange = value == null ? ignored -> {} : value;
+    }
+
+    void onNavigateConfiguration(
+            Consumer<ConfigurationReferenceInventory.Site> value) {
+        onNavigateConfiguration = value == null ? ignored -> { } : value;
+        configuration.onNavigate(onNavigateConfiguration);
     }
 
     void setProcessRunner(SwingProcessRunner value) {
@@ -384,7 +396,6 @@ final class GraphConstraintsPanel extends JPanel {
                 replace(nodesModel, saved.nextNodes());
                 if (!saved.nextNodes().isEmpty()) {
                     nodesList.setSelectedIndex(0);
-                    load(saved.nextNodes().getFirst());
                 }
             }
             refreshTargetState();
@@ -397,6 +408,7 @@ final class GraphConstraintsPanel extends JPanel {
                     : "Configured." + RUN_ONLY, false);
             updateRunEnabled();
             populated = true;
+            refreshConfigurationTree();
         } finally { loading = false; }
     }
 
@@ -405,6 +417,7 @@ final class GraphConstraintsPanel extends JPanel {
     private void clearDraftControls() {
         nodesModel.clear();
         clearNodeControls();
+        if (!loading) refreshConfigurationTree();
     }
 
     private void clearNodeControls() {
@@ -422,12 +435,15 @@ final class GraphConstraintsPanel extends JPanel {
         evidenceModel.clear();
         testsModel.clear();
         evidencePidField.setText("");
+        evidenceDirectionBox.setSelectedItem(DirectionChoice.OUT);
         testPidField.setText("");
+        testDirectionBox.setSelectedItem(DirectionChoice.OUT);
+        testKindBox.setSelectedItem(TestKind.HAS_VALUE);
         testQidField.setText("");
         testViaField.setText("");
+        targetUseBox.setSelectedItem(GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION);
         reviewBox.setSelectedItem(
                 GraphEvidenceCondition.ReviewDisposition.AWAIT_DECISION);
-        targetUseBox.setSelectedItem(GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION);
         if (targetClassBox.getItemCount() > 0) targetClassBox.setSelectedIndex(0);
     }
 
@@ -500,6 +516,7 @@ final class GraphConstraintsPanel extends JPanel {
                         + ". Add the property connecting the two nodes to complete"
                         + " the graph.", false);
                 updateRunEnabled();
+                refreshConfigurationTree();
                 afterChange.accept(null);
                 return;
             }
@@ -526,6 +543,7 @@ final class GraphConstraintsPanel extends JPanel {
             if (changed) clearCompletedPopulation();
             status("Applied discovery graph." + RUN_ONLY, false);
             updateRunEnabled();
+            refreshConfigurationTree();
             afterChange.accept(null);
         } catch (IllegalArgumentException ex) { status(ex.getMessage(), true); }
     }
@@ -559,30 +577,25 @@ final class GraphConstraintsPanel extends JPanel {
         status.setName("graph.status");
         targetUseBox.setSelectedItem(GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION);
 
-        JPanel chain = new JPanel();
-        chain.setLayout(new BoxLayout(chain, BoxLayout.X_AXIS));
-        chain.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        chain.add(startNodePanel());
-        chain.add(Box.createHorizontalStrut(8));
-        chain.add(edgePanel());
-        chain.add(Box.createHorizontalStrut(8));
-        chain.add(nextNodePanel());
-        JComponent graph = objectview.utils.swing.ScrollPaneUtils.horizontalOnly(chain);
-
-        // Header, then this kind's own construct, then identity and name — the order
-        // every kind editor reads in. The graph IS this kind's triple: what it starts
-        // from, the edge it follows, and what the node it reaches produces.
-        JPanel form = new JPanel();
-        form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
-        header.setAlignmentX(LEFT_ALIGNMENT);
-        graph.setAlignmentX(LEFT_ALIGNMENT);
-        identityEditor.setAlignmentX(LEFT_ALIGNMENT);
-        displayNameEditor.setAlignmentX(LEFT_ALIGNMENT);
-        form.add(header);
-        form.add(graph);
-        form.add(identityEditor);
-        form.add(displayNameEditor);
-        add(new JScrollPane(form), BorderLayout.CENTER);
+        configurationDetails.put(GraphConfigurationProjection.DEFINITION,
+                detailScroll(header));
+        configurationDetails.put(GraphConfigurationProjection.START,
+                detailScroll(startNodePanel()));
+        configurationDetails.put(GraphConfigurationProjection.PATH,
+                detailScroll(pathPanel()));
+        configurationDetails.put(GraphConfigurationProjection.EDGE,
+                detailScroll(edgePanel()));
+        configurationDetails.put(GraphConfigurationProjection.NODE,
+                detailScroll(nodeSettingsPanel()));
+        configurationDetails.put(GraphConfigurationProjection.EVIDENCE,
+                detailScroll(evidencePanel()));
+        configurationDetails.put(GraphConfigurationProjection.IDENTITY,
+                detailScroll(identityEditor));
+        configurationDetails.put(GraphConfigurationProjection.DISPLAY_NAME,
+                detailScroll(displayNameEditor));
+        configuration.onSelection(this::configurationSelected);
+        configuration.onNavigate(onNavigateConfiguration);
+        add(configuration, BorderLayout.CENTER);
 
         JPanel bottom = new JPanel(new BorderLayout());
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -597,7 +610,15 @@ final class GraphConstraintsPanel extends JPanel {
         bottom.add(actions, BorderLayout.EAST);
         add(bottom, BorderLayout.SOUTH);
 
-        startInputBox.addActionListener(e -> { if (!loading) refreshStartCount(); });
+        startInputBox.addActionListener(e -> {
+            if (!loading) {
+                refreshStartCount();
+                refreshConfigurationTree();
+            }
+        });
+        startUseBox.addActionListener(e -> {
+            if (!loading) refreshConfigurationTree();
+        });
         edgePidField.getDocument().addDocumentListener(SimpleDocumentListener.of(this::refreshArrow));
         directionBox.addActionListener(e -> refreshArrow());
         targetUseBox.addActionListener(e -> refreshTargetState());
@@ -645,8 +666,8 @@ final class GraphConstraintsPanel extends JPanel {
         return panel;
     }
 
-    private JPanel nextNodePanel() {
-        JPanel panel = nodePanel("Next nodes");
+    private JPanel pathPanel() {
+        JPanel panel = nodePanel("Path after the start node");
         nodesList.setVisibleRowCount(3);
         nodesList.setCellRenderer(nodeRenderer());
         nodesList.addListSelectionListener(event -> {
@@ -654,7 +675,6 @@ final class GraphConstraintsPanel extends JPanel {
                 load(nodesList.getSelectedValue());
             }
         });
-        panel.add(new JLabel("Path after the start node"));
         panel.add(new JScrollPane(nodesList));
         JPanel nodeActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 0));
         JButton addNode = new JButton("Add node to path");
@@ -665,19 +685,25 @@ final class GraphConstraintsPanel extends JPanel {
         removeNode.addActionListener(event -> removeSelectedNode());
         nodeActions.add(addNode); nodeActions.add(newNode); nodeActions.add(removeNode);
         panel.add(nodeActions);
+        return panel;
+    }
 
-        JTabbedPane details = new JTabbedPane();
+    private JPanel nodeSettingsPanel() {
         JPanel nodePanel = new JPanel();
         nodePanel.setLayout(new BoxLayout(nodePanel, BoxLayout.Y_AXIS));
+        nodePanel.setBorder(BorderFactory.createTitledBorder("Selected path node"));
         addLine(nodePanel, "Use reached entities as:", targetUseBox);
         addLine(nodePanel, "Output class:", targetClassBox);
         addLine(nodePanel, "Admit and expand:", admissionPopulationBox);
         addLine(nodePanel, "Apply result:", populationOperationBox);
         nodePanel.add(repeatUntilStable);
-        details.addTab("Node", nodePanel);
+        return nodePanel;
+    }
 
+    private JPanel evidencePanel() {
         JPanel evidencePanel = new JPanel();
         evidencePanel.setLayout(new BoxLayout(evidencePanel, BoxLayout.Y_AXIS));
+        evidencePanel.setBorder(BorderFactory.createTitledBorder("Evidence for selected node"));
         evidencePanel.add(new JLabel(
                 "Evidence relations from this node (one or more may reach evidence)"));
         JPanel evidenceRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 0));
@@ -712,11 +738,16 @@ final class GraphConstraintsPanel extends JPanel {
         evidencePanel.add(editTest);
         evidencePanel.add(removeTest);
         addLine(evidencePanel, "When evidence is incomplete:", reviewBox);
-        details.addTab("Evidence", evidencePanel);
-        panel.add(details);
         addEvidence.addActionListener(e -> addEvidencePath());
         addTest.addActionListener(e -> addTest());
-        return panel;
+        return evidencePanel;
+    }
+
+    private static JComponent detailScroll(JComponent component) {
+        JScrollPane scroll = new JScrollPane(component);
+        scroll.setBorder(null);
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        return scroll;
     }
 
     private static JPanel nodePanel(String title) {
@@ -734,6 +765,56 @@ final class GraphConstraintsPanel extends JPanel {
         line.add(value, BorderLayout.CENTER);
         line.setMaximumSize(new Dimension(Integer.MAX_VALUE, 58));
         panel.add(line);
+    }
+
+    private void refreshConfigurationTree() {
+        if (clazz == null) {
+            configuration.show(null, ignored -> null);
+            return;
+        }
+        ConfigurationNode root = GraphConfigurationProjection.project(
+                model, clazz, draftStart(), elements(nodesModel));
+        configuration.show(root, node -> configurationDetails.getOrDefault(
+                node.detailKey(), configurationDetails.get(
+                        GraphConfigurationProjection.DEFINITION)));
+    }
+
+    private GraphDiscoveryConfiguration.StartNode draftStart() {
+        StartInput start = selectedStart();
+        if (start == null) return null;
+        return new GraphDiscoveryConfiguration.StartNode(
+                start.population() ? "" : start.className(), start.populationName(),
+                use(startUseBox), selectionId(start.populationName()));
+    }
+
+    private void configurationSelected(ConfigurationNode node) {
+        int selected = nodesList.getSelectedIndex();
+        if (GraphConfigurationProjection.isAddNodeSlot(node.id())) {
+            if (selected >= 0) clearNodeControls();
+            return;
+        }
+        int index = GraphConfigurationProjection.pathNodeIndex(node.id());
+        if (index >= 0 && index < nodesModel.size() && selected != index) {
+            nodesList.setSelectedIndex(index);
+        }
+    }
+
+    private void selectConfigurationNode(int index) {
+        if (index < 0) return;
+        configuration.nodes().stream()
+                .filter(node -> node.id().key().equals("path/node:" + index))
+                .findFirst().ifPresent(node -> configuration.select(node.id()));
+    }
+
+    ConfigurationTreePanel configurationTree() { return configuration; }
+
+    boolean selectConfigurationDetail(String detailKey) {
+        var node = configuration.nodes().stream()
+                .filter(value -> value.detailKey().equals(detailKey)
+                        && value.kind() != ConfigurationNode.Kind.REFERENCE)
+                .findFirst();
+        node.ifPresent(value -> configuration.select(value.id()));
+        return node.isPresent();
     }
 
     private void refreshClasses() {
@@ -1064,6 +1145,7 @@ final class GraphConstraintsPanel extends JPanel {
         try {
             nodesModel.addElement(buildEditedNode());
             clearNodeControls();
+            refreshConfigurationTree();
             status("Node added to the draft path; Apply graph to save it.", false);
         } catch (IllegalArgumentException error) {
             status(error.getMessage(), true);
@@ -1079,7 +1161,8 @@ final class GraphConstraintsPanel extends JPanel {
         // The draft now IS this node: select it, so the next Apply — or the flush every
         // Save performs — rewrites it instead of appending a copy.
         nodesModel.addElement(node);
-        nodesList.setSelectedIndex(nodesModel.size() - 1);
+        refreshConfigurationTree();
+        selectConfigurationNode(nodesModel.size() - 1);
     }
 
     private void removeSelectedNode() {
@@ -1087,6 +1170,7 @@ final class GraphConstraintsPanel extends JPanel {
         if (selected < 0) return;
         nodesModel.remove(selected);
         clearNodeControls();
+        refreshConfigurationTree();
         status("Node removed from the draft path; Apply graph to save it.", false);
     }
 
@@ -1138,9 +1222,11 @@ final class GraphConstraintsPanel extends JPanel {
             @Override public Component getListCellRendererComponent(JList<?> list, Object value,
                     int index, boolean selected, boolean focus) {
                 super.getListCellRendererComponent(list, value, index, selected, focus);
-                if (value instanceof GraphRelationExists c) setText(labelledPid(c.relation().relationId()) + " has a value");
-                else if (value instanceof GraphRelationAbsent c) setText(labelledPid(c.relation().relationId()) + " has no value");
-                else if (value instanceof GraphRelationReaches c) setText(labelledPid(c.relation().relationId()) + " reaches " + labelledQid(c.entity().id()));
+                if (value instanceof GraphNodeCondition condition) {
+                    setText(GraphConfigurationProjection.evidenceTestCaption(
+                            condition, GraphConstraintsPanel.this::labelledPid,
+                            GraphConstraintsPanel.this::labelledQid));
+                }
                 return this;
             }
         };
@@ -1183,11 +1269,7 @@ final class GraphConstraintsPanel extends JPanel {
                     int index, boolean selected, boolean focus) {
                 super.getListCellRendererComponent(list, value, index, selected, focus);
                 setText(value instanceof GraphEvidenceCondition.ReviewDisposition disposition
-                        ? switch (disposition) {
-                            case AWAIT_DECISION -> "Wait for a manual decision before applying";
-                            case INCLUDE_AND_REPORT -> "Include unless manually rejected";
-                            case EXCLUDE_AND_REPORT -> "Exclude unless manually accepted";
-                        } : "");
+                        ? GraphConfigurationProjection.reviewDispositionCaption(disposition) : "");
                 return this;
             }
         });

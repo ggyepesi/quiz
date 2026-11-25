@@ -23,7 +23,7 @@ import domain.workbench.ui.DbpediaPropertyPicker;
 import domain.workbench.ui.FieldDefinitionPanel;
 import domain.workbench.ui.WikipediaCategoryPicker;
 import domain.workbench.ui.WikipediaInfoboxPicker;
-import domain.workbench.ui.TreeAndDetailPanel;
+import domain.workbench.ui.ConfigurationTreePanel;
 import domain.datasource.graph.GraphExpansionPolicy;
 
 public class FieldSourcePanel extends JPanel {
@@ -116,17 +116,10 @@ public class FieldSourcePanel extends JPanel {
     private Consumer<ConfigurationReferenceInventory.Site> onNavigateConfiguration =
             ignored -> { };
 
-    private final TreeAndDetailPanel<ConfigurationNode.Id> configuration =
-            new TreeAndDetailPanel<>("modelbuilder.field.configuration", "Configuration");
+    private final ConfigurationTreePanel configuration =
+            new ConfigurationTreePanel("modelbuilder.field.configuration", "Configuration");
     private final Map<String, JComponent> configurationDetails =
             new java.util.LinkedHashMap<>();
-    private final Map<ConfigurationNode.Id, ConfigurationNode> configurationNodes =
-            new java.util.LinkedHashMap<>();
-    private final JLabel referenceDetail = new JLabel("Select a reference to open it.");
-    /** Opening a reference leaves this field, so it is an explicit command: selecting
-     *  the node, including by arrowing through the tree, only names the target. */
-    private final JButton openReferenceButton = new JButton("Open");
-    private ConfigurationReferenceInventory.Site selectedReference;
 
     private Map<String, WikidataProperty> propertyCache = Map.of();
     private boolean updatingObjectTypeBox = false;
@@ -720,7 +713,7 @@ public class FieldSourcePanel extends JPanel {
         return sourceContextBox;
     }
 
-    TreeAndDetailPanel<ConfigurationNode.Id> configurationTree() {
+    ConfigurationTreePanel configurationTree() {
         return configuration;
     }
 
@@ -754,7 +747,7 @@ public class FieldSourcePanel extends JPanel {
 
     /** Selects the first node whose detail is that section; false when none offers it. */
     boolean selectConfigurationDetail(String detailKey) {
-        var node = configurationNodes.values().stream()
+        var node = configuration.nodes().stream()
                 .filter(value -> value.detailKey().equals(detailKey)).findFirst();
         node.ifPresent(value -> configuration.select(value.id()));
         return node.isPresent();
@@ -1848,21 +1841,8 @@ public class FieldSourcePanel extends JPanel {
         installConfigurationDetails(form, detailForRow);
         add(configuration, BorderLayout.CENTER);
         add(buttons, BorderLayout.SOUTH);
-        configuration.setSelectionListener(selection -> configurationSelected(selection.id()));
-        configuration.tree().addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override public void mouseClicked(java.awt.event.MouseEvent event) {
-                if (event.getClickCount() == 2) openSelectedReference();
-            }
-        });
-        configuration.tree().getInputMap(JComponent.WHEN_FOCUSED).put(
-                javax.swing.KeyStroke.getKeyStroke("ENTER"), "open-configuration-reference");
-        configuration.tree().getActionMap().put("open-configuration-reference",
-                new javax.swing.AbstractAction() {
-                    @Override public void actionPerformed(java.awt.event.ActionEvent event) {
-                        openSelectedReference();
-                    }
-                });
-        configuration.setCellRenderer(configurationRenderer());
+        configuration.onSelection(this::configurationSelected);
+        configuration.onNavigate(site -> onNavigateConfiguration.accept(site));
 
         applyButton.addActionListener(e -> apply());
         reloadFieldButton.addActionListener(e -> requestReload());
@@ -1996,15 +1976,6 @@ public class FieldSourcePanel extends JPanel {
             entry.getValue().add(Box.createVerticalGlue(), filler);
             configurationDetails.put(entry.getKey(), scrollDetail(entry.getValue()));
         }
-        JPanel reference = new JPanel(new BorderLayout());
-        reference.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
-        reference.add(referenceDetail, BorderLayout.NORTH);
-        JPanel open = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 6));
-        open.add(openReferenceButton);
-        reference.add(open, BorderLayout.CENTER);
-        openReferenceButton.setEnabled(false);
-        openReferenceButton.addActionListener(e -> openSelectedReference());
-        configurationDetails.put(FieldConfigurationProjection.REFERENCE, reference);
     }
 
     private static JScrollPane scrollDetail(JPanel panel) {
@@ -2014,68 +1985,20 @@ public class FieldSourcePanel extends JPanel {
         return scroll;
     }
 
-    private javax.swing.tree.TreeCellRenderer configurationRenderer() {
-        return new javax.swing.tree.DefaultTreeCellRenderer() {
-            @Override public Component getTreeCellRendererComponent(
-                    JTree tree, Object value, boolean selected, boolean expanded,
-                    boolean leaf, int row, boolean focus) {
-                JLabel label = (JLabel) super.getTreeCellRendererComponent(
-                        tree, value, selected, expanded, leaf, row, focus);
-                if (!(value instanceof javax.swing.tree.DefaultMutableTreeNode treeNode)
-                        || !(treeNode.getUserObject() instanceof TreeAndDetailPanel.Item<?> item)
-                        || !(item.id() instanceof ConfigurationNode.Id id)) return label;
-                ConfigurationNode node = configurationNodes.get(id);
-                if (node == null) return label;
-                if (node.kind() == ConfigurationNode.Kind.AVAILABLE_SLOT) {
-                    label.setFont(label.getFont().deriveFont(Font.ITALIC));
-                    if (!selected) label.setForeground(new Color(0x0969da));
-                } else if (node.kind() == ConfigurationNode.Kind.REFERENCE) {
-                    if (!selected) label.setForeground(new Color(0x0969da));
-                } else if (node.kind() == ConfigurationNode.Kind.INVENTORY_SUMMARY) {
-                    if (!selected) label.setForeground(new Color(0x6e7781));
-                }
-                return label;
-            }
-        };
-    }
-
     private void refreshConfigurationTree() {
         GeneratedClassModel owner = ownerClass();
         if (projectModel == null || owner == null || field == null) {
-            configurationNodes.clear();
-            configuration.replaceRoots(List.of());
+            configuration.show(null, ignored -> null);
             return;
         }
         ConfigurationNode root = FieldConfigurationProjection.project(
                 projectModel, owner, field, datasources);
-        configurationNodes.clear();
-        TreeAndDetailPanel.Branch<ConfigurationNode.Id> branch = configurationBranch(root);
-        configuration.replaceRoots(List.of(branch));
-        configuration.expand(root.id());
-        if (configuration.selectedId() == null) configuration.select(root.id());
+        configuration.show(root, node -> configurationDetails.getOrDefault(
+                node.detailKey(), configurationDetails.get(
+                        FieldConfigurationProjection.DEFINITION)));
     }
 
-    private TreeAndDetailPanel.Branch<ConfigurationNode.Id> configurationBranch(
-            ConfigurationNode node) {
-        configurationNodes.put(node.id(), node);
-        JComponent detail = configurationDetails.getOrDefault(node.detailKey(),
-                configurationDetails.get(FieldConfigurationProjection.DEFINITION));
-        return new TreeAndDetailPanel.Branch<>(node.id(), node.caption(), detail,
-                node.children().stream().map(this::configurationBranch).toList());
-    }
-
-    private void configurationSelected(ConfigurationNode.Id id) {
-        ConfigurationNode node = configurationNodes.get(id);
-        if (node == null) return;
-        selectedReference = node.referenceTarget();
-        openReferenceButton.setEnabled(selectedReference != null);
-        if (selectedReference != null) {
-            referenceDetail.setText(node.caption());
-            openReferenceButton.setText("Open " + selectedReference.displayName());
-        } else {
-            referenceDetail.setText("Select a reference to open it.");
-            openReferenceButton.setText("Open");
-        }
+    private void configurationSelected(ConfigurationNode node) {
         if (node.sourceContext() != null) {
             selectSourceContext(node.sourceContext());
         }
@@ -2111,11 +2034,7 @@ public class FieldSourcePanel extends JPanel {
         }
     }
 
-    private void openSelectedReference() {
-        if (selectedReference != null) onNavigateConfiguration.accept(selectedReference);
-    }
-
-    JButton openReferenceButton() { return openReferenceButton; }
+    JButton openReferenceButton() { return configuration.openReferenceButton(); }
 
     JTextField propertyPidField() { return propertyPidField; }
 

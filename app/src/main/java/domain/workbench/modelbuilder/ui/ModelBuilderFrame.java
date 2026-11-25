@@ -1034,6 +1034,8 @@ public class ModelBuilderFrame extends JFrame {
                 classModelPanel.selectClass(clazz);
             } else if (target instanceof GeneratedFieldModel field) {
                 classModelPanel.selectField(field);
+            } else if (target instanceof Selection selection) {
+                classModelPanel.selectSelection(selection);
             }
         });
 

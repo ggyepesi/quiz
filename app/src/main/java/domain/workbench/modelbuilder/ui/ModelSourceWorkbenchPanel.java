@@ -319,10 +319,12 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
     public void onConfigurationNavigation(Consumer<Object> consumer) {
         Consumer<Object> destination = consumer == null ? ignored -> { } : consumer;
-        fieldSourcePanel.onNavigateConfiguration(site -> {
+        Consumer<ConfigurationReferenceInventory.Site> navigate = site -> {
             Object resolved = ConfigurationReferenceInventory.of(projectModel).resolve(site);
             if (resolved != null) destination.accept(resolved);
-        });
+        };
+        fieldSourcePanel.onNavigateConfiguration(navigate);
+        graphConstraintsPanel.onNavigateConfiguration(navigate);
     }
 
     /** The window's reusable selections, shared with tools that name or consume them. */

@@ -23,8 +23,11 @@ import objectview.viewconfig.ViewConfig;
 import process.swing.SwingProcessRunner;
 import process.swing.workflow.ProcessWorkflowResults;
 import domain.transform.DynamicViewable;
+import domain.config.ConfigurationNode;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedProjectModel;
+import domain.config.GraphClassSource;
+import domain.config.GraphConfigurationProjection;
 import domain.config.PopulationSelection;
 import wikidata.explore.query.logical.ConfiguredGraphDiscoveryQuery;
 import domain.runtime.WikidataDynamicObject;
@@ -433,6 +436,138 @@ class GraphConstraintsPanelTest {
         assertEquals(alternatives,
                 graph.graphSource().nextNodes().getFirst().alternativeEdges(),
                 "and applying keeps them all");
+    }
+
+    @Test void graphConfigurationTreeSelectsTheOrderedNodeAndItsEvidenceEditor() {
+        GeneratedProjectModel model = model();
+        GeneratedClassModel graph = graphClass(model, "PositionGraph");
+        GraphEvidenceCondition evidence = new GraphEvidenceCondition("Second evidence",
+                List.of(GraphPath.direct(new GraphRelation("wikidata", "P31"),
+                        GraphTraversalDirection.OUTGOING)),
+                List.of(new GraphRelationExists(new GraphRelation("wikidata", "P279"),
+                        GraphTraversalDirection.OUTGOING)),
+                GraphEvidenceCondition.ReviewDisposition.EXCLUDE_AND_REPORT);
+        graph.graphSource(new GraphClassSource(
+                new GraphDiscoveryConfiguration.StartNode("Position",
+                        GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
+                List.of(new GraphDiscoveryConfiguration.NextNode(
+                                new GraphRelation("wikidata", "P39"),
+                                GraphTraversalDirection.OUTGOING,
+                                GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY,
+                                "", null),
+                        new GraphDiscoveryConfiguration.NextNode(
+                                new GraphRelation("wikidata", "P106"),
+                                GraphTraversalDirection.OUTGOING,
+                                GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
+                                "Position", evidence))));
+        GraphConstraintsPanel panel = graphPanel(model);
+
+        var evidenceNode = panel.configurationTree().nodes().stream()
+                .filter(node -> node.id().key().equals("path/node:1/evidence"))
+                .findFirst().orElseThrow();
+        panel.configurationTree().select(evidenceNode.id());
+
+        assertEquals(evidenceNode.id(), panel.configurationTree().selectedNode().id(),
+                "the selected evidence detail stays open");
+        assertEquals(1, named(panel, "graph.nodes", JList.class).getSelectedIndex());
+        assertEquals(1, named(panel, "graph.evidenceList", JList.class)
+                .getModel().getSize());
+        assertEquals(1, named(panel, "graph.testsList", JList.class)
+                .getModel().getSize());
+        assertEquals(2, graph.graphSource().nextNodes().size(),
+                "selecting a configuration node only reveals the saved graph");
+    }
+
+    @Test void navigatingEverySectionOfTheEditedNodeKeepsTheUnappliedEdge() {
+        GeneratedProjectModel model = model();
+        GraphConstraintsPanel panel = graphPanel(model);
+        var edge = text(panel, "graph.edgeProperty");
+        edge.setText("P31");
+        button(panel, "Apply graph").doClick();
+
+        edge.setText("P9999");
+        for (ConfigurationNode node : panel.configurationTree().nodes()) {
+            if (GraphConfigurationProjection.isAddNodeSlot(node.id())) continue;
+            panel.configurationTree().select(node.id());
+            assertEquals("P9999", edge.getText(), node.caption());
+        }
+        assertEquals("P31", graph(model).nextNodes().getFirst().property().relationId());
+
+        button(panel, "Apply graph").doClick();
+        assertEquals(1, graph(model).nextNodes().size());
+        assertEquals("P9999", graph(model).nextNodes().getFirst().property().relationId());
+    }
+
+    @Test void everyAddSlotSectionOpensANewNodeAndApplyAppendsItOnce() {
+        GeneratedProjectModel model = model();
+        GeneratedClassModel graph = graphClass(model, "PositionGraph");
+        var first = new GraphDiscoveryConfiguration.NextNode(
+                new GraphRelation("wikidata", "P31"), GraphTraversalDirection.OUTGOING,
+                GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY, "", null);
+        graph.graphSource(new GraphClassSource(
+                new GraphDiscoveryConfiguration.StartNode("Position",
+                        GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY),
+                List.of(first)));
+        GraphConstraintsPanel panel = graphPanel(model);
+        var tree = panel.configurationTree();
+        var firstNode = tree.nodes().stream()
+                .filter(node -> node.id().key().equals("path/node:0"))
+                .findFirst().orElseThrow();
+        var addSections = tree.nodes().stream()
+                .filter(node -> GraphConfigurationProjection.isAddNodeSlot(node.id())).toList();
+        assertEquals(4, addSections.size());
+        var edge = text(panel, "graph.edgeProperty");
+        for (ConfigurationNode node : addSections) {
+            tree.select(firstNode.id());
+            assertEquals("P31", edge.getText());
+            tree.select(node.id());
+            assertEquals("", edge.getText(), node.caption());
+            assertEquals(-1, named(panel, "graph.nodes", JList.class).getSelectedIndex());
+            assertEquals(List.of(first), graph.graphSource().nextNodes());
+        }
+
+        edge.setText("P39");
+        tree.select(addSections.getFirst().id());
+        assertEquals("P39", edge.getText(), "the new node's own draft survives navigation");
+        button(panel, "Apply graph").doClick();
+        button(panel, "Apply graph").doClick();
+        var saved = graph.graphSource().nextNodes();
+        assertEquals(2, saved.size());
+        assertEquals(first, saved.getFirst());
+        assertEquals("P39", saved.getLast().property().relationId());
+    }
+
+    @Test void graphReferencesNavigateOnlyOnTheSharedExplicitOpenCommand() {
+        GeneratedProjectModel model = model();
+        PopulationSelection population = new PopulationSelection("PositionPopulation");
+        population.className("Position");
+        population.instanceQids(List.of("Q1"));
+        model.addSelection(population);
+        GeneratedClassModel graph = graphClass(model, "PositionGraph");
+        model.ensureDeclarationIdentities();
+        graph.graphSource(new GraphClassSource(
+                new GraphDiscoveryConfiguration.StartNode("", population.name(),
+                        GraphDiscoveryConfiguration.NodeUse.INTERMEDIATE_ONLY,
+                        population.declarationId()),
+                List.of(new GraphDiscoveryConfiguration.NextNode(
+                        new GraphRelation("wikidata", "P39"),
+                        GraphTraversalDirection.OUTGOING,
+                        GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION,
+                        "Position", null))));
+        GraphConstraintsPanel panel = new GraphConstraintsPanel(model);
+        AtomicReference<domain.config.ConfigurationReferenceInventory.Site> opened =
+                new AtomicReference<>();
+        panel.onNavigateConfiguration(opened::set);
+        panel.edit(graph);
+
+        var reference = panel.configurationTree().nodes().stream()
+                .filter(node -> node.kind() == domain.config.ConfigurationNode.Kind.REFERENCE)
+                .findFirst().orElseThrow();
+        panel.configurationTree().select(reference.id());
+        assertNull(opened.get(), "selection is inspection, not navigation");
+
+        panel.configurationTree().openReferenceButton().doClick();
+        assertEquals(population.declarationId(), opened.get().declarationId());
     }
 
     /**

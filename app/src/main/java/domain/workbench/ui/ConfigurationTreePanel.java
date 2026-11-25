@@ -1,0 +1,183 @@
+package domain.workbench.ui;
+
+import domain.config.ConfigurationNode;
+import domain.config.ConfigurationReferenceInventory;
+
+import javax.swing.AbstractAction;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTree;
+import javax.swing.KeyStroke;
+import javax.swing.UIManager;
+import javax.swing.tree.DefaultTreeCellRenderer;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Function;
+
+/**
+ * The shared Swing presentation of a {@link ConfigurationNode} projection.
+ *
+ * <p>The neutral {@link TreeAndDetailPanel} owns tree mechanics. This class owns the
+ * meaning common to every configuration editor: the four node appearances and the
+ * explicit Open command for references. Construct editors supply only their detail
+ * components and react to the selected semantic node.</p>
+ */
+public final class ConfigurationTreePanel extends JPanel {
+    private final TreeAndDetailPanel<ConfigurationNode.Id> tree;
+    private final Map<ConfigurationNode.Id, ConfigurationNode> nodes =
+            new LinkedHashMap<>();
+    private final JPanel referenceDetail = new JPanel(new BorderLayout());
+    private final JLabel referenceLabel =
+            new JLabel("Select a reference to open it.");
+    private final JButton openReference = new JButton("Open");
+    private ConfigurationReferenceInventory.Site selectedReference;
+    private Consumer<ConfigurationNode> selectionListener = ignored -> { };
+    private Consumer<ConfigurationReferenceInventory.Site> navigationListener =
+            ignored -> { };
+
+    public ConfigurationTreePanel(String componentNamePrefix, String outlineTitle) {
+        super(new BorderLayout());
+        tree = new TreeAndDetailPanel<>(componentNamePrefix, outlineTitle);
+        buildReferenceDetail();
+        add(tree, BorderLayout.CENTER);
+        tree.setCellRenderer(new NodeRenderer());
+        tree.setSelectionListener(selection -> selected(selection.id()));
+        tree.tree().addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent event) {
+                if (event.getClickCount() == 2) openSelectedReference();
+            }
+        });
+        tree.tree().getInputMap(JComponent.WHEN_FOCUSED).put(
+                KeyStroke.getKeyStroke("ENTER"), "open-configuration-reference");
+        tree.tree().getActionMap().put("open-configuration-reference",
+                new AbstractAction() {
+                    @Override public void actionPerformed(ActionEvent event) {
+                        openSelectedReference();
+                    }
+                });
+    }
+
+    public void onSelection(Consumer<ConfigurationNode> listener) {
+        selectionListener = listener == null ? ignored -> { } : listener;
+    }
+
+    public void onNavigate(Consumer<ConfigurationReferenceInventory.Site> listener) {
+        navigationListener = listener == null ? ignored -> { } : listener;
+    }
+
+    /** Replaces one complete projection while the neutral shell preserves layout state. */
+    public void show(ConfigurationNode root,
+            Function<ConfigurationNode, JComponent> detailFor) {
+        nodes.clear();
+        selectedReference = null;
+        updateReferenceDetail(null);
+        if (root == null) {
+            tree.replaceRoots(List.of());
+            return;
+        }
+        tree.replaceRoots(List.of(branch(root, detailFor)));
+        tree.expand(root.id());
+        if (tree.selectedId() == null) {
+            tree.select(root.id());
+        } else {
+            // Projection replacement intentionally suppresses the neutral shell's
+            // selection callback. Restore the semantic state (notably the explicit
+            // reference Open command) for the selection it preserved by stable id.
+            selected(tree.selectedId());
+        }
+    }
+
+    public JTree tree() { return tree.tree(); }
+
+    public ConfigurationNode selectedNode() { return nodes.get(tree.selectedId()); }
+
+    public void select(ConfigurationNode.Id id) { tree.select(id); }
+
+    public void expand(ConfigurationNode.Id id) { tree.expand(id); }
+
+    public boolean contains(ConfigurationNode.Id id) { return tree.contains(id); }
+
+    public JButton openReferenceButton() { return openReference; }
+
+    public List<ConfigurationNode> nodes() { return List.copyOf(nodes.values()); }
+
+    private TreeAndDetailPanel.Branch<ConfigurationNode.Id> branch(
+            ConfigurationNode node, Function<ConfigurationNode, JComponent> detailFor) {
+        nodes.put(node.id(), node);
+        JComponent detail = node.kind() == ConfigurationNode.Kind.REFERENCE
+                ? referenceDetail : detailFor.apply(node);
+        if (detail == null) detail = new JPanel();
+        return new TreeAndDetailPanel.Branch<>(node.id(), node.caption(), detail,
+                node.children().stream().map(child -> branch(child, detailFor)).toList());
+    }
+
+    private void selected(ConfigurationNode.Id id) {
+        ConfigurationNode node = nodes.get(id);
+        selectedReference = node == null ? null : node.referenceTarget();
+        updateReferenceDetail(node);
+        if (node != null) selectionListener.accept(node);
+    }
+
+    private void buildReferenceDetail() {
+        referenceDetail.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        referenceDetail.add(referenceLabel, BorderLayout.NORTH);
+        JPanel open = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 6));
+        open.add(openReference);
+        referenceDetail.add(open, BorderLayout.CENTER);
+        openReference.setEnabled(false);
+        openReference.addActionListener(event -> openSelectedReference());
+    }
+
+    private void updateReferenceDetail(ConfigurationNode node) {
+        openReference.setEnabled(selectedReference != null);
+        if (selectedReference == null) {
+            referenceLabel.setText("Select a reference to open it.");
+            openReference.setText("Open");
+        } else {
+            referenceLabel.setText(node == null ? selectedReference.displayName()
+                    : node.caption());
+            openReference.setText("Open " + selectedReference.displayName());
+        }
+    }
+
+    private void openSelectedReference() {
+        if (selectedReference != null) navigationListener.accept(selectedReference);
+    }
+
+    private final class NodeRenderer extends DefaultTreeCellRenderer {
+        @Override public Component getTreeCellRendererComponent(
+                JTree valueTree, Object value, boolean selected, boolean expanded,
+                boolean leaf, int row, boolean focus) {
+            JLabel label = (JLabel) super.getTreeCellRendererComponent(
+                    valueTree, value, selected, expanded, leaf, row, focus);
+            if (!(value instanceof javax.swing.tree.DefaultMutableTreeNode treeNode)
+                    || !(treeNode.getUserObject() instanceof TreeAndDetailPanel.Item<?> item)
+                    || !(item.id() instanceof ConfigurationNode.Id id)) return label;
+            ConfigurationNode node = nodes.get(id);
+            if (node == null) return label;
+            if (node.kind() == ConfigurationNode.Kind.AVAILABLE_SLOT) {
+                label.setFont(label.getFont().deriveFont(Font.ITALIC));
+                if (!selected) label.setForeground(new Color(0x0969da));
+            } else if (node.kind() == ConfigurationNode.Kind.REFERENCE) {
+                if (!selected) label.setForeground(new Color(0x0969da));
+            } else if (node.kind() == ConfigurationNode.Kind.INVENTORY_SUMMARY) {
+                if (!selected) label.setForeground(new Color(0x6e7781));
+            } else if (!selected) {
+                label.setForeground(UIManager.getColor("Tree.textForeground"));
+            }
+            return label;
+        }
+    }
+}

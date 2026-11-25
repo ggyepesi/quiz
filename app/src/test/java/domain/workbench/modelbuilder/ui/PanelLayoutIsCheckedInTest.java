@@ -107,10 +107,22 @@ class PanelLayoutIsCheckedInTest {
         graphProject.addClass(relevance);
         GraphConstraintsPanel graph = new GraphConstraintsPanel(graphProject);
         graph.edit(relevance);
-        describe(actual, "Graph class - GraphConstraintsPanel", graph);
-        JTabbedPane graphDetails = find(graph, JTabbedPane.class);
-        graphDetails.setSelectedIndex(1);
-        describe(actual, "Graph class evidence - GraphConstraintsPanel", graph);
+        for (String section : List.of(
+                domain.config.GraphConfigurationProjection.DEFINITION,
+                domain.config.GraphConfigurationProjection.START,
+                domain.config.GraphConfigurationProjection.PATH,
+                domain.config.GraphConfigurationProjection.EDGE,
+                domain.config.GraphConfigurationProjection.NODE,
+                domain.config.GraphConfigurationProjection.EVIDENCE,
+                domain.config.GraphConfigurationProjection.IDENTITY,
+                domain.config.GraphConfigurationProjection.DISPLAY_NAME)) {
+            if (!graph.selectConfigurationDetail(section)) {
+                actual.append("== Graph section ").append(section)
+                        .append(" - no node offers it ==\n\n");
+                continue;
+            }
+            describe(actual, "Graph section " + section, graph);
+        }
 
         Path golden = Files.isRegularFile(GOLDEN) ? GOLDEN : Path.of("docs/panel-layout.txt");
         if (Boolean.getBoolean("panel.layout.write")) {

@@ -12,7 +12,7 @@ remains runnable as the comparison baseline while both hosts use the same model-
 and editor implementation. Executable operations and their results remain the separate
 action/result tree of #558.
 
-Milestones 1 through 5 are implemented. `ConfigurationReferenceInventory` is the typed model-layer
+Milestones 1 through 6 are implemented. `ConfigurationReferenceInventory` is the typed model-layer
 inventory: validation, `ClassDependencies`, class/selection rename discovery and datasource recipe
 references consume it. Datasource operations declare references hidden inside their own recipe
 grammar, and prepared input requirements are resolved to model sites such as an article
@@ -20,7 +20,10 @@ correspondence. `TreeAndDetailPanel` is the neutral shell, and the existing acti
 uses it. The field editor now projects Definition, production, fallback, category, candidate
 evidence, references and Refine into that shell while retaining one set of editor controls and one
 field-level Apply. Relation-route steps and Wikipedia table-row structure come from their provider
-operations rather than being decoded by Swing.
+operations rather than being decoded by Swing. The graph editor uses the same configuration-tree
+presentation for its start, ordered path nodes, incoming and alternative edges, admission/output
+references, evidence, identity and display name; its existing graph draft and single Apply remain
+the only authoring path.
 
 Related: [ModelBuilder Constructs](modelbuilder-constructs.md),
 [Effective Class Explanation and Uniform Sampling](effective-class-explanation-and-sampling.md),
@@ -129,8 +132,8 @@ Position replacement expansion
 └ Display name
 ```
 
-The graph tree and `GraphConfigurationDiagram` are two views of one draft and one selection.
-Run, Clear draft and Apply remain explicit commands.
+The graph tree edits one draft. Synchronizing that draft and its selection with
+`GraphConfigurationDiagram` is follow-up work. Run, Clear draft and Apply are explicit commands.
 
 ## One draft and one Apply
 
@@ -139,13 +142,12 @@ between Definition, Primary source and Refine does not apply partial edits to th
 commits the complete construct draft and rebuilds its projection from the model.
 
 There are no per-node drafts. A half-edited route step or evidence recipe never reaches execution,
-validation or another component. Selecting and expanding nodes never applies, discards, fetches or
-runs anything.
+validation or another component. Inspecting sections of the current editor preserves its controls.
 
-Navigation away from a dirty construct still depends on the general Apply / Discard / Stay decision
-tracked by #535. Until that decision is implemented, this refactor must not invent a second local
-rule. The unified workbench's other components see the last applied project configuration, not
-unapplied controls.
+The shared Apply / Discard / Stay behavior is tracked by #535. It also covers leaving a graph node
+to edit another node or opening **+ Add next node**. Today those switches replace the current
+node's unapplied controls. The unified workbench's other components read the last applied project
+configuration.
 
 ## One model-layer configuration inventory
 
@@ -269,7 +271,7 @@ Follow #557 as checked milestones:
 4. Add the neutral tree-and-detail shell with a checked-in rendered artifact. **Done.**
 5. Convert the field editor, covering a datasource field, relation-route field and table-row
    evidence field. **Done.**
-6. Convert the graph editor.
+6. Convert the graph editor. **Done.**
 7. Convert the class editors.
 8. Complete the separate-process save guard before a second application exposes the complete tree.
 9. Let Transform and Datasource views adopt the same projection with ownership-based editability.

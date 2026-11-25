@@ -25,7 +25,7 @@ public final class ConfigurationReferenceInventory {
 
     public enum SiteKind { CLASS, FIELD, SELECTION, CONFIGURATION, DATASOURCE_INPUT }
 
-    /** A stable model address.  Fields are identified by declaration id plus path. */
+    /** A model address. Field and configuration paths locate a site within its declaration. */
     public record Site(
             SiteKind kind,
             String declarationId,
@@ -559,9 +559,10 @@ public final class ConfigurationReferenceInventory {
         List<GraphDiscoveryConfiguration.NextNode> nodes = graph.nextNodes();
         for (int index = 0; index < nodes.size(); index++) {
             GraphDiscoveryConfiguration.NextNode node = nodes.get(index);
+            Site nodeSite = graphNodeSite(clazz, index);
             if (node.use() == GraphDiscoveryConfiguration.NodeUse.CLASS_POPULATION) {
                 int at = index;
-                add(entries, source, classTarget(project, "", node.populationClass()),
+                add(entries, nodeSite, classTarget(project, "", node.populationClass()),
                         Relation.GRAPH_OUTPUT_CLASS, "graph node " + (index + 1)
                                 + " output class", true,
                         (id, name) -> replaceGraphNode(graph, at,
@@ -569,7 +570,7 @@ public final class ConfigurationReferenceInventory {
             }
             if (!node.admissionPopulationSelection().isBlank()) {
                 int at = index;
-                add(entries, source, selectionTarget(project,
+                add(entries, nodeSite, selectionTarget(project,
                                 node.admissionPopulationSelectionId(),
                                 node.admissionPopulationSelection()),
                         Relation.GRAPH_ADMISSION_POPULATION,
@@ -578,6 +579,12 @@ public final class ConfigurationReferenceInventory {
                                 graph.nextNodes().get(at).withAdmission(id, name)));
             }
         }
+    }
+
+    /** The configuration site of a next node at its ordered position in the graph. */
+    static Site graphNodeSite(GeneratedClassModel clazz, int index) {
+        return new Site(SiteKind.CONFIGURATION, clazz.declarationId(), clazz.className(),
+                "path/node:" + index, clazz.className() + " node " + (index + 1));
     }
 
     private static void replaceGraphNode(GraphClassSource graph, int index,
