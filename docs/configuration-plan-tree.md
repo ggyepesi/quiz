@@ -267,7 +267,7 @@ and no reconciliation step.
 
 During the first slice, ModelBuilderApp remains a baseline host of the same configuration component.
 Separate entry points remain until #560 decides whether they become thin single-component launchers
-or are retired. The cross-process save guard in #536 remains necessary while more than one process
+or are retired. The cross-process save guard (#244, fixed) remains necessary while more than one process
 can open the same project.
 
 ## Delivery order
