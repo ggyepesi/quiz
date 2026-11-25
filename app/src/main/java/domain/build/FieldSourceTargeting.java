@@ -5,6 +5,7 @@ import domain.runtime.WikidataDynamicObject;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedProjectModel;
 import domain.config.OwnedComponentSite;
+import domain.config.OwnedFieldSources;
 
 /** One interpretation of which pool objects a resolved field-source target applies to. */
 final class FieldSourceTargeting {
@@ -13,12 +14,15 @@ final class FieldSourceTargeting {
     static boolean applies(GeneratedProjectModel model, WikidataDynamicObject object,
             GeneratedClassModel owner, SourceBindingTarget target) {
         if (model == null || object == null || owner == null) return false;
+        OwnedComponentSite site = object.isPart() ? OwnedComponentSite.parse(object.typeKey()) : null;
         if (target != null && target.contextual()) {
-            OwnedComponentSite site = OwnedComponentSite.parse(object.typeKey());
             return site != null && target.className().equals(site.targetClass())
                     && target.contextClassName().equals(site.ownerClass())
                     && target.contextFieldPath().equals(site.ownerField());
         }
+        if (target != null && site != null
+                && OwnedFieldSources.override(OwnedFieldSources.ownershipField(model, site),
+                        target.fieldPath()) != null) return false;
         for (String direct : object.directClassNames()) {
             for (GeneratedClassModel current = model.findClass(direct); current != null;
                     current = current.baseClassName().isBlank()

@@ -11,11 +11,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 /** Fetch action presentation may be shared; fetching and review must not be copied into it. */
 class FieldAcquisitionUiOwnershipTest {
 
-    @Test void fieldActionsShareOneBatchAndReviewPath() throws Exception {
+    @Test void fieldActionsShareOneProcessRunnerAndReviewPath() throws Exception {
         String validation = Files.readString(Path.of(
                 "src/main/java/domain/transform/ui/ValidationPanel.java"));
-        assertEquals(1, occurrences(validation,
-                "findDataRunner.run(new FindDataBatchProcess("));
+        assertEquals(1, occurrences(validation, "findDataRunner.run("));
+        assertEquals(1, occurrences(validation, "runReview(new FindDataBatchProcess("));
+        assertEquals(1, occurrences(validation, "new LoadFieldValuesProcess("));
         assertEquals(1, occurrences(validation,
                 "FindDataBatchReviewPanel.showReview("));
     }

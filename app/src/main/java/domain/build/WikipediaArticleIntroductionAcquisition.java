@@ -56,6 +56,9 @@ public final class WikipediaArticleIntroductionAcquisition {
         for (WikidataDynamicObject object : pool) {
             ArticleIntroduction retained = object == null
                     ? null : object.articleIntroduction();
+            if (object != null && object.articleIntroductionAnswered()) {
+                recordAnswers(model, object, declarations);
+            }
             if (retained != null) values.addAndGet(fill(
                     model, object, declarations, retained).size());
         }
@@ -103,6 +106,7 @@ public final class WikipediaArticleIntroductionAcquisition {
                             LinkedHashSet<String> supplied = new LinkedHashSet<>();
                             for (WikidataDynamicObject object : copies) {
                                 object.articleIntroductionEvidence(evidence, true);
+                                recordAnswers(model, object, declarations);
                                 if (evidence != null) supplied.addAll(
                                         fill(model, object, declarations, evidence));
                             }
@@ -115,6 +119,18 @@ public final class WikipediaArticleIntroductionAcquisition {
                 + " field value(s) from " + pages.get() + " page(s), "
                 + batches.get() + " batch(es).\n");
         return new Result(pages.get(), values.get(), batches.get());
+    }
+
+    private static void recordAnswers(GeneratedProjectModel model,
+            WikidataDynamicObject object, List<Declaration> declarations) {
+        for (var declaration : declarations) {
+            String name = declaration.field().name();
+            if (object.capturesFieldSource(name) && object.get(name) == null
+                    && FieldSourceTargeting.applies(model, object, declaration.owner(),
+                            declaration.target())) {
+                object.recordFieldAnswer(name, true);
+            }
+        }
     }
 
     private static List<Declaration> declarations(
@@ -154,6 +170,8 @@ public final class WikipediaArticleIntroductionAcquisition {
             String value = declaration.projection().project(evidence);
             if (value.isBlank()) continue;
             object.put(declaration.field().name(), value);
+            domain.runtime.AcquiredFieldSource.wikipedia(object, declaration.field().name(),
+                    declaration.projection().name(), evidence.document());
             filled.add(declaration.owner().className() + "."
                     + declaration.field().name());
         }

@@ -10,8 +10,11 @@ import domain.config.GeneratedProjectModel;
 import domain.config.RuleDirection;
 import domain.curation.Curatable;
 import domain.datasource.schema.FieldType;
+import domain.datasource.evidence.ArticleIntroduction;
+import domain.datasource.evidence.SourceDocument;
 import domain.enrichment.EnrichmentDecision;
-import domain.enrichment.WikimediaEntityLookup;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import domain.runtime.WikidataDynamicObject;
 import domain.transform.app.DomainCatalog;
 import domain.workbench.configuration.ui.ProjectConfigurationPanel;
@@ -26,7 +29,8 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import process.swing.Dialogs.UnappliedEdits;
-import work.QueryContext;
+import wikidata.api.WikidataApiClient;
+import wikidata.query.core.WikidataAccess;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -59,20 +63,80 @@ class UnifiedFieldAcquisitionTest {
     @TempDir Path directory;
 
     private DomainStorage saveProject() throws Exception {
+        return saveProject(FieldSourceType.SPARQL, "P1559");
+    }
+
+    private DomainStorage saveProject(FieldSourceType source, String property) throws Exception {
         DomainStorage storage = DomainStorage.in(directory.toFile());
         var project = new GeneratedProjectModel();
         project.name("Egyptian Gods");
         var deity = new GeneratedClassModel("EgyptianDeity");
         deity.seedQids().add("Q47534");
         var mapping = deity.addField("givenLabel", FieldType.TEXT, FieldCardinality.SINGLE).mapping();
-        mapping.propertyPid("P1559");
+        mapping.sourceType(source);
+        mapping.propertyPid(property);
         mapping.direction(RuleDirection.ROOT_TO_ITEM);
         project.rootClass(deity);
         var member = new WikidataDynamicObject("Q47534", "Anubis");
         member.type("EgyptianDeity");
+        if (source == FieldSourceType.WIKIPEDIA_ARTICLE_LEAD_SENTENCE) {
+            member.articleIntroductionEvidence(new ArticleIntroduction(
+                    "Anubis guards the dead. It has another sentence.", new SourceDocument(
+                    "Wikipedia", "1257", "Anubis", "https://en.wikipedia.org/wiki/Anubis", "23",
+                    null, "2026-11-25T12:00:00Z")), true);
+        }
         var run = new ProjectSave.Run(List.of(member), List.of(), null, project);
         ProjectSave.plan(new ProjectSave.Input(project, run, null, List.of()), storage).write();
         return storage;
+    }
+
+    @Test void loadExecutesTheConfiguredWikipediaLeadProjectionAndKeepsTheArticleVersion()
+            throws Exception {
+        var storage = saveProject(FieldSourceType.WIKIPEDIA_ARTICLE_LEAD_SENTENCE, "");
+        var open = DomainCatalog.modelBacked(storage).getFirst().opener();
+        var opened = open.open();
+        var backing = opened.capability(ProjectBacking.class);
+        var completed = new CountDownLatch(1);
+        var reviewError = new AtomicReference<Throwable>();
+        var workbench = new AtomicReference<UnifiedWorkbenchPanel>();
+        var noNetwork = WikidataAccess.of(null, new WikidataApiClient("test") {
+            @Override protected JsonNode getEntitiesBatchWithRetry(
+                    List<String> ids, boolean claims, List<String> pids) {
+                throw new AssertionError("The retained introduction needs no remote acquisition");
+            }
+        }).bind();
+        try {
+            SwingUtilities.invokeAndWait(() -> {
+                var panel = new UnifiedWorkbenchPanel(opened, new SwingQuerySession(noNetwork));
+                workbench.set(panel);
+                var values = openLoadAction(panel, backing);
+                values.loadConfirmation(plan -> true);
+                values.acquisitionReview((title, prompt, proposals, report, accept) -> {
+                    try {
+                        assertNull(value(opened));
+                        var decision = EnrichmentDecision.acceptDefault(proposals.getFirst());
+                        assertNotNull(decision);
+                        assertEquals("Anubis guards the dead.",
+                                decision.fields().getFirst().candidate().proposedValue());
+                        assertTrue(accept.test(List.of(decision)));
+                    } catch (Throwable failure) {
+                        reviewError.set(failure);
+                    } finally {
+                        completed.countDown();
+                    }
+                });
+                loadButton(values).doClick();
+            });
+            assertTrue(completed.await(10, TimeUnit.SECONDS));
+            assertNull(reviewError.get(), () -> String.valueOf(reviewError.get()));
+            var reopened = open.open();
+            assertEquals("Anubis guards the dead.", value(reopened));
+            var source = reopened.capability(Curatable.class).curation().corrections().getFirst().source();
+            assertEquals("https://en.wikipedia.org/wiki/Anubis", source.recordUrl());
+            assertEquals("23", source.evidence().getFirst().evidence().getFirst().document().revision());
+        } finally {
+            if (workbench.get() != null) SwingUtilities.invokeAndWait(workbench.get()::close);
+        }
     }
 
     @ParameterizedTest
@@ -82,11 +146,13 @@ class UnifiedFieldAcquisitionTest {
         var backing = opened.capability(ProjectBacking.class);
         var field = backing.projectModel().rootClass().fields().getFirst();
         var reads = new AtomicInteger();
-        var queries = new SwingQuerySession(new QueryContext().with(
-                WikimediaEntityLookup.JsonFetcher.class, uri -> {
+        var queries = new SwingQuerySession(WikidataAccess.of(null, new WikidataApiClient("test") {
+            @Override protected JsonNode getEntitiesBatchWithRetry(
+                    List<String> qids, boolean withClaims, List<String> pids) {
                     reads.incrementAndGet();
                     throw new AssertionError("No request should start without load confirmation");
-                }));
+            }
+        }).bind());
 
         SwingUtilities.invokeAndWait(() -> {
             try (var panel = new UnifiedWorkbenchPanel(opened, queries)) {
@@ -167,19 +233,22 @@ class UnifiedFieldAcquisitionTest {
         var backing = opened.capability(ProjectBacking.class);
         var field = backing.projectModel().rootClass().fields().getFirst();
         var reads = new AtomicInteger();
-        var queries = new SwingQuerySession(new QueryContext().with(
-                WikimediaEntityLookup.JsonFetcher.class, uri -> {
-                    assertTrue(uri.getQuery().contains("ids=Q47534"), uri.toString());
+        var queries = new SwingQuerySession(WikidataAccess.of(null, new WikidataApiClient("test") {
+            @Override protected JsonNode getEntitiesBatchWithRetry(
+                    List<String> qids, boolean withClaims, List<String> pids) throws Exception {
+                    assertEquals(List.of("Q47534"), qids);
+                    assertEquals(List.of("P2561"), pids);
                     reads.incrementAndGet();
-                    return """
-                            {"entities":{"Q47534":{"claims":{
-                             "P1559":[{"rank":"normal","mainsnak":{"datatype":"string",
-                                  "datavalue":{"value":"Original source value"}}}],
-                             "P2561":[{"rank":"normal","mainsnak":{"datatype":"string",
-                                  "datavalue":{"value":"New source value"}}}]
+                    return new ObjectMapper().readTree("""
+                            {"entities":{"Q47534":{"id":"Q47534","claims":{
+                             "P1559":[{"rank":"normal","mainsnak":{"snaktype":"value","datatype":"string",
+                                  "datavalue":{"type":"string","value":"Original source value"}}}],
+                             "P2561":[{"rank":"normal","mainsnak":{"snaktype":"value","datatype":"string",
+                                  "datavalue":{"type":"string","value":"New source value"}}}]
                             }}}}
-                            """;
-                }));
+                            """);
+            }
+        }).bind());
         var workbench = new AtomicReference<UnifiedWorkbenchPanel>();
         var accepted = new CountDownLatch(1);
         var reviewError = new AtomicReference<Throwable>();

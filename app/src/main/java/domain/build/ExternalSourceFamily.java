@@ -27,7 +27,7 @@ public interface ExternalSourceFamily {
 
     record Context(GeneratedProjectModel model, List<WikidataDynamicObject> pool,
             SourceExecutionPlan plan, SourceRuntimeServices services, GenerationLog log,
-            work.CancellationToken cancellation) { }
+            work.CancellationToken cancellation, List<WikidataDynamicObject> dependencies) { }
 
     record Outcome(
             String familyId,

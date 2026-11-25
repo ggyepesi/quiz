@@ -96,6 +96,17 @@ public final class SourceExecutionPlan {
 
     public List<Step> steps() { return steps; }
 
+    /** The already prepared value steps for one field, including its production-site
+     * overrides. Review-only evidence is a separate explicit action. */
+    public SourceExecutionPlan fieldValues(String className, String fieldPath) {
+        return new SourceExecutionPlan(steps(BindingScope.FIELD_VALUE).stream()
+                .filter(step -> className.equals(step.target().className())
+                        && fieldPath.equals(step.target().fieldPath())
+                        && (step.target().slot() == SourceBindingSlot.PRIMARY_FIELD_VALUE
+                                || step.target().slot() == SourceBindingSlot.FALLBACK_FIELD_VALUE))
+                .toList());
+    }
+
     public List<Step> steps(BindingScope scope) {
         if (scope == null) return List.of();
         return steps.stream().filter(step -> step.target().scope() == scope).toList();

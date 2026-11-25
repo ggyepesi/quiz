@@ -49,6 +49,7 @@ final class TypedInstanceIndex<T extends Viewable> {
         if (instance == null) return types;
         types.addAll(instance.directClassNames());
         types.add(instance.typeName());
+        types.add(instance.identityTypeName());
         types.removeIf(type -> type == null || type.isBlank());
         return types;
     }

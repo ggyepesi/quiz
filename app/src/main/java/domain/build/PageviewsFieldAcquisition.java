@@ -102,6 +102,12 @@ public final class PageviewsFieldAcquisition {
                         if (!FieldSourceTargeting.applies(model, object,
                                 declaration.owner(), declaration.target())) continue;
                         object.put(declaration.field().name(), read.getValue());
+                        if (object.capturesFieldSource(declaration.field().name())) {
+                            String title = read.getKey();
+                            object.recordFieldSource(declaration.field().name(),
+                                    new domain.datasource.SourceRef("Wikimedia Pageviews", title,
+                                            PageviewsClient.url(title, window), window.toString()));
+                        }
                         values++;
                     }
                 }

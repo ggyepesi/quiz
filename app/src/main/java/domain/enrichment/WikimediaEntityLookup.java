@@ -72,7 +72,7 @@ public final class WikimediaEntityLookup {
                         step -> {
                             step.request(uri.toString());
                             EntityRecord result =
-                                    parse(qid, MAPPER.readTree(fetch(context, uri)));
+                                    parse(qid, MAPPER.readTree(fetcher.fetch(uri)));
                             step.summary(result.claims().size()
                                     + " claimed propert"
                                     + (result.claims().size() == 1 ? "y" : "ies"));
@@ -114,7 +114,7 @@ public final class WikimediaEntityLookup {
                         parameters(), step -> {
                             step.request(uri.toString());
                             Map<String, EntityRecord> found = parseAll(clean,
-                                    MAPPER.readTree(fetch(context, uri)));
+                                    MAPPER.readTree(fetcher.fetch(uri)));
                             step.summary(found.size() + " of " + clean.size() + " entit"
                                     + (clean.size() == 1 ? "y" : "ies"));
                             return found;
@@ -161,7 +161,7 @@ public final class WikimediaEntityLookup {
                 return context.step("Resolve category value", "Wikidata API", skeleton(),
                         parameters(), step -> {
                             step.request(uri.toString());
-                            JsonNode entities = MAPPER.readTree(fetch(context, uri)).path("entities");
+                            JsonNode entities = MAPPER.readTree(fetcher.fetch(uri)).path("entities");
                             if (!entities.isObject()) return null;
                             var fields = entities.fields();
                             while (fields.hasNext()) {
@@ -257,7 +257,7 @@ public final class WikimediaEntityLookup {
                         Map.of("titles", Integer.toString(titles.size())), step -> {
                             step.request(uri.toString());
                             Map<String, String> result = parseWikipediaTitleQids(
-                                    MAPPER.readTree(fetch(context, uri)), titles);
+                                    MAPPER.readTree(fetcher.fetch(uri)), titles);
                             step.summary(result.size() + " of " + titles.size()
                                     + " title(s) resolved");
                             return result;
@@ -341,7 +341,7 @@ public final class WikimediaEntityLookup {
                         parameters(), step -> {
                             step.request(uri.toString());
                             Map<String, String> out = parseLabels(
-                                    MAPPER.readTree(fetch(context, uri)));
+                                    MAPPER.readTree(fetcher.fetch(uri)));
                             step.summary(out.size() + " label(s)");
                             return out;
                         });
@@ -549,12 +549,7 @@ public final class WikimediaEntityLookup {
     }
 
     @FunctionalInterface
-    public interface JsonFetcher {
+    interface JsonFetcher {
         String fetch(URI uri) throws Exception;
-    }
-
-    private String fetch(QueryContext context, URI uri) throws Exception {
-        JsonFetcher supplied = context.optional(JsonFetcher.class);
-        return (supplied == null ? fetcher : supplied).fetch(uri);
     }
 }

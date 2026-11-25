@@ -33,11 +33,40 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import domain.DomainSchemas;
 
 class EnrichmentDecisionApplierTest {
+
+    @Test void acceptingAnOwnedValueKeepsItsProductionSiteIdentity(@TempDir Path dir) throws Exception {
+        var first = new WikidataDynamicObject("Q1", "First part");
+        first.type("Details");
+        first.part(true);
+        first.typeKey("Details@Work.details");
+        var second = first.copyWithoutFields();
+        second.typeKey("Details@Work.otherDetails");
+        var domain = new ProductDomain(new ProductSchema(List.of(
+                new ProductClass("Details", "Details", List.of(
+                        new ProductField("caption", "String", false, false, null, false)))),
+                List.of("Details")), List.of(first, second), Viewable.class, null);
+        var source = new SourceRef("Wikipedia", "Work", "https://en.wikipedia.org/wiki/Work",
+                "Rendered.Caption");
+        var candidate = new EnrichmentProposal.FieldCandidate("caption", "", "caption",
+                null, "The second caption", source, EnrichmentProposal.ReviewAction.FILL_IF_EMPTY,
+                null, false, List.of());
+        var proposal = new EnrichmentProposal(new EnrichmentProposal.Subject(
+                second.identityTypeName(), "Q1", "Second part"), List.of(),
+                List.of(candidate), List.of());
+        var curation = new ManualCuration(dir.resolve("work.curation.json").toFile());
+        EnrichmentDecisionApplier.acceptAndSave(domain, CurationStaging.forCuration(curation),
+                List.of(EnrichmentDecision.acceptDefault(proposal)));
+        assertNull(first.get("caption"));
+        assertEquals("The second caption", second.get("caption"));
+        var reopened = new ManualCuration(curation.file()).load();
+        assertEquals("Details@Work.otherDetails", reopened.corrections().getFirst().type());
+    }
 
     @Test
     void textOnlyFieldEvidenceNeedsNoIdentityLink(@TempDir Path dir) throws Exception {

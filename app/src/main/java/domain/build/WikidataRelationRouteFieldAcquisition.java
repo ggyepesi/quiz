@@ -45,7 +45,7 @@ public final class WikidataRelationRouteFieldAcquisition {
         WikidataGraphAdjacencyAcquisition acquirer =
                 new WikidataGraphAdjacencyAcquisition(api, sparql, sink, cancellation);
         InMemoryGraphStore store = new InMemoryGraphStore();
-        return apply(model, pool, plan, sink, acquirer, store);
+        return apply(model, pool, plan, sink, acquirer, store, pool);
     }
 
     /** Run-scoped entry used by the source family so fixed-point passes share acquired
@@ -56,7 +56,8 @@ public final class WikidataRelationRouteFieldAcquisition {
             SourceExecutionPlan plan,
             GenerationLog log,
             WikidataGraphAdjacencyAcquisition acquirer,
-            InMemoryGraphStore store) throws Exception {
+            InMemoryGraphStore store,
+            List<WikidataDynamicObject> dependencies) throws Exception {
         if (model == null || pool == null || pool.isEmpty() || plan == null) {
             return new Result(0, 0, List.of(), List.of());
         }
@@ -72,13 +73,15 @@ public final class WikidataRelationRouteFieldAcquisition {
             List<WikidataDynamicObject> reachable =
                     domain.runtime.WikidataObjectGraph.reachable(pool);
             Map<EntityRef, List<WikidataDynamicObject>> owners = owners(
-                    model, reachable, declaration);
+                    model, dependencies == pool ? reachable : pool, declaration);
             if (owners.isEmpty()) continue;
             owners.values().stream().flatMap(List::stream).forEach(owner ->
                     owner.clearWikidataRelationRouteMatches(
                             declaration.owner().className(), declaration.field().name()));
             Map<EntityRef, WikidataDynamicObject> references = references(
-                    model, reachable, declaration);
+                    model, dependencies == pool ? reachable
+                            : domain.runtime.WikidataObjectGraph.reachable(dependencies),
+                    declaration);
             sink.message("Follow " + declaration.spec().routes().size()
                     + " bounded route(s) for " + declaration.owner().className() + "."
                     + declaration.field().name() + " from " + owners.size()
@@ -105,6 +108,8 @@ public final class WikidataRelationRouteFieldAcquisition {
                         // compatible typed member already in the pool; a genuinely new
                         // terminal remains bare and cannot grow the authored population.
                         if (mergeReference(copy, declaration.field().name(), reference)) {
+                            domain.runtime.AcquiredFieldSource.wikidata(copy,
+                                    declaration.field().name(), "", match.route().label(), "");
                             values++;
                         }
                         copy.addWikidataRelationRouteMatch(

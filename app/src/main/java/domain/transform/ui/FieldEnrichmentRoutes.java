@@ -3,7 +3,6 @@ package domain.transform.ui;
 import domain.enrichment.EnrichmentProvider;
 import domain.enrichment.EnrichmentRoute;
 import domain.config.FieldSourceMapping;
-import domain.config.RuleDirection;
 
 import java.util.List;
 
@@ -12,21 +11,6 @@ import java.util.List;
 public final class FieldEnrichmentRoutes {
 
     private FieldEnrichmentRoutes() { }
-
-    /** The interactive value reader can execute these mappings exactly as authored. */
-    public static boolean canReadConfiguredValue(FieldSourceMapping source) {
-        if (source == null || source.propertyPid().isBlank()) return false;
-        return switch (source.sourceType()) {
-            case SPARQL -> wikidata.WikidataIds.isPid(source.propertyPid())
-                    && source.direction() == RuleDirection.ROOT_TO_ITEM
-                    && source.qualifierPid().isBlank() && source.qualifierCondition() == null
-                    && source.valueLanguage().isBlank();
-            case DBPEDIA -> true;
-            case WIKIPEDIA_INFOBOX -> domain.datasource.evidence.InfoboxParameters.Key
-                    .parse(source.propertyPid()) != null;
-            default -> false;
-        };
-    }
 
     /** With a resolver, an entity-valued property fills a reference field: the claim's
      *  QID becomes the instance the field points at. Without one the route behaves

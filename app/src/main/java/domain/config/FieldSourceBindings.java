@@ -212,6 +212,13 @@ public final class FieldSourceBindings {
         projectLegacy(field, binding);
     }
 
+    /** Project a prepared binding into the established claim loader's field input. */
+    public static GeneratedFieldModel projectedField(GeneratedFieldModel field, SourceBinding binding) {
+        GeneratedFieldModel copy = field.copy();
+        projectLegacy(copy, binding);
+        return copy;
+    }
+
     /** A binding for an existing target keeps that target's place, so re-applying an
      *  unchanged editor leaves the saved order of a field's sources as it was. */
     private static void replaceInPlace(List<SourceBinding> bindings, SourceBinding binding) {

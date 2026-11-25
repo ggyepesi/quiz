@@ -28,7 +28,6 @@ import domain.enrichment.EnrichmentRoute;
 import process.swing.Dialogs;
 import domain.enrichment.EnrichmentSources;
 import domain.enrichment.FindDataBatchProcess;
-import domain.enrichment.FindDataBatchResult;
 import domain.enrichment.FindDataProcess;
 import domain.enrichment.FindDataResult;
 import domain.enrichment.ResolveNamesProcess;
@@ -93,6 +92,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
+import domain.config.GeneratedProjectModel;
+import domain.datasource.api.SourceExecutionPlan;
+import domain.enrichment.LoadFieldValuesProcess;
+import domain.build.SelectedFieldAcquisition;
 import domain.DomainField;
 import domain.DomainModel;
 import domain.DomainSchemas;
@@ -205,7 +208,9 @@ public final class ValidationPanel extends JPanel {
     /** Exact visible recipe chosen by the action tree. Null only in the full field
      *  editor, where the model's configured recipe inventory is shown separately. */
     private SourceBinding fixedCandidateEvidence;
-    private boolean configuredValuesOnly;
+    private SourceExecutionPlan configuredValues;
+    private GeneratedProjectModel configuredValueModel;
+    private String configuredValueDescription;
     private JPanel fixedTargetSummary;
     private BooleanSupplier beforeLoad = () -> true;
     private java.util.function.Consumer<Boolean> onAcquisition = running -> { };
@@ -438,10 +443,14 @@ public final class ValidationPanel extends JPanel {
 
     /** The field editor already owns source configuration. This action reviews values only. */
     public void useConfiguredValueTarget(String type, String field,
+            GeneratedProjectModel model, SourceExecutionPlan plan, String description,
             BooleanSupplier beforeLoad, java.util.function.Consumer<Boolean> running) {
-        boolean sameTarget = configuredValuesOnly && type.equals(selectedFieldType)
+        boolean sameTarget = configuredValues != null && type.equals(selectedFieldType)
                 && field.equals(selectedFieldPath);
-        configuredValuesOnly = true;
+        configuredValueModel = model;
+        configuredValues = plan;
+        configuredValueDescription = description;
+        cancelProcessButton.setText("Cancel load");
         this.beforeLoad = beforeLoad;
         onAcquisition = running;
         if (sameTarget) {
@@ -814,18 +823,14 @@ public final class ValidationPanel extends JPanel {
      *  A reference field is out of scope for now. */
     private void populateCurateActions(JPanel target) {
         DomainField field = selectedDomainField();
-        if (configuredValuesOnly) {
+        if (configuredValues != null) {
             target.add(headerLine(batchTargetLabel));
-            var key = new FieldKey(selectedFieldType, selectedFieldPath);
             checkButton.setText("Load values ↗");
-            boolean supported = configuredRouteAvailable(field, key);
-            checkButton.setEnabled(!acquisitionRunning && !actionInstances().isEmpty()
-                    && supported);
+            boolean available = canLoadConfiguredValues();
+            checkButton.setEnabled(!acquisitionRunning && available);
             target.add(new WorkbenchActionList(List.of(new WorkbenchActionList.Item(checkButton,
-                    supported ? "Fetch values from the applied field source and review the results."
-                            : "Load values supports direct Wikidata properties without qualifier "
-                                    + "or language restrictions, Wikipedia infobox values, "
-                                    + "and DBpedia properties."))));
+                    available ? "Run the field acquisition plan and review the values it supplies."
+                            : "Enrich has no field value acquisition to run for this selection."))));
             return;
         }
         boolean media = field != null && field.kind() == objectview.field.FieldKind.MEDIA;
@@ -1136,6 +1141,10 @@ public final class ValidationPanel extends JPanel {
 
     /** Batch the same reusable Find Data process over every missing member. */
     private void onCheck() {
+        if (configuredValues != null) {
+            loadConfiguredValues();
+            return;
+        }
         if (selectedFieldPath != null) {
             findData();
         }
@@ -1143,13 +1152,13 @@ public final class ValidationPanel extends JPanel {
 
     // One immutable batch plan; one independently logged/cancellable child per member.
     private void findData() {
-        if (acquisitionRunning || !beforeLoad.getAsBoolean()) return;
+        if (acquisitionRunning) return;
         String path = selectedFieldPath;
         if (path == null) return;
         ManualCuration curation = curationStore();
         // Let a manually identified selected member establish its source before the
         // batch. Other unresolved manual members are skipped, not met with a dialog storm.
-        if (!configuredValuesOnly && selected != null && EnrichmentSources.needsSelection(
+        if (selected != null && EnrichmentSources.needsSelection(
                 selected, concreteType(selected), curation)
                 && !isQid(selected.getIdentifier())) {
             // Resolve the identity first (the explorer is modal), then continue into the
@@ -1162,9 +1171,7 @@ public final class ValidationPanel extends JPanel {
         boolean media = drilled == null || drilled.kind() == objectview.field.FieldKind.MEDIA;
 
         FieldKey key = new FieldKey(selectedFieldType, path);
-        if (configuredValuesOnly && !configuredRouteAvailable(drilled, key)) return;
-        if (!configuredValuesOnly && !media && sourceFor(key) == null
-                && fallbackSourceFor(key) == null) {
+        if (!media && sourceFor(key) == null && fallbackSourceFor(key) == null) {
             if (chooseSourceForSelected(true)) return;
             // No route is configured and no member resolves to a Wikidata entity yet —
             // fall through so runFillBatch reports that identities must be resolved first.
@@ -1175,19 +1182,27 @@ public final class ValidationPanel extends JPanel {
         runFillBatch(path);
     }
 
-    private boolean configuredRouteAvailable(DomainField field, FieldKey key) {
-        if (field == null || curationStore() == null) return false;
-        var schema = DomainSchemas.resolve(domain, key.type(), key.path());
-        if (schema == null || schema.valueKind() == objectview.field.FieldKind.MEDIA) return false;
-        FieldSourceMapping primary = sourceFor(key);
-        FieldSourceMapping fallback = fallbackSourceFor(key);
-        if (primary == null && declaredBinding(SourceBindingSlot.PRIMARY_FIELD_VALUE) != null
-                || fallback == null && declaredBinding(SourceBindingSlot.FALLBACK_FIELD_VALUE) != null) {
-            return false;
-        }
-        return (primary != null || fallback != null)
-                && (primary == null || FieldEnrichmentRoutes.canReadConfiguredValue(primary))
-                && (fallback == null || FieldEnrichmentRoutes.canReadConfiguredValue(fallback));
+    private boolean canLoadConfiguredValues() {
+        return selectedFieldPath != null && curationStore() != null && !actionInstances().isEmpty()
+                && SelectedFieldAcquisition.hasWork(configuredValueModel, configuredValues);
+    }
+
+    private void loadConfiguredValues() {
+        if (acquisitionRunning || !beforeLoad.getAsBoolean() || !canLoadConfiguredValues()) return;
+        var members = actionInstances();
+        String selection = selectedCards.isEmpty() ? "instance(s)" : "selected card(s)";
+        String description = configuredValueDescription.replace("&", "&amp;")
+                .replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>");
+        if (!confirmLoad.test("<html><b>Load values for " + selectedFieldType + "." + selectedFieldPath
+                + "</b><br>Members: <b>" + members.size() + "</b> " + selection
+                + "<br><br>" + description
+                + "<br><br>Use the field's Enrich rules for existing values.</html>")) return;
+        var process = new LoadFieldValuesProcess(domain, configuredValueModel, selectedFieldType,
+                selectedFieldPath, configuredValues, members);
+        runReview(process, result -> new ReviewResults(result.proposals(),
+                        List.of(SourceYieldCards.summary("Field acquisition", result.notices()))),
+                "Review acquired values — " + selectedFieldPath,
+                "Review the values supplied by the field acquisition plan.", "Load field values failed");
     }
 
     private java.util.function.Predicate<String> confirmLoad = plan -> JOptionPane.showConfirmDialog(
@@ -1539,10 +1554,7 @@ public final class ValidationPanel extends JPanel {
     }
 
     private FieldSourceMapping sourceFor(FieldKey key) {
-        if (key == null) return null;
-        return configuredValuesOnly
-                ? fieldSourceChoices.declaredPrimary(key.type(), key.path())
-                : fieldSourceChoices.primary(key.type(), key.path());
+        return key == null ? null : fieldSourceChoices.primary(key.type(), key.path());
     }
 
     private FieldSourceMapping datasetFallbackOverride(FieldKey key) {
@@ -1550,10 +1562,7 @@ public final class ValidationPanel extends JPanel {
     }
 
     private FieldSourceMapping fallbackSourceFor(FieldKey key) {
-        if (key == null) return null;
-        return configuredValuesOnly
-                ? FieldSourceChoices.additionalSource(null, domain, key.type(), key.path())
-                : fieldSourceChoices.additional(key.type(), key.path());
+        return key == null ? null : fieldSourceChoices.additional(key.type(), key.path());
     }
 
     private void updateFieldSourceButton() {
@@ -1720,19 +1729,25 @@ public final class ValidationPanel extends JPanel {
     private void runReviewBatch(
             List<FindDataProcess> jobs, int skipped, String path,
             String reviewTitle, String reviewPrompt, String failureTitle) {
+        runReview(new FindDataBatchProcess(jobs, skipped, path),
+                result -> new ReviewResults(result.results().stream().map(FindDataResult::proposal).toList(),
+                        SourceYieldCards.of(result.sourceYields())),
+                reviewTitle, reviewPrompt, failureTitle);
+    }
+
+    private record ReviewResults(List<EnrichmentProposal> proposals, List<Viewable> report) { }
+
+    private <R> void runReview(process.Process<R> process, Function<R, ReviewResults> details,
+            String reviewTitle, String reviewPrompt, String failureTitle) {
         if (acquisitionRunning) return;
         acquisitionRunning = true;
         onAcquisition.accept(true);
-        findDataRunner.run(new FindDataBatchProcess(jobs, skipped, path),
+        findDataRunner.run(process,
                 outcome -> SwingUtilities.invokeLater(() -> {
                     try {
-                        FindDataBatchResult result = outcome.result();
-                        ManualCuration store = curationStore();
-                        if (result != null && store != null) {
-                            List<EnrichmentProposal> proposals = result.results().stream()
-                                    .map(FindDataResult::proposal).toList();
-                            showReview(reviewTitle, reviewPrompt, proposals,
-                                    SourceYieldCards.of(result.sourceYields()));
+                        if (outcome.result() != null && curationStore() != null) {
+                            var result = details.apply(outcome.result());
+                            showReview(reviewTitle, reviewPrompt, result.proposals(), result.report());
                         }
                         if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
                             JOptionPane.showMessageDialog(this,
@@ -1752,10 +1767,7 @@ public final class ValidationPanel extends JPanel {
 
     private void acquisitionFinished() {
         acquisitionRunning = false;
-        if (configuredValuesOnly) {
-            checkButton.setEnabled(!actionInstances().isEmpty() && configuredRouteAvailable(
-                    selectedDomainField(), new FieldKey(selectedFieldType, selectedFieldPath)));
-        }
+        if (configuredValues != null) checkButton.setEnabled(canLoadConfiguredValues());
         onAcquisition.accept(false);
     }
 

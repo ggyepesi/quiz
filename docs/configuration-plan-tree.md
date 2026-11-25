@@ -330,20 +330,21 @@ Selecting a field or reading its plan sends no datasource requests.
 Leaving, saving or closing over unapplied edits asks first, as described under
 [One draft and one Apply](#one-draft-and-one-apply).
 
-Under **Datasources → Load field values**, the applied field selects the class and field in the
-shared DataSource value loader. It uses the loaded class members, or the cards explicitly selected
-in that view. If the field has unapplied edits, **Load values** first asks **Apply**, **Discard**,
-or **Stay**. It then confirms the selected scope and the resulting sources before starting Find Data.
-Query Logs shows the run and the ordinary review shows proposed values and their sources. Accepting
-results updates the cards and writes the project's `.curation.json`. **Save model** or **Save
-domain** writes the applied configuration to `.model.json` through the shared save guard.
-Reopening shows the saved recipe and the accepted values with their provenance.
+Under **Datasources → Load field values**, the displayed plan and the run share the prepared
+value steps for the selected field, including production-site overrides. The action uses
+Enrich's claim batches and external field-acquisition families. The current loaded class members,
+or the cards explicitly selected in that view, are the write targets. Other loaded objects can
+still supply dependencies, such as eligible descendants for an inherited count or relation-route
+endpoints. The action requires a compatible field in the loaded instance schema.
+Acquired references must resolve to compatible loaded instances for acceptance. Candidate
+evidence recipes remain a separate review action.
 
-This action uses the existing interactive reader for direct outgoing Wikidata properties without
-qualifier or language restrictions, Wikipedia infobox values, and DBpedia properties. It requires
-a compatible field in the loaded instance schema. Use **Enrich (declared fields)** in ModelBuilder for production-site
-overrides and other generation sources. [#576](https://github.com/ggyepesi/quiz/issues/576) tracks
-executing the displayed acquisition plan directly from this action.
+If the field has unapplied edits, **Load values** first asks **Apply**, **Discard**, or **Stay**.
+It then confirms the scope and the resulting plan. Query Logs shows the batches. The review
+shows the proposed changes and their sources, and reports examined-empty and failed acquisitions
+separately. Accepting results updates the cards and writes the project's `.curation.json`.
+**Save model** or **Save domain** writes the applied configuration to `.model.json` through the
+shared save guard. Reopening shows the saved recipe and the accepted values with their provenance.
 
 ## Forcing tests and checked artifacts
 

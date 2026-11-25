@@ -75,7 +75,7 @@ public final class StandardExternalSourceFamilies {
             WikidataRelationRouteFieldAcquisition.Result result =
                     WikidataRelationRouteFieldAcquisition.apply(
                             context.model(), context.pool(), context.plan(), context.log(),
-                            acquirer, store);
+                            acquirer, store, context.dependencies());
             String coverage = result.incomplete().isEmpty()
                     && result.unavailable().isEmpty() ? ""
                     : ", " + result.incomplete().size() + " incomplete and "
@@ -112,7 +112,8 @@ public final class StandardExternalSourceFamilies {
             }
             WikidataComputedFieldAcquisition.Result result =
                     WikidataComputedFieldAcquisition.apply(context.model(), context.pool(),
-                            context.plan(), client, context.log(), context.cancellation());
+                            context.plan(), client, context.log(), context.cancellation(),
+                            context.dependencies());
             return new Outcome(id(), result.values(),
                     result.values() + " Wikidata computed value(s)", summaryOrder());
         }
@@ -196,9 +197,15 @@ public final class StandardExternalSourceFamilies {
                         + "process-bound Wikidata client.\n");
                 return empty();
             }
-            WikipediaInfoboxAcquisition.Result result = WikipediaInfoboxAcquisition.apply(
-                    context.model(), context.pool(), context.log(), context.cancellation(),
-                    client, context.plan());
+            var fetcher = context.services().find(
+                    domain.datasource.wikipedia.WikipediaDatasourceProvider.ID,
+                    WikipediaInfoboxAcquisition.Fetcher.class);
+            WikipediaInfoboxAcquisition.Result result = fetcher.isPresent()
+                    ? WikipediaInfoboxAcquisition.apply(context.model(), context.pool(),
+                            context.log(), context.cancellation(), client, fetcher.get(),
+                            context.plan())
+                    : WikipediaInfoboxAcquisition.apply(context.model(), context.pool(),
+                            context.log(), context.cancellation(), client, context.plan());
             List<String> warnings = result.complete() ? List.of() : List.of(
                     "Wikipedia infobox acquisition failed for "
                             + result.count(WikipediaInfoboxAcquisition.OutcomeState.FAILED)
@@ -230,10 +237,17 @@ public final class StandardExternalSourceFamilies {
             wikidata.api.WikidataApiClient client = context.services().find(
                     domain.datasource.wikidata.WikidataDatasourceProvider.ID,
                     wikidata.api.WikidataApiClient.class).orElse(null);
-            WikipediaArticleIntroductionAcquisition.Result result =
-                    WikipediaArticleIntroductionAcquisition.apply(
+            // A host or test may supply the fetcher, as for infoboxes.
+            WikipediaArticleIntroductionAcquisition.Fetcher fetcher = context.services().find(
+                    domain.datasource.wikipedia.WikipediaDatasourceProvider.ID,
+                    WikipediaArticleIntroductionAcquisition.Fetcher.class).orElse(null);
+            WikipediaArticleIntroductionAcquisition.Result result = fetcher == null
+                    ? WikipediaArticleIntroductionAcquisition.apply(
                             context.model(), context.pool(), context.log(),
-                            context.cancellation(), client, context.plan());
+                            context.cancellation(), client, context.plan())
+                    : WikipediaArticleIntroductionAcquisition.apply(
+                            context.model(), context.pool(), context.log(),
+                            context.cancellation(), client, context.plan(), fetcher);
             return new Outcome(id(), result.values(),
                     result.values() + " article text value(s)", summaryOrder());
         }

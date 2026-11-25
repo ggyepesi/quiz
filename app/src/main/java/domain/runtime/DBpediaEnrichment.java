@@ -82,6 +82,13 @@ public class DBpediaEnrichment {
                             ? label : b.value("val");
                     if (val != null && !val.isBlank()) {
                         obj.merge(f.name(), val.trim());
+                        if (obj.capturesFieldSource(f.name())) {
+                            String record = b.value("dbr");
+                            if (record != null && !record.isBlank()) {
+                                obj.recordFieldSource(f.name(), new domain.datasource.SourceRef(
+                                        "DBpedia", record, record, prop));
+                            }
+                        }
                         merged++;
                     }
                 }
@@ -112,7 +119,7 @@ public class DBpediaEnrichment {
                PREFIX dbp: <http://dbpedia.org/property/>
                PREFIX owl: <http://www.w3.org/2002/07/owl#>
                PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-               SELECT ?wd ?val ?valLabel WHERE {
+               SELECT ?wd ?dbr ?val ?valLabel WHERE {
                  VALUES ?wd { %s }
                  ?dbr owl:sameAs ?wd .
                  ?dbr dbp:%s ?val .

@@ -17,7 +17,8 @@ public record Correction(String type, String qid, String field, Object value,
         // A reference names one configured class as well as one identifier; resolving by
         // identifier alone could attach an incompatible same-ID object (directive 9).
         if ((REFERENCE.equals(valueKind) || REFERENCE_COLLECTION.equals(valueKind))
-                && referenceType.isEmpty()) {
+                && referenceType.isEmpty()
+                && !(REFERENCE_COLLECTION.equals(valueKind) && value instanceof java.util.List<?>)) {
             throw new IllegalArgumentException("Reference correction " + type + " " + qid
                     + "." + field + " -> " + value
                     + " does not name its target class (referenceType); it cannot be resolved.");
@@ -34,6 +35,8 @@ public record Correction(String type, String qid, String field, Object value,
     public static final String MANUAL = "manual";
     public static final String MEDIA = "media";
     public static final String MEDIA_COLLECTION = "media[]";
+    public static final String DATE = "date";
+    public static final String DATE_COLLECTION = "date[]";
 
     /**
      * An entity-valued field. The stored value is the target's source identifier and,

@@ -33,6 +33,13 @@ public final class WikidataComputedFieldAcquisition {
             List<WikidataDynamicObject> pool, SourceExecutionPlan plan,
             WikidataSparqlClient client, GenerationLog log,
             work.CancellationToken cancellation) throws Exception {
+        return apply(model, pool, plan, client, log, cancellation, pool);
+    }
+
+    static Result apply(GeneratedProjectModel model,
+            List<WikidataDynamicObject> pool, SourceExecutionPlan plan,
+            WikidataSparqlClient client, GenerationLog log, work.CancellationToken cancellation,
+            List<WikidataDynamicObject> dependencies) throws Exception {
         if (model == null || pool == null || pool.isEmpty() || plan == null || client == null) {
             return new Result(0, 0);
         }
@@ -41,14 +48,14 @@ public final class WikidataComputedFieldAcquisition {
         int values = 0;
         List<Exception> failures = new ArrayList<>();
         for (GeneratedClassModel owner : model.classes()) {
-            Map<String, WikidataDynamicObject> targets = targets(model, pool, owner);
-            if (targets.isEmpty()) continue;
             for (SourceExecutionPlan.Step step : plan.steps(BindingScope.FIELD_VALUE)) {
                 if (!owner.className().equals(step.target().className())) continue;
                 WikidataDatasourceProvider.ComputedFieldSpec spec =
                         step.prepared().configuration(
                                 WikidataDatasourceProvider.ComputedFieldSpec.class);
                 if (spec == null || step.target().fieldPath().contains(".")) continue;
+                var targets = targets(model, pool, owner, step.target());
+                if (targets.isEmpty()) continue;
                 GeneratedFieldModel field = owner.fields().stream()
                         .filter(candidate -> candidate != null
                                 && step.target().fieldPath().equals(candidate.name()))
@@ -58,7 +65,9 @@ public final class WikidataComputedFieldAcquisition {
                 try {
                     int merged = spec.kind() == WikidataDatasourceProvider
                             .ComputedFieldSpec.Kind.INHERITED_INCOMING_RELATION
-                            ? loadInherited(targets, field, spec, client, sink,
+                            ? loadInherited(targets, List.copyOf((dependencies == pool ? targets
+                                    : targets(model, dependencies, owner, step.target())).keySet()),
+                                    field, spec, client, sink,
                                     cancellation == null ? new work.CancellationToken()
                                             : cancellation)
                             : load(targets, field, spec, client, sink,
@@ -113,6 +122,8 @@ public final class WikidataComputedFieldAcquisition {
                         WikidataDynamicObject target = targets.get(qid);
                         if (target == null || value == null) return;
                         target.put(field.name(), value);
+                        domain.runtime.AcquiredFieldSource.wikidata(target, field.name(),
+                                spec.propertyPid(), spec.kind().name(), "");
                         merged.incrementAndGet();
                     }));
             if (!failed.isEmpty()) {
@@ -135,10 +146,10 @@ public final class WikidataComputedFieldAcquisition {
      * contributes nothing — the offering says so.
      */
     private static int loadInherited(Map<String, WikidataDynamicObject> targets,
+            List<String> qids,
             GeneratedFieldModel field, WikidataDatasourceProvider.ComputedFieldSpec spec,
             WikidataSparqlClient client, GenerationLog log,
             work.CancellationToken cancellation) throws Exception {
-        List<String> qids = new ArrayList<>(targets.keySet());
         Map<String, java.util.BitSet> sourcesByAncestor = new LinkedHashMap<>();
         Map<String, Integer> sourceIds = new LinkedHashMap<>();
         List<batch.WorkUnit<InheritedEdges>> units = new ArrayList<>();
@@ -183,6 +194,8 @@ public final class WikidataComputedFieldAcquisition {
             target.getValue().put(field.name(),
                     (long) sourcesByAncestor.getOrDefault(target.getKey(),
                             new java.util.BitSet()).cardinality());
+            domain.runtime.AcquiredFieldSource.wikidata(target.getValue(), field.name(),
+                    spec.propertyPid(), spec.kind().name(), "");
         }
         return targets.size();
     }
@@ -310,19 +323,14 @@ public final class WikidataComputedFieldAcquisition {
     }
 
     private static Map<String, WikidataDynamicObject> targets(GeneratedProjectModel model,
-            List<WikidataDynamicObject> pool, GeneratedClassModel owner) {
+            List<WikidataDynamicObject> pool, GeneratedClassModel owner,
+            domain.datasource.api.SourceBindingTarget target) {
         Map<String, WikidataDynamicObject> result = new LinkedHashMap<>();
         for (WikidataDynamicObject object : pool) {
-            if (object == null || object.isPart() || !WikidataIds.isQid(object.qid())) continue;
-            boolean applies = object.directClassNames().stream().anyMatch(name -> {
-                for (GeneratedClassModel current = model.findClass(name); current != null;
-                        current = current.baseClassName().isBlank() ? null
-                                : model.findClass(current.baseClassName())) {
-                    if (owner.className().equals(current.className())) return true;
-                }
-                return false;
-            });
-            if (applies) result.put(object.qid(), object);
+            if (object != null && WikidataIds.isQid(object.qid())
+                    && FieldSourceTargeting.applies(model, object, owner, target)) {
+                result.put(object.qid(), object);
+            }
         }
         return result;
     }

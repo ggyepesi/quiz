@@ -7,11 +7,9 @@ import domain.config.GeneratedProjectModel;
 import domain.config.ModelSourceExecutionPlan;
 import domain.config.OwnedFieldSources;
 import domain.datasource.Datasources;
-import domain.datasource.api.BindingScope;
 import domain.datasource.api.ConfigurationElement;
 import domain.datasource.api.DatasourceRegistry;
 import domain.datasource.api.SourceExecutionPlan;
-import domain.datasource.api.SourceBindingSlot;
 import domain.transform.ui.ProjectBacking;
 import domain.transform.ui.FieldDefinitions;
 import domain.transform.ui.ValidationPanel;
@@ -53,6 +51,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private final JPanel acquisitionValues = new JPanel(new BorderLayout());
     private final String saveVerb;
     private SourceExecutionPlan plan;
+    private SourceExecutionPlan selectedFieldPlan;
     private String planProblem;
     private boolean saving;
     private boolean loadingValues;
@@ -131,17 +130,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
             String path = OwnedFieldSources.declaredFieldPath(owner, selectedField);
             var resolved = DomainSchemas.resolve(domain, owner.className(), path);
             var declared = FieldDefinitions.toFieldRef(selectedField.definition());
-            if (plan == null) {
+            if (selectedFieldPlan == null) {
                 acquisitionValues.add(new JLabel("Review the field acquisition plan before loading values."),
-                        BorderLayout.NORTH);
-            } else if (plan.steps(BindingScope.FIELD_VALUE).stream().anyMatch(step ->
-                    step.target().className().equals(owner.className())
-                            && step.target().fieldPath().equals(path) && step.target().contextual()
-                            && (step.target().slot() == SourceBindingSlot.PRIMARY_FIELD_VALUE
-                                    || step.target().slot() == SourceBindingSlot.FALLBACK_FIELD_VALUE))) {
-                acquisitionValues.add(new JLabel("<html>This field has source overrides at individual production sites."
-                        + "<br>Save the project, open it in ModelBuilder, load its instances, "
-                        + "and use Enrich (declared fields).</html>"),
                         BorderLayout.NORTH);
             } else if (resolved == null || resolved.valueKind() != declared.valueKind()
                     || resolved.valueKind() == objectview.field.FieldKind.ORDERED
@@ -156,7 +146,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                     valuePanel = new ValidationPanel(domain, null, queries.runner(),
                             null, null, WorkbenchPurpose.DATASOURCE);
                 }
-                valuePanel.useConfiguredValueTarget(owner.className(), path, this::prepareAcquisition,
+                valuePanel.useConfiguredValueTarget(owner.className(), path, project.projectModel(),
+                        selectedFieldPlan, planText.getText(), this::prepareAcquisition,
                         this::acquisitionRunning);
                 acquisitionValues.add(valuePanel, BorderLayout.CENTER);
             }
@@ -187,6 +178,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     }
 
     private void showPlan(GeneratedFieldModel field) {
+        selectedFieldPlan = null;
         GeneratedProjectModel model = project.projectModel();
         var owner = model.declaringClass(field);
         if (owner == null) {
@@ -198,9 +190,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         if (plan == null) {
             text.append("Could not prepare the datasource plan.\n").append(planProblem);
         } else {
-            var steps = plan.steps(BindingScope.FIELD_VALUE).stream()
-                    .filter(step -> step.target().className().equals(owner.className())
-                            && step.target().fieldPath().equals(path)).toList();
+            selectedFieldPlan = plan.fieldValues(owner.className(), path);
+            var steps = selectedFieldPlan.steps();
             for (var step : steps) {
                 text.append(step.prepared().familyName()).append('\n');
                 if (step.target().contextual()) {

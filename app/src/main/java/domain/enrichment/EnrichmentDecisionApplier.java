@@ -3,6 +3,7 @@ package domain.enrichment;
 import domain.enrichment.EnrichmentProposal;
 
 import domain.datasource.SourceRef;
+import domain.config.OwnedComponentSite;
 
 import domain.curation.Correction;
 import domain.curation.CorrectionPolicy;
@@ -185,8 +186,9 @@ public final class EnrichmentDecisionApplier {
             EnrichmentProposal.FieldCandidate candidate = fieldDecision.candidate();
             if (!candidate.compatible()) throw new IllegalArgumentException("Cannot apply "
                     + candidate.field() + ": " + candidate.compatibilityError());
+            var site = OwnedComponentSite.parse(type);
             objectview.field.FieldRef schema = DomainSchemas.resolve(
-                    domain, type, candidate.field());
+                    domain, site == null ? type : site.targetClass(), candidate.field());
             if (fieldDecision.action() == EnrichmentProposal.ReviewAction.ADD_TO_COLLECTION
                     && (schema == null || !schema.collection())) {
                 throw new IllegalArgumentException("Cannot add to " + candidate.field()
@@ -200,12 +202,10 @@ public final class EnrichmentDecisionApplier {
             validateEvidenceEntity(candidate, value);
             SourceRef candidateSource = candidate.source();
             ValueSource source = valueSource(candidateSource, candidate.evidence());
-            Object stored = referenceId(value) == null ? value : referenceId(value);
-            String valueKind = referenceId(value) == null ? null : candidate.targetCollection()
-                    ? Correction.REFERENCE_COLLECTION : Correction.REFERENCE;
-            corrections.add(new Correction(type, targetId, candidate.field(), stored,
-                    origin(candidateSource.kind()), valueKind, policy(fieldDecision.action()),
-                    source, referenceType(value)));
+            StoredValue stored = storedValue(value, candidate.targetCollection());
+            corrections.add(new Correction(type, targetId, candidate.field(), stored.value(),
+                    origin(candidateSource.kind()), stored.kind(), policy(fieldDecision.action()),
+                    source, stored.referenceType()));
         }
         EnrichmentProposal.MediaCandidate media = decision.media();
         if (media != null) {
@@ -271,6 +271,39 @@ public final class EnrichmentDecisionApplier {
     private record Prepared(List<Correction> corrections, List<IdentityLink> identities,
                             List<CuratedInstance> instances) { }
 
+    private record StoredValue(Object value, String kind, String referenceType) { }
+
+    private static StoredValue storedValue(Object value, boolean collection) {
+        if (value instanceof java.util.List<?> values && !values.isEmpty()) {
+            if (values.stream().allMatch(objectview.Viewable.class::isInstance)) {
+                return new StoredValue(values.stream().map(objectview.Viewable.class::cast)
+                        .map(ref -> java.util.Map.of("type", ref.identityTypeName(),
+                                "id", ref.getIdentifier())).toList(),
+                        Correction.REFERENCE_COLLECTION, "");
+            }
+            if (values.stream().allMatch(aux.FlexibleDate.class::isInstance)) {
+                return new StoredValue(values.stream().map(aux.FlexibleDate.class::cast)
+                        .map(aux.FlexibleDate::format).toList(), Correction.DATE_COLLECTION, "");
+            }
+            if (values.stream().allMatch(objectview.media.MediaValue.class::isInstance)) {
+                return new StoredValue(values.stream().map(objectview.media.MediaValue.class::cast)
+                        .map(objectview.media.MediaValue::mediaUrl).toList(),
+                        Correction.MEDIA_COLLECTION, "");
+            }
+        }
+        if (value instanceof aux.FlexibleDate date) {
+            return new StoredValue(date.format(), Correction.DATE, "");
+        }
+        if (value instanceof objectview.media.MediaValue media) {
+            return new StoredValue(media.mediaUrl(), Correction.MEDIA, "");
+        }
+        if (referenceId(value) != null) {
+            return new StoredValue(referenceId(value), collection
+                    ? Correction.REFERENCE_COLLECTION : Correction.REFERENCE, referenceType(value));
+        }
+        return new StoredValue(value, null, "");
+    }
+
     /** The identifier an approved reference value stands for, or null when it is not a
      *  reference. A single-valued field yields its target's id; a collection yields the
      *  one target it is adding. */
@@ -288,7 +321,7 @@ public final class EnrichmentDecisionApplier {
     /** A reference identifies one configured type as well as one source identifier. */
     private static String referenceType(Object value) {
         if (value instanceof objectview.Viewable target) {
-            return target.typeName();
+            return target.identityTypeName();
         }
         if (value instanceof java.util.Collection<?> values && values.size() == 1) {
             return referenceType(values.iterator().next());

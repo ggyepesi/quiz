@@ -216,6 +216,32 @@ public final class Corrections {
             new ThreadLocal<>();
 
     private static Object coerceCorrection(Correction correction, Viewable target, Object sample) {
+        if (Correction.REFERENCE_COLLECTION.equals(correction.valueKind())
+                && correction.value() instanceof List<?> references) {
+            List<Viewable> values = new ArrayList<>();
+            for (Object ref : references) {
+                if (ref instanceof Map<?, ?> identity
+                        && identity.get("type") instanceof String type
+                        && identity.get("id") instanceof String id) {
+                    Viewable value = referent(type, id);
+                    if (value != null) values.add(value);
+                }
+            }
+            return values;
+        }
+        if (Correction.DATE.equals(correction.valueKind()) && correction.value() instanceof String date) {
+            return aux.FlexibleDate.parse(date);
+        }
+        if (Correction.DATE_COLLECTION.equals(correction.valueKind())
+                && correction.value() instanceof List<?> dates) {
+            return dates.stream().map(String.class::cast).map(aux.FlexibleDate::parse).toList();
+        }
+        if (Correction.MEDIA_COLLECTION.equals(correction.valueKind())
+                && correction.value() instanceof List<?> urls) {
+            return urls.stream().map(String.class::cast)
+                    .map(url -> new objectview.media.MediaValueData(mediaLabel(url), url, isSvg(url)))
+                    .toList();
+        }
         if (correction.value() instanceof String qid
                 && (Correction.REFERENCE.equals(correction.valueKind())
                     || Correction.REFERENCE_COLLECTION.equals(correction.valueKind()))) {
@@ -224,9 +250,11 @@ public final class Corrections {
                     Correction.REFERENCE_COLLECTION.equals(correction.valueKind());
             return collection ? referent == null ? List.of() : List.of(referent) : referent;
         }
-        if (sample == null && correction.value() instanceof String url
+        if (correction.value() instanceof String url
                 && (Correction.MEDIA.equals(correction.valueKind())
                     || Correction.MEDIA_COLLECTION.equals(correction.valueKind()))) {
+            Object typed = mediaFrom(sample, url);
+            if (typed != null) return typed;
             boolean collection = Correction.MEDIA_COLLECTION.equals(correction.valueKind());
             Object declared = declaredMedia(target, correction.field(), url, collection);
             if (declared != null) {

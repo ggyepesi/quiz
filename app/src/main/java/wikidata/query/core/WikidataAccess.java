@@ -73,6 +73,11 @@ public final class WikidataAccess implements CancellableWork {
         return apiClient;
     }
 
+    /** Optional endpoint, for plans that may only use the other clients. */
+    public WikidataSparqlClient sparqlIfBound(Datasource datasource) {
+        return sparqlClients.get(datasource);
+    }
+
     /** Cancels every distinct active SPARQL transport this access owns. */
     @Override public void cancelActiveWork() {
         sparqlClients.values().stream()

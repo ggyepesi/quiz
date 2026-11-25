@@ -178,6 +178,27 @@ public final class ExternalSourceAcquisition {
             GenerationLog log, work.CancellationToken cancellation,
             FailurePolicy failurePolicy, ExternalSourceFamilyRegistry registry,
             Set<String> selectedFamilyIds) throws Exception {
+        return apply(model, pool, plan, services, log, cancellation, failurePolicy, registry,
+                selectedFamilyIds, pool);
+    }
+
+    /** Run the same families with separate read-only dependencies and write targets. */
+    static Result applySelected(GeneratedProjectModel model,
+            List<WikidataDynamicObject> targets, List<WikidataDynamicObject> dependencies,
+            SourceExecutionPlan plan, SourceRuntimeServices services, GenerationLog log,
+            work.CancellationToken cancellation) throws Exception {
+        var registry = StandardExternalSourceFamilies.create();
+        var selected = registry.families().stream().map(ExternalSourceFamily::id)
+                .collect(java.util.stream.Collectors.toSet());
+        return apply(model, targets, plan, services, log, cancellation,
+                FailurePolicy.CONTINUE_OPTIONAL, registry, selected, dependencies);
+    }
+
+    private static Result apply(GeneratedProjectModel model,
+            List<WikidataDynamicObject> pool, SourceExecutionPlan plan,
+            SourceRuntimeServices services, GenerationLog log, work.CancellationToken cancellation,
+            FailurePolicy failurePolicy, ExternalSourceFamilyRegistry registry,
+            Set<String> selectedFamilyIds, List<WikidataDynamicObject> dependencies) throws Exception {
         if (registry == null) throw new IllegalArgumentException("Family registry is required");
         GenerationLog sink = log == null ? GenerationLog.NOOP : log;
         work.CancellationToken token = cancellation == null
@@ -187,7 +208,8 @@ public final class ExternalSourceAcquisition {
         selected.forEach(registry::require);
         ExternalSourceFamily.Context context = new ExternalSourceFamily.Context(
                 model, pool == null ? List.of() : pool, plan,
-                services == null ? SourceRuntimeServices.empty() : services, sink, token);
+                services == null ? SourceRuntimeServices.empty() : services, sink, token,
+                dependencies == null ? List.of() : dependencies);
         List<ExternalSourceFamily.Outcome> outcomes = new ArrayList<>();
         List<String> failures = new ArrayList<>();
 

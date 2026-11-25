@@ -4,6 +4,7 @@ import wikidata.WikidataIds;
 
 import wikidata.api.WikidataApiClient;
 import domain.runtime.GenerationLog;
+import domain.runtime.AcquiredFieldSource;
 import domain.runtime.WikidataDynamicObject;
 import domain.datasource.schema.FieldType;
 import domain.config.FieldProductionKind;
@@ -13,6 +14,8 @@ import domain.config.GeneratedProjectModel;
 import domain.config.MembershipPattern;
 import domain.config.FieldSemantics;
 import domain.config.RuleDirection;
+import domain.datasource.api.SourceExecutionPlan;
+import domain.datasource.wikidata.WikidataDatasourceProvider;
 import wikidata.api.FactDemand;
 import wikidata.api.FactDemandBinder;
 
@@ -282,7 +285,41 @@ public final class ReferentFieldLoad {
             AcquisitionManifest manifest,
             java.util.Set<String> aliasClasses,
             java.util.Set<String> sitelinkClasses) {
+        return load(model, pool, api, log, alreadyLoaded, deferLabels, manifest,
+                aliasClasses, sitelinkClasses, null);
+    }
 
+    /** Enrich's claim loader, bounded to already selected objects and prepared fields. */
+    public static Result loadSelected(GeneratedProjectModel model,
+            Collection<WikidataDynamicObject> selected, WikidataApiClient api,
+            GenerationLog log, SourceExecutionPlan plan) {
+        return load(model, selected, api, log, List.of(), false, null,
+                Set.of(), Set.of(), plan);
+    }
+
+    public static boolean hasSelectedClaims(GeneratedProjectModel model, SourceExecutionPlan plan) {
+        return plan.steps().stream().filter(ReferentFieldLoad::isClaimStep).anyMatch(step -> {
+            var target = step.target();
+            var owner = model.findClass(target.className());
+            if (owner == null || !loadsHere(MembershipPattern.of(owner, model))
+                    || target.fieldPath().contains(".")) return false;
+            var field = target.contextual()
+                    ? domain.config.OwnedFieldSources.effectiveField(model, owner,
+                            new domain.config.OwnedComponentSite(target.className(),
+                                    target.contextClassName(), target.contextFieldPath()),
+                            target.fieldPath())
+                    : domain.config.OwnedFieldSources.declaredField(model, target.className(),
+                            target.fieldPath());
+            return field != null && loadableType(field.type()) && loadsOutgoingClaim(field);
+        });
+    }
+
+    private static Result load(
+            GeneratedProjectModel model, Collection<WikidataDynamicObject> pool,
+            WikidataApiClient api, GenerationLog log,
+            Collection<domain.runtime.LoadedDeclaration> alreadyLoaded, boolean deferLabels,
+            AcquisitionManifest manifest, Set<String> aliasClasses, Set<String> sitelinkClasses,
+            SourceExecutionPlan selection) {
         if (model == null || pool == null || api == null) {
             return new Result(0, java.util.List.of());
         }
@@ -325,7 +362,7 @@ public final class ReferentFieldLoad {
         // lands in the top-level pool the way Nominee/ForWork (which ARE subjects)
         // do. Flattening finds it regardless of which pool the caller passes.
         Map<String, List<WikidataDynamicObject>> referents = new LinkedHashMap<>();
-        for (WikidataDynamicObject o : collectReachable(pool)) {
+        for (WikidataDynamicObject o : selection == null ? collectReachable(pool) : pool) {
             if (o == null || o.qid() == null || !WikidataIds.isQid(o.qid())) {
                 continue;
             }
@@ -348,8 +385,14 @@ public final class ReferentFieldLoad {
             for (ReferentGroup load : referentGroups(
                     model, e.getKey(), e.getValue(), classObjects)) {
                 String loadKey = load.loadKey();
-                List<GeneratedFieldModel> fields = load.fields();
                 List<WikidataDynamicObject> objs = load.objects();
+                List<GeneratedFieldModel> fields = selection == null ? load.fields()
+                        : load.fields().stream().flatMap(field -> selection.steps().stream()
+                                .filter(step -> matchesSelectedClaim(model, e.getKey(), loadKey, field, step))
+                                .map(step -> domain.config.FieldSourceBindings.projectedField(field,
+                                        step.binding())))
+                                .filter(ReferentFieldLoad::loadsOutgoingClaim).toList();
+                if (selection != null && fields.isEmpty()) continue;
                 boolean retainAliases = aliasClasses != null && aliasClasses.contains(e.getKey())
                         && objs.stream().anyMatch(value -> !value.isPart());
                 boolean retainSitelinks = sitelinkClasses != null
@@ -476,6 +519,14 @@ public final class ReferentFieldLoad {
                             .toList();
                     LoadOutcome outcome = loadField(
                             loadKey, uncovered, f, sink, entityBatch, literalBatch);
+                    if (selection != null) {
+                        for (var object : uncovered) {
+                            if (object.get(f.name()) == null) {
+                                object.recordFieldAnswer(f.name(),
+                                        !outcome.unavailable().contains(object.qid()));
+                            }
+                        }
+                    }
                     loaded += outcome.loaded();
                     // Coverage is per ENTITY, not per declaration: everything asked about
                     // that an answer came back for is covered — including an entity that
@@ -501,6 +552,29 @@ public final class ReferentFieldLoad {
             }
         }
         return new Result(loaded, List.copyOf(completed), List.copyOf(failed));
+    }
+
+    private static boolean matchesSelectedClaim(GeneratedProjectModel model, String className,
+            String loadKey, GeneratedFieldModel field, SourceExecutionPlan.Step step) {
+        var target = step.target();
+        if (!isClaimStep(step)
+                || !target.fieldPath().equals(field.name())
+                || !model.isSameOrSubclass(className, target.className())) {
+            return false;
+        }
+        if (!target.contextual()) return className.equals(loadKey)
+                || domain.config.OwnedFieldSources.override(
+                        domain.config.OwnedFieldSources.ownershipField(model,
+                                domain.config.OwnedComponentSite.parse(loadKey)),
+                        target.fieldPath()) == null;
+        return loadKey.equals(new domain.config.OwnedComponentSite(target.className(),
+                target.contextClassName(), target.contextFieldPath()).key());
+    }
+
+    private static boolean isClaimStep(SourceExecutionPlan.Step step) {
+        return WikidataDatasourceProvider.ID.equals(step.recipe().providerId())
+                && WikidataDatasourceProvider.PROPERTY_VALUE.equals(step.recipe().operationId())
+                && step.target().slot() == domain.datasource.api.SourceBindingSlot.PRIMARY_FIELD_VALUE;
     }
 
     private record ReferentGroup(
@@ -1038,6 +1112,8 @@ public final class ReferentFieldLoad {
                 continue;
             }
             o.put(field.name(), collection ? values : values.get(0));
+            AcquiredFieldSource.wikidata(o, field.name(), pid, field.mapping().propertyLabel(),
+                    RuleDirection.ROOT_TO_ITEM.name());
             loaded++;
         }
         log.message("Semantic completion " + className + "." + field.name()
@@ -1104,6 +1180,8 @@ public final class ReferentFieldLoad {
                 continue;
             }
             o.put(field.name(), collection ? values : values.get(0));
+            AcquiredFieldSource.wikidata(o, field.name(), pid, field.mapping().propertyLabel(),
+                    RuleDirection.ROOT_TO_ITEM.name());
             loaded++;
         }
         log.message("Semantic completion " + className + "." + field.name()

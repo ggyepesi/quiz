@@ -61,10 +61,23 @@ public final class WikipediaInfoboxAcquisition {
         List<Declaration> declarations = sourcePlan == null
                 ? declarations(model) : declarations(model, sourcePlan);
         if (declarations.isEmpty()) return new Result(0, 0, 0, List.of());
+        var values = new java.util.concurrent.atomic.AtomicInteger();
+        Map<String, FieldOutcome> outcomes = new LinkedHashMap<>();
         Map<String, List<WikidataDynamicObject>> targets = new LinkedHashMap<>();
         for (WikidataDynamicObject object : pool) {
-            if (object != null && WikidataIds.isQid(object.qid())
-                    && declarations.stream().anyMatch(d ->
+            if (object == null || !WikidataIds.isQid(object.qid())) continue;
+            // A newly configured field can read a row from a retained answer. Both
+            // field loading and Enrich use that document in place of a second request.
+            List<Declaration> retained = declarations.stream()
+                    .filter(Declaration::fillField)
+                    .filter(d -> answered(object, d) && object.get(d.field().name()) == null
+                            && FieldSourceTargeting.applies(model, object, d.owner(), d.target()))
+                    .toList();
+            InfoboxParameters evidence = object.infoboxParameters();
+            List<String> supplied = evidence == null ? List.of() : fill(object, retained, evidence);
+            recordOutcomes(object, retained, supplied, outcomes);
+            values.addAndGet(supplied.size());
+            if (declarations.stream().anyMatch(d ->
                             needsAcquisition(model, object, d))) {
                 targets.computeIfAbsent(object.qid(), ignored -> new ArrayList<>()).add(object);
             }
@@ -73,9 +86,7 @@ public final class WikipediaInfoboxAcquisition {
                 WikipediaArticleCorrespondence.byTitle(
                         targets.values().stream().flatMap(List::stream).toList(), api, log);
         var pages = new java.util.concurrent.atomic.AtomicInteger();
-        var values = new java.util.concurrent.atomic.AtomicInteger();
         var batches = new java.util.concurrent.atomic.AtomicInteger();
-        Map<String, FieldOutcome> outcomes = new LinkedHashMap<>();
         List<String> titles = List.copyOf(titleTargets.keySet());
         boolean needsRendered = declarations.stream().anyMatch(Declaration::rendered);
         try (GenerationLog.Group group = log.group("Acquire native Wikipedia infoboxes — "
@@ -162,6 +173,7 @@ public final class WikipediaInfoboxAcquisition {
         for (Declaration declaration : pending) {
             OutcomeState state = supplied.contains(declarationKey(declaration))
                     ? OutcomeState.VALUE : OutcomeState.ANSWERED_EMPTY;
+            object.recordFieldAnswer(declaration.field().name(), true);
             FieldOutcome outcome = new FieldOutcome(object.qid(), object.getDisplayName(),
                     object.identityTypeName(), declaration.owner().className(),
                     declaration.field().name(), state, "");
@@ -175,6 +187,7 @@ public final class WikipediaInfoboxAcquisition {
         for (Declaration declaration : declarations) {
             if (!declaration.fillField()
                     || !needsAcquisition(model, object, declaration)) continue;
+            object.recordFieldAnswer(declaration.field().name(), false);
             FieldOutcome outcome = new FieldOutcome(object.qid(), object.getDisplayName(),
                     object.identityTypeName(), declaration.owner().className(),
                     declaration.field().name(), OutcomeState.FAILED, message);
@@ -193,6 +206,8 @@ public final class WikipediaInfoboxAcquisition {
                     InfoboxParameters.Key.parse(declaration.parameter()));
             if (value != null && !value.isBlank()) {
                 object.put(declaration.field().name(), value);
+                domain.runtime.AcquiredFieldSource.wikipedia(object, declaration.field().name(),
+                        declaration.parameter(), acquired.document());
                 filled.add(declarationKey(declaration));
             }
         }

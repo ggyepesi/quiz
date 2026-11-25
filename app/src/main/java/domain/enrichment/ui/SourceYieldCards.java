@@ -41,12 +41,8 @@ public final class SourceYieldCards {
             yield.usableMedia().forEach(candidate -> found.add(mediaCard(yield, candidate)));
             yield.standaloneInstances().forEach(candidate ->
                     found.add(instanceCard(yield, candidate)));
-            DynamicViewable card = new DynamicViewable(
-                    "yield-" + yield.source(),
-                    yield.source() + " (" + found.size() + ")");
-            card.type("Source yield");
-            card.put("Outcome", "Source yield");
-            card.put("Summary", yield.examined() + " request(s)"
+            DynamicViewable card = summaryCard("yield-" + yield.source(),
+                    yield.source() + " (" + found.size() + ")", yield.examined() + " request(s)"
                     + (yield.failed() == 0 ? "" : ", " + yield.failed() + " failed")
                     + "; " + found.size() + " usable candidate(s) of "
                     + yield.candidates() + " proposed"
@@ -57,6 +53,19 @@ public final class SourceYieldCards {
             cards.add(card);
         }
         return cards;
+    }
+
+    /** A reported outcome alongside the proposal cards, using the same source report view. */
+    public static Viewable summary(String title, List<String> lines) {
+        return summaryCard("yield-" + title, title, String.join("\n", lines));
+    }
+
+    private static DynamicViewable summaryCard(String id, String title, String summary) {
+        DynamicViewable card = new DynamicViewable(id, title);
+        card.type("Source yield");
+        card.put("Outcome", "Source yield");
+        card.put("Summary", summary);
+        return card;
     }
 
     static {

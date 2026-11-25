@@ -1,5 +1,7 @@
 package domain.runtime;
 
+import domain.datasource.SourceRef;
+import domain.datasource.evidence.SourceDocument;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import objectview.annotations.Hidden;
 import objectview.field.DynamicFields;
@@ -33,6 +35,48 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     private String identifier = "";
     @Hidden
     private String name = "";
+
+    // Only installed on a staged copy used for field review. A provider reports the
+    // source at the point where it supplies the value, even when a fallback writes it.
+    @Hidden private transient FieldRead fieldRead;
+
+    private static final class FieldRead {
+        final String field;
+        SourceRef source;
+        SourceDocument document;
+        boolean answered;
+        boolean failed;
+
+        FieldRead(String field) { this.field = field; }
+    }
+
+    public void captureFieldSource(String field) { fieldRead = new FieldRead(field); }
+
+    public boolean capturesFieldSource(String field) {
+        return fieldRead != null && fieldRead.field.equals(field);
+    }
+
+    public void recordFieldSource(String field, SourceRef source) {
+        recordFieldSource(field, source, null);
+    }
+
+    public void recordFieldSource(String field, SourceRef source, SourceDocument document) {
+        if (!capturesFieldSource(field)) return;
+        fieldRead.source = source;
+        fieldRead.document = document;
+    }
+
+    public SourceRef capturedFieldSource() { return fieldRead == null ? null : fieldRead.source; }
+    public SourceDocument capturedFieldDocument() { return fieldRead == null ? null : fieldRead.document; }
+
+    public void recordFieldAnswer(String field, boolean answered) {
+        if (!capturesFieldSource(field)) return;
+        if (answered) fieldRead.answered = true;
+        else fieldRead.failed = true;
+    }
+
+    public boolean capturedFieldAnswered() { return fieldRead != null && fieldRead.answered; }
+    public boolean capturedFieldFailed() { return fieldRead != null && fieldRead.failed; }
 
     /** Entity aliases are identity metadata from wbgetentities, not claim fields. */
     @Hidden
