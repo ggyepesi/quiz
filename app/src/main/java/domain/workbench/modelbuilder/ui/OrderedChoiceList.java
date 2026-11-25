@@ -14,6 +14,8 @@ import javax.swing.ListSelectionModel;
 import java.awt.BorderLayout;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 /**
  * An ordered list of chosen things, and a chooser of what could be added.
@@ -44,6 +46,8 @@ final class OrderedChoiceList<T> extends JPanel {
     private final JButton remove = new JButton("Remove");
     private final JButton up = new JButton("Up");
     private final JButton down = new JButton("Down");
+    private final UnaryOperator<T> newOccurrence;
+    private final Function<T, ?> uniqueKey;
     private Runnable onChange = () -> { };
 
     /**
@@ -53,7 +57,14 @@ final class OrderedChoiceList<T> extends JPanel {
      *                none of.
      */
     OrderedChoiceList(boolean ordered) {
+        this(ordered, UnaryOperator.identity(), Function.identity());
+    }
+
+    /** Add creates an occurrence. A null key means a choice may be used repeatedly. */
+    OrderedChoiceList(boolean ordered, UnaryOperator<T> newOccurrence, Function<T, ?> uniqueKey) {
         super(new BorderLayout(4, 4));
+        this.newOccurrence = newOccurrence;
+        this.uniqueKey = uniqueKey;
         chosen.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         chosen.setVisibleRowCount(4);
         chosen.addListSelectionListener(event -> refreshEnablement());
@@ -128,9 +139,8 @@ final class OrderedChoiceList<T> extends JPanel {
     /**
      * Replaces both halves: what is chosen, and what remains addable.
      *
-     * <p>Anything already chosen is dropped from the offer, so a thing cannot be added
-     * twice — a repeated key component is not a tighter key, it is the same partition
-     * computed twice with its order made ambiguous.
+     * <p>For unique choices, anything already chosen is dropped from the offer. Repeatable
+     * choices stay available because each occurrence is a separate row.
      */
     void show(List<T> alreadyChosen, List<T> addable) {
         chosenModel.clear();
@@ -139,7 +149,7 @@ final class OrderedChoiceList<T> extends JPanel {
         available.addItem(null);
         if (addable != null) {
             for (T candidate : addable) {
-                if (candidate != null && !chosenModel.contains(candidate)) {
+                if (candidate != null && !alreadyChosen(candidate)) {
                     available.addItem(candidate);
                 }
             }
@@ -181,13 +191,13 @@ final class OrderedChoiceList<T> extends JPanel {
 
     private void addChosen() {
         T candidate = available.getItemAt(available.getSelectedIndex());
-        if (candidate == null || chosenModel.contains(candidate)) return;
+        if (candidate == null || alreadyChosen(candidate)) return;
         // Adding to a default REPLACES it: the shown component was never chosen, and
         // keeping it beside the first real choice would silently make a compound key
         // out of one selection.
         if (mode == Mode.REPLACED_BY_ADDING) chosenModel.clear();
-        chosenModel.addElement(candidate);
-        available.removeItem(candidate);
+        chosenModel.addElement(newOccurrence.apply(candidate));
+        if (uniqueKey.apply(candidate) != null) available.removeItem(candidate);
         available.setSelectedItem(null);
         refreshEnablement();
         onChange.run();
@@ -196,7 +206,8 @@ final class OrderedChoiceList<T> extends JPanel {
     private void removeSelected() {
         int index = chosen.getSelectedIndex();
         if (index < 0) return;
-        available.addItem(chosenModel.remove(index));
+        T removed = chosenModel.remove(index);
+        if (uniqueKey.apply(removed) != null && !alreadyChosen(removed)) available.addItem(removed);
         refreshEnablement();
         onChange.run();
     }
@@ -208,6 +219,15 @@ final class OrderedChoiceList<T> extends JPanel {
         chosenModel.add(target, chosenModel.remove(index));
         chosen.setSelectedIndex(target);
         onChange.run();
+    }
+
+    private boolean alreadyChosen(T candidate) {
+        Object key = uniqueKey.apply(candidate);
+        if (key == null) return false;
+        for (int i = 0; i < chosenModel.size(); i++) {
+            if (key.equals(uniqueKey.apply(chosenModel.get(i)))) return true;
+        }
+        return false;
     }
 
     /** Every button says whether it can do anything, before it is pressed. */

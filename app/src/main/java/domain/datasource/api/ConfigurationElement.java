@@ -11,17 +11,24 @@ import java.util.List;
  * parameters.</p>
  */
 public record ConfigurationElement(String key, String caption,
-        List<ConfigurationElement> children) {
+        List<ConfigurationElement> children, String advancedSummary) {
 
     public ConfigurationElement {
         key = required(key, "Configuration element key");
         caption = required(caption, "Configuration element caption");
         children = children == null ? List.of() : List.copyOf(children);
+        advancedSummary = advancedSummary == null ? "" : advancedSummary;
+    }
+
+    public ConfigurationElement(String key, String caption, List<ConfigurationElement> children) {
+        this(key, caption, children, "");
     }
 
     public ConfigurationElement(String key, String caption) {
         this(key, caption, List.of());
     }
+
+    public boolean advanced() { return !advancedSummary.isEmpty(); }
 
     private static String required(String value, String name) {
         String clean = value == null ? "" : value.trim();

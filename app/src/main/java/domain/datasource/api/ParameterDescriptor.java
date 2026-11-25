@@ -11,7 +11,8 @@ public record ParameterDescriptor(
         String defaultValue,
         List<String> options,
         String help,
-        SourceReferenceSchema referenceSchema) {
+        SourceReferenceSchema referenceSchema,
+        boolean advanced) {
 
     public enum Kind {
         TEXT, INTEGER, BOOLEAN, CHOICE, DISCOVERED_VALUE, REFERENCE,
@@ -22,7 +23,12 @@ public record ParameterDescriptor(
     public ParameterDescriptor(
             String key, String label, Kind kind, boolean required,
             String defaultValue, List<String> options, String help) {
-        this(key, label, kind, required, defaultValue, options, help, null);
+        this(key, label, kind, required, defaultValue, options, help, null, false);
+    }
+
+    public ParameterDescriptor(String key, String label, Kind kind, boolean required,
+            String defaultValue, List<String> options, String help, SourceReferenceSchema referenceSchema) {
+        this(key, label, kind, required, defaultValue, options, help, referenceSchema, false);
     }
 
     public ParameterDescriptor {
@@ -42,6 +48,32 @@ public record ParameterDescriptor(
             throw new IllegalArgumentException(
                     "Only reference parameters may declare a reference schema: " + key);
         }
+        if (advanced && required) {
+            throw new IllegalArgumentException("Required parameter '" + key + "' belongs in the main configuration");
+        }
+    }
+
+    public ParameterDescriptor inAdvancedSettings() {
+        return new ParameterDescriptor(key, label, kind, required, defaultValue, options, help, referenceSchema, true);
+    }
+
+    public String effectiveValue(String value) {
+        String configured = text(value);
+        return configured.isEmpty() ? defaultValue : configured;
+    }
+
+    public boolean usesDefault(String value) {
+        String effective = effectiveValue(value);
+        if (effective.equals(defaultValue)) return true;
+        if (kind == Kind.BOOLEAN) return effective.equalsIgnoreCase(defaultValue);
+        if (kind == Kind.INTEGER) {
+            try {
+                return Integer.parseInt(effective) == Integer.parseInt(defaultValue);
+            } catch (NumberFormatException invalidOrBlank) {
+                return false;
+            }
+        }
+        return false;
     }
 
     public static ParameterDescriptor reference(

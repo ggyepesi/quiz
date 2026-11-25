@@ -310,7 +310,9 @@ class ClassConfigurationTreeTest {
         @Override public File modelFile() { return new File("positions.model.json"); }
         @Override public File snapshotFile() { return new File("positions.snapshot.json"); }
         @Override public List<String> unsavedModelChanges() { return List.copyOf(changes); }
-        @Override public void recordModelChange(String change) { changes.add(change); }
+        @Override public void recordModelChange(String change) {
+            if (!changes.contains(change)) changes.add(change);
+        }
         @Override public void populationChanged(PopulationSelection population) { changes.add(population.name()); }
         @Override public String modelWriteConflict() { return ""; }
         @Override public void writeProjectModel() { }

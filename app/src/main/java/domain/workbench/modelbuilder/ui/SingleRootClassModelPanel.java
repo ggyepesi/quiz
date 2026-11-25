@@ -297,6 +297,7 @@ public class SingleRootClassModelPanel extends JPanel {
 
     public void selectConstruct(Object target) {
         switch (target) {
+            case GeneratedProjectModel project when project == projectModel -> selectNode(rootTreeNode);
             case GeneratedClassModel clazz -> selectClass(clazz);
             case GeneratedFieldModel field -> selectField(field);
             case Selection selection -> selectSelection(selection);

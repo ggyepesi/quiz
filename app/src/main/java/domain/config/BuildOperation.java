@@ -117,8 +117,14 @@ public final class BuildOperation {
     }
 
     public BuildOperation copy() {
-        BuildOperation copy = new BuildOperation(kind, targetDeclarationId);
+        BuildOperation copy = repeat();
         copy.declarationId = declarationId;
+        return copy;
+    }
+
+    /** The same operation as a separate step in the build. */
+    public BuildOperation repeat() {
+        BuildOperation copy = new BuildOperation(kind, targetDeclarationId);
         copy.targetProjectName = targetProjectName;
         return copy;
     }

@@ -182,6 +182,8 @@ class PanelLayoutIsCheckedInTest {
                 }
             }
             describe(actual, "Unified Workbench / Build project", unified);
+            find(unified, SingleRootClassModelPanel.class).selectConstruct(backing.projectModel());
+            describe(actual, "Unified Workbench / Edit build steps", unified);
         }
 
         Path golden = Files.isRegularFile(GOLDEN) ? GOLDEN : Path.of("docs/panel-layout.txt");

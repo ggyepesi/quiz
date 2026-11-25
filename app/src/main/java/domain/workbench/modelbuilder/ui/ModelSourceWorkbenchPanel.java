@@ -393,7 +393,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         configureLocalEditor("Edit class, field and datasource declarations in ModelBuilder.");
     }
 
-    /** The unified workbench edits fields and transformations over the same working model. */
+    /** The unified workbench edits fields, transformations and build steps on the working model. */
     public void editWorkingConfiguration(TransformationConfigurationEditor.Fields fields,
             Consumer<GeneratedClassModel> transformationApplied) {
         configurationAccess = ConfigurationAccess.UNIFIED_WORKBENCH;
@@ -545,9 +545,13 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     private void applySelectionEditability() {
         boolean editable = canEditSelectedConstruct();
         for (Component editor : cardPanel.getComponents()) {
+            if (editor == domainOverview) continue;
             if (localConfiguration() && editor == selectionEditor) continue;
             EditableComponents.setEditable(editor, editable);
         }
+        boolean editingProject = editingEnabled && selected instanceof GeneratedProjectModel;
+        domainOverview.setEditingEnabled(editingProject && configurationAccess == ConfigurationAccess.MODEL_BUILDER,
+                editingProject && configurationAccess != ConfigurationAccess.INSPECT);
         EditableComponents.setEditable(kindHeader, editable);
         classSourcePanel.refreshTransformationAccess();
     }

@@ -36,6 +36,8 @@ import org.junit.jupiter.api.io.TempDir;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
@@ -351,6 +353,77 @@ class UnifiedWorkbenchPanelTest {
         var node = actionNode(workbench, caption);
         assertTrue(node != null, "missing action or result " + caption);
         tree.setSelectionPath(new TreePath(node.getPath()));
+    }
+
+    @Test void theSharedBuildEditorSavesTheOrderUsedByTheNextPlan() throws Exception {
+        var opened = open();
+        var project = opened.domain().capability(ProjectBacking.class);
+        var storage = DomainStorage.in(root.toFile());
+        var panel = new AtomicReference<UnifiedWorkbenchPanel>();
+        var savedOrder = new AtomicReference<List<String>>();
+        SwingUtilities.invokeAndWait(() -> {
+            var workbench = new UnifiedWorkbenchPanel(opened.domain());
+            panel.set(workbench);
+            selectAction(workbench, "Build project");
+            find(workbench, JButton.class, button -> "Plan build".equals(button.getText())).doClick();
+            find(workbench, JLabel.class, label -> label.getText().contains("No build steps")
+                    && label.getText().contains("Edit build steps"));
+            find(workbench, JButton.class, button -> "Edit build steps".equals(button.getText())).doClick();
+
+            var constructs = find(workbench, SingleRootClassModelPanel.class, unused -> true);
+            assertSame(opened.working(), constructs.selectedUserObject());
+            var kind = find(workbench, JComboBox.class, box -> "project.kind".equals(box.getName()));
+            assertFalse(kind.isEnabled());
+            var build = find(workbench, JPanel.class, candidate -> "project.build".equals(candidate.getName()));
+            var options = find(build, JComboBox.class, unused -> true);
+            assertTrue(options.isEnabled());
+            for (var operation : List.of(BuildOperation.Kind.SAVE_PROJECT_RESULT,
+                    BuildOperation.Kind.GENERATE_PROJECT)) {
+                for (int i = 0; i < options.getItemCount(); i++) {
+                    if (options.getItemAt(i) instanceof BuildOperation step && step.kind() == operation) {
+                        options.setSelectedIndex(i);
+                        break;
+                    }
+                }
+                find(build, JButton.class, button -> "Add".equals(button.getText())).doClick();
+            }
+            var rows = find(build, JList.class, unused -> true);
+            var beforeMove = opened.working().buildOperations().stream().map(BuildOperation::declarationId).toList();
+            var changes = project.unsavedModelChanges();
+            rows.setSelectedIndex(1);
+            assertEquals(changes, project.unsavedModelChanges(), "selecting a build row is inspection");
+            find(build, JButton.class, button -> "Up".equals(button.getText())).doClick();
+            savedOrder.set(beforeMove.reversed());
+            assertEquals(savedOrder.get(), opened.working().buildOperations().stream()
+                    .map(BuildOperation::declarationId).toList());
+            assertEquals(List.of("Build steps"), project.unsavedModelChanges());
+            assertFalse(workbench.hasUnappliedEdits(), "build row commands update the working model");
+            find(workbench, JButton.class, button -> "Plan build".equals(button.getText())).doClick();
+            find(workbench, JLabel.class, label -> label.getText().contains("before building."));
+            assertFalse(workbench.saving());
+        });
+        try {
+            assertEquals(opened.savedModel(), Files.readString(opened.modelPath()));
+            var workbench = panel.get();
+            SwingUtilities.invokeAndWait(() -> {
+                workbench.persistenceConfirmation(message -> message.contains(opened.modelPath().toString()));
+                workbench.showSaveSuccess(false);
+                find(workbench, JButton.class, button -> "Save domain…".equals(button.getText())).doClick();
+            });
+            awaitSaved(workbench);
+            var saved = new GeneratedProjectModelStore().load(opened.modelPath().toFile());
+            assertEquals(savedOrder.get(), saved.buildOperations().stream().map(BuildOperation::declarationId).toList());
+            SwingUtilities.invokeAndWait(() -> {
+                find(workbench, JLabel.class, label -> label.getText().contains("Plan the saved build of")
+                        && label.getText().contains(opened.modelPath().toString()));
+                find(workbench, JButton.class, button -> "Plan build".equals(button.getText())).doClick();
+                find(workbench, JButton.class, button -> button.getText().contains("1 · Generate project"));
+                find(workbench, JButton.class, button -> button.getText().contains("2 · Save project"));
+            });
+            assertFalse(storage.buildManifestFile(saved.name()).exists(), "planning executes no build steps");
+        } finally {
+            SwingUtilities.invokeAndWait(panel.get()::close);
+        }
     }
 
     @Test void aSaveOutsideTheWorkbenchAfterPlanningRefusesTheBuild() throws Exception {

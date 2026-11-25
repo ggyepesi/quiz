@@ -54,11 +54,11 @@ public final class ProjectConfigurationPanel extends JPanel implements AutoClose
         }, ignored -> { });
     }
 
-    /** Mounts field and transformation editing over the unified workbench's open project. */
+    /** Mounts field, transformation and build editing over the unified workbench's open project. */
     public static ProjectConfigurationPanel editWorkingConfiguration(ProjectBacking project,
             TransformController controller, Consumer<Object> selected,
             Consumer<GeneratedFieldModel> fieldApplied,
-            Runnable recipeApplied) {
+            Runnable recipeApplied, Runnable buildChanged) {
         return new ProjectConfigurationPanel(project, controller.domain().instances().size(),
                 project.projectModel().rootClass(),
                 (details, selections) -> {
@@ -68,7 +68,12 @@ public final class ProjectConfigurationPanel extends JPanel implements AutoClose
                 recipeApplied.run();
             });
             details.afterChange(ignored -> {
-                if (details.selected() instanceof GeneratedFieldModel field) fieldApplied.accept(field);
+                if (details.selected() instanceof GeneratedFieldModel field) {
+                    fieldApplied.accept(field);
+                } else if (details.selected() instanceof GeneratedProjectModel) {
+                    project.recordModelChange("Build steps");
+                    buildChanged.run();
+                }
             });
         }, selected);
     }
@@ -139,6 +144,8 @@ public final class ProjectConfigurationPanel extends JPanel implements AutoClose
     public boolean hasDrafts() { return details.hasTransformationDrafts(); }
 
     public void selectConstruct(Object construct) { constructs.selectConstruct(construct); }
+
+    public Object selectedConstruct() { return details.selected(); }
 
     public void setEditingEnabled(boolean enabled) {
         editingAllowed = enabled;

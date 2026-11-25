@@ -35,7 +35,12 @@ public final class DatasourceOperationForm extends JPanel {
     private final JComboBox<Choice> operations = new JComboBox<>();
     private final JPanel parameters = new JPanel(new GridBagLayout());
     private final JLabel help = new JLabel(" ");
+    private final JPanel advancedDetail = new JPanel(new BorderLayout(4, 4));
+    private final JPanel advancedParameters = new JPanel(new GridBagLayout());
+    private final JLabel advancedHelp = new JLabel(" ");
     private final Map<String, JComponent> inputs = new LinkedHashMap<>();
+    private Map<String, String> storedParameters = Map.of();
+    private boolean separateAdvanced;
     private Runnable changed = () -> { };
 
     /**
@@ -77,6 +82,8 @@ public final class DatasourceOperationForm extends JPanel {
         add(operations, BorderLayout.NORTH);
         add(parameters, BorderLayout.CENTER);
         add(help, BorderLayout.SOUTH);
+        advancedDetail.add(advancedParameters, BorderLayout.CENTER);
+        advancedDetail.add(advancedHelp, BorderLayout.SOUTH);
     }
 
     public void onChange(Runnable changed) {
@@ -98,6 +105,11 @@ public final class DatasourceOperationForm extends JPanel {
     public void operationChooserVisible(boolean visible) {
         operations.setVisible(visible);
     }
+
+    /** Hosts the same inputs in a second detail card of the configuration tree. */
+    public JComponent advancedDetail() { return advancedDetail; }
+
+    public void showAdvancedSeparately() { separateAdvanced = true; }
 
     /** Shows {@code recipe}, or nothing chosen when it is null or not offered here. */
     public void show(SourceRecipe recipe) {
@@ -126,7 +138,16 @@ public final class DatasourceOperationForm extends JPanel {
         Choice choice = (Choice) operations.getSelectedItem();
         if (choice == null) return null;
         Map<String, String> values = new LinkedHashMap<>();
-        inputs.forEach((key, input) -> values.put(key, value(input)));
+        for (ParameterDescriptor parameter : choice.operation().parameters()) {
+            String key = parameter.key();
+            String edited = value(inputs.get(key));
+            String stored = storedParameters.get(key);
+            if (parameter.advanced() && parameter.usesDefault(edited) && parameter.usesDefault(stored)) {
+                if (stored != null) values.put(key, stored);
+            } else {
+                values.put(key, edited);
+            }
+        }
         return new SourceRecipe(choice.provider().id(), choice.operation().id(), values);
     }
 
@@ -137,41 +158,50 @@ public final class DatasourceOperationForm extends JPanel {
     }
 
     private void showParameters(Map<String, String> stored) {
+        storedParameters = stored;
         parameters.removeAll();
+        advancedParameters.removeAll();
         inputs.clear();
         Choice choice = (Choice) operations.getSelectedItem();
         List<String> helpLines = new ArrayList<>();
+        List<String> advancedHelpLines = new ArrayList<>();
         if (choice != null) {
             GridBagConstraints c = new GridBagConstraints();
-            c.gridy = 0;
             c.anchor = GridBagConstraints.WEST;
             c.insets = new Insets(2, 0, 2, 6);
             for (ParameterDescriptor parameter : choice.operation().parameters()) {
-                String value = stored.getOrDefault(parameter.key(), "");
-                if (value.isBlank()) value = parameter.defaultValue();
+                boolean advanced = separateAdvanced && parameter.advanced();
+                JPanel target = advanced ? advancedParameters : parameters;
+                String value = parameter.effectiveValue(stored.get(parameter.key()));
                 JComponent input = input(parameter, value, choice.provider().id());
                 input.setName("domain.datasource.parameter." + parameter.key());
                 inputs.put(parameter.key(), input);
+                c.gridy = target.getComponentCount() / 2;
                 c.gridx = 0;
                 c.weightx = 0;
                 c.fill = GridBagConstraints.NONE;
-                parameters.add(new JLabel(parameter.label()
+                target.add(new JLabel(parameter.label()
                         + (parameter.required() ? " *:" : ":")), c);
                 c.gridx = 1;
                 c.weightx = 1;
                 c.fill = GridBagConstraints.HORIZONTAL;
-                parameters.add(input, c);
-                c.gridy++;
+                target.add(input, c);
                 if (!parameter.help().isBlank()) {
-                    helpLines.add(parameter.label() + ": " + parameter.help());
+                    (advanced ? advancedHelpLines : helpLines).add(parameter.label() + ": " + parameter.help());
                 }
             }
         }
-        help.setText(helpLines.isEmpty() ? " "
-                : "<html>" + String.join("<br>", helpLines.stream()
-                        .map(DatasourceOperationForm::escape).toList()) + "</html>");
+        help.setText(helpText(helpLines));
+        advancedHelp.setText(helpText(advancedHelpLines));
         parameters.revalidate();
         parameters.repaint();
+        advancedParameters.revalidate();
+        advancedParameters.repaint();
+    }
+
+    private static String helpText(List<String> lines) {
+        return lines.isEmpty() ? " " : "<html>" + String.join("<br>", lines.stream()
+                .map(DatasourceOperationForm::escape).toList()) + "</html>";
     }
 
     private JComponent input(

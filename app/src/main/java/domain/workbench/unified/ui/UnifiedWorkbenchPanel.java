@@ -52,7 +52,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
-/** One opened project for field acquisition and local transformations. */
+/** One opened project for field acquisition, local transformations and builds. */
 public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable {
     private DomainModel domain;
     private ProjectBacking project;
@@ -66,6 +66,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private final JPanel buildDetail = new JPanel(new BorderLayout());
     private final JLabel buildStatus = new JLabel();
     private final JButton planBuild = new JButton("Plan build");
+    private final JButton editBuild = new JButton("Edit build steps");
     private final JSplitPane workspace;
     private final WorkbenchResultViews previewResults = new WorkbenchResultViews();
     private final JButton preview = new JButton("Preview population");
@@ -145,6 +146,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         var projectActions = actions.addSource("project", "Project", null);
         buildAction = actions.addAction(projectActions, "build-project", "Build project", buildDetail, null);
         planBuild.addActionListener(event -> planBuild());
+        editBuild.addActionListener(event -> configuration.selectConstruct(project.projectModel()));
         buildRunner.onRunningChanged(running -> {
             building = running;
             configuration.setEditingEnabled(!running);
@@ -162,8 +164,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         actions.expandSources();
         actions.selectAction(acquisition);
         compilePlan();
-        configuration = ProjectConfigurationPanel.editWorkingConfiguration(project, transform,
-                this::constructSelected, this::fieldApplied, this::refreshPreview);
+        configuration = projectConfiguration();
         workspace = new JSplitPane(JSplitPane.VERTICAL_SPLIT, configuration, actions);
         workspace.setResizeWeight(0.72);
         workspace.setDividerLocation(510);
@@ -177,20 +178,28 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         updateSave();
     }
 
+    private ProjectConfigurationPanel projectConfiguration() {
+        return ProjectConfigurationPanel.editWorkingConfiguration(project, transform,
+                this::constructSelected, this::fieldApplied, this::refreshPreview, this::updateSave);
+    }
+
     private void resetBuild(String message) {
         buildPlanOpen = false;
         builtDomain = null;
         if (buildActionSelected) actions.selectAction(buildAction);
         actions.clearResults(buildAction);
-        buildStatus.setText(message.isBlank() ? "Plan the saved build of " + project.modelFile().getPath() : message);
+        buildStatus.setText(message.isBlank() ? buildPlanPrompt() : message);
         var start = new JPanel(new FlowLayout(FlowLayout.LEFT));
         start.add(planBuild);
+        start.add(editBuild);
         start.add(buildStatus);
         buildDetail.removeAll();
         buildDetail.add(start, BorderLayout.NORTH);
         buildDetail.revalidate();
         buildDetail.repaint();
     }
+
+    private String buildPlanPrompt() { return "Plan the saved build of " + project.modelFile().getPath(); }
 
     private boolean buildReady(String activity) {
         if (busy() || !configuration.resolveUnappliedEdits(activity)) return false;
@@ -215,7 +224,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
             var saved = new GeneratedProjectModelStore().load(modelFile);
             guard.check();
             if (saved.buildOperations().isEmpty()) {
-                resetBuild("No build steps in " + modelFile.getName() + ". Configure Build in ModelBuilder.");
+                resetBuild("No build steps in " + modelFile.getName() + ". Use Edit build steps, then " + saveVerb + ".");
                 return;
             }
             var snapshot = storage.snapshotFile(saved.name());
@@ -244,6 +253,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     }
 
     private void installBuiltDomain(DomainModel loaded) {
+        boolean showingProject = configuration.selectedConstruct() == project.projectModel();
         var activeClass = selectedField == null ? selectedClass : project.projectModel().declaringClass(selectedField);
         String activeField = selectedField == null ? null : selectedField.name();
         configuration.close();
@@ -256,9 +266,10 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         acquisitionTargetCurrent = false;
         acquisitionValues.removeAll();
         compilePlan();
-        configuration = ProjectConfigurationPanel.editWorkingConfiguration(project, transform,
-                this::constructSelected, this::fieldApplied, this::refreshPreview);
-        if (activeClass != null) {
+        configuration = projectConfiguration();
+        if (showingProject) {
+            configuration.selectConstruct(project.projectModel());
+        } else if (activeClass != null) {
             var restored = project.projectModel().resolveClass(activeClass.declarationId(), activeClass.className());
             if (restored != null) {
                 Object target = restored.fields().stream().filter(field -> field.name().equals(activeField))
@@ -487,7 +498,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         var owner = project.projectModel().declaringClass(field);
         String description = "Field configuration " + owner.className() + "."
                 + OwnedFieldSources.declaredFieldPath(owner, field);
-        if (!project.unsavedModelChanges().contains(description)) project.recordModelChange(description);
+        project.recordModelChange(description);
         compilePlan();
         acquisitionTargetCurrent = false;
         fieldSelected(field);
@@ -579,6 +590,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                     get();
                     saved = true;
                     if (buildPlanOpen) resetBuild("");
+                    else buildStatus.setText(buildPlanPrompt());
                     if (afterSuccess == null && showSaveSuccess) {
                         Dialogs.showPersistenceSuccess(UnifiedWorkbenchPanel.this, saveVerb,
                                 project.projectName(), project.modelFile().getPath());
@@ -608,6 +620,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         save.setEnabled(!busy());
         preview.setEnabled(previewInput != null && !busy());
         planBuild.setEnabled(!busy());
+        editBuild.setEnabled(!busy());
         if (loadingValues) {
             saveStatus.setText("Loading and reviewing field values");
         } else if (previewing) {

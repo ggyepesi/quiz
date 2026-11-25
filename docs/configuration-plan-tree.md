@@ -288,8 +288,8 @@ and no reconciliation step.
 For a model-backed project, **Configuration…** in TransformApp and DataSourceApp opens the
 ModelBuilder construct navigator and the same local class, field and graph trees over that
 session's working model. **Needs** and **Used by** open the same referenced declarations. Inspection
-uses cached Wikidata labels. Source fields, class/graph settings and the project build list are
-edited in ModelBuilder. DataSourceApp runs configured acquisitions and reviews values through its
+uses cached Wikidata labels. Of the standalone apps, ModelBuilder edits source fields, class and
+graph settings, and the project build list. DataSourceApp runs configured acquisitions and reviews values through its
 action/result navigator. TransformApp edits local groups in the group view and can add or remove
 members of a local hand-picked population in Configuration. Imported selections and populations
 produced by a transformation are read-only there.
@@ -356,12 +356,18 @@ choose **Transform → Preview population** in **Actions and results**. The expl
 the loaded input instances with the same membership and filter evaluator as **Build project**, and
 shows the matching instance cards and the count examined. Preview makes no datasource requests and
 writes no files. **Save model** or **Save domain** writes the applied recipe to `.model.json`.
+In the project overview, the **Build** list is the same ordered editor as in ModelBuilder.
+**Project → Build project → Edit build steps** opens that overview. Add, remove and move actions
+update the working model. **Generate project**, **Apply graph decisions** and **Run transformation**
+can be added again after upstream steps change their inputs. Each occurrence has its own declaration
+ID. The other operations are offered once per target, and **Save project** is offered once.
+**Save model/domain** writes the order to `.model.json`.
+
 Under **Project → Build project**, **Plan build** shows the saved steps and the files the build
-may read or write. Apply and save recipe changes before building. **Execute** uses the same
+may read or write. Save configuration changes before building. **Execute** uses the same
 build, progress view and report as ModelBuilder. A completed build reloads its saved model and
 snapshot into the open workbench before publishing **Instances**, **Steps** and **Files written**
-in the action tree. The results are for inspection. Build-step authoring and graph decision review
-are still in ModelBuilder.
+in the action tree. The results are for inspection. Graph decision review is still in ModelBuilder.
 
 ## Forcing tests and checked artifacts
 

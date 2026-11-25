@@ -12,6 +12,7 @@ import objectview.viewconfig.FieldTypeSource;
 
 import javax.swing.JComponent;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import domain.DomainSchemas;
@@ -42,7 +43,7 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
      *  Null when there is no model file, or it could not be read. */
     private final domain.config.GeneratedProjectModel workingModel;
     private final ProjectSaveGuard saveGuard;
-    private final List<String> unsavedModelChanges = new java.util.ArrayList<>();
+    private final Set<String> unsavedModelChanges = new LinkedHashSet<>();
     private final java.util.Map<String, List<Viewable>> editedPopulationMembers =
             new java.util.LinkedHashMap<>();
 

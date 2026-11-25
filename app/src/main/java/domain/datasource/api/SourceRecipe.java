@@ -47,8 +47,7 @@ public record SourceRecipe(
         DatasourceOperation operation = registry.require(
                 providerId, operationId, DatasourceOperation.class);
         for (ParameterDescriptor parameter : operation.parameters()) {
-            String value = parameter(parameter.key());
-            if (value.isBlank()) value = parameter.defaultValue();
+            String value = parameter.effectiveValue(parameter(parameter.key()));
             if (parameter.required() && value.isBlank()) {
                 throw new IllegalArgumentException("Datasource recipe " + providerId + "."
                         + operationId + " requires parameter '" + parameter.key() + "'");

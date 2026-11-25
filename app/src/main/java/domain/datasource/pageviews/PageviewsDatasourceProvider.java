@@ -54,7 +54,7 @@ public final class PageviewsDatasourceProvider implements DatasourceProvider {
                     ParameterDescriptor.Kind.INTEGER, false,
                     String.valueOf(DEFAULT_MONTHS), List.of(),
                     "Total views by human readers over this many complete months, "
-                            + "ending with last month."));
+                            + "ending with last month.").inAdvancedSettings());
         }
         @Override public SourceValueSchema outputSchema() {
             return new SourceValueSchema(SourceValueKind.QUANTITY, false, "");

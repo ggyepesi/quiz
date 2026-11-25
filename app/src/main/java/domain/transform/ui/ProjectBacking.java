@@ -28,10 +28,10 @@ public interface ProjectBacking extends DomainCapability {
     /** The working model: read once when the domain opened, edited in memory since. */
     GeneratedProjectModel projectModel();
 
-    /** Model edits made in this session and not yet written, in the order made. */
+    /** Distinct unsaved change descriptions, in the order first recorded. */
     List<String> unsavedModelChanges();
 
-    /** Records an applied edit of the working model for Save and Close. */
+    /** Records an applied edit of the working model for Save and Close, once per description. */
     void recordModelChange(String change);
 
     /** Reflects the authored members in the open domain's instance scope. */

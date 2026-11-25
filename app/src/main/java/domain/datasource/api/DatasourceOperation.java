@@ -42,11 +42,13 @@ public interface DatasourceOperation {
     default List<ConfigurationElement> configurationElements(SourceBinding binding) {
         if (binding == null) return List.of();
         return parameters().stream().map(parameter -> {
-            String value = binding.recipe().parameter(parameter.key());
-            if (value.isBlank()) value = parameter.defaultValue();
-            if (value.isBlank() && !parameter.required()) return null;
-            if (value.isBlank()) value = "not configured";
-            return new ConfigurationElement(parameter.key(), parameter.label() + ": " + value);
+            String stored = binding.recipe().parameter(parameter.key());
+            String value = parameter.effectiveValue(stored);
+            if (value.isBlank() && !parameter.required() && !parameter.advanced()) return null;
+            String caption = parameter.label() + ": " + (value.isBlank() ? "not configured" : value);
+            String summary = !parameter.advanced() ? ""
+                    : parameter.usesDefault(stored) ? parameter.label() : caption;
+            return new ConfigurationElement(parameter.key(), caption, List.of(), summary);
         }).filter(java.util.Objects::nonNull).toList();
     }
 
