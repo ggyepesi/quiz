@@ -489,8 +489,7 @@ public final class ModelStatementReifications {
         return reify(project, pool, log);
     }
 
-    /** Compiled-model overload of {@link #enrich(GeneratedProjectModel, List,
-     *  WikidataSparqlClient, GenerationLog)}. */
+    /** Loads the statement qualifiers the compiled model's reifications need. */
     public static void enrich(
             CompiledProjectModel project,
             List<WikidataDynamicObject> pool,
@@ -582,8 +581,7 @@ public final class ModelStatementReifications {
         return new AcquisitionReport(acquired);
     }
 
-    /** Compiled-model overload of {@link #reify(GeneratedProjectModel, List,
-     *  GenerationLog)}. */
+    /** Reifies the pool's statements into the compiled model's statement classes. */
     public static List<WikidataDynamicObject> reify(
             CompiledProjectModel project,
             List<WikidataDynamicObject> pool,

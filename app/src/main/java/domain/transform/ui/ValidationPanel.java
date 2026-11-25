@@ -102,7 +102,7 @@ import domain.DomainSchemas;
  * facets), one type at a time. The coverage view IS the shared field-config table
  * ({@link ViewConfigEditor}) driven by a {@link FieldTableContributor}: per field it adds
  * {@code Coverage} / {@code Present} / {@code Missing} columns. Select a field to
- * drill into the task's missing, present, or full member scope — rendered with the shared {@link CardListView} /
+ * drill into the task's missing, present, or full member scope — rendered with the shared {@link objectview.render.CardListView} /
  * {@link SearchPanel} (selectable, searchable cards), so a missing member IS the object,
  * ready for curation (a manual fill or a source enrichment such as "Check DBpedia").
  */

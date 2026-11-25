@@ -166,7 +166,7 @@ public class FlexibleDate implements Comparable<FlexibleDate>, Addressable, Stab
     /**
      * Converts a raw Wikidata time literal; null when {@code s} isn't one —
      * safe to probe arbitrary values with. The calendar is unstated here, so the
-     * date reads as Gregorian; use {@link #fromWikidataLiteral(String, String)}
+     * date reads as Gregorian; use {@link #fromWikidataLiteral(String, Precision)}
      * wherever the value node's calendar model is in hand.
      */
     public static FlexibleDate fromWikidataLiteral(String s) {

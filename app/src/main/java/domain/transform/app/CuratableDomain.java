@@ -320,7 +320,7 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
         // Derived from THIS domain's bindings, not the base's: the curated domain is
         // constructed with its own group roots.
         return groupRootBindings().stream()
-                .map(objectview.viewconfig.DomainGroupRoot::root)
+                .<objectview.group.ViewableGroup<?>>map(objectview.viewconfig.DomainGroupRoot::root)
                 .toList();
     }
     @Override public List<objectview.viewconfig.DomainGroupRoot> groupRootBindings() {

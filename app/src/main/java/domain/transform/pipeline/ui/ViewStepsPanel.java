@@ -303,7 +303,7 @@ public final class ViewStepsPanel extends JPanel {
     }
 
     /** The selected field as a {@link DomainField}. Prefer the domain's authoritative
-     *  shape: a dynamic snapshot row has no reflected {@link Field}, so reconstructing
+     *  shape: a dynamic snapshot row has no reflected {@link java.lang.reflect.Field}, so reconstructing
      *  it from the row alone misclassifies e.g. {@code Collection<MediaValue>} as one
      *  MEDIA value and loses the collection-size operators. */
     private DomainField currentField() {

@@ -6,7 +6,7 @@ import objectview.media.MediaValueData;
  * Metadata-only media value.
  * Does not download or decode images.
  *
- * <p>Implements the generic {@link MediaValue} so the renderer can turn it
+ * <p>Implements the generic {@link objectview.media.MediaValue} so the renderer can turn it
  * into an image without depending on wikidata — the conversion happens at render
  * time, so this value stays serializable in the data pool.
  */

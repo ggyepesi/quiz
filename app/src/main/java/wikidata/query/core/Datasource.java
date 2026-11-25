@@ -4,7 +4,7 @@ import wikidata.WikidataSparqlClient;
 
 /**
  * A SPARQL datasource a query is generated for — its endpoint and dialect. Making a
- * query operation request its client through {@link QueryContext#sparql(Datasource)}
+ * query operation request its client through {@link WikidataAccess#sparql(work.QueryContext, Datasource)}
  * means a Wikidata operation cannot silently fall through to DBpedia (or vice-versa):
  * the binding is explicit, not left to whoever configured the runner.
  */

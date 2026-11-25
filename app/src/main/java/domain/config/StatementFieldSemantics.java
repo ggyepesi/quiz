@@ -324,7 +324,7 @@ public final class StatementFieldSemantics {
      * are excluded because they do not exist at reification time.
      *
      * <p>This is deliberately broader than the automatic proposal in
-     * {@link StatementCanonicalDefaults}: a modeller may explicitly decide that
+     * the automatic default key: a modeller may explicitly decide that
      * a scalar date participates in identity, although dates are omitted from
      * the initial default.</p>
      */

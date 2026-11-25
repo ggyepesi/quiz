@@ -51,7 +51,7 @@ public final class StatementTransforms {
      * saved still fills on those paths.
      *
      * <p>A replayable stage carries the call itself rather than only its name, so the
-     * inventory {@link RemapScope} reports and the work {@link #applyIdempotent}
+     * inventory {@link domain.build.RemapScope} reports and the work {@link #applyIdempotent}
      * performs are the same list. Naming them separately is what let the plan tell a
      * user their restriction edits had been skipped while they were in fact applied.
      */

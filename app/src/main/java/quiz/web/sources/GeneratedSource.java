@@ -290,7 +290,7 @@ public class GeneratedSource implements ViewableSource {
                                     model, allObjects), saved);
             explicitGroups = resolved.stream()
                     .filter(binding -> type.equals(binding.memberType()))
-                    .map(objectview.viewconfig.DomainGroupRoot::root)
+                    .<objectview.group.ViewableGroup<?>>map(objectview.viewconfig.DomainGroupRoot::root)
                     .findFirst().orElse(null);
             // A legacy snapshot has roots but no member-type bindings. Preserve its old
             // all-roots behavior only when neither a saved nor configured typed root

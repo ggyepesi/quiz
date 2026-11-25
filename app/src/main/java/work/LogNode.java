@@ -20,7 +20,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * WorkflowRecorder} on the worker thread, and read on the EDT while the
  * tree is rendered via {@link objectview.ViewableAdapter} reflection. The
  * mutating methods are therefore package-private (only the recorder calls
- * them) and {@link #children} is copy-on-write so the renderer iterates a
+ * them) and {@link #steps} is copy-on-write so the renderer iterates a
  * stable snapshot without locking.
  */
 public class LogNode extends ViewableAdapter {

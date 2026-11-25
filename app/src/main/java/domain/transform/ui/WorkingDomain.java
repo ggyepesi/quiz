@@ -514,7 +514,7 @@ public final class WorkingDomain extends DelegatingDomainModel
     public List<? extends objectview.group.ViewableGroup<?>> groupRoots() {
         // Derived from THIS domain's bindings, which include the groups edited here.
         return groupRootBindings().stream()
-                .map(objectview.viewconfig.DomainGroupRoot::root)
+                .<objectview.group.ViewableGroup<?>>map(objectview.viewconfig.DomainGroupRoot::root)
                 .toList();
     }
 

@@ -11,8 +11,8 @@ import java.util.List;
  * A domain the transform workbench operates over: its instances plus the schema
  * (types and, per type, field names and shapes) the operation slots filter on.
  * Decoupled from any particular backing so the SAME workbench runs over a Wikidata
- * snapshot ({@link SnapshotDomain}) or the hand-written {@code Viewable} domains —
- * Nobel, State, SportTeam — via reflection ({@link ReflectionDomain}).
+ * snapshot ({@link domain.runtime.SnapshotDomain}) or the hand-written {@code Viewable} domains —
+ * Nobel, State, SportTeam — via reflection ({@link domain.transform.ui.ReflectionDomain}).
  */
 public interface DomainModel {
     /** A field's declared closed value set. Observed suggestions are deliberately not
@@ -261,7 +261,7 @@ public interface DomainModel {
     @Declared
     default List<? extends objectview.group.ViewableGroup<?>> groupRoots() {
         return groupRootBindings().stream()
-                .map(objectview.viewconfig.DomainGroupRoot::root)
+                .<objectview.group.ViewableGroup<?>>map(objectview.viewconfig.DomainGroupRoot::root)
                 .toList();
     }
 
@@ -277,7 +277,7 @@ public interface DomainModel {
         if (memberType == null) return null;
         List<objectview.group.ViewableGroup<?>> matches = groupRootBindings().stream()
                 .filter(binding -> memberType.equals(binding.memberType()))
-                .map(objectview.viewconfig.DomainGroupRoot::root)
+                .<objectview.group.ViewableGroup<?>>map(objectview.viewconfig.DomainGroupRoot::root)
                 .toList();
         if (matches.size() > 1) {
             throw new IllegalStateException(

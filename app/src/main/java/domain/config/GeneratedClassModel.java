@@ -87,7 +87,7 @@ public class GeneratedClassModel {
      * first-and-rest, and the class that inherits membership decided it had its own by
      * asking whether one of the three was blank.
      *
-     * <p>{@link EntityBound#RELATION} is the ordinary shape: the members are the entities
+     * <p>{@link EntityBound.Kind#RELATION} is the ordinary shape: the members are the entities
      * carrying {@code relationPid} into these QIDs. It carries {@code includeDescendants}
      * as well, which the three fields could not express at all — the query for it has
      * existed in {@code RuleNodeQueryBuilder} with nothing able to ask for it, and

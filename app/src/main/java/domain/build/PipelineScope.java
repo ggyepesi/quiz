@@ -9,7 +9,7 @@ package domain.build;
  * rank them.
  *
  * <p>Scope owns population bounds and nothing else. How much of that population is read
- * is {@link PipelineLimits}; whether facts may be fetched for it is {@link Acquisition}.
+ * is {@link PipelineLimits}; whether facts may be fetched for it is {@link PipelineRequest.Acquisition}.
  * A class scope follows the production chain required to MAKE that class, which is why
  * it names a class rather than a set of classes: an aggregate, a statement class or an
  * owned class cannot be produced as an unrelated root, and the chain is what says so.
