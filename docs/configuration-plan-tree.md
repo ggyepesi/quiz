@@ -330,9 +330,20 @@ Selecting a field or reading its plan sends no datasource requests.
 Leaving, saving or closing over unapplied edits asks first, as described under
 [One draft and one Apply](#one-draft-and-one-apply).
 
-**Save model** or **Save domain** writes the project's `.model.json` through the shared concurrent-save
-guard. Reopening the project shows the saved field and plan. The snapshot still contains the
-previous instances. Change the field, Apply, and run acquisition to refresh their values.
+Under **Datasources → Load field values**, the applied field selects the class and field in the
+shared DataSource value loader. It uses the loaded class members, or the cards explicitly selected
+in that view. If the field has unapplied edits, **Load values** first asks **Apply**, **Discard**,
+or **Stay**. It then confirms the selected scope and the resulting sources before starting Find Data.
+Query Logs shows the run and the ordinary review shows proposed values and their sources. Accepting
+results updates the cards and writes the project's `.curation.json`. **Save model** or **Save
+domain** writes the applied configuration to `.model.json` through the shared save guard.
+Reopening shows the saved recipe and the accepted values with their provenance.
+
+This action uses the existing interactive reader for direct outgoing Wikidata properties without
+qualifier or language restrictions, Wikipedia infobox values, and DBpedia properties. It requires
+a compatible field in the loaded instance schema. Use **Enrich (declared fields)** in ModelBuilder for production-site
+overrides and other generation sources. [#576](https://github.com/ggyepesi/quiz/issues/576) tracks
+executing the displayed acquisition plan directly from this action.
 
 ## Forcing tests and checked artifacts
 

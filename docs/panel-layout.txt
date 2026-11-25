@@ -804,3 +804,40 @@
   box: Actions and results
   plan: Position.holderCount Statement property Property: P1082
   button: Save domain…
+
+== Unified Workbench / Load field values ==
+  label: Apply field source to update the acquisition plan.
+  box: Configuration
+  label: Source
+  label: From:
+  combo: 11 item(s)
+  label: Property:
+  text: [P1082]
+  label: Value language:
+  text: []
+  label: Only statements where:
+  label: qualifier
+  ids: []
+    text: []
+    button: Set  (disabled)
+    button: Cancel  (disabled)
+  label: is one of
+  ids: []
+    text: []
+    button: Add  (disabled)
+    list
+    button: Remove  (disabled)
+    button: Open  (disabled)
+  label: Qualifier of:
+  ids: []
+    text: []
+    button: Set  (disabled)
+    button: Cancel  (disabled)
+  label: Found on:
+  combo: 2 item(s)
+  button: Examples…
+  button: Apply field source
+  box: Actions and results
+  label: Position.holderCount needs instances built with its current field definition.
+  button: Query logs…
+  button: Save domain…

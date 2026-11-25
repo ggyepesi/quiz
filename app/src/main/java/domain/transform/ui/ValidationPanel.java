@@ -91,6 +91,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import domain.DomainField;
 import domain.DomainModel;
@@ -204,6 +205,11 @@ public final class ValidationPanel extends JPanel {
     /** Exact visible recipe chosen by the action tree. Null only in the full field
      *  editor, where the model's configured recipe inventory is shown separately. */
     private SourceBinding fixedCandidateEvidence;
+    private boolean configuredValuesOnly;
+    private JPanel fixedTargetSummary;
+    private BooleanSupplier beforeLoad = () -> true;
+    private java.util.function.Consumer<Boolean> onAcquisition = running -> { };
+    private boolean acquisitionRunning;
 
     /** The concrete member used to discover a field source. Keep its readable name beside
      *  the QID so Explore makes the probe target unambiguous. */
@@ -413,7 +419,8 @@ public final class ValidationPanel extends JPanel {
         selectField(type, field, ScopeFilter.ALL);
 
         remove(split);
-        JPanel summary = new JPanel(
+        if (fixedTargetSummary != null) remove(fixedTargetSummary);
+        JPanel summary = fixedTargetSummary = new JPanel(
                 new objectview.utils.swing.WrapLayout(FlowLayout.LEFT, 6, 4));
         summary.add(new JLabel(purpose.showsDatasourceActions() ? "Loading:" : "Editing:"));
         summary.add(new JLabel(type + "." + field));
@@ -427,6 +434,32 @@ public final class ValidationPanel extends JPanel {
         add(instancesHolder, BorderLayout.CENTER);
         revalidate();
         repaint();
+    }
+
+    /** The field editor already owns source configuration. This action reviews values only. */
+    public void useConfiguredValueTarget(String type, String field,
+            BooleanSupplier beforeLoad, java.util.function.Consumer<Boolean> running) {
+        boolean sameTarget = configuredValuesOnly && type.equals(selectedFieldType)
+                && field.equals(selectedFieldPath);
+        configuredValuesOnly = true;
+        this.beforeLoad = beforeLoad;
+        onAcquisition = running;
+        if (sameTarget) {
+            // Applying a field-source edit changes the action, not the chosen cards.
+            BorderLayout layout = (BorderLayout) instancesHolder.getLayout();
+            var actions = layout.getLayoutComponent(BorderLayout.NORTH);
+            if (actions != null) instancesHolder.remove(actions);
+            showFieldActions();
+            instancesHolder.revalidate();
+            instancesHolder.repaint();
+        } else {
+            acceptedOutcome.setText("");
+            useFixedTarget(type, field, "Select cards to limit the load to those instances");
+        }
+    }
+
+    public void cancelFindData() {
+        findDataRunner.cancel();
     }
 
     /** Present only the configured Wikipedia evidence operation. DataSourceApp uses
@@ -559,15 +592,19 @@ public final class ValidationPanel extends JPanel {
         updateBatchTargetLabel();
         selectedChanged(null);
         instancesHolder.removeAll();
+        showFieldActions();
         List<Viewable> matching = drilledInstances;
-        instancesHolder.add(scrollableActions(
-                header(selectedFieldType, selectedFieldPath, matching.size())),
-                BorderLayout.NORTH);
         if (!matching.isEmpty()) {
             instancesHolder.add(instancesView(matching, selectedFieldType), BorderLayout.CENTER);
         }
         instancesHolder.revalidate();
         instancesHolder.repaint();
+    }
+
+    private void showFieldActions() {
+        instancesHolder.add(scrollableActions(
+                header(selectedFieldType, selectedFieldPath, drilledInstances.size())),
+                BorderLayout.NORTH);
     }
 
     /** The source/action stack can be taller than the fixed-target curation pane. Keep it
@@ -777,6 +814,20 @@ public final class ValidationPanel extends JPanel {
      *  A reference field is out of scope for now. */
     private void populateCurateActions(JPanel target) {
         DomainField field = selectedDomainField();
+        if (configuredValuesOnly) {
+            target.add(headerLine(batchTargetLabel));
+            var key = new FieldKey(selectedFieldType, selectedFieldPath);
+            checkButton.setText("Load values ↗");
+            boolean supported = configuredRouteAvailable(field, key);
+            checkButton.setEnabled(!acquisitionRunning && !actionInstances().isEmpty()
+                    && supported);
+            target.add(new WorkbenchActionList(List.of(new WorkbenchActionList.Item(checkButton,
+                    supported ? "Fetch values from the applied field source and review the results."
+                            : "Load values supports direct Wikidata properties without qualifier "
+                                    + "or language restrictions, Wikipedia infobox values, "
+                                    + "and DBpedia properties."))));
+            return;
+        }
         boolean media = field != null && field.kind() == objectview.field.FieldKind.MEDIA;
         boolean sourceActions = purpose.showsDatasourceActions();
         boolean localActions = purpose.showsTransformActions();
@@ -1092,12 +1143,13 @@ public final class ValidationPanel extends JPanel {
 
     // One immutable batch plan; one independently logged/cancellable child per member.
     private void findData() {
+        if (acquisitionRunning || !beforeLoad.getAsBoolean()) return;
         String path = selectedFieldPath;
         if (path == null) return;
         ManualCuration curation = curationStore();
         // Let a manually identified selected member establish its source before the
         // batch. Other unresolved manual members are skipped, not met with a dialog storm.
-        if (selected != null && EnrichmentSources.needsSelection(
+        if (!configuredValuesOnly && selected != null && EnrichmentSources.needsSelection(
                 selected, concreteType(selected), curation)
                 && !isQid(selected.getIdentifier())) {
             // Resolve the identity first (the explorer is modal), then continue into the
@@ -1110,7 +1162,8 @@ public final class ValidationPanel extends JPanel {
         boolean media = drilled == null || drilled.kind() == objectview.field.FieldKind.MEDIA;
 
         FieldKey key = new FieldKey(selectedFieldType, path);
-        if (!media && sourceFor(key) == null
+        if (configuredValuesOnly && !configuredRouteAvailable(drilled, key)) return;
+        if (!configuredValuesOnly && !media && sourceFor(key) == null
                 && fallbackSourceFor(key) == null) {
             if (chooseSourceForSelected(true)) return;
             // No route is configured and no member resolves to a Wikidata entity yet —
@@ -1120,6 +1173,29 @@ public final class ValidationPanel extends JPanel {
             return;
         }
         runFillBatch(path);
+    }
+
+    private boolean configuredRouteAvailable(DomainField field, FieldKey key) {
+        if (field == null || curationStore() == null) return false;
+        var schema = DomainSchemas.resolve(domain, key.type(), key.path());
+        if (schema == null || schema.valueKind() == objectview.field.FieldKind.MEDIA) return false;
+        FieldSourceMapping primary = sourceFor(key);
+        FieldSourceMapping fallback = fallbackSourceFor(key);
+        if (primary == null && declaredBinding(SourceBindingSlot.PRIMARY_FIELD_VALUE) != null
+                || fallback == null && declaredBinding(SourceBindingSlot.FALLBACK_FIELD_VALUE) != null) {
+            return false;
+        }
+        return (primary != null || fallback != null)
+                && (primary == null || FieldEnrichmentRoutes.canReadConfiguredValue(primary))
+                && (fallback == null || FieldEnrichmentRoutes.canReadConfiguredValue(fallback));
+    }
+
+    private java.util.function.Predicate<String> confirmLoad = plan -> JOptionPane.showConfirmDialog(
+            this, new JLabel(plan), "Load values", JOptionPane.OK_CANCEL_OPTION,
+            JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION;
+
+    void loadConfirmation(java.util.function.Predicate<String> confirmation) {
+        confirmLoad = confirmation;
     }
 
     /**
@@ -1145,17 +1221,13 @@ public final class ValidationPanel extends JPanel {
         if (media) {
             plan.append("Source: Wikidata image (P18) / Wikimedia Commons<br>");
         } else {
-            plan.append("Wikidata: ").append(describe(source)).append("<br>");
-            plan.append("Wikipedia fallback: ").append(fallback == null
-                    ? "none — Wikidata only" : describe(fallback)).append("<br>");
+            plan.append("Primary source: ").append(describe(source)).append("<br>");
+            plan.append("Fallback source: ").append(fallback == null
+                    ? "none" : describe(fallback)).append("<br>");
         }
-        plan.append("<br>One request per member. Nothing is written yet: every value ")
-            .append("comes back for review, and Apply is still a separate step.</html>");
+        plan.append("<br>Fetch values for eligible members and show them for review.</html>");
 
-        return JOptionPane.showConfirmDialog(
-                this, new JLabel(plan.toString()), "Load values",
-                JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION;
+        return confirmLoad.test(plan.toString());
     }
 
     private static String describe(FieldSourceMapping source) {
@@ -1467,7 +1539,10 @@ public final class ValidationPanel extends JPanel {
     }
 
     private FieldSourceMapping sourceFor(FieldKey key) {
-        return key == null ? null : fieldSourceChoices.primary(key.type(), key.path());
+        if (key == null) return null;
+        return configuredValuesOnly
+                ? fieldSourceChoices.declaredPrimary(key.type(), key.path())
+                : fieldSourceChoices.primary(key.type(), key.path());
     }
 
     private FieldSourceMapping datasetFallbackOverride(FieldKey key) {
@@ -1475,7 +1550,10 @@ public final class ValidationPanel extends JPanel {
     }
 
     private FieldSourceMapping fallbackSourceFor(FieldKey key) {
-        return key == null ? null : fieldSourceChoices.additional(key.type(), key.path());
+        if (key == null) return null;
+        return configuredValuesOnly
+                ? FieldSourceChoices.additionalSource(null, domain, key.type(), key.path())
+                : fieldSourceChoices.additional(key.type(), key.path());
     }
 
     private void updateFieldSourceButton() {
@@ -1642,22 +1720,43 @@ public final class ValidationPanel extends JPanel {
     private void runReviewBatch(
             List<FindDataProcess> jobs, int skipped, String path,
             String reviewTitle, String reviewPrompt, String failureTitle) {
+        if (acquisitionRunning) return;
+        acquisitionRunning = true;
+        onAcquisition.accept(true);
         findDataRunner.run(new FindDataBatchProcess(jobs, skipped, path),
                 outcome -> SwingUtilities.invokeLater(() -> {
-                    FindDataBatchResult result = outcome.result();
-                    ManualCuration store = curationStore();
-                    if (result != null && store != null) {
-                        List<EnrichmentProposal> proposals = result.results().stream()
-                                .map(FindDataResult::proposal).toList();
-                        showReview(reviewTitle, reviewPrompt, proposals,
-                                SourceYieldCards.of(result.sourceYields()));
+                    try {
+                        FindDataBatchResult result = outcome.result();
+                        ManualCuration store = curationStore();
+                        if (result != null && store != null) {
+                            List<EnrichmentProposal> proposals = result.results().stream()
+                                    .map(FindDataResult::proposal).toList();
+                            showReview(reviewTitle, reviewPrompt, proposals,
+                                    SourceYieldCards.of(result.sourceYields()));
+                        }
+                        if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
+                            JOptionPane.showMessageDialog(this,
+                                    failureTitle + ": " + outcome.error().getMessage());
+                        }
+                    } finally {
+                        acquisitionFinished();
                     }
-                    if (outcome.status() == ProcessStatus.FAILED && outcome.error() != null) {
-                        JOptionPane.showMessageDialog(this,
-                                failureTitle + ": " + outcome.error().getMessage());
+                }), ex -> {
+                    try {
+                        JOptionPane.showMessageDialog(this, failureTitle + ": " + ex.getMessage());
+                    } finally {
+                        acquisitionFinished();
                     }
-                }), ex -> JOptionPane.showMessageDialog(this,
-                        failureTitle + ": " + ex.getMessage()));
+                });
+    }
+
+    private void acquisitionFinished() {
+        acquisitionRunning = false;
+        if (configuredValuesOnly) {
+            checkButton.setEnabled(!actionInstances().isEmpty() && configuredRouteAvailable(
+                    selectedDomainField(), new FieldKey(selectedFieldType, selectedFieldPath)));
+        }
+        onAcquisition.accept(false);
     }
 
     /** The review is document-modal (Dialogs.reviewDialog): while it is open this
@@ -1665,9 +1764,21 @@ public final class ValidationPanel extends JPanel {
      * start behind it. */
     private void showReview(String title, String prompt,
             List<EnrichmentProposal> proposals, List<Viewable> sourceReport) {
-        FindDataBatchReviewPanel.showReview(
-                this, title, prompt, proposals, sourceReport,
-                reviewed -> applyDecisions(reviewed.accepted()));
+        review.show(title, prompt, proposals, sourceReport, this::applyDecisions);
+    }
+
+    @FunctionalInterface
+    interface AcquisitionReview {
+        void show(String title, String prompt, List<EnrichmentProposal> proposals,
+                List<Viewable> sourceReport, java.util.function.Predicate<List<EnrichmentDecision>> accept);
+    }
+
+    private AcquisitionReview review = (title, prompt, proposals, sourceReport, accept) ->
+            FindDataBatchReviewPanel.showReview(this, title, prompt, proposals, sourceReport,
+                    reviewed -> accept.test(reviewed.accepted()));
+
+    void acquisitionReview(AcquisitionReview presenter) {
+        review = presenter;
     }
 
     private domain.config.WikipediaCategoryRule effectiveWikipediaCategoryRule(

@@ -65,7 +65,7 @@ public final class FieldSourceChoices {
         primary.put(new Key(type, field), source);
     }
 
-    private FieldSourceMapping declaredPrimary(String type, String field) {
+    public FieldSourceMapping declaredPrimary(String type, String field) {
         FieldRulePromoter modelBacked = domain.capability(FieldRulePromoter.class);
         if (modelBacked == null) return null;
         FieldSourceMapping declared = modelBacked.declaredSource(type, field);

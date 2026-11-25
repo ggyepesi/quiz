@@ -1,6 +1,7 @@
 package domain.workbench.unified.ui;
 
 import domain.DomainModel;
+import domain.DomainSchemas;
 import domain.config.GeneratedFieldModel;
 import domain.config.GeneratedProjectModel;
 import domain.config.ModelSourceExecutionPlan;
@@ -10,10 +11,17 @@ import domain.datasource.api.BindingScope;
 import domain.datasource.api.ConfigurationElement;
 import domain.datasource.api.DatasourceRegistry;
 import domain.datasource.api.SourceExecutionPlan;
+import domain.datasource.api.SourceBindingSlot;
 import domain.transform.ui.ProjectBacking;
+import domain.transform.ui.FieldDefinitions;
+import domain.transform.ui.ValidationPanel;
+import domain.transform.ui.WorkbenchPurpose;
 import domain.workbench.configuration.ui.ProjectConfigurationPanel;
+import domain.workbench.execution.ui.SwingQuerySession;
 import domain.workbench.ui.WorkbenchActionResultNavigator;
 import process.swing.Dialogs;
+import process.swing.SwingCancellationConfirmation;
+import work.QueryContext;
 
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -33,21 +41,38 @@ import java.util.Objects;
 
 /** One opened project for field configuration, planning and saving. */
 public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable {
+    private final DomainModel domain;
     private final ProjectBacking project;
+    private final SwingQuerySession queries;
     private final ProjectConfigurationPanel configuration;
     private final DatasourceRegistry datasources = Datasources.standard();
     private final JTextArea planText = new JTextArea(8, 34);
     private final JButton save;
     private final JLabel saveStatus = new JLabel();
+    private final JPanel acquisitionDetail = new JPanel(new BorderLayout());
+    private final JPanel acquisitionValues = new JPanel(new BorderLayout());
     private final String saveVerb;
     private SourceExecutionPlan plan;
     private String planProblem;
     private boolean saving;
+    private boolean loadingValues;
+    private boolean loadActionSelected;
+    private boolean acquisitionTargetCurrent;
+    private GeneratedFieldModel selectedField;
+    private ValidationPanel valuePanel;
 
     public UnifiedWorkbenchPanel(DomainModel domain) {
+        this(domain, new SwingQuerySession(new QueryContext()));
+    }
+
+    public UnifiedWorkbenchPanel(DomainModel domain, SwingQuerySession queries) {
         super(new BorderLayout(4, 4));
+        this.domain = domain;
+        this.queries = queries;
         project = Objects.requireNonNull(domain.capability(ProjectBacking.class),
                 "Open a model-backed project to edit field configuration");
+        queries.logs().saveContext(project.projectName(),
+                project.modelFile().getAbsoluteFile().getParentFile().toPath());
         saveVerb = "Save " + project.projectKind().name().toLowerCase(Locale.ROOT);
         save = new JButton(saveVerb + "…");
         save.addActionListener(event -> confirmSave());
@@ -60,10 +85,21 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         var source = actions.addSource("datasources", "Datasources", null);
         var acquisition = actions.addAction(source, "field-acquisition-plan", "Field acquisition plan",
                 new JScrollPane(planText), null);
+        var load = actions.addAction(source, "field-values", "Load field values", acquisitionDetail, null);
+        var logs = new JButton("Query logs…");
+        logs.addActionListener(event -> queries.showLogs(this));
+        var acquisitionTools = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        acquisitionTools.add(logs);
+        acquisitionDetail.add(acquisitionValues, BorderLayout.CENTER);
+        acquisitionDetail.add(acquisitionTools, BorderLayout.SOUTH);
+        actions.setSelectionListener(selection -> {
+            loadActionSelected = load.id().equals(selection.id());
+            if (loadActionSelected) refreshAcquisition();
+        });
         actions.selectAction(acquisition);
         compilePlan();
         configuration = ProjectConfigurationPanel.editFields(project, domain.instances().size(),
-                this::showPlan, this::fieldApplied);
+                this::fieldSelected, this::fieldApplied);
         var workspace = new JSplitPane(JSplitPane.VERTICAL_SPLIT, configuration, actions);
         workspace.setResizeWeight(0.72);
         workspace.setDividerLocation(510);
@@ -73,6 +109,70 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         footer.add(saveStatus);
         footer.add(save);
         add(footer, BorderLayout.SOUTH);
+        updateSave();
+    }
+
+    private void fieldSelected(GeneratedFieldModel field) {
+        if (selectedField != field) acquisitionTargetCurrent = false;
+        selectedField = field;
+        showPlan(field);
+        if (loadActionSelected) refreshAcquisition();
+    }
+
+    private void refreshAcquisition() {
+        if (loadingValues || acquisitionTargetCurrent) return;
+        acquisitionTargetCurrent = true;
+        acquisitionValues.removeAll();
+        var owner = project.projectModel().declaringClass(selectedField);
+        if (owner == null) {
+            acquisitionValues.add(new JLabel("Select a configured field to load its values."),
+                    BorderLayout.NORTH);
+        } else {
+            String path = OwnedFieldSources.declaredFieldPath(owner, selectedField);
+            var resolved = DomainSchemas.resolve(domain, owner.className(), path);
+            var declared = FieldDefinitions.toFieldRef(selectedField.definition());
+            if (plan == null) {
+                acquisitionValues.add(new JLabel("Review the field acquisition plan before loading values."),
+                        BorderLayout.NORTH);
+            } else if (plan.steps(BindingScope.FIELD_VALUE).stream().anyMatch(step ->
+                    step.target().className().equals(owner.className())
+                            && step.target().fieldPath().equals(path) && step.target().contextual()
+                            && (step.target().slot() == SourceBindingSlot.PRIMARY_FIELD_VALUE
+                                    || step.target().slot() == SourceBindingSlot.FALLBACK_FIELD_VALUE))) {
+                acquisitionValues.add(new JLabel("<html>This field has source overrides at individual production sites."
+                        + "<br>Save the project, open it in ModelBuilder, load its instances, "
+                        + "and use Enrich (declared fields).</html>"),
+                        BorderLayout.NORTH);
+            } else if (resolved == null || resolved.valueKind() != declared.valueKind()
+                    || resolved.valueKind() == objectview.field.FieldKind.ORDERED
+                            && FieldDefinitions.fromFieldRef(resolved).type() != selectedField.type()
+                    || resolved.collection() != declared.collection()
+                    || !Objects.equals(resolved.targetType(), declared.targetType())) {
+                acquisitionValues.add(new JLabel(owner.className() + "." + path
+                        + " needs instances built with its current field definition."),
+                        BorderLayout.NORTH);
+            } else {
+                if (valuePanel == null) {
+                    valuePanel = new ValidationPanel(domain, null, queries.runner(),
+                            null, null, WorkbenchPurpose.DATASOURCE);
+                }
+                valuePanel.useConfiguredValueTarget(owner.className(), path, this::prepareAcquisition,
+                        this::acquisitionRunning);
+                acquisitionValues.add(valuePanel, BorderLayout.CENTER);
+            }
+        }
+        acquisitionValues.revalidate();
+        acquisitionValues.repaint();
+    }
+
+    private boolean prepareAcquisition() {
+        return configuration.resolveUnappliedEdits("loading values")
+                && valuePanel.getParent() == acquisitionValues;
+    }
+
+    private void acquisitionRunning(boolean running) {
+        loadingValues = running;
+        configuration.setEditingEnabled(!running);
         updateSave();
     }
 
@@ -132,7 +232,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                 + OwnedFieldSources.declaredFieldPath(owner, field);
         if (!project.unsavedModelChanges().contains(description)) project.recordModelChange(description);
         compilePlan();
-        showPlan(field);
+        acquisitionTargetCurrent = false;
+        fieldSelected(field);
         updateSave();
     }
 
@@ -160,7 +261,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
      * writes something other than what the form shows.
      */
     private void confirmSave() {
-        if (saving) return;
+        if (saving || loadingValues) return;
         boolean draft = configuration.hasUnappliedEdits();
         boolean applyDraft = false;
         if (draft) {
@@ -246,8 +347,12 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         boolean dirty = !project.unsavedModelChanges().isEmpty();
         // Enabled whenever not saving: unapplied edits can be the only change, and the
         // form cannot announce every keystroke. Save itself says when there is nothing.
-        save.setEnabled(!saving);
-        if (!saving) saveStatus.setText(dirty ? "Applied configuration has unsaved changes" : " ");
+        save.setEnabled(!saving && !loadingValues);
+        if (loadingValues) {
+            saveStatus.setText("Loading and reviewing field values");
+        } else if (!saving) {
+            saveStatus.setText(dirty ? "Applied configuration has unsaved changes" : " ");
+        }
     }
 
     private void blockInput(boolean block) {
@@ -280,6 +385,10 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
      */
     public void requestClose(Runnable closeWindow) {
         if (saving) return;
+        if (loadingValues) {
+            SwingCancellationConfirmation.requestForVisibleRun(this, valuePanel::cancelFindData);
+            return;
+        }
         boolean draft = configuration.hasUnappliedEdits();
         boolean unsaved = !project.unsavedModelChanges().isEmpty();
         if (!draft && !unsaved) {
@@ -307,5 +416,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         }
     }
 
-    @Override public void close() { configuration.close(); }
+    @Override public void close() {
+        configuration.close();
+        queries.logs().resetForProjectSwitch();
+    }
 }

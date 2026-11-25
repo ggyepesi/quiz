@@ -152,6 +152,16 @@ class PanelLayoutIsCheckedInTest {
             var editor = find(unified, FieldSourcePanel.class);
             editor.selectConfigurationDetail(FieldConfigurationProjection.PRIMARY);
             describe(actual, "Unified Workbench / Field source and acquisition plan", unified);
+            var tree = find(unified, domain.workbench.ui.WorkbenchActionResultNavigator.class).tree();
+            var root = (javax.swing.tree.DefaultMutableTreeNode) tree.getModel().getRoot();
+            for (var nodes = root.depthFirstEnumeration(); nodes.hasMoreElements();) {
+                var node = (javax.swing.tree.DefaultMutableTreeNode) nodes.nextElement();
+                if ("Load field values".equals(node.toString())) {
+                    tree.setSelectionPath(new javax.swing.tree.TreePath(node.getPath()));
+                    break;
+                }
+            }
+            describe(actual, "Unified Workbench / Load field values", unified);
         }
 
         Path golden = Files.isRegularFile(GOLDEN) ? GOLDEN : Path.of("docs/panel-layout.txt");

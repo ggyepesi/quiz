@@ -70,6 +70,7 @@ public final class ProjectConfigurationPanel extends JPanel implements AutoClose
     }
 
     private boolean restoringSelection;
+    private boolean editingAllowed = true;
     private java.util.function.BiFunction<String, String, process.swing.Dialogs.UnappliedEdits>
             unappliedDecision = (construct, action) ->
                     process.swing.Dialogs.unappliedEdits(this, construct, action);
@@ -93,7 +94,7 @@ public final class ProjectConfigurationPanel extends JPanel implements AutoClose
             if (SingleRootClassModelPanel.isConfigurable(construct) && construct != details.selected()) {
                 // Leaving a construct with unapplied edits asks first (#535); Stay keeps
                 // both the edits and the selection.
-                if (!resolveUnappliedEdits("opening another construct")) {
+                if (!editingAllowed || !resolveUnappliedEdits("opening another construct")) {
                     restoringSelection = true;
                     try {
                         constructs.selectConstruct(details.selected());
@@ -124,8 +125,13 @@ public final class ProjectConfigurationPanel extends JPanel implements AutoClose
 
     public boolean hasDrafts() { return details.hasTransformationDrafts(); }
 
+    public void setEditingEnabled(boolean enabled) {
+        editingAllowed = enabled;
+        details.setEditingEnabled(enabled);
+    }
+
     /**
-     * Before an action that would drop the open editor's unapplied edits: asks Apply /
+     * Before an action that needs the open editor's draft settled: asks Apply /
      * Discard / Stay. Returns whether the action may continue; Discard reloads the
      * editor from the model, and a refused Apply stays.
      */
