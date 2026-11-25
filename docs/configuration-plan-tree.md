@@ -12,7 +12,7 @@ remains runnable as the comparison baseline while both hosts use the same model-
 and editor implementation. Executable operations and their results remain the separate
 action/result tree of #558.
 
-Milestones 1 through 8 are implemented. `ConfigurationReferenceInventory` is the typed model-layer
+Milestones 1 through 9 are implemented. `ConfigurationReferenceInventory` is the typed model-layer
 inventory: validation, `ClassDependencies`, class/selection rename discovery and datasource recipe
 references consume it. Datasource operations declare references hidden inside their own recipe
 grammar, and prepared input requirements are resolved to model sites such as an article
@@ -265,6 +265,22 @@ Every component can inspect the complete configuration projection. Ownership det
 stored node's detail is editable, not whether the node exists. There are no private project copies
 and no reconciliation step.
 
+For a model-backed project, **Configuration…** in TransformApp and DataSourceApp opens the
+ModelBuilder construct navigator and the same local class, field and graph trees over that
+session's working model. **Needs** and **Used by** open the same referenced declarations. Inspection
+uses cached Wikidata labels. Source fields, class/graph settings and the project build list are
+edited in ModelBuilder. DataSourceApp runs configured acquisitions and reviews values through its
+action/result navigator. TransformApp edits local groups in the group view and can add or remove
+members of a local hand-picked population in Configuration. Imported selections and populations
+produced by a transformation are read-only there.
+
+The transformed class's population branch names the input class and shows the ordered filter
+steps. TransformApp can add, edit, remove and reorder the steps, then **Apply transformation**
+to update the open model. **Save model/domain** persists the applied recipe and **Build project**
+in ModelBuilder executes it to update the produced instances and publication. Inspecting another node keeps the
+draft and starts no build or acquisition. ModelBuilder and DataSourceApp show the same steps
+read-only.
+
 During the first slice, ModelBuilderApp remains a baseline host of the same configuration component.
 Separate entry points remain until #560 decides whether they become thin single-component launchers
 or are retired. The cross-process save guard (#244, fixed) remains necessary while more than one process
@@ -286,6 +302,7 @@ Follow #557 as checked milestones:
 8. Complete the separate-process save guard before a second application exposes the complete tree.
    **Done** for model-backed projects. See [concurrent saves](datasource-app.md#concurrent-saves).
 9. Let Transform and Datasource views adopt the same projection with ownership-based editability.
+   **Done.**
 
 The first unified-workbench acceptance slice reaches milestone 5: open one project, select a field,
 inspect its complete configuration tree, edit and Apply it through the shared component, and observe

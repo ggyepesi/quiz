@@ -58,4 +58,18 @@ class WikidataIdTextTest {
         assertTrue(calls.isEmpty(), calls.toString());
     }
 
+    @Test void inspectingAnUnlabelledIdKeepsItsLinkWithoutRequestingItsLabel() {
+        List<List<String>> calls = new ArrayList<>();
+        WikidataLabels.resolveWith((ids, found) -> calls.add(ids));
+        WikidataIdText status = new WikidataIdText();
+        WikidataLabels.withCachedLabels(() -> status.setPlainText("Q5"));
+        WikidataLabels.flushPending();
+        assertTrue(calls.isEmpty());
+        assertTrue(status.getText().contains("href=\"https://www.wikidata.org/wiki/Q5\""));
+
+        WikidataLabels.request(List.of("Q5"));
+        WikidataLabels.flushPending();
+        assertEquals(List.of(List.of("Q5")), calls);
+    }
+
 }

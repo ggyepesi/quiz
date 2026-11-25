@@ -78,6 +78,19 @@ public class ProjectSaveGuardTest {
         assertEquals("the other session", Files.readString(model));
     }
 
+    @Test void aReplacementWithTheSameSizeAndTimestampIsStillChecked() throws Exception {
+        var storage = DomainStorage.in(root.toFile());
+        var model = storage.modelFile("History").toPath();
+        Files.createDirectories(model.getParent());
+        Files.writeString(model, "AAAA");
+        var guard = ProjectSaveGuard.capture(storage, "History");
+        var replacement = Files.writeString(model.resolveSibling("replacement"), "BBBB");
+        Files.setLastModifiedTime(replacement, Files.getLastModifiedTime(model));
+        Files.move(replacement, model, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+        assertThrows(ProjectSaveGuard.Conflict.class, guard::check);
+    }
+
     /** A real second process holds the same production lock until the test releases it. */
     public static void main(String[] args) throws Exception {
         var storage = DomainStorage.in(Path.of(args[0]).toFile());

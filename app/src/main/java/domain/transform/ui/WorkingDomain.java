@@ -328,6 +328,9 @@ public final class WorkingDomain extends DelegatingDomainModel
         return subclassProducers.get(type);
     }
 
+    /** Once Save has written the declarations, the working model owns their recipes. */
+    public void subclassProducersSaved() { subclassProducers.clear(); }
+
     public sealed interface SavedSubclassProducer
             permits SavedSubclassTransformation, SavedManualSubclass {
         String inputClass();

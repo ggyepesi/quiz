@@ -39,6 +39,10 @@ reader, review model or apply path is duplicated.
 6. Review and apply proposals through the existing process result UI.
 7. Use **Save model/domain** to persist the applied values and project state.
 
+**Configuration…** opens the same project configuration tree as ModelBuilder, with read-only
+class, field, graph and population details. Use the datasource action tree to run acquisitions
+and review values. See [configuration ownership](configuration-plan-tree.md#unified-workbench-ownership).
+
 Identity resolution and discovery actions are scoped to the currently shown instances. The
 Discovery workbench's reusable source/action/result navigator is embedded below DataSourceApp's
 existing instance view, so there is no second datasource launcher or instance chooser. The

@@ -64,8 +64,12 @@ public final class DomainSaver implements DomainWriter {
         }
         ProjectBacking backing = backingFor(name, schema);
         if (backing != null) {
-            return backing.saveProject(() -> addSubclasses(backing.projectModel(), schema),
+            String result = backing.saveProject(() -> addSubclasses(backing.projectModel(), schema),
                     () -> writeSnapshot(name, members, schema, backing));
+            if (schema instanceof domain.transform.ui.WorkingDomain working) {
+                working.subclassProducersSaved();
+            }
+            return result;
         }
         return ProjectSaveGuard.exclusive(storage,
                 () -> writeSnapshot(name, members, schema, null));

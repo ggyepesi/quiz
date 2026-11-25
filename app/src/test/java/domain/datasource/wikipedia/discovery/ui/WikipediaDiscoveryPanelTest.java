@@ -561,6 +561,8 @@ class WikipediaDiscoveryPanelTest {
             return project;
         }
         @Override public List<String> unsavedModelChanges() { return List.of(); }
+        @Override public void recordModelChange(String change) { }
+        @Override public void populationChanged(domain.config.PopulationSelection population) { }
         @Override public String modelWriteConflict() { return ""; }
         @Override public void writeProjectModel() { }
         @Override public <T> T saveProject(Runnable prepare,

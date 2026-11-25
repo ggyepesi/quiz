@@ -1033,15 +1033,7 @@ public class ModelBuilderFrame extends JFrame {
                 classModelPanel.selectField(field);
             }
         });
-        sourceWorkbench.onConfigurationNavigation(target -> {
-            if (target instanceof GeneratedClassModel clazz) {
-                classModelPanel.selectClass(clazz);
-            } else if (target instanceof GeneratedFieldModel field) {
-                classModelPanel.selectField(field);
-            } else if (target instanceof Selection selection) {
-                classModelPanel.selectSelection(selection);
-            }
-        });
+        sourceWorkbench.onConfigurationNavigation(classModelPanel::selectConstruct);
 
         // A field added from a tool in the Explorer window is otherwise
         // invisible — bring the main config window forward and say where it went

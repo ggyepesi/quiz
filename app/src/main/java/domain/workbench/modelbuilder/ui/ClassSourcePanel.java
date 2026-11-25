@@ -23,6 +23,7 @@ import domain.config.EntityKindRule;
 import domain.config.MembershipPattern;
 import domain.config.StatementClassSource;
 import domain.datasource.api.SourceBindingSlot;
+import domain.transform.pipeline.ui.TransformationConfigurationEditor;
 import wikidata.explore.query.logical.ClassSearchQuery;
 import wikidata.explore.query.result.TableQueryResult;
 import domain.workbench.execution.ui.SwingQueryRunner;
@@ -41,6 +42,10 @@ import wikidata.ui.WikidataLinks;
 public class ClassSourcePanel extends JPanel {
     private final ClassConfigurationEditor configuration =
             new ClassConfigurationEditor(ClassKind.SOURCE);
+    private Consumer<GeneratedClassModel> transformationApplied = ignored -> { };
+    private final TransformationConfigurationEditor transformation =
+            new TransformationConfigurationEditor(
+                    this::refreshConfiguration, clazz -> transformationApplied.accept(clazz));
 
     private final JComboBox<ClassSearchQuery.Mode> searchModeBox =
             new JComboBox<>(ClassSearchQuery.Mode.values());
@@ -169,6 +174,7 @@ public class ClassSourcePanel extends JPanel {
     public ClassSourcePanel() {
         super(new BorderLayout(4, 4));
         buildUi();
+        configuration.tree().onSelection(transformation::selection);
         alternativePopulationSource.setName("class.alternativePopulationSource");
         alternativePopulationSource.operationChooserVisible(false);
         alternativePopulationSource.onChange(() -> configurationDirty = true);
@@ -566,8 +572,7 @@ public class ClassSourcePanel extends JPanel {
         GridBagUtils.wideRow(form, y++, alternativePopulationSource);
         GridBagUtils.wideRow(form, y++, triple);
         GridBagUtils.wideRow(form, y, summaryLabel);
-        configuration.detail(ClassConfigurationProjection.TRANSFORMATION,
-                new JLabel("Edit this class's population transformation in TransformApp."));
+        configuration.detail(ClassConfigurationProjection.TRANSFORMATION, transformation);
         configuration.detail(ClassConfigurationProjection.DISPLAY_NAME, displayNameEditor);
 
         form = configuration.form(ClassConfigurationProjection.GROUP);
@@ -729,7 +734,20 @@ public class ClassSourcePanel extends JPanel {
 
     ClassConfigurationEditor configurationEditor() { return configuration; }
 
-    private void refreshConfiguration() { configuration.showClass(projectModel, clazz); }
+    void transformationEditor(TransformationConfigurationEditor.Fields fields,
+            Consumer<GeneratedClassModel> applied) {
+        transformation.fields(fields);
+        transformationApplied = applied;
+    }
+
+    boolean hasTransformationDrafts() { return transformation.hasDrafts(); }
+
+    void refreshTransformationAccess() { transformation.refresh(); }
+
+    private void refreshConfiguration() {
+        transformation.showClass(projectModel, clazz);
+        configuration.showClass(projectModel, clazz, transformation.transformation());
+    }
 
     private void wireQuery() {
         queryRunner.wireButton(

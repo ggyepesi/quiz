@@ -5,6 +5,7 @@ import wikidata.api.WikidataApiClient;
 import domain.runtime.SelectionContentResolver;
 import domain.runtime.WikidataDynamicObject;
 import domain.config.GeneratedProjectModel;
+import domain.config.PopulationSelection;
 import domain.config.Selection;
 import domain.config.VocabularySelection;
 import domain.workbench.ui.SelectionsButton;
@@ -19,6 +20,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 /** A deliberately small editor: one named selection and one list of its entities. */
 public class SelectionViewerPanel extends JPanel {
@@ -32,11 +35,15 @@ public class SelectionViewerPanel extends JPanel {
     private List<String> selectedQids = List.of();
     private final JPanel reusableHolder = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
     private final JButton removeButton = new JButton("Remove selected");
+    private final JButton addPopulationMembers = new JButton("Add selected instances");
     // Labels this panel has been told, by QID. A vocabulary stores QIDs only, so
     // without this the six prizes just picked BY LABEL redraw as six bare QIDs.
     private final Map<String, String> knownLabels = new HashMap<>();
     private final JLabel status = new JLabel(" ");
     private Consumer<Selection> afterChange = ignored -> {};
+    private Predicate<Selection> editable = value -> !value.isImported()
+            && value instanceof VocabularySelection;
+    private Function<PopulationSelection, List<String>> populationMembers = ignored -> List.of();
 
     public SelectionViewerPanel(GeneratedProjectModel project, WikidataApiClient api,
                                 WikidataSparqlClient sparql) {
@@ -60,6 +67,7 @@ public class SelectionViewerPanel extends JPanel {
 
         JPanel entityActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 3));
         entityActions.add(reusableHolder);
+        entityActions.add(addPopulationMembers);
         entityActions.add(removeButton);
         JPanel south = new JPanel(new BorderLayout());
         south.add(entityActions, BorderLayout.NORTH);
@@ -71,6 +79,7 @@ public class SelectionViewerPanel extends JPanel {
 
         selectionBox.addActionListener(e -> showChosen());
         removeButton.addActionListener(e -> removeSelectedEntities());
+        addPopulationMembers.addActionListener(e -> addPopulationMembers());
         refreshSelections();
     }
 
@@ -92,6 +101,13 @@ public class SelectionViewerPanel extends JPanel {
 
     public void afterChange(Consumer<Selection> consumer) {
         afterChange = consumer == null ? ignored -> {} : consumer;
+    }
+
+    public void inspect(Predicate<Selection> editable,
+            Function<PopulationSelection, List<String>> populationMembers) {
+        this.editable = editable;
+        this.populationMembers = populationMembers;
+        updateActions();
     }
 
     private Selection chosenSelection() {
@@ -145,10 +161,10 @@ public class SelectionViewerPanel extends JPanel {
             if (api != null && !vocabulary.valueQids().isEmpty()) resolveLabels(vocabulary);
             return;
         }
-        if (selection instanceof domain.config.PopulationSelection population) {
+        if (selection instanceof PopulationSelection population) {
             showEntities(population.instanceQids().stream().map(this::entity).toList());
-            status.setText(selection.name() + ": " + population.instanceQids().size()
-                    + " instances");
+            status.setText(selection.name() + " — " + population.instanceQids().size()
+                    + " instances of " + population.className());
         }
         updateActions();
     }
@@ -220,7 +236,8 @@ public class SelectionViewerPanel extends JPanel {
 
     /** The one way a vocabulary grows: added in order, never twice, rejects reported. */
     private void grow(List<String> qids, long rejected) {
-        if (!(chosenSelection() instanceof VocabularySelection vocabulary)) return;
+        if (!(chosenSelection() instanceof VocabularySelection vocabulary)
+                || !editable.test(vocabulary)) return;
         LinkedHashSet<String> values = new LinkedHashSet<>(vocabulary.valueQids());
         int before = values.size();
         values.addAll(qids);
@@ -232,18 +249,43 @@ public class SelectionViewerPanel extends JPanel {
     }
 
     private void removeSelectedEntities() {
-        if (!(chosenSelection() instanceof VocabularySelection vocabulary)) return;
+        Selection selection = chosenSelection();
+        if (selection == null || !editable.test(selection) || selectedQids.isEmpty()) return;
         LinkedHashSet<String> removed = new LinkedHashSet<>(selectedQids);
-        vocabulary.valueQids(vocabulary.valueQids().stream()
-                .filter(qid -> !removed.contains(qid)).toList());
+        switch (selection) {
+            case VocabularySelection vocabulary -> vocabulary.valueQids(vocabulary.valueQids().stream()
+                    .filter(qid -> !removed.contains(qid)).toList());
+            case PopulationSelection population -> {
+                List<String> kept = population.instanceQids().stream()
+                        .filter(qid -> !removed.contains(qid)).toList();
+                if (kept.isEmpty()) return;
+                population.instanceQids(kept);
+            }
+            default -> { return; }
+        }
         showChosen();
-        status.setText("Removed " + removed.size() + " entities — "
-                + vocabulary.valueQids().size() + " remain.");
-        afterChange.accept(vocabulary);
+        afterChange.accept(selection);
     }
 
-    private void updateActions() {
-        boolean vocabulary = chosenSelection() instanceof VocabularySelection;
-        removeButton.setEnabled(vocabulary && !selectedQids.isEmpty());
+    private void addPopulationMembers() {
+        if (!(chosenSelection() instanceof PopulationSelection population)
+                || !editable.test(population)) return;
+        var members = new LinkedHashSet<>(population.instanceQids());
+        if (!members.addAll(populationMembers.apply(population))) return;
+        population.instanceQids(List.copyOf(members));
+        showChosen();
+        afterChange.accept(population);
+    }
+
+    void updateActions() {
+        Selection selection = chosenSelection();
+        boolean writable = selection != null && editable.test(selection);
+        boolean population = selection instanceof PopulationSelection;
+        addPopulationMembers.setVisible(writable && population);
+        addPopulationMembers.setEnabled(writable && selection instanceof PopulationSelection p
+                && !p.instanceQids().containsAll(populationMembers.apply(p)));
+        removeButton.setEnabled(writable && !selectedQids.isEmpty()
+                && (!(selection instanceof PopulationSelection p)
+                        || !selectedQids.containsAll(p.instanceQids())));
     }
 }

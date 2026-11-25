@@ -2,6 +2,8 @@ package domain.transform.ui;
 
 import domain.datasource.schema.FieldType;
 import domain.datasource.discovery.ui.DiscoveryWorkbench;
+import domain.config.GeneratedClassModel;
+import domain.config.ConfigurationReferenceInventory;
 
 import objectview.demo.MultiView;
 import objectview.render.GroupTreeView;
@@ -25,6 +27,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import domain.DomainField;
 import domain.DomainModel;
 
@@ -50,6 +53,13 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
 
     private final TransformController controller;
     private final WorkbenchPurpose purpose;
+    private final Consumer<ConfigurationContext> configurationAction;
+
+    /** Scope supplied to the configuration editor by the application's composition. */
+    public record ConfigurationContext(Component owner, ProjectBacking project,
+            TransformController controller, WorkbenchPurpose purpose,
+            List<Viewable> selectedInstances, Object selectedConstruct,
+            Runnable populationChanged) { }
 
     // The domain this workbench was opened for (e.g. "countries"), offered as the
     // default when re-saving, so an edit-and-save round-trips over the original.
@@ -158,9 +168,15 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             DomainWriter writer,
             String domainName,
             WorkbenchPurpose purpose) {
+        this(domain, writer, domainName, purpose, null);
+    }
+
+    private TransformWorkbenchPanel(DomainModel domain, DomainWriter writer, String domainName,
+            WorkbenchPurpose purpose, Consumer<ConfigurationContext> configurationAction) {
         this.controller = new TransformController(domain, writer);
         this.domainName = domainName;
         this.purpose = purpose == null ? WorkbenchPurpose.TRANSFORM : purpose;
+        this.configurationAction = configurationAction;
         if (this.purpose.showsDatasourceActions()) {
             datasourceSelection = new BoundedInstanceSelection(controller,
                     new BoundedInstanceSelection.Host() {
@@ -236,6 +252,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
             JLabel kind = new JLabel(project.projectKind() + ": " + project.projectName());
             kind.setName("project.kind");
             top.add(kind);
+            if (configurationAction != null && project.projectModel() != null) {
+                top.add(button("Configuration…", () -> showConfiguration(project)));
+            }
         }
         // "New field…" now sits next to the Class selector (it acts on that class), and
         // "Create subclass from group…" is a group-tree control (it acts on a group) — so the
@@ -2669,6 +2688,22 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         dialog.setVisible(true);
     }
 
+    private void showConfiguration(ProjectBacking backing) {
+        var model = backing.projectModel();
+        GeneratedClassModel clazz = model.findClass(controller.selectedType());
+        Object initial = clazz;
+        if (selectedField != null) {
+            var owner = model.findClass(selectedField.type());
+            if (owner != null) {
+                Object field = ConfigurationReferenceInventory.resolve(model,
+                        ConfigurationReferenceInventory.fieldSite(owner, selectedField.field()));
+                if (field != null) initial = field;
+            }
+        }
+        configurationAction.accept(new ConfigurationContext(this, backing, controller, purpose,
+                selectedInstances, initial, this::render));
+    }
+
     /** Open the workbench in a frame over any domain. */
     public static void launch(DomainModel domain, String title) {
         launch(domain, title, null);
@@ -2681,22 +2716,22 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     /** Build + show the workbench frame and RETURN it (EDT-only), so a caller can track
      *  it (e.g. to focus an already-open domain instead of reloading). */
     public static JFrame openFrame(DomainModel domain, String title, DomainWriter writer) {
-        return openFrame(domain, title, writer, WorkbenchPurpose.TRANSFORM);
+        return openFrame(domain, title, writer, WorkbenchPurpose.TRANSFORM, null);
     }
 
     /** Open the same scoped workbench with external acquisition/review actions. */
     public static JFrame openDatasourceFrame(
             DomainModel domain, String title, DomainWriter writer) {
-        return openFrame(domain, title, writer, WorkbenchPurpose.DATASOURCE);
+        return openFrame(domain, title, writer, WorkbenchPurpose.DATASOURCE, null);
     }
 
-    private static JFrame openFrame(
-            DomainModel domain, String title, DomainWriter writer, WorkbenchPurpose purpose) {
+    public static JFrame openFrame(DomainModel domain, String title, DomainWriter writer,
+            WorkbenchPurpose purpose, Consumer<ConfigurationContext> configurationAction) {
         JFrame f = new JFrame((purpose.showsDatasourceActions()
                 ? "DataSource Workbench — " : "Transform Workbench — ") + title);
         f.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         TransformWorkbenchPanel panel = new TransformWorkbenchPanel(
-                domain, writer, title, purpose);
+                domain, writer, title, purpose, configurationAction);
         f.add(panel);
         f.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override public void windowClosing(java.awt.event.WindowEvent e) {

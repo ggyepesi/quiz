@@ -11,6 +11,8 @@ import domain.config.GeneratedFieldModel;
 import domain.config.GeneratedProjectModel;
 import domain.config.StatementClassSource;
 import domain.config.RuleDirection;
+import domain.transform.ui.WorkbenchPurpose;
+import domain.workbench.configuration.ui.ProjectConfigurationPanel;
 
 import javax.swing.AbstractButton;
 import javax.swing.JComboBox;
@@ -124,6 +126,15 @@ class PanelLayoutIsCheckedInTest {
             describe(actual, "Graph section " + section, graph);
         }
 
+        var backing = ClassConfigurationTreeTest.transformationProject();
+        var output = backing.projectModel().findClass("SelectedPosition");
+        var transform = new domain.transform.ui.TransformController(
+                new domain.runtime.SnapshotDomain(List.of()), null);
+        describeConfigurationHost(actual, "TransformApp", backing, output, transform,
+                WorkbenchPurpose.TRANSFORM);
+        describeConfigurationHost(actual, "DataSourceApp", backing, output, transform,
+                WorkbenchPurpose.DATASOURCE);
+
         Path golden = Files.isRegularFile(GOLDEN) ? GOLDEN : Path.of("docs/panel-layout.txt");
         if (Boolean.getBoolean("panel.layout.write")) {
             Files.writeString(golden, actual.toString().stripTrailing() + "\n");
@@ -145,6 +156,21 @@ class PanelLayoutIsCheckedInTest {
     }
 
     // --- the walk ---
+
+    private static void describeConfigurationHost(StringBuilder out, String host,
+            ClassConfigurationTreeTest.FixtureProject backing, GeneratedClassModel output,
+            domain.transform.ui.TransformController controller, WorkbenchPurpose purpose) {
+        try (var configuration = new ProjectConfigurationPanel(
+                backing, controller, purpose, List.of(), output, () -> { })) {
+            var source = find(configuration, ClassSourcePanel.class);
+            source.configurationEditor().tree().selectDetail(
+                    domain.config.ClassConfigurationProjection.TRANSFORMATION);
+            describe(out, host + " configuration / Population transformation", configuration);
+            var navigator = find(configuration, SingleRootClassModelPanel.class);
+            navigator.selectField(backing.projectModel().rootClass().fields().getFirst());
+            describe(out, host + " configuration / Field definition", configuration);
+        }
+    }
 
     private static void describeClass(StringBuilder out, String title, Container panel,
             ClassConfigurationEditor editor) {

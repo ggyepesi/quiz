@@ -4,6 +4,8 @@ import domain.transform.app.DomainCatalog;
 import domain.transform.app.DomainSaver;
 import domain.transform.ui.DomainNavigator;
 import domain.transform.ui.TransformWorkbenchPanel;
+import domain.transform.ui.WorkbenchPurpose;
+import domain.workbench.configuration.ui.ProjectConfigurationPanel;
 
 /**
  * Entry point for source-driven acquisition and review over a saved project.
@@ -22,7 +24,7 @@ public final class DataSourceApp {
                 DomainCatalog::all,
                 "Data sources — saved projects",
                 "Open in DataSource Workbench",
-                (domain, name) -> TransformWorkbenchPanel.openDatasourceFrame(
-                        domain, name, saver));
+                (domain, name) -> TransformWorkbenchPanel.openFrame(domain, name, saver,
+                        WorkbenchPurpose.DATASOURCE, ProjectConfigurationPanel::open));
     }
 }

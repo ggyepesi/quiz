@@ -1,6 +1,9 @@
 package domain.transform.app;
 
 import domain.transform.ui.DomainNavigator;
+import domain.transform.ui.TransformWorkbenchPanel;
+import domain.transform.ui.WorkbenchPurpose;
+import domain.workbench.configuration.ui.ProjectConfigurationPanel;
 
 /**
  * Entry point for the transform workbench: opens the domain navigator wired with the wikidata
@@ -18,6 +21,9 @@ public final class TransformApp {
     private TransformApp() {}
 
     public static void main(String[] args) {
-        DomainNavigator.show(DomainCatalog::all, new DomainSaver());
+        DomainSaver saver = new DomainSaver();
+        DomainNavigator.show(DomainCatalog::all, "Domains", "Open in Transform Workbench",
+                (domain, name) -> TransformWorkbenchPanel.openFrame(domain, name, saver,
+                        WorkbenchPurpose.TRANSFORM, ProjectConfigurationPanel::open));
     }
 }

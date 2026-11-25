@@ -166,11 +166,16 @@ final class OrderedChoiceList<T> extends JPanel {
     }
 
     private Mode mode = Mode.EDITABLE;
+    private boolean editingEnabled = true;
+
+    void setEditingEnabled(boolean enabled) {
+        editingEnabled = enabled;
+        refreshEnablement();
+    }
 
     void mode(Mode value) {
         mode = value == null ? Mode.EDITABLE : value;
         chosen.setEnabled(mode != Mode.FIXED);
-        available.setEnabled(mode != Mode.FIXED);
         refreshEnablement();
     }
 
@@ -208,8 +213,10 @@ final class OrderedChoiceList<T> extends JPanel {
     /** Every button says whether it can do anything, before it is pressed. */
     private void refreshEnablement() {
         int index = chosen.getSelectedIndex();
-        boolean modifiable = mode == Mode.EDITABLE;
-        add.setEnabled(mode != Mode.FIXED && available.getSelectedItem() != null);
+        boolean modifiable = editingEnabled && mode == Mode.EDITABLE;
+        boolean addable = editingEnabled && mode != Mode.FIXED;
+        available.setEnabled(addable);
+        add.setEnabled(addable && available.getSelectedItem() != null);
         remove.setEnabled(modifiable && index >= 0);
         up.setEnabled(modifiable && index > 0);
         down.setEnabled(modifiable && index >= 0 && index < chosenModel.size() - 1);

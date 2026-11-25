@@ -32,8 +32,10 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import domain.workbench.ui.ExploreByExamplePanel;
+import domain.workbench.ui.ConfigurationTreePanel;
 import domain.workbench.ui.SelectionsButton;
 import domain.workbench.ui.WorkbenchSelections;
+import domain.transform.pipeline.ui.TransformationConfigurationEditor;
 
 /**
  * Hosts the mutually exclusive editors for qid-identity source classes,
@@ -98,6 +100,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
 
     private boolean updatingKind = false;
     private boolean editingEnabled = true;
+    private boolean configurationInspection;
 
     private final JPanel cardPanel =
             new JPanel(new CardLayout());
@@ -329,16 +332,45 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 }
             }
         };
-        for (var tree : List.of(classSourcePanel.configurationEditor().tree(),
-                statementSourcePanel.configurationEditor().tree(),
-                ownedClassPanel.configurationEditor().tree(),
-                aggregateClassPanel.configurationEditor().tree(),
-                fieldSourcePanel.configurationTree(),
-                graphConstraintsPanel.configurationTree())) {
+        for (var tree : configurationTrees()) {
             tree.onNavigate(navigate);
             tree.navigationAvailableWhen(site ->
                     ConfigurationReferenceInventory.resolve(projectModel, site) != null);
         }
+    }
+
+    private List<ConfigurationTreePanel> configurationTrees() {
+        return List.of(classSourcePanel.configurationEditor().tree(),
+                statementSourcePanel.configurationEditor().tree(),
+                ownedClassPanel.configurationEditor().tree(),
+                aggregateClassPanel.configurationEditor().tree(),
+                fieldSourcePanel.configurationTree(), graphConstraintsPanel.configurationTree());
+    }
+
+    /** Shows the same editors without ModelBuilder's source-authoring or execution actions. */
+    public void inspectConfiguration(TransformationConfigurationEditor.Fields fields,
+            Consumer<GeneratedClassModel> transformationApplied) {
+        configurationInspection = true;
+        classSourcePanel.transformationEditor(fields, transformationApplied);
+        editorTabs.remove(samplePanel);
+        reusableSelectionsPanel.removeAll();
+        var notice = new JLabel("Edit class, field and datasource declarations in ModelBuilder.");
+        notice.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
+        reusableSelectionsPanel.add(notice);
+        for (var tree : configurationTrees()) {
+            tree.selectionScope(load -> wikidata.ui.WikidataLabels.withCachedLabels(() -> {
+                load.run();
+                tree.editorDetails().forEach(detail -> EditableComponents.setEditable(detail, false));
+                classSourcePanel.refreshTransformationAccess();
+            }));
+        }
+        setEditingEnabled(false);
+    }
+
+    public boolean hasTransformationDrafts() { return classSourcePanel.hasTransformationDrafts(); }
+
+    public void loadedProjectStatus(boolean modelSaved, boolean snapshotSaved, int loadedObjects) {
+        domainStatus(() -> new DomainOverviewPanel.Status(modelSaved, snapshotSaved, loadedObjects));
     }
 
     /** The window's reusable selections, shared with tools that name or consume them. */
@@ -444,12 +476,24 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             case domain.config.Selection selection -> !selection.isImported();
             default -> true;
         };
-        boolean editable = editingEnabled && declarationOwnedHere;
-        EditableComponents.setEditable(cardPanel, editable);
+        boolean editable = editingEnabled && declarationOwnedHere && !configurationInspection;
+        for (Component editor : cardPanel.getComponents()) {
+            if (configurationInspection && editor == selectionEditor) continue;
+            EditableComponents.setEditable(editor, editable);
+        }
         EditableComponents.setEditable(kindHeader, editable);
+        classSourcePanel.refreshTransformationAccess();
     }
 
     public void edit(Object selected) {
+        if (configurationInspection) {
+            wikidata.ui.WikidataLabels.withCachedLabels(() -> showConstruct(selected));
+        } else {
+            showConstruct(selected);
+        }
+    }
+
+    private void showConstruct(Object selected) {
         this.selected = selected;
         // A disabled Sample button must reflect what is selected NOW: the reasons are
         // computed from the current selection, and asking them once at wiring time made
@@ -510,7 +554,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             if (selection.isImported()) importedNotice.setText("Imported from "
                     + selection.importedFrom() + " — owned and edited there.");
             selectionEditor.edit(selection);
-            EditableComponents.setEditable(selectionEditor,
+            if (!configurationInspection) EditableComponents.setEditable(selectionEditor,
                     editingEnabled && !selection.isImported());
             layout.show(cardPanel, "selection");
         } else if (selected == SingleRootClassModelPanel.ConfigurationSection.VOCABULARIES
@@ -541,7 +585,8 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         subclassDiscoveryPanel.showClass(projectModel, classForExplorerMembership());
         graphPatternPanel.refreshPatterns();
         graphConfigurationDiagram.selection(selected);
-        reusableSelectionsPanel.setVisible(!(selected instanceof GeneratedClassModel clazz)
+        reusableSelectionsPanel.setVisible(configurationInspection
+                || !(selected instanceof GeneratedClassModel clazz)
                 || clazz.classKind() != domain.config.ClassKind.AGGREGATE);
 
         // Editors update their own conditional enablement while loading a declaration.
@@ -765,6 +810,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     }
 
     public void applyEdits() {
+        if (configurationInspection) return;
         if (selected instanceof GeneratedClassModel clazz) flushEditor(clazz);
 
         // A field editor keeps pending Swing values even after another tree node

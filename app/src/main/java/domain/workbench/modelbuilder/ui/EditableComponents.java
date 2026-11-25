@@ -71,6 +71,11 @@ public final class EditableComponents {
             return;
         }
 
+        if (component instanceof OrderedChoiceList<?> ordered) {
+            ordered.setEditingEnabled(editable);
+            return;
+        }
+
         if (component instanceof JTextComponent text) {
             // Some look-and-feels change the background from inside setEditable(false).
             // Remember the writable appearance before giving them that opportunity;

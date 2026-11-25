@@ -41,6 +41,7 @@ public final class WikidataLabels {
     private static final Set<String> pending = ConcurrentHashMap.newKeySet();
     private static final List<Runnable> listeners = new CopyOnWriteArrayList<>();
     private static volatile Resolver resolver;
+    private static final ThreadLocal<Boolean> cachedOnly = new ThreadLocal<>();
     private static Timer flush;
 
     private WikidataLabels() {
@@ -67,9 +68,25 @@ public final class WikidataLabels {
         return id == null ? null : labels.get(id.trim());
     }
 
+    /** Use labels already held locally while projecting stored configuration. */
+    public static void withCachedLabels(Runnable inspection) {
+        if (Boolean.TRUE.equals(cachedOnly.get())) {
+            inspection.run();
+            return;
+        }
+        cachedOnly.set(true);
+        try {
+            inspection.run();
+        } finally {
+            cachedOnly.remove();
+        }
+    }
+
+    static boolean canRequest() { return resolver != null && cachedOnly.get() == null; }
+
     /** Ask for the labels of {@code ids} not yet known or asked for. */
     public static void request(Collection<String> ids) {
-        if (ids == null || resolver == null) return;
+        if (ids == null || !canRequest()) return;
         boolean added = false;
         for (String id : ids) {
             String clean = id == null ? "" : id.trim();

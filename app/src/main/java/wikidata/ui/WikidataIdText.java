@@ -65,7 +65,8 @@ public final class WikidataIdText extends JEditorPane {
             private void changed() {
                 line.text = field.getText();
                 line.render();
-                settle.restart();
+                if (WikidataLabels.canRequest()) settle.restart();
+                else settle.stop();
             }
             @Override public void insertUpdate(DocumentEvent e) { changed(); }
             @Override public void removeUpdate(DocumentEvent e) { changed(); }

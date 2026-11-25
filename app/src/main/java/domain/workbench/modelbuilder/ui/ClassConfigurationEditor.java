@@ -4,6 +4,7 @@ import domain.config.ClassConfigurationProjection;
 import domain.config.ClassKind;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedProjectModel;
+import domain.config.TransformationClassSource;
 import domain.workbench.ui.ConfigurationTreePanel;
 
 import javax.swing.BorderFactory;
@@ -43,6 +44,12 @@ final class ClassConfigurationEditor extends JPanel {
 
     void showClass(GeneratedProjectModel project, GeneratedClassModel clazz) {
         tree.show(ClassConfigurationProjection.project(project, clazz, kind),
+                node -> details.get(node.detailKey()));
+    }
+
+    void showClass(GeneratedProjectModel project, GeneratedClassModel clazz,
+            TransformationClassSource transformation) {
+        tree.show(ClassConfigurationProjection.project(project, clazz, kind, transformation),
                 node -> details.get(node.detailKey()));
     }
 

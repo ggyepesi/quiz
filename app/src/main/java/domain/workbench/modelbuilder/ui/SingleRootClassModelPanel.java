@@ -48,6 +48,10 @@ public class SingleRootClassModelPanel extends JPanel {
     private final JButton removeButton = new JButton("Remove");
 
     public SingleRootClassModelPanel(GeneratedProjectModel projectModel) {
+        this(projectModel, true);
+    }
+
+    public SingleRootClassModelPanel(GeneratedProjectModel projectModel, boolean structuralEdits) {
         super(new BorderLayout(4, 4));
 
         this.projectModel =
@@ -66,7 +70,8 @@ public class SingleRootClassModelPanel extends JPanel {
             }
         });
 
-        buildUi();
+        buildUi(structuralEdits);
+        setEditingEnabled(structuralEdits);
         refresh();
     }
 
@@ -290,6 +295,15 @@ public class SingleRootClassModelPanel extends JPanel {
         if (node != null) selectNode(node);
     }
 
+    public void selectConstruct(Object target) {
+        switch (target) {
+            case GeneratedClassModel clazz -> selectClass(clazz);
+            case GeneratedFieldModel field -> selectField(field);
+            case Selection selection -> selectSelection(selection);
+            default -> { }
+        }
+    }
+
     private void selectSection(ConfigurationSection section) {
         DefaultMutableTreeNode node = findNodeForUserObject(rootTreeNode, section);
         if (node != null) selectNode(node);
@@ -338,7 +352,7 @@ public class SingleRootClassModelPanel extends JPanel {
                         || selected instanceof domain.config.Selection)));
     }
 
-    private void buildUi() {
+    private void buildUi(boolean structuralEdits) {
         tree.setRootVisible(true);
         // Double-click expands, the Swing default. Nothing here claims double-click, and
         // with 0 the ONLY way to open a class was the expand handle — invisible in some
@@ -347,6 +361,9 @@ public class SingleRootClassModelPanel extends JPanel {
         tree.setRowHeight(28);
         tree.setFont(tree.getFont().deriveFont(14f));
         tree.setCellRenderer(new ClassPatternTreeRenderer(projectModel));
+
+        add(new JScrollPane(tree), BorderLayout.CENTER);
+        if (!structuralEdits) return;
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
         buttons.add(renameClassButton);
@@ -361,7 +378,6 @@ public class SingleRootClassModelPanel extends JPanel {
         // otherwise wrap and clip "Add field"/"Remove". Keep them reachable
         // via a horizontal scrollbar.
         add(objectview.utils.swing.ScrollPaneUtils.horizontalOnly(buttons), BorderLayout.NORTH);
-        add(new JScrollPane(tree), BorderLayout.CENTER);
 
         renameClassButton.addActionListener(e -> renameSelected());
         addClassButton.addActionListener(e -> addSelectedKind());

@@ -32,18 +32,23 @@ public final class PopulationSelections {
         if (model == null || pool == null) return result;
         for (Selection selection : model.selections()) {
             if (!(selection instanceof PopulationSelection population)) continue;
-            Set<String> qids = new LinkedHashSet<>(population.instanceQids());
-            LinkedHashSet<Viewable> members = new LinkedHashSet<>();
-            for (WikidataDynamicObject instance : pool) {
-                if (instance == null || !instance.hasTypeStamp()
-                        || !qids.contains(instance.qid())) continue;
-                if (EntityRepresentations.fieldAccepts(model, population.className(),
-                        instance.directClassNames())) {
-                    members.add(instance);
-                }
-            }
-            result.put(population.name(), List.copyOf(members));
+            result.put(population.name(), members(model, population, pool));
         }
         return java.util.Collections.unmodifiableMap(result);
+    }
+
+    public static List<Viewable> members(GeneratedProjectModel model, PopulationSelection population,
+            Collection<? extends Viewable> pool) {
+        Set<String> qids = new LinkedHashSet<>(population.instanceQids());
+        LinkedHashSet<Viewable> members = new LinkedHashSet<>();
+        for (Viewable value : pool) {
+            if (!(value instanceof WikidataDynamicObject instance) || !instance.hasTypeStamp()
+                    || !qids.contains(instance.qid())) continue;
+            if (EntityRepresentations.fieldAccepts(model, population.className(),
+                    instance.directClassNames())) {
+                members.add(instance);
+            }
+        }
+        return List.copyOf(members);
     }
 }

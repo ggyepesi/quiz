@@ -7,18 +7,37 @@ import domain.config.GeneratedClassModel;
 import domain.config.GeneratedProjectModel;
 import domain.config.GeneratedProjectModelStore;
 import domain.config.GraphClassSource;
+import domain.config.ClassPopulationMode;
+import domain.config.FieldCardinality;
+import domain.config.PopulationSelection;
+import domain.config.TransformationClassSource;
+import domain.config.TransformationStep;
+import domain.datasource.schema.FieldType;
+import domain.persistence.ProjectSaveGuard;
+import domain.runtime.SnapshotDomain;
+import domain.runtime.WikidataDynamicObject;
+import domain.transform.FilterOperator;
+import domain.transform.pipeline.ui.TransformationConfigurationEditor;
+import domain.transform.ui.ProjectBacking;
+import domain.transform.ui.TransformController;
+import domain.transform.ui.WorkbenchPurpose;
+import domain.workbench.configuration.ui.ProjectConfigurationPanel;
 import domain.datasource.graph.GraphDiscoveryConfiguration;
 import domain.datasource.graph.GraphRelation;
 import domain.datasource.graph.GraphTraversalDirection;
 import org.junit.jupiter.api.Test;
 
 import javax.swing.SwingUtilities;
+import javax.swing.JButton;
+import javax.swing.JList;
 import java.awt.Component;
 import java.awt.Container;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -116,6 +135,168 @@ class ClassConfigurationTreeTest {
                         "build use is readable until build steps have their own detail editor");
             }
         });
+    }
+
+    @Test void bothWorkbenchesShowTheModelBuilderTreeAndOnlyTransformCanApplyItsFilters()
+            throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            var backing = transformationProject();
+            var model = backing.projectModel();
+            var output = model.findClass("SelectedPosition");
+            var controller = new TransformController(new SnapshotDomain(List.of()), null);
+            try (var builder = new ModelSourceWorkbenchPanel(model);
+                 var transform = new ProjectConfigurationPanel(backing, controller,
+                         WorkbenchPurpose.TRANSFORM, List.of(), output, () -> { });
+                 var sources = new ProjectConfigurationPanel(backing, controller,
+                         WorkbenchPurpose.DATASOURCE, List.of(), output, () -> { })) {
+                builder.edit(output);
+                var builderTree = find(builder, ClassSourcePanel.class).configurationEditor().tree();
+                var transformTree = find(transform, ClassSourcePanel.class).configurationEditor().tree();
+                var sourceTree = find(sources, ClassSourcePanel.class).configurationEditor().tree();
+                assertEquals(builderTree.nodes(), transformTree.nodes());
+                assertEquals(builderTree.nodes(), sourceTree.nodes());
+
+                var second = transformTree.nodes().stream()
+                        .filter(node -> ClassConfigurationProjection.transformationStepIndex(node) == 1)
+                        .findFirst().orElseThrow();
+                sourceTree.select(second.id());
+                builderTree.select(second.id());
+                transformTree.select(second.id());
+                assertFalse(button(find(sources, TransformationConfigurationEditor.class),
+                        "Move up").isEnabled());
+                assertFalse(button(find(builder, TransformationConfigurationEditor.class),
+                        "Move up").isEnabled());
+                var transformEditor = find(transform, TransformationConfigurationEditor.class);
+                button(transformEditor, "Move up").doClick();
+                assertEquals(List.of("holderCount", "siteCount"), output.transformationSource()
+                        .steps().stream().map(TransformationStep::fieldPath).toList());
+                assertTrue(transform.hasDrafts());
+
+                var constructs = find(transform, SingleRootClassModelPanel.class);
+                constructs.selectClass(model.rootClass());
+                constructs.selectClass(output);
+                button(transformEditor, "Apply transformation").doClick();
+                assertEquals(List.of("siteCount", "holderCount"), output.transformationSource()
+                        .steps().stream().map(TransformationStep::fieldPath).toList());
+                assertFalse(transform.hasDrafts());
+                assertEquals(List.of("Population transformation for SelectedPosition"),
+                        backing.unsavedModelChanges());
+
+                var imported = model.findClass("ImportedPositions");
+                constructs.selectClass(imported);
+                transformTree.selectDetail(ClassConfigurationProjection.TRANSFORMATION);
+                assertFalse(button(transformEditor, "Add filter…").isEnabled());
+            }
+        });
+    }
+
+    @Test void sourceDetailsStayReadOnlyAfterSelectingRowsAndPopulationEditsAreExplicit()
+            throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            var backing = transformationProject();
+            var model = backing.projectModel();
+            var population = (PopulationSelection) model.findSelection("Hand-picked positions");
+            var value = new WikidataDynamicObject("Q2", "Another position");
+            value.type("Position");
+            var controller = new TransformController(new SnapshotDomain(List.of(value)), null);
+            try (var transform = new ProjectConfigurationPanel(backing, controller,
+                         WorkbenchPurpose.TRANSFORM, List.of(value), population, () -> { });
+                 var sources = new ProjectConfigurationPanel(backing, controller,
+                         WorkbenchPurpose.DATASOURCE, List.of(value), population, () -> { })) {
+                var readOnly = find(sources, SelectionViewerPanel.class);
+                assertFalse(button(readOnly, "Add selected instances").isVisible());
+                assertEquals(List.of("Q1"), population.instanceQids());
+                var editable = find(transform, SelectionViewerPanel.class);
+                button(editable, "Add selected instances").doClick();
+                assertEquals(List.of("Q1", "Q2"), population.instanceQids());
+                assertEquals(List.of("Hand-picked positions"), backing.unsavedModelChanges());
+                assertFalse(button(editable, "Add selected instances").isEnabled());
+
+                var navigation = find(sources, SingleRootClassModelPanel.class);
+                navigation.selectClass(model.rootClass());
+                var source = find(sources, ClassSourcePanel.class);
+                var tree = source.configurationEditor().tree();
+                tree.selectDetail(ClassConfigurationProjection.IDENTITY);
+                var identity = tree.editorDetails().stream()
+                        .filter(Component::isVisible).findFirst().orElseThrow();
+                var list = find(identity, OrderedChoiceList.class);
+                assertNotNull(list);
+                find(list, JList.class).setSelectedIndex(0);
+                assertFalse(button(list, "Remove").isEnabled());
+                assertFalse(button(list, "Down").isEnabled());
+                var store = new GeneratedProjectModelStore();
+                var before = assertDoesNotThrow(() -> store.toJson(model.copy()));
+                for (var node : tree.nodes()) {
+                    tree.expand(node.id());
+                    tree.select(node.id());
+                }
+                assertEquals(before, assertDoesNotThrow(() -> store.toJson(model.copy())));
+            }
+        });
+    }
+
+    static FixtureProject transformationProject() {
+        var model = new GeneratedProjectModel();
+        model.name("Positions");
+        var base = new GeneratedClassModel("Position");
+        base.seedQids().add("Q1");
+        base.addField("holderCount", FieldType.NUMBER, FieldCardinality.SINGLE);
+        base.addField("siteCount", FieldType.NUMBER, FieldCardinality.SINGLE);
+        base.canonical().keyFields().addAll(List.of("holderCount", "siteCount"));
+        model.rootClass(base);
+        for (String name : List.of("SelectedPosition", "ImportedPositions")) {
+            var output = new GeneratedClassModel(name);
+            output.baseClassName("Position");
+            output.populationMode(ClassPopulationMode.MATERIALIZED_TRANSFORM);
+            var recipe = new TransformationClassSource();
+            recipe.inputClassReference(base.declarationId(), base.className());
+            recipe.addStep(TransformationStep.filter("holderCount", FilterOperator.GREATER_THAN, 0, null));
+            recipe.addStep(TransformationStep.filter("siteCount", FilterOperator.GREATER_THAN, 2, null));
+            output.transformationSource(recipe);
+            if (name.startsWith("Imported")) output.importedFrom("Position library");
+            model.addClass(output);
+        }
+        var selected = new PopulationSelection("Hand-picked positions");
+        selected.className("Position");
+        selected.instanceQids(List.of("Q1"));
+        model.replaceSelection(selected);
+        model.ensureDeclarationIdentities();
+        return new FixtureProject(model, new ArrayList<>());
+    }
+
+    record FixtureProject(GeneratedProjectModel projectModel, List<String> changes)
+            implements ProjectBacking {
+        @Override public String projectName() { return projectModel.name(); }
+        @Override public GeneratedProjectModel.ProjectKind projectKind() { return projectModel.projectKind(); }
+        @Override public File modelFile() { return new File("positions.model.json"); }
+        @Override public File snapshotFile() { return new File("positions.snapshot.json"); }
+        @Override public List<String> unsavedModelChanges() { return List.copyOf(changes); }
+        @Override public void recordModelChange(String change) { changes.add(change); }
+        @Override public void populationChanged(PopulationSelection population) { changes.add(population.name()); }
+        @Override public String modelWriteConflict() { return ""; }
+        @Override public void writeProjectModel() { }
+        @Override public <T> T saveProject(Runnable prepare, ProjectSaveGuard.Write<T> saveSnapshot)
+                throws Exception {
+            prepare.run();
+            return saveSnapshot.run();
+        }
+    }
+
+    private static JButton button(Container parent, String label) {
+        JButton found = findButton(parent, label);
+        assertNotNull(found, label);
+        return found;
+    }
+
+    private static JButton findButton(Container parent, String label) {
+        for (Component child : parent.getComponents()) {
+            if (child instanceof JButton button && label.equals(button.getText())) return button;
+            if (child instanceof Container nested) {
+                JButton found = findButton(nested, label);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 
     private static <T extends Component> T find(Container container, Class<T> type) {

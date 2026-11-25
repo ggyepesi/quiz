@@ -149,7 +149,7 @@ final class WikidataIdListEditor extends JPanel implements TextBackedEditor {
     @Override public void addNotify() {
         super.addNotify();
         WikidataLabels.onChange(repaintLabels);
-        requestLabels();
+        if (editorEditable) requestLabels();
     }
 
     @Override public void removeNotify() {

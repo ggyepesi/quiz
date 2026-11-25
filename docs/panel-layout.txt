@@ -695,3 +695,76 @@
   button: Run graph  (disabled)
   button: Clear draft
   button: Apply graph
+
+== TransformApp configuration / Population transformation ==
+  label: Class kind:
+  combo: 5 item(s)  (disabled)
+  label: Edit class, field and datasource declarations in ModelBuilder.
+  box: Configuration
+  label: Input class: Position
+  label: 2 filter step(s)
+  button: Add filter…
+  button: Edit filter…  (disabled)
+  button: Remove filter  (disabled)
+  button: Move up  (disabled)
+  button: Move down  (disabled)
+  button: Apply transformation  (disabled)
+  button: Discard changes  (disabled)
+  label: Applied to the working model. Save, then Build project in ModelBuilder to run this recipe; the loaded instances still show the previous result.
+
+== TransformApp configuration / Field definition ==
+  label: Edit class, field and datasource declarations in ModelBuilder.
+  box: Configuration
+  label: Field: holderCount
+  label: How do we fill this field?
+  box: Field definition
+    label: Field name:
+    text: [holderCount]
+    label: Holds:
+    combo: 8 item(s)  (disabled)
+    label: Of class:
+    combo: 6 item(s)  (disabled)
+      text: [(none)]  (disabled)
+    check: no class (keep label)  (disabled)
+    label: Count:
+    combo: 2 item(s)  (disabled)
+    label: Display:
+    combo: 3 item(s)  (disabled)
+  label: Load as:
+  combo: 11 item(s)  (disabled)
+  button: Examples…  (disabled)
+  button: Re-fetch on next enrich  (disabled)
+  button: Apply field source  (disabled)
+
+== DataSourceApp configuration / Population transformation ==
+  label: Class kind:
+  combo: 5 item(s)  (disabled)
+  label: Edit class, field and datasource declarations in ModelBuilder.
+  box: Configuration
+  label: Input class: Position
+  label: 2 filter step(s)
+  label: Edit the population transformation in TransformApp.
+
+== DataSourceApp configuration / Field definition ==
+  label: Edit class, field and datasource declarations in ModelBuilder.
+  box: Configuration
+  label: Field: holderCount
+  label: How do we fill this field?
+  box: Field definition
+    label: Field name:
+    text: [holderCount]
+    label: Holds:
+    combo: 8 item(s)  (disabled)
+    label: Of class:
+    combo: 6 item(s)  (disabled)
+      text: [(none)]  (disabled)
+    check: no class (keep label)  (disabled)
+    label: Count:
+    combo: 2 item(s)  (disabled)
+    label: Display:
+    combo: 3 item(s)  (disabled)
+  label: Load as:
+  combo: 11 item(s)  (disabled)
+  button: Examples…  (disabled)
+  button: Re-fetch on next enrich  (disabled)
+  button: Apply field source  (disabled)

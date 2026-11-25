@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.FileTime;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -36,7 +37,7 @@ public final class ProjectSaveGuard {
     private final List<File> additionalFiles;
     /** What was read: size and modification time decide whether the content digest
      *  must be recomputed, so a check over an unchanged 250 MB snapshot reads no bytes. */
-    private record Version(long size, long modified, String digest) { }
+    private record Version(long size, FileTime modified, Object fileKey, String digest) { }
 
     /** How long a save waits for another writer's lock before refusing. */
     private static final long LOCK_WAIT_MILLIS = 5_000;
@@ -153,11 +154,13 @@ public final class ProjectSaveGuard {
                 var attributes = Files.readAttributes(path,
                         java.nio.file.attribute.BasicFileAttributes.class);
                 long size = attributes.size();
-                long modified = attributes.lastModifiedTime().toMillis();
+                FileTime modified = attributes.lastModifiedTime();
+                Object fileKey = attributes.fileKey();
                 Version previous = known.get(path);
-                versions.put(path, previous != null && previous.size() == size
-                        && previous.modified() == modified
-                        ? previous : new Version(size, modified, digest(path)));
+                versions.put(path, previous != null && fileKey != null && previous.size() == size
+                        && previous.modified().equals(modified)
+                        && java.util.Objects.equals(previous.fileKey(), fileKey)
+                        ? previous : new Version(size, modified, fileKey, digest(path)));
             } catch (NoSuchFileException missing) {
                 // Absence matters too: a new file is a change to the baseline.
             }

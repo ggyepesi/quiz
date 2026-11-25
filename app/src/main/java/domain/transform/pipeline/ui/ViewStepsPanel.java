@@ -1,7 +1,6 @@
 package domain.transform.pipeline.ui;
 
 import domain.transform.FilterCondition;
-import domain.transform.FilterOperator;
 
 import objectview.Viewable;
 import objectview.field.FieldPath;
@@ -60,28 +59,8 @@ public final class ViewStepsPanel extends JPanel {
     private final JToggleButton presentScope = new JToggleButton("Present");
     private ScopeFilter scopeFilter = ScopeFilter.ALL;
 
-    private final JComboBox<FilterOperator> filterOperator =
-            new JComboBox<>();
-    // Editable so it doubles as a free-text box; its dropdown is repopulated per
-    // selected field with that field's candidate values (enum constants / distinct
-    // low-cardinality categorical values), empty for free-text fields.
-    private final JComboBox<String> filterValue = editableCombo();
-    private final JTextField filterValue2 = new JTextField(10);
+    private final FilterConditionEditor filterCondition;
     private final JButton addFilterGroup = new JButton("Add filter group");
-
-    private static JComboBox<String> editableCombo() {
-        JComboBox<String> c = new JComboBox<>();
-        c.setEditable(true);
-        c.setPrototypeDisplayValue("wwwwwwww");
-        return c;
-    }
-
-    private static String comboText(JComboBox<String> combo) {
-        Object item = combo.isEditable()
-                ? combo.getEditor().getItem()
-                : combo.getSelectedItem();
-        return item == null ? "" : item.toString();
-    }
 
     public ViewStepsPanel(
             TransformController controller,
@@ -112,6 +91,8 @@ public final class ViewStepsPanel extends JPanel {
                 ? (f, s) -> { } : onSelectionChanged;
         this.onNewField = onNewField == null ? () -> { } : onNewField;
         this.purpose = purpose == null ? WorkbenchPurpose.TRANSFORM : purpose;
+        filterCondition = new FilterConditionEditor(controller::candidateValueSelection,
+                controller::sampleFieldValue);
         // The same coverage contributor is used here and in curation. It describes the
         // current group; it does not decide which part of that group is visible.
         this.coverageColumns = new FieldCoverageColumns(
@@ -172,12 +153,10 @@ public final class ViewStepsPanel extends JPanel {
             add(fieldBlock(), BorderLayout.CENTER);
         }
 
-        reloadOperators(FieldKind.UNKNOWN);
-        filterOperator.addActionListener(e -> updateFilterValueEnablement());
-        filterValue.setName("filter.value");
         addFilterGroup.setToolTipText(
                 "Make the instances matching this condition a named group");
         addFilterGroup.setName("filter.addGroup");
+        addFilterGroup.setEnabled(false);
         addFilterGroup.addActionListener(e -> requestAddFilterGroup());
         ButtonGroup scopeButtons = new ButtonGroup();
         scopeButtons.add(allScope);
@@ -281,15 +260,8 @@ public final class ViewStepsPanel extends JPanel {
         JPanel p = new JPanel();
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
 
-        JPanel condition = new JPanel(new WrapLayout(FlowLayout.LEFT, 6, 3));
-        condition.setAlignmentX(Component.LEFT_ALIGNMENT);
-        condition.add(new JLabel("Operator:"));
-        condition.add(filterOperator);
-        condition.add(new JLabel("Value:"));
-        condition.add(filterValue);
-        condition.add(new JLabel("and:"));
-        condition.add(filterValue2);
-        p.add(condition);
+        filterCondition.setAlignmentX(Component.LEFT_ALIGNMENT);
+        p.add(filterCondition);
 
         // This action needs its own allocated row. As the final item in the condition's
         // FlowLayout it wrapped at the real left-pane width, but BorderLayout.NORTH kept
@@ -328,14 +300,6 @@ public final class ViewStepsPanel extends JPanel {
     @SuppressWarnings("unchecked")
     private static Class<? extends Viewable> sampleClass(Viewable q) {
         return (Class<? extends Viewable>) q.getClass();
-    }
-
-    private DomainField singleCheckedField() {
-        DomainField f = currentField();
-        if (f == null) {
-            JOptionPane.showMessageDialog(this, "Select a field first.");
-        }
-        return f;
     }
 
     /** The selected field as a {@link DomainField}. Prefer the domain's authoritative
@@ -401,8 +365,8 @@ public final class ViewStepsPanel extends JPanel {
      *  the value picker with that field's candidate values. */
     private void onFieldSelectionChanged() {
         DomainField f = currentField();
-        reloadOperators(kindOf(f));
-        populateValueChoices(f);
+        if (purpose.showsTransformActions()) filterCondition.edit(f, null);
+        addFilterGroup.setEnabled(f != null);
         updateScopeLabels();
         // Rebuilding rows for a newly selected group's explicit TypeSpec is a schema
         // refresh, not a user field/scope edit. Calling the parent here re-enters the
@@ -453,90 +417,13 @@ public final class ViewStepsPanel extends JPanel {
         presentScope.setEnabled(coverage != null && coverage.eligible() > 0);
     }
 
-    /** Repopulate the value combo's dropdown with the field's candidate values (enum /
-     *  categorical), leaving it editable for free-text fields. Clears the editor so the
-     *  user picks fresh for the newly-selected field. */
-    private void populateValueChoices(DomainField f) {
-        domain.DomainModel.ValueSelection selection = f == null
-                ? new domain.DomainModel.ValueSelection(List.of(), false)
-                : controller.candidateValueSelection(f.type(), f.fieldPath());
-        filterValue.setModel(new DefaultComboBoxModel<>(
-                selection.values().toArray(new String[0])));
-        filterValue.setEditable(!selection.exhaustive());
-        if (selection.exhaustive() && !selection.values().isEmpty()) {
-            filterValue.setSelectedIndex(0);
-        } else {
-            filterValue.setSelectedItem("");
-        }
-    }
-
-    /** The value shape of a field: the domain-populated {@link DomainField#kind()}
-     *  if known, else inferred from a representative value (cached by the controller
-     *  — the first instance's value may be null while the field is numeric). */
-    private FieldKind kindOf(DomainField f) {
-        if (f == null) {
-            return FieldKind.UNKNOWN;
-        }
-        if (f.collection()) {
-            return FieldKind.COLLECTION;
-        }
-        if (f.reference()) {
-            return FieldKind.REFERENCE;
-        }
-        if (f.kind() != null && f.kind() != FieldKind.UNKNOWN) {
-            return f.kind();
-        }
-        return FieldKind.ofValue(
-                controller.sampleFieldValue(f.type(), f.fieldPath()));
-    }
-
-    /** Repopulate the operator combo with only the operators applicable to {@code
-     *  kind}, keeping the current selection if it still fits. */
-    private void reloadOperators(FieldKind kind) {
-        FilterOperator previous = (FilterOperator) filterOperator.getSelectedItem();
-        filterOperator.removeAllItems();
-        FilterOperator keep = null;
-        for (FilterOperator op : FilterOperator.values()) {
-            if (op.appliesTo(kind)) {
-                filterOperator.addItem(op);
-                if (op == previous) {
-                    keep = op;
-                }
-            }
-        }
-        if (keep != null) {
-            filterOperator.setSelectedItem(keep);
-        }
-        updateFilterValueEnablement();
-    }
-
-    /** Enable only the value field(s) the selected operator uses: none for a unary
-     *  predicate (is true / is empty …), both for BETWEEN, else just the first. */
-    private void updateFilterValueEnablement() {
-        FilterOperator op = (FilterOperator) filterOperator.getSelectedItem();
-        filterValue.setEnabled(op != null && !op.isUnary());
-        filterValue2.setEnabled(op != null && op.isBinary());
-        // A condition needs both halves — no field selected means there is nothing to
-        // filter ON, whatever the operator says.
-        addFilterGroup.setEnabled(op != null && currentField() != null);
-    }
-
     /** Create a named filter group from the rule currently shown in this editor. */
     public void requestAddFilterGroup() {
-        DomainField f = singleCheckedField();
-        if (f == null) {
+        FilterCondition c = filterCondition.condition();
+        if (c == null) {
+            JOptionPane.showMessageDialog(this, "Select a field first.");
             return;
         }
-
-        FilterOperator op = (FilterOperator) filterOperator.getSelectedItem();
-        if (op == null) {
-            return;
-        }
-
-        Object v1 = parseValue(comboText(filterValue));
-        Object v2 = parseValue(filterValue2.getText());
-
-        FilterCondition c = new FilterCondition(f, op, v1, v2);
         JTextField name = new JTextField("Filter", 24);
         name.selectAll();
         int answer = JOptionPane.showConfirmDialog(this, name,
@@ -565,10 +452,6 @@ public final class ViewStepsPanel extends JPanel {
         allScope.setSelected(true);
         fieldPicker.setSelectedPath(FieldPath.parse(path));
         selectScope(filter);
-    }
-
-    private static Object parseValue(String text) {
-        return TransformController.parseValue(text);
     }
 
     private void fireChanged() {

@@ -48,6 +48,7 @@ public final class ConfigurationTreePanel extends JPanel {
     private final JButton openReference = new JButton("Open");
     private ConfigurationReferenceInventory.Site selectedReference;
     private Consumer<ConfigurationNode> selectionListener = ignored -> { };
+    private Consumer<Runnable> selectionScope = Runnable::run;
     private Consumer<ConfigurationReferenceInventory.Site> navigationListener =
             ignored -> { };
     private Predicate<ConfigurationReferenceInventory.Site> canNavigate = site -> true;
@@ -76,6 +77,11 @@ public final class ConfigurationTreePanel extends JPanel {
 
     public void onSelection(Consumer<ConfigurationNode> listener) {
         selectionListener = listener == null ? ignored -> { } : listener;
+    }
+
+    /** Lets an inspection host scope loading of a detail and enforce its editability. */
+    public void selectionScope(Consumer<Runnable> scope) {
+        selectionScope = scope;
     }
 
     public void onNavigate(Consumer<ConfigurationReferenceInventory.Site> listener) {
@@ -157,7 +163,7 @@ public final class ConfigurationTreePanel extends JPanel {
         ConfigurationNode node = nodes.get(id);
         selectedReference = node == null ? null : node.referenceTarget();
         updateReferenceDetail(node);
-        if (node != null) selectionListener.accept(node);
+        if (node != null) selectionScope.accept(() -> selectionListener.accept(node));
     }
 
     private void buildReferenceDetail() {

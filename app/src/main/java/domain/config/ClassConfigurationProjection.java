@@ -26,9 +26,15 @@ public final class ClassConfigurationProjection {
 
     public static ConfigurationNode project(GeneratedProjectModel project,
             GeneratedClassModel clazz, ClassKind editorKind) {
+        return project(project, clazz, editorKind,
+                clazz == null ? null : clazz.transformationSource());
+    }
+
+    public static ConfigurationNode project(GeneratedProjectModel project,
+            GeneratedClassModel clazz, ClassKind editorKind, TransformationClassSource draft) {
         List<ConfigurationNode> children = new ArrayList<>();
         children.add(section(clazz, DEFINITION, "Definition", STORED_CONFIGURATION));
-        children.add(production(project, clazz, editorKind));
+        children.add(production(project, clazz, editorKind, draft));
         children.add(section(clazz, IDENTITY, "Identity", STORED_CONFIGURATION));
         children.add(section(clazz, DISPLAY_NAME, "Display name", STORED_CONFIGURATION));
         if (editorKind == ClassKind.SOURCE) {
@@ -77,16 +83,18 @@ public final class ClassConfigurationProjection {
     }
 
     private static ConfigurationNode production(GeneratedProjectModel project,
-            GeneratedClassModel clazz, ClassKind kind) {
+            GeneratedClassModel clazz, ClassKind kind, TransformationClassSource transformation) {
         return switch (kind) {
             case SOURCE -> {
                 if (clazz != null && clazz.materializedByTransformation()) {
-                    var source = clazz.transformationSource();
                     List<ConfigurationNode> steps = new ArrayList<>();
-                    if (source != null) for (TransformationStep step : source.steps()) {
+                    if (transformation != null) for (TransformationStep step : transformation.steps()) {
                         int index = steps.size() + 1;
                         String summary = !step.configured() ? "Incomplete filter"
-                                : step.fieldPath() + " " + step.operator()
+                                : java.util.Arrays.stream(step.fieldPath().split("\\.", -1))
+                                        .map(objectview.field.ViewableContractFieldSet::label)
+                                        .collect(java.util.stream.Collectors.joining("."))
+                                        + " " + step.operator()
                                         + (step.operator().isUnary() ? "" : " " + step.value())
                                         + (step.operator().isBinary() ? " and " + step.value2() : "");
                         steps.add(new ConfigurationNode(id(clazz, TRANSFORMATION + "/" + index),
@@ -138,6 +146,13 @@ public final class ClassConfigurationProjection {
             }
             case GRAPH -> throw new IllegalArgumentException("Use the graph configuration projection");
         };
+    }
+
+    /** A step's identity carries its order. The caption is presentation only. */
+    public static int transformationStepIndex(ConfigurationNode node) {
+        String prefix = TRANSFORMATION + "/";
+        return node != null && node.id().key().startsWith(prefix)
+                ? Integer.parseInt(node.id().key().substring(prefix.length())) - 1 : -1;
     }
 
     private static String operationName(domain.datasource.api.SourceRecipe recipe) {

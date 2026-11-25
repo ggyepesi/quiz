@@ -2,6 +2,7 @@ package domain.transform.ui;
 
 import domain.DomainCapability;
 import domain.config.GeneratedProjectModel;
+import domain.config.PopulationSelection;
 import domain.persistence.ProjectSaveGuard;
 
 import java.io.File;
@@ -26,6 +27,12 @@ public interface ProjectBacking extends DomainCapability {
 
     /** Model edits made in this session and not yet written, in the order made. */
     List<String> unsavedModelChanges();
+
+    /** Records an applied edit of the working model for Save and Close. */
+    void recordModelChange(String change);
+
+    /** Reflects the authored members in the open domain's instance scope. */
+    void populationChanged(PopulationSelection population);
 
     /**
      * Why the working model cannot be written now, or "" when it can. The file is

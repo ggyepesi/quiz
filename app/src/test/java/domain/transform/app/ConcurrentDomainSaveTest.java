@@ -8,7 +8,12 @@ import domain.config.GeneratedProjectModel;
 import domain.config.GeneratedProjectModelStore;
 import domain.persistence.ProjectSaveGuard;
 import domain.runtime.WikidataDynamicObject;
+import domain.transform.EditableGroup;
+import domain.transform.FilterCondition;
+import domain.transform.FilterOperator;
+import domain.transform.OperationGroup;
 import domain.transform.ui.ProjectBacking;
+import domain.transform.ui.TransformController;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -51,6 +56,8 @@ class ConcurrentDomainSaveTest {
         var modelBuilder = ProjectSaveGuard.capture(storage, model.name());
         ((CuratableDomain) datasource).createPopulationSelection(
                 "Curated positions", "Position", List.of("Q2"));
+        assertEquals(List.of("Q2"), datasource.selectionMembers("Curated positions").stream()
+                .map(objectview.Viewable::getIdentifier).toList());
         saver.save("History", datasource.memberRoots(), datasource);
         saver.save("History", datasource.memberRoots(), datasource);
         assertThrows(ProjectSaveGuard.Conflict.class, modelBuilder::check);
@@ -79,6 +86,40 @@ class ConcurrentDomainSaveTest {
         var conflict = assertThrows(ProjectSaveGuard.Conflict.class, first::save);
         assertTrue(conflict.getMessage().contains(second.file().getPath()));
         assertEquals(saved, Files.readString(second.file().toPath()));
+    }
+
+    @Test void aSecondSaveKeepsTheEditedRecipeOfAClassCreatedInThisSession() throws Exception {
+        var storage = DomainStorage.in(root.toFile());
+        var model = new GeneratedProjectModel();
+        model.name("History");
+        var position = new GeneratedClassModel("Position");
+        position.addField("holderCount", domain.datasource.schema.FieldType.NUMBER,
+                domain.config.FieldCardinality.SINGLE);
+        model.rootClass(position);
+        saveModelBuilder(storage, model, "Q1");
+        var loaded = DomainCatalog.unregisteredProjects(storage, Set.of(), storage::snapshotFile)
+                .getFirst().opener().open();
+        var controller = new TransformController(loaded, new DomainSaver(storage));
+        var root = new EditableGroup("All positions");
+        root.replaceMembers(loaded.memberRoots());
+        var group = new OperationGroup("Any position", "Position", new FilterCondition(
+                new domain.DomainField("Position", "holderCount", false, false),
+                FilterOperator.IS_EMPTY, null, null));
+        group.reproduce(root.getMembers());
+        root.addGroup(group);
+        controller.createSubclassFromGroup("SelectedPosition", "Position", group);
+        controller.saveAsDomain("History");
+
+        var backing = loaded.capability(ProjectBacking.class);
+        var recipe = backing.projectModel().findClass("SelectedPosition").transformationSource();
+        recipe.steps(List.of(domain.config.TransformationStep.filter("holderCount",
+                FilterOperator.GREATER_THAN, 5, null)));
+        controller.saveAsDomain("History");
+
+        var persisted = new GeneratedProjectModelStore().load(storage.modelFile("History"))
+                .findClass("SelectedPosition").transformationSource().steps().getFirst();
+        assertEquals(FilterOperator.GREATER_THAN, persisted.operator());
+        assertEquals(5, persisted.value());
     }
 
     private static void saveModelBuilder(DomainStorage storage, GeneratedProjectModel model,

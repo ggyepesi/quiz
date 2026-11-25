@@ -18,6 +18,9 @@ import domain.DomainSchemas;
 import domain.config.GeneratedProjectModel;
 import domain.config.GeneratedProjectModelStore;
 import domain.persistence.ProjectSaveGuard;
+import domain.config.PopulationSelection;
+import domain.compile.transform.PopulationSelections;
+import domain.compile.transform.RoleSelections;
 import dataset.DomainStorage;
 
 /**
@@ -40,6 +43,8 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
     private final domain.config.GeneratedProjectModel workingModel;
     private final ProjectSaveGuard saveGuard;
     private final List<String> unsavedModelChanges = new java.util.ArrayList<>();
+    private final java.util.Map<String, List<Viewable>> editedPopulationMembers =
+            new java.util.LinkedHashMap<>();
 
     private record Backing(GeneratedProjectModel model, ProjectSaveGuard guard) { }
 
@@ -166,10 +171,13 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
     }
     @Override public List<String> selectionNames() {
         java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>(base.selectionNames());
+        names.addAll(editedPopulationMembers.keySet());
         names.addAll(curationSourceSelections().keySet());
         return List.copyOf(names);
     }
     @Override public List<Viewable> selectionMembers(String name) {
+        List<Viewable> edited = editedPopulationMembers.get(name);
+        if (edited != null) return edited;
         // Looked up by the exact name each selection was built under. The name is a
         // label; nothing is decided by parsing it (it used to be gated on a
         // "Source / " prefix).
@@ -250,12 +258,26 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
                     "A population selection needs a name, a class and at least one QID");
         }
         workingModel.replaceSelection(selection);
-        unsavedModelChanges.add("Population selection \"" + name + "\": "
-                + selection.instanceQids().size() + " " + className + " instance QIDs");
+        populationChanged(selection);
     }
 
     @Override public List<String> unsavedModelChanges() {
         return List.copyOf(unsavedModelChanges);
+    }
+
+    @Override public void recordModelChange(String change) {
+        unsavedModelChanges.add(change);
+    }
+
+    @Override public void populationChanged(PopulationSelection population) {
+        // As at load, a semantic role keeps its name if it occupies the same scope.
+        if (RoleSelections.definitions(workingModel).stream()
+                .noneMatch(role -> role.key().equals(population.name()))) {
+            editedPopulationMembers.put(population.name(),
+                    PopulationSelections.members(workingModel, population, instances()));
+        }
+        recordModelChange("Population selection \"" + population.name() + "\": "
+                + population.instanceQids().size() + " " + population.className() + " instance QIDs");
     }
 
     @Override public String modelWriteConflict() {
