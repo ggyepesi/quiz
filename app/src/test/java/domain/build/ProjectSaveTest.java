@@ -1,6 +1,7 @@
 package domain.build;
 
 import dataset.DomainStorage;
+import domain.persistence.ProjectSaveGuard;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import domain.runtime.SnapshotDomain;
@@ -10,11 +11,13 @@ import domain.config.GeneratedProjectModel;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.nio.file.Files;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Saving a project is an operation with no window in it: it plans every file before
@@ -24,6 +27,85 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ProjectSaveTest {
 
     @TempDir Path root;
+
+    @Test void aConfirmedPlanCannotOverwriteASnapshotSavedAfterItWasPrepared() throws Exception {
+        var storage = DomainStorage.in(root.toFile());
+        var model = domain();
+        ProjectSave.plan(new ProjectSave.Input(model, run(model, member("Q1")), null, List.of()),
+                storage).write();
+        var loaded = ProjectSaveGuard.capture(storage, model.name());
+        var pending = ProjectSave.plan(new ProjectSave.Input(
+                model, run(model, member("Q2")), null, List.of()), storage, loaded);
+
+        ProjectSave.plan(new ProjectSave.Input(model, run(model, member("Q3")), null, List.of()),
+                storage).write();
+        var snapshot = storage.snapshotFile(model.name()).toPath();
+        var config = storage.modelFile(model.name()).toPath();
+        var registry = storage.registryFile().toPath();
+        String savedSnapshot = Files.readString(snapshot);
+        String savedConfig = Files.readString(config);
+        String savedRegistry = Files.readString(registry);
+
+        var conflict = assertThrows(ProjectSaveGuard.Conflict.class, pending::write);
+        assertTrue(conflict.getMessage().contains(snapshot.toString()));
+        assertEquals(savedSnapshot, Files.readString(snapshot));
+        assertEquals(savedConfig, Files.readString(config));
+        assertEquals(savedRegistry, Files.readString(registry));
+    }
+
+    /** Generation used to delete its recovery graph right after mapping, before the
+     *  project save. A save the concurrency guard then refused left a long acquisition
+     *  only in memory. The graph now survives until a save of the same model succeeds. */
+    @Test void aRefusedSaveKeepsTheRecoveryGraphUntilASaveOfItsModelSucceeds() throws Exception {
+        var storage = DomainStorage.in(root.toFile());
+        var model = domain();
+        ProjectSave.plan(new ProjectSave.Input(model, run(model, member("Q1")), null, List.of()),
+                storage).write();
+        var stale = ProjectSave.plan(new ProjectSave.Input(model, run(model, member("Q2")),
+                null, List.of()), storage, ProjectSaveGuard.capture(storage, model.name()));
+        ProjectSave.plan(new ProjectSave.Input(model, run(model, member("Q3")), null, List.of()),
+                storage).write();
+        GenerationRecoveryStore recovery = recovery(storage, model, DomainSave.signature(model));
+
+        assertThrows(ProjectSaveGuard.Conflict.class, stale::write);
+        assertTrue(recovery.canResume(model), "a refused save keeps the run resumable");
+
+        ProjectSave.plan(new ProjectSave.Input(model, run(model, member("Q2")), null, List.of()),
+                storage).write();
+        assertFalse(recovery.snapshotFile().exists(), "the save that persists the run ends it");
+    }
+
+    @Test void aSaveOfAnotherModelLeavesARecoveryGraphItDidNotProduce() throws Exception {
+        var storage = DomainStorage.in(root.toFile());
+        var model = domain();
+        GenerationRecoveryStore recovery = recovery(storage, model, "another model signature");
+
+        ProjectSave.plan(new ProjectSave.Input(model, run(model, member("Q1")), null, List.of()),
+                storage).write();
+
+        assertTrue(recovery.snapshotFile().exists());
+    }
+
+    private static GenerationRecoveryStore recovery(DomainStorage storage,
+            GeneratedProjectModel model, String signature) throws Exception {
+        Files.createDirectories(storage.generationRecoveryFile(model.name()).toPath().getParent());
+        Files.writeString(storage.generationRecoveryFile(model.name()).toPath(), "{}");
+        Files.writeString(storage.generationRecoveryMetadataFile(model.name()).toPath(),
+                "{\"modelSignature\":\"" + signature + "\"}");
+        return GenerationRecoveryStore.in(storage, model.name());
+    }
+
+    @Test void savingAgainUsesTheVersionThatThisSessionWrote() throws Exception {
+        var storage = DomainStorage.in(root.toFile());
+        var model = domain();
+        var guard = ProjectSaveGuard.newProject(storage, model.name());
+        for (String qid : List.of("Q1", "Q2")) {
+            ProjectSave.plan(new ProjectSave.Input(model, run(model, member(qid)), null, List.of()),
+                    storage, guard).write();
+        }
+        assertTrue(new WikidataDynamicObjectJsonStore().load(storage.snapshotFile(model.name()))
+                .stream().anyMatch(value -> value.qid().equals("Q2")));
+    }
 
     /** Every line the plan shows names a file the write then produces — the dialog and
      *  the write are one expression, not two that agree. */

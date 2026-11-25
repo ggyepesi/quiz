@@ -563,6 +563,11 @@ class WikipediaDiscoveryPanelTest {
         @Override public List<String> unsavedModelChanges() { return List.of(); }
         @Override public String modelWriteConflict() { return ""; }
         @Override public void writeProjectModel() { }
+        @Override public <T> T saveProject(Runnable prepare,
+                domain.persistence.ProjectSaveGuard.Write<T> saveSnapshot) throws Exception {
+            prepare.run();
+            return saveSnapshot.run();
+        }
         @Override public PromotionPreview previewPromotion(domain.curation.Correction correction) {
             return PromotionPreview.ineligible("not used");
         }

@@ -47,3 +47,18 @@ the selected action or result occupies the wide right-hand detail area. With no 
 selection it uses all currently shown eligible instances; selecting cards or modeled-group nodes
 narrows the input. Merely selecting a field, group, instance, source or action never starts a
 request or changes the project.
+
+## Concurrent saves
+
+ModelBuilder, TransformApp and DataSourceApp remember the saved files they opened. Save refuses if
+the model, main snapshot, graph snapshots, population artifacts or construct manifest changed
+in the meantime. The message lists the affected files. Open edits remain in memory. Reopening the project
+loads the current version. In TransformApp and DataSourceApp the same check covers the curation
+sidecar read with the project.
+
+The write lock covers the version check and the writes, including the shared dataset registry.
+If another save is writing, a save waits up to five seconds and then refuses; try again when it
+finishes. A refused save keeps the open edits; reopening loads the current files and discards them.
+A generation recovery graph is kept until a save of the model that produced it succeeds. A completed save advances the open
+session's version. Builds use the same guard when they write project results. Detached exports
+share the registry write lock and use their explicit destination as before.

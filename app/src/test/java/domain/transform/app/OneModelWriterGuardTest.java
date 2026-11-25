@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * to model, the last two each reading the file, editing it and writing it back on the
  * spot. That made Save one persistence boundary among three, and let a promotion
  * overwrite whatever ModelBuilder had saved in between (#305). Every model edit now lands
- * in the opened domain's working model, and {@code CuratableDomain.writeProjectModel} —
+ * in the opened domain's working model, and {@code CuratableDomain.saveProject} —
  * called by Save — is the only writer. A new write anywhere else fails here.
  */
 class OneModelWriterGuardTest {
@@ -45,6 +45,6 @@ class OneModelWriterGuardTest {
 
         assertEquals(List.of("CuratableDomain.java"), writers,
                 "a TransformApp model edit belongs in the working model; only Save, through "
-                        + "CuratableDomain.writeProjectModel, writes model.json");
+                        + "CuratableDomain.saveProject, writes model.json");
     }
 }

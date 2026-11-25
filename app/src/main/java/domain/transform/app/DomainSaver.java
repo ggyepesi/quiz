@@ -1,6 +1,8 @@
 package domain.transform.app;
 
 import domain.persistence.DatasetRegistry;
+import domain.persistence.ProjectSaveGuard;
+import dataset.DomainStorage;
 import objectview.Viewable;
 import domain.DomainModel;
 import domain.transform.ui.DomainWriter;
@@ -21,6 +23,11 @@ import domain.transform.ui.ProjectBacking;
  * producer loop.
  */
 public final class DomainSaver implements DomainWriter {
+    private final DomainStorage storage;
+
+    public DomainSaver() { this(DomainStorage.inDefaultLocation()); }
+
+    DomainSaver(DomainStorage storage) { this.storage = storage; }
 
     @Override
     public String describeSave(String name, Collection<? extends Viewable> members,
@@ -45,7 +52,6 @@ public final class DomainSaver implements DomainWriter {
     @Override
     public String save(String name, Collection<? extends Viewable> members,
                        DomainModel schema) throws Exception {
-        String key = sanitize(name);
         if (schema == null) {
             throw new IllegalArgumentException("A domain schema is required");
         }
@@ -57,16 +63,17 @@ public final class DomainSaver implements DomainWriter {
                     + "Save domain wrote neither the model nor the snapshot.");
         }
         ProjectBacking backing = backingFor(name, schema);
-        // The working model, with this session's edits — not a fresh read of the file,
-        // which would drop them. Refused before anything is written, so a save that
-        // would overwrite another application's model save writes nothing at all.
-        domain.config.GeneratedProjectModel owner =
-                backing == null ? null : backing.projectModel();
-        if (owner != null) {
-            String conflict = backing.modelWriteConflict();
-            if (!conflict.isEmpty()) throw new IllegalStateException(conflict);
-            addSubclasses(owner, schema);
+        if (backing != null) {
+            return backing.saveProject(() -> addSubclasses(backing.projectModel(), schema),
+                    () -> writeSnapshot(name, members, schema, backing));
         }
+        return ProjectSaveGuard.exclusive(storage,
+                () -> writeSnapshot(name, members, schema, null));
+    }
+
+    private String writeSnapshot(String name, Collection<? extends Viewable> members,
+            DomainModel schema, ProjectBacking backing) throws Exception {
+        var owner = backing == null ? null : backing.projectModel();
         var converted = ViewableToWdo.convertDomain(
                 schema.memberRoots(), schema.groupRootBindings(), schema);
 
@@ -82,7 +89,7 @@ public final class DomainSaver implements DomainWriter {
 
         DatasetRegistry.Dataset d = new DatasetRegistry.Dataset();
         d.name(name);
-        d.key(backing == null ? key : dataset.DomainStorage.key(name));
+        d.key(backing == null ? sanitize(name) : DomainStorage.key(name));
         d.snapshotPath(file.getPath());
         d.types().addAll(types);
         d.rootClass(types.isEmpty() ? "" : types.iterator().next());
@@ -91,7 +98,6 @@ public final class DomainSaver implements DomainWriter {
         boolean served = backing == null || serves(backing.projectKind());
         d.served(served);
         if (owner != null) {
-            backing.writeProjectModel();
             d.modelPath(backing.modelFile().getPath());
             File ruleTree = new File(backing.modelFile().getParentFile(),
                     backing.modelFile().getName().replace(".model.json", ".ruletree.json"));
@@ -103,12 +109,12 @@ public final class DomainSaver implements DomainWriter {
         // a model-backed save above carries the owner explicitly.
         d.savedAt(java.time.LocalDateTime.now().toString());
 
-        DatasetRegistry reg = DatasetRegistry.load();
+        DatasetRegistry reg = DatasetRegistry.load(storage.registryFile());
         // This may be a transformed view of a ModelBuilder domain with the same key.
         // Keep that domain's model/rule-tree identity while replacing its served snapshot.
         reg.upsertSnapshot(d);
         if (backing != null) reg.removeUnbackedNamedExcept(name, d.key());
-        reg.save();
+        reg.save(storage.registryFile());
 
         // The build list is the user's: Save never adds or removes its steps. It says which
         // steps a saved transformation still needs, for the user to place in ModelBuilder.
@@ -150,7 +156,6 @@ public final class DomainSaver implements DomainWriter {
         if (schema == null) return null;
         ProjectBacking backing = schema.capability(ProjectBacking.class);
         return backing != null && backing.modelFile() != null
-                && backing.modelFile().isFile()
                 && java.util.Objects.equals(name == null ? "" : name.trim(),
                         backing.projectName()) ? backing : null;
     }

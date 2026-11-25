@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import domain.datasource.api.SourceBinding;
 import domain.datasource.api.SourceBindingTarget;
 import domain.datasource.api.SourceBindingSlot;
+import domain.persistence.ProjectSaveGuard;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,6 +23,7 @@ public final class ManualCuration implements CorrectionSource {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final File file;
+    private final ProjectSaveGuard saveGuard;
     private final List<Correction> entries = new ArrayList<>();
     private final List<FieldDeclaration> fieldDeclarations = new ArrayList<>();
     private final List<Merge> merges = new ArrayList<>();
@@ -30,18 +32,29 @@ public final class ManualCuration implements CorrectionSource {
     private final List<CuratedInstance> instances = new ArrayList<>();
 
     public ManualCuration(File file) {
+        this(file, null);
+    }
+
+    private ManualCuration(File file, ProjectSaveGuard saveGuard) {
         this.file = file;
+        this.saveGuard = saveGuard;
     }
 
     /** The curation sidecar for a snapshot file: {@code <name>.curation.json} beside
      *  it, loaded (empty when the file doesn't exist yet). */
     public static ManualCuration forSnapshot(File snapshot) {
+        return forSnapshot(snapshot, null);
+    }
+
+    public static ManualCuration forSnapshot(File snapshot, ProjectSaveGuard saveGuard) {
+        return new ManualCuration(fileForSnapshot(snapshot), saveGuard).load();
+    }
+
+    public static File fileForSnapshot(File snapshot) {
         String base = snapshot.getName()
                 .replaceFirst("\\.snapshot\\.json$", "")
                 .replaceFirst("\\.json$", "");
-        ManualCuration c = new ManualCuration(new File(snapshot.getParentFile(), base + ".curation.json"));
-        c.load();
-        return c;
+        return new File(snapshot.getParentFile(), base + ".curation.json");
     }
 
     public ManualCuration load() {
@@ -114,6 +127,25 @@ public final class ManualCuration implements CorrectionSource {
     }
 
     public void save() throws IOException {
+        if (saveGuard == null) {
+            writeFile();
+            return;
+        }
+        try {
+            saveGuard.write(() -> {
+                writeFile();
+                return null;
+            });
+        } catch (IOException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new IOException(exception);
+        }
+    }
+
+    private void writeFile() throws IOException {
         File parent = file.getParentFile();
         if (parent != null && !parent.exists()) {
             parent.mkdirs();

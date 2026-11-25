@@ -363,6 +363,23 @@ public final class DomainStorage {
         return List.copyOf(files);
     }
 
+    /** Authored files and durable instance artifacts protected by a project save. */
+    public List<File> savedProjectFiles(String name) {
+        List<File> files = new ArrayList<>(List.of(
+                modelFile(name), snapshotFile(name), constructManifestFile(name)));
+        File[] sidecars = directory(name).listFiles(file -> {
+            String filename = file.getName();
+            return file.isFile() && (isOwnedSidecar(filename)
+                    || filename.endsWith(".population.json")
+                    || filename.endsWith(".publication.json"));
+        });
+        if (sidecars != null) {
+            java.util.Arrays.sort(sidecars, java.util.Comparator.comparing(File::getName));
+            files.addAll(List.of(sidecars));
+        }
+        return List.copyOf(files);
+    }
+
     /** One saved inventory entry, regardless of how that construct is materialized. */
     public static final class SavedConstruct {
         public String declarationId = "";

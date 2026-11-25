@@ -3,6 +3,7 @@ package domain.build;
 import dataset.DomainStorage;
 import domain.datasource.graph.GraphDiscoveryState;
 import domain.persistence.DatasetRegistry;
+import domain.persistence.ProjectSaveGuard;
 import domain.runtime.LoadedDeclaration;
 import domain.runtime.WikidataDynamicObject;
 import domain.runtime.WikidataDynamicObjectJsonStore;
@@ -115,6 +116,7 @@ public final class ProjectSave {
     public record Result(List<String> report, int instancesWritten) { }
 
     private final Input input;
+    private final ProjectSaveGuard guard;
     private final DomainStorage storage;
     private final ConstructInventory inventory;
     private final List<WikidataDynamicObject> roots;
@@ -124,11 +126,13 @@ public final class ProjectSave {
     private final List<Warning> warnings;
     private final List<File> removals;
 
-    private ProjectSave(Input input, DomainStorage storage, List<WikidataDynamicObject> roots,
+    private ProjectSave(Input input, DomainStorage storage, ProjectSaveGuard guard,
+                        List<WikidataDynamicObject> roots,
                         List<LoadedDeclaration> loadedDeclarations,
                         GraphDiscoveryState graphDiscovery, SelfReferenceLedger selfReferences,
                         List<Warning> warnings) {
         this.input = input;
+        this.guard = guard;
         this.storage = storage;
         this.inventory = ConstructInventory.of(input.model());
         this.roots = List.copyOf(roots);
@@ -145,21 +149,28 @@ public final class ProjectSave {
      * when a run would replace it (to say which classes the run would drop).
      */
     public static ProjectSave plan(Input input, DomainStorage storage) throws Exception {
+        return plan(input, storage, ProjectSaveGuard.capture(storage, input.model().name()));
+    }
+
+    public static ProjectSave plan(Input input, DomainStorage storage, ProjectSaveGuard guard)
+            throws Exception {
         Objects.requireNonNull(input, "input");
         Objects.requireNonNull(storage, "storage");
         GeneratedProjectModel model = input.model();
+        guard.requireDestination(storage, model.name());
+        guard.check();
         ConstructInventory inventory = ConstructInventory.of(model);
         File snapshot = storage.snapshotFile(model.name());
         Run run = input.run();
         if (run == null && !snapshot.isFile()) {
-            return new ProjectSave(input, storage, List.of(), List.of(),
+            return new ProjectSave(input, storage, guard, List.of(), List.of(),
                     input.graphDiscovery(), SelfReferenceLedger.EMPTY, List.of());
         }
         if (run == null) {
             // Read the way Load reads it, so a class renamed since that Save keeps its
             // members and one removed since stops being claimed.
             ProjectLoad.Projection saved = ProjectLoad.project(model, storage, snapshot);
-            return new ProjectSave(input, storage, inventory.memberRoots(saved.objects()),
+            return new ProjectSave(input, storage, guard, inventory.memberRoots(saved.objects()),
                     saved.loadedDeclarations(), saved.graphDiscovery(), saved.selfReferences(),
                     List.of());
         }
@@ -197,7 +208,7 @@ public final class ProjectSave {
                                 + String.join(", ", dropped) + "."));
             }
         }
-        return new ProjectSave(input, storage, roots,
+        return new ProjectSave(input, storage, guard, roots,
                 GenerationRuns.renamedDeclarations(run.loadedDeclarations(), renames),
                 input.graphDiscovery(), run.selfReferences(), warnings);
     }
@@ -247,6 +258,17 @@ public final class ProjectSave {
     /** Writes the plan: model, rule tree, instances (and for a domain its registry row),
      *  counts, graph annotations, then the construct manifest. */
     public Result write() throws Exception {
+        guard.requireDestination(storage, name());
+        Result result = guard.write(this::writeFiles);
+        // The finalized generation graph is kept until a save persists its run: a save
+        // refused by the concurrency guard must not cost the acquisition (directive 22).
+        // Only a save of the model that produced it ends its purpose.
+        GenerationRecoveryStore recovery = GenerationRecoveryStore.in(storage, name());
+        if (recovery.canResume(input.model())) recovery.clear();
+        return result;
+    }
+
+    private Result writeFiles() throws Exception {
         GeneratedProjectModel model = input.model();
         List<String> report = new ArrayList<>();
         File modelFile = storage.modelFile(name());

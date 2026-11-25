@@ -1,5 +1,7 @@
 package domain.workbench.modelbuilder.ui;
 
+import domain.persistence.ProjectSaveGuard;
+
 import domain.build.GraphResults;
 
 import domain.build.GraphDiscoveryResultStore;
@@ -222,6 +224,7 @@ public class ModelBuilderFrame extends JFrame {
      * the same moment — the project became identical to a file on disk.
      */
     private File openModelFile;
+    private ProjectSaveGuard saveGuard;
 
     private final JButton loadProjectButton =
             new JButton("Load project");
@@ -334,6 +337,7 @@ public class ModelBuilderFrame extends JFrame {
             GeneratedProjectModel replacement,
             domain.datasource.graph.GraphDiscoveryState replacementLedger) {
         sourceWorkbench.abandonEdits();
+        markSaved(null, null);
         projectModel.copyContentsFrom(replacement);
         graphResultsFollowLoadedModel();
         replaceGenerationRun(null);
@@ -1662,9 +1666,12 @@ public class ModelBuilderFrame extends JFrame {
         }
         File modelFile = modelFile();
         GeneratedProjectModel saved;
+        ProjectSaveGuard buildGuard;
         try {
             logWindow.info("Build: reading model " + modelFile.getPath() + "\n");
+            buildGuard = guardForModel(modelFile);
             saved = new GeneratedProjectModelStore().load(modelFile);
+            buildGuard.check();
         } catch (Exception unreadable) {
             reportGenerationError(unreadable);
             return;
@@ -1698,7 +1705,7 @@ public class ModelBuilderFrame extends JFrame {
         java.util.concurrent.atomic.AtomicReference<BuiltProject> built =
                 new java.util.concurrent.atomic.AtomicReference<>();
         domain.build.BuildProcess build = new domain.build.BuildProcess(
-                saved, storage, new domain.build.BuildProcess.Completion(
+                saved, storage, buildGuard, new domain.build.BuildProcess.Completion(
                         "Load the built project into ModelBuilder from " + modelFile.getName()
                                 + " and " + (builtSnapshot == null
                                         ? "its snapshot" : builtSnapshot.getName()),
@@ -1758,7 +1765,8 @@ public class ModelBuilderFrame extends JFrame {
     /** A completed build's saved files, read in the build's worker. */
     private record BuiltProject(GeneratedProjectModel model,
                                 domain.datasource.graph.GraphDiscoveryState ledger, File snapshot,
-                                domain.build.ProjectLoad.Loaded loaded) { }
+                                domain.build.ProjectLoad.Loaded loaded,
+                                ProjectSaveGuard guard) { }
 
     /**
      * Reads the configuration and snapshot a build just saved. It touches no Swing state:
@@ -1769,6 +1777,7 @@ public class ModelBuilderFrame extends JFrame {
                                           java.util.function.Consumer<String> say)
             throws Exception {
         say.accept("Reading built model " + modelFile.getPath());
+        ProjectSaveGuard guard = guardForModel(modelFile);
         GeneratedProjectModel model = new GeneratedProjectModelStore().load(modelFile);
         File snapshot = snapshotBesideModel(modelFile);
         if (snapshot == null || !snapshot.isFile()) {
@@ -1779,7 +1788,8 @@ public class ModelBuilderFrame extends JFrame {
         domain.datasource.graph.GraphDiscoveryState ledger = graphDiscoveryBeside(modelFile);
         domain.build.ProjectLoad.Loaded loaded =
                 domain.build.ProjectLoad.load(model, storage, snapshot, say);
-        return new BuiltProject(model, ledger, snapshot, loaded);
+        guard.check();
+        return new BuiltProject(model, ledger, snapshot, loaded, guard);
     }
 
     /**
@@ -1801,7 +1811,7 @@ public class ModelBuilderFrame extends JFrame {
         syncDepthSpinnerToActiveClass();
         refreshProjectPicker();
         refreshProjectKindUi();
-        markSaved(modelFile);
+        markSaved(modelFile, built.guard());
         // A successful build has no Apply/Accept step: it already saved and installed
         // its output. Completion synchronizes only; the result page names the explicit
         // Show instances action instead of opening another window on the reader's behalf.
@@ -2938,9 +2948,22 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     /** This project is now exactly what {@code file} holds. */
-    private void markSaved(File file) {
+    private void markSaved(File file, ProjectSaveGuard guard) {
         openModelFile = file;
+        saveGuard = guard;
         savedSignature = file == null ? "" : modelSignature(projectModel);
+    }
+
+    private ProjectSaveGuard guardForModel(File file) throws java.io.IOException {
+        File snapshot = snapshotBesideModel(file);
+        String key = file.getName().replaceFirst("\\.model\\.json$", "");
+        return snapshot == null ? ProjectSaveGuard.capture(storage, key, file)
+                : ProjectSaveGuard.capture(storage, key, file, snapshot);
+    }
+
+    private ProjectSaveGuard activeSaveGuard() {
+        return saveGuard == null ? ProjectSaveGuard.newProject(storage, projectModel.name())
+                : saveGuard;
     }
 
     /** The folder this project lives in, or null for a draft that has no home yet. */
@@ -2991,9 +3014,11 @@ public class ModelBuilderFrame extends JFrame {
     // post-delete fallback.
     private boolean doLoadDomain(File model) {
         try {
+            ProjectSaveGuard guard = guardForModel(model);
             GeneratedProjectModel loaded = new GeneratedProjectModelStore().load(model);
             domain.datasource.graph.GraphDiscoveryState ledger =
                     graphDiscoveryBeside(model);
+            guard.check();
             // The caller has already confirmed that pending changes may be discarded.
             replaceOpenProject(loaded, ledger);
             modelChanged();
@@ -3002,7 +3027,7 @@ public class ModelBuilderFrame extends JFrame {
             refreshProjectKindUi();
             // Last, after the selection and refreshes: those can announce a change, and
             // a load that marked itself saved too early would then look edited.
-            markSaved(model);
+            markSaved(model, guard);
             rememberCurrentDomain();
             logWindow.info("Loaded " + (projectModel.isModel() ? "model" : "domain")
                     + " \"" + projectModel.name() + "\".");
@@ -3070,7 +3095,6 @@ public class ModelBuilderFrame extends JFrame {
     // update the registry entry (if any). Nothing destructive beyond the move.
     private void renameDomain() {
         String oldName = projectModel.name();
-        String oldKey = projectKey();
         String kind = projectModel.isModel() ? "model" : "domain";
         String name = (String) JOptionPane.showInputDialog(
                 this, "Rename " + kind + ":", "Rename " + kind,
@@ -3083,7 +3107,26 @@ public class ModelBuilderFrame extends JFrame {
             return;
         }
 
-        switch (storage.rename(oldName, name)) {
+        dataset.DomainStorage.Rename rename;
+        try {
+            String target = name;
+            rename = ProjectSaveGuard.exclusive(storage, () -> {
+                activeSaveGuard().check();
+                var result = storage.rename(oldName, target);
+                if (result instanceof dataset.DomainStorage.Rename.Done) {
+                    File moved = storage.modelFile(target);
+                    if (openModelFile != null) {
+                        saveGuard = guardForModel(moved);
+                        openModelFile = moved;
+                    }
+                }
+                return result;
+            });
+        } catch (Exception conflict) {
+            reportGenerationError(conflict);
+            return;
+        }
+        switch (rename) {
             case dataset.DomainStorage.Rename.FolderTaken taken -> JOptionPane.showMessageDialog(
                     this, "A project folder already exists at\n" + taken.existing().getPath()
                             + "\nChoose a different name.",
@@ -3117,10 +3160,14 @@ public class ModelBuilderFrame extends JFrame {
             return;
         }
         try {
-            storage.delete(name);
+            activeSaveGuard().write(() -> {
+                storage.delete(name);
+                return null;
+            });
             logWindow.info("Deleted " + kind + " \"" + name + "\".");
         } catch (Exception ex) {
             reportGenerationError(ex);
+            return;
         }
 
         // Switch to whatever else is saved — the same list the picker shows, so a model
@@ -3156,13 +3203,15 @@ public class ModelBuilderFrame extends JFrame {
             return;
         }
         try {
+            ProjectSaveGuard guard = guardForModel(f);
             GeneratedProjectModel loaded = new GeneratedProjectModelStore().load(f);
             domain.datasource.graph.GraphDiscoveryState ledger = graphDiscoveryBeside(f);
+            guard.check();
             // Startup uses the same replacement boundary as an interactive switch.
             replaceOpenProject(loaded, ledger);
             modelChanged();
             syncDepthSpinnerToActiveClass();
-            markSaved(f);
+            markSaved(f, guard);
             rememberCurrentDomain();
         } catch (Exception ex) {
             System.err.println("Could not load saved model " + f.getPath()
@@ -3278,16 +3327,18 @@ public class ModelBuilderFrame extends JFrame {
             return;
         }
         try {
+            ProjectSaveGuard guard = guardForModel(model);
             GeneratedProjectModel loaded = new GeneratedProjectModelStore().load(model);
             domain.datasource.graph.GraphDiscoveryState ledger =
                     graphDiscoveryBeside(model);
+            guard.check();
             replaceOpenProject(loaded, ledger);
             modelChanged();
             classModelPanel.selectClass(projectModel.rootClass());
             syncDepthSpinnerToActiveClass();
             refreshProjectPicker();
             refreshProjectKindUi();
-            markSaved(model);
+            markSaved(model, guard);
             logWindow.info("Loaded project configuration from " + model.getName());
         } catch (Exception ex) {
             reportGenerationError(ex);
@@ -3336,8 +3387,11 @@ public class ModelBuilderFrame extends JFrame {
 
     private void loadSavedInstances(File file) throws Exception {
         sourceWorkbench.applyEdits();
-        installSavedInstances(file, domain.build.ProjectLoad.load(
-                projectModel, storage, file, logWindow::info), true);
+        ProjectSaveGuard guard = activeSaveGuard();
+        guard.check();
+        var loaded = domain.build.ProjectLoad.load(projectModel, storage, file, logWindow::info);
+        guard.check();
+        installSavedInstances(file, loaded, true);
     }
 
     private void installSavedInstances(File file,
@@ -3583,6 +3637,7 @@ public class ModelBuilderFrame extends JFrame {
         }
 
         domain.build.ProjectSave save;
+        ProjectSaveGuard guard = activeSaveGuard();
         try {
             save = domain.build.ProjectSave.plan(
                     new domain.build.ProjectSave.Input(modelToSave,
@@ -3592,7 +3647,7 @@ public class ModelBuilderFrame extends JFrame {
                                     lastRun.modelSnapshot(),
                                     lastRun.generatedFromSignature()),
                             graphDiscoveryLedger, graphResults.all()),
-                    storage);
+                    storage, guard);
         } catch (Exception unreadableSnapshot) {
             reportGenerationError(unreadableSnapshot);
             return false;
@@ -3630,7 +3685,7 @@ public class ModelBuilderFrame extends JFrame {
             rememberCurrentDomain();
             sourceWorkbench.refreshDomainOverview();
             // What is on disk is now what is open, so switching away asks nothing.
-            markSaved(modelFile());
+            markSaved(modelFile(), guard);
             savedGenerationRun = lastRun;
             logWindow.info("Saved " + projectKind + " \"" + projectModel.name()
                     + "\":\n" + report);

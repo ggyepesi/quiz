@@ -2,6 +2,7 @@ package domain.transform.ui;
 
 import domain.DomainCapability;
 import domain.config.GeneratedProjectModel;
+import domain.persistence.ProjectSaveGuard;
 
 import java.io.File;
 import java.util.List;
@@ -11,8 +12,7 @@ import java.util.List;
  *
  * <p>It is read once, when the domain opens, and kept as the WORKING model: every read
  * in this session sees it, and every model edit made here (a promoted rule, an added
- * population) changes it. Nothing writes the model file except {@link
- * #writeProjectModel()}, which Save calls — so Save is the one persistence boundary, and
+ * population) changes it. {@link #saveProject} is the persistence boundary, and
  * closing without saving leaves the file as it was.
  */
 public interface ProjectBacking extends DomainCapability {
@@ -34,6 +34,9 @@ public interface ProjectBacking extends DomainCapability {
      */
     String modelWriteConflict();
 
-    /** Writes the working model to {@link #modelFile()}. The only model writer. */
+    /** Writes just the working model through the same project save guard. */
     void writeProjectModel() throws Exception;
+
+    /** Save the working model, snapshot and registry under one project write guard. */
+    <T> T saveProject(Runnable prepare, ProjectSaveGuard.Write<T> saveSnapshot) throws Exception;
 }

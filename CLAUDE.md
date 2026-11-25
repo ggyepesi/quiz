@@ -320,6 +320,9 @@ construct per thing produced:
    shows the owning project's Domain/Model kind; saving a model-backed working domain keeps
    that kind and writes its semantic subclasses to the owning model and ordinary snapshot,
    never to a detached same-name transform dataset.
+   A model-backed save checks the version opened by that session before writing and refuses
+   when another writer changed those files. The same store lock covers the check, project
+   writes and shared registry update. A successful save advances that session's version.
 
    **QuizFactory and the web serve saved configured domains only.** Their catalogue is the
    registry's saved `served` snapshots and each loaded domain's `servedTypes`; they never
@@ -460,9 +463,11 @@ construct per thing produced:
 
 22. **Persist an expensive graph before fallible local materialization.** Once generation
    has finalized its shared object graph, write that exact graph to the named recovery file
-   before mapping generated Java instances. Remove it only after mapping succeeds. A later
-   Generate action explicitly offers to load that file and resume materialization without
-   repeating remote acquisition, and rejects it when the model fingerprint differs.
+   before mapping generated Java instances. Remove it only after the project save that
+   persists that run succeeds: a mapping failure or a save the concurrency guard refuses
+   keeps it. A later Generate action explicitly offers to load that file and resume
+   materialization without repeating remote acquisition, and rejects it when the model
+   fingerprint differs.
    *(Trigger: a local mapping/rendering defect would otherwise require another Wikidata run.)*
 
 23. **A delivered project is a headlessly executable artifact build.** ModelBuilder and

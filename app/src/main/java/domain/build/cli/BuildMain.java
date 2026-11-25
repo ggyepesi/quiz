@@ -1,5 +1,7 @@
 package domain.build.cli;
 
+import domain.persistence.ProjectSaveGuard;
+
 import domain.build.ProjectBuild;
 
 import dataset.DomainStorage;
@@ -60,7 +62,9 @@ public final class BuildMain {
             return 2;
         }
         out.println("Reading model " + modelFile.getPath());
+        var guard = ProjectSaveGuard.capture(storage, names.getFirst(), modelFile);
         GeneratedProjectModel model = new GeneratedProjectModelStore().load(modelFile);
+        guard.check();
         if (model.buildOperations().isEmpty()) {
             out.println("\"" + model.name() + "\" has no build. Add its steps in ModelBuilder's "
                     + "project overview (Build), then save the project.");
@@ -70,7 +74,8 @@ public final class BuildMain {
             ProjectBuild.plan(model, storage).forEach(step -> out.println(step.explain()));
             return 0;
         }
-        ProjectBuild.Report report = ProjectBuild.run(model, storage, context.get(), out::println);
+        ProjectBuild.Report report = ProjectBuild.run(model, storage, context.get(), out::println,
+                null, guard);
         return exitCode(report.outcome());
     }
 

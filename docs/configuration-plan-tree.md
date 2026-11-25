@@ -12,7 +12,7 @@ remains runnable as the comparison baseline while both hosts use the same model-
 and editor implementation. Executable operations and their results remain the separate
 action/result tree of #558.
 
-Milestones 1 through 7 are implemented. `ConfigurationReferenceInventory` is the typed model-layer
+Milestones 1 through 8 are implemented. `ConfigurationReferenceInventory` is the typed model-layer
 inventory: validation, `ClassDependencies`, class/selection rename discovery and datasource recipe
 references consume it. Datasource operations declare references hidden inside their own recipe
 grammar, and prepared input requirements are resolved to model sites such as an article
@@ -284,6 +284,7 @@ Follow #557 as checked milestones:
 6. Convert the graph editor. **Done.**
 7. Convert the class editors. **Done.**
 8. Complete the separate-process save guard before a second application exposes the complete tree.
+   **Done** for model-backed projects. See [concurrent saves](datasource-app.md#concurrent-saves).
 9. Let Transform and Datasource views adopt the same projection with ownership-based editability.
 
 The first unified-workbench acceptance slice reaches milestone 5: open one project, select a field,

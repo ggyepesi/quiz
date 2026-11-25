@@ -5,6 +5,11 @@ import domain.runtime.SnapshotDomain;
 import domain.runtime.WikidataDynamicObject;
 
 import domain.persistence.DatasetRegistry;
+import domain.persistence.ProjectSaveGuard;
+import domain.config.GeneratedProjectModel;
+import domain.config.GeneratedProjectModelStore;
+import domain.curation.ManualCuration;
+import dataset.DomainStorage;
 import domain.legacy.LegacyDomains;
 import domain.transform.ui.DomainEntry;
 import domain.transform.ui.ReflectionDomain;
@@ -107,7 +112,7 @@ public final class DomainCatalog {
                         "Load domain \"" + d.name() + "\", its instances and saved model from "
                                 + snap.getPath() + (model.isFile()
                                 ? " and " + model.getPath() : "") + ".",
-                        () -> open(selectedSnapshot, selectedModel)));
+                        () -> open(selectedSnapshot, selectedModel, DomainStorage.inDefaultLocation())));
             }
             consumed.add(d);
         }
@@ -119,8 +124,16 @@ public final class DomainCatalog {
      * into a typed {@link ProductDomain} (model-authoritative schema); a dataset
      * without a model uses the snapshot's persisted field graph.
      */
-    private static DomainModel open(File snap, File model)
+    private static DomainModel open(File snap, File model, DomainStorage storage)
             throws Exception {
+        ProjectSaveGuard guard = null;
+        GeneratedProjectModel project = null;
+        if (model != null && model.isFile()) {
+            String key = model.getName().replaceFirst("\\.model\\.json$", "");
+            guard = ProjectSaveGuard.capture(storage, key, model, snap,
+                    CuratableDomain.snapshotBeside(model), ManualCuration.fileForSnapshot(snap));
+            project = new GeneratedProjectModelStore().load(model);
+        }
         var loaded = new WikidataDynamicObjectJsonStore()
                 .loadAllWithFieldGraph(snap);
         var pool = loaded.objects();
@@ -128,7 +141,7 @@ public final class DomainCatalog {
         // before compiling — so the sidecar survives regeneration. See domain.curation.
         // Manual values override; generated fills (e.g. <name>.autofix.json from a
         // fallback rule) only fill fields still absent.
-        var curation = domain.curation.ManualCuration.forSnapshot(snap);
+        var curation = ManualCuration.forSnapshot(snap, guard);
         List<WikidataDynamicObject> curatedInstances =
                 domain.curation.CuratedInstances.apply(pool, curation.instances()).instances();
         var autofix = domain.curation.CorrectionsSidecar.source(
@@ -140,7 +153,7 @@ public final class DomainCatalog {
                 pool, curation.merges(), loaded.fieldGraph()::baseType);
 
         DomainModel base =
-                compile(model, pool, loaded.fieldGraph(), loaded.roleSelections());
+                compile(project, pool, loaded.fieldGraph(), loaded.roleSelections());
         // Carry the curation store so the workbench can offer a "Curate…" action.
         java.util.List<objectview.viewconfig.DomainGroupRoot> savedGroupRoots =
                 new java.util.ArrayList<>();
@@ -160,20 +173,20 @@ public final class DomainCatalog {
         for (WikidataDynamicObject value : curatedInstances) {
             if (!memberRoots.contains(value)) memberRoots.add(value);
         }
+        if (guard != null) guard.check();
         return new CuratableDomain(
                 base, curation, memberRoots, groupRoots,
-                model != null && model.isFile() ? model : null);
+                project == null ? null : model, project, guard);
     }
 
     private static DomainModel compile(
-            File model,
+            GeneratedProjectModel model,
             java.util.List<domain.runtime.WikidataDynamicObject> pool,
             domain.runtime.SnapshotFieldGraph fieldGraph,
             java.util.Map<String, java.util.List<domain.runtime.WikidataDynamicObject>>
                     roleSelections) throws Exception {
-        if (model != null && model.isFile()) {
-            var project = new domain.config.GeneratedProjectModelStore()
-                    .load(model);
+        if (model != null) {
+            var project = model.copy();
             // A pre-fix TransformApp snapshot can already carry semantic subclasses
             // that its model save lost. Make them visible in this working session; the
             // corrected Save model action persists them into the owner.
@@ -214,7 +227,7 @@ public final class DomainCatalog {
             out.add(new DomainEntry(name, "generated",
                     "Load domain \"" + name + "\", its instances and saved model from "
                             + snapshot.getPath() + " and " + model.getPath() + ".",
-                    () -> open(snapshot, model)));
+                    () -> open(snapshot, model, storage)));
         }
         return out;
     }

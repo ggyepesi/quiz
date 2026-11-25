@@ -7,6 +7,7 @@ import process.ProcessOutcome;
 import process.ProcessPlan;
 import process.ProcessWorkflowPipeline;
 import domain.config.GeneratedProjectModel;
+import domain.persistence.ProjectSaveGuard;
 
 import java.util.Map;
 import java.util.Objects;
@@ -24,6 +25,7 @@ public final class BuildProcess implements Process<ProjectBuild.Report> {
     private final GeneratedProjectModel model;
     private final DomainStorage storage;
     private final Completion completion;
+    private final ProjectSaveGuard saveGuard;
     private final ProcessWorkflowPipeline pipeline;
 
     /**
@@ -53,9 +55,15 @@ public final class BuildProcess implements Process<ProjectBuild.Report> {
 
     public BuildProcess(GeneratedProjectModel model, DomainStorage storage,
                         Completion completion) {
+        this(model, storage, null, completion);
+    }
+
+    public BuildProcess(GeneratedProjectModel model, DomainStorage storage,
+                        ProjectSaveGuard saveGuard, Completion completion) {
         this.model = Objects.requireNonNull(model, "model");
         this.storage = Objects.requireNonNull(storage, "storage");
         this.completion = completion;
+        this.saveGuard = saveGuard;
         this.pipeline = configuredPipeline(model, completion);
     }
 
@@ -75,7 +83,7 @@ public final class BuildProcess implements Process<ProjectBuild.Report> {
         pipeline.reset();
         ProjectBuild.Report report = ProjectBuild.run(
                 model, storage, context.queries(), context::message,
-                new PipelineObserver(model.name(), pipeline));
+                new PipelineObserver(model.name(), pipeline), saveGuard);
         String summary = "Build " + report.outcome() + "; manifest "
                 + report.manifest().getPath();
         if (report.outcome() != ProjectBuild.State.CURRENT) {

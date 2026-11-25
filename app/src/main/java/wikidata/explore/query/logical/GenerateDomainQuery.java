@@ -562,10 +562,10 @@ public class GenerateDomainQuery implements Query<GenerationRun> {
                     completePhase(domain.build.GenerateDomainPipeline.MATERIALIZE,
                             allInstances.size() + " instances materialized");
                     if (recovery != null) {
-                        recovery.clear();
-                        genLog.message("Removed finalized recovery graph after successful "
-                                + "materialization: " + recovery.snapshotFile().getPath()
-                                + "\n");
+                        // Kept until the project save that persists this run succeeds:
+                        // a refused or abandoned save must still be resumable.
+                        genLog.message("Keeping finalized recovery graph until the project "
+                                + "is saved: " + recovery.snapshotFile().getPath() + "\n");
                     }
 
                     StringBuilder summary = new StringBuilder(

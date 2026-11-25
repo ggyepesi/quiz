@@ -1,5 +1,7 @@
 package domain.build;
 
+import domain.persistence.ProjectSaveGuard;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import dataset.DomainStorage;
@@ -597,13 +599,21 @@ public final class ProjectBuild {
     public static Report run(GeneratedProjectModel model, DomainStorage storage,
                              QueryContext context, Consumer<String> log,
                              Observer observer) throws Exception {
+        return run(model, storage, context, log, observer, null);
+    }
+
+    public static Report run(GeneratedProjectModel model, DomainStorage storage,
+                             QueryContext context, Consumer<String> log,
+                             Observer observer, ProjectSaveGuard guard) throws Exception {
         return run(model, storage, context, log, new java.util.LinkedHashSet<>(),
-                observer == null ? Observer.NONE : observer);
+                observer == null ? Observer.NONE : observer,
+                guard == null ? ProjectSaveGuard.capture(storage, model.name()) : guard);
     }
 
     private static Report run(GeneratedProjectModel model, DomainStorage storage,
                              QueryContext context, Consumer<String> log,
-                             java.util.Set<String> building, Observer observer) throws Exception {
+                             java.util.Set<String> building, Observer observer,
+                             ProjectSaveGuard guard) throws Exception {
         Objects.requireNonNull(model, "model");
         Objects.requireNonNull(storage, "storage");
         if (!building.add(model.name())) {
@@ -612,6 +622,8 @@ public final class ProjectBuild {
         }
         Consumer<String> say = log == null ? ignored -> { } : log;
         File snapshot = storage.snapshotFile(model.name());
+        guard.requireDestination(storage, model.name());
+        guard.check();
         Saved saved = Saved.read(model, storage, say);
         GraphResults results = saved.results();
         GraphDiscoveryState ledger = saved.projection() == null ? GraphDiscoveryState.EMPTY
@@ -660,9 +672,12 @@ public final class ProjectBuild {
             switch (operation.kind()) {
                 case BUILD_DEPENDENCY -> {
                     File dependency = storage.modelFileOf(operation.targetProjectName());
+                    var upstreamGuard = ProjectSaveGuard.capture(
+                            storage, operation.targetProjectName(), dependency);
                     GeneratedProjectModel upstream =
                             new GeneratedProjectModelStore().load(dependency);
-                    Report built = run(upstream, storage, context, say, building, observer);
+                    Report built = run(upstream, storage, context, say, building, observer,
+                            upstreamGuard);
                     files.addAll(built.files());
                     if (built.outcome() != State.CURRENT) {
                         outcome = built.outcome();
@@ -715,9 +730,10 @@ public final class ProjectBuild {
                     TransformationExecution.Result transformed =
                             TransformationExecution.apply(model, outputClass, run);
                     run = replace(run, transformed.run());
-                    List<String> written = MaterializedPopulationStore.save(
+                    String generatedFrom = run.generatedFromSignature();
+                    List<String> written = guard.write(() -> MaterializedPopulationStore.save(
                             model, outputClass, transformed.population(), storage,
-                            run.generatedFromSignature());
+                            generatedFrom));
                     files.addAll(written);
                     record(done, new Done(step, Action.RAN, transformed.population().size()
                             + " " + outputClass.className()
@@ -760,7 +776,8 @@ public final class ProjectBuild {
                     // the snapshot rather than in it. Saved now, a build that then stops
                     // awaiting a decision leaves them on disk to be decided, while the
                     // snapshot — the last complete output — is untouched.
-                    files.add(GraphDiscoveryResultStore.save(results.of(graph), storage));
+                    files.add(guard.write(() ->
+                            GraphDiscoveryResultStore.save(results.of(graph), storage)));
                     record(done, new Done(step, Action.RAN, artifact.instances().size()
                             + " annotations, " + artifact.acceptedIdentities().size()
                             + " accepted"), outcome, observer, model.name());
@@ -813,7 +830,7 @@ public final class ProjectBuild {
                                     run.loadedDeclarations(),
                                     run.selfReferenceAudit().ledger(), run.modelSnapshot(),
                                     run.generatedFromSignature()),
-                            ledger, results.all(), List.copyOf(publications.values())), storage);
+                            ledger, results.all(), List.copyOf(publications.values())), storage, guard);
                     if (!save.warnings().isEmpty()) {
                         outcome = State.FAILED;
                         record(done, new Done(step, Action.STOPPED, "save refused: "

@@ -15,6 +15,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import domain.DomainSchemas;
+import domain.config.GeneratedProjectModel;
+import domain.config.GeneratedProjectModelStore;
+import domain.persistence.ProjectSaveGuard;
+import dataset.DomainStorage;
 
 /**
  * A {@link DomainModel} that also carries its {@link ManualCuration} store, so the
@@ -34,9 +38,10 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
     /** The project model as read when this domain opened, edited in memory since.
      *  Null when there is no model file, or it could not be read. */
     private final domain.config.GeneratedProjectModel workingModel;
-    /** SHA-256 of the model file as last read or written, to notice another writer. */
-    private String modelFileDigest = "";
+    private final ProjectSaveGuard saveGuard;
     private final List<String> unsavedModelChanges = new java.util.ArrayList<>();
+
+    private record Backing(GeneratedProjectModel model, ProjectSaveGuard guard) { }
 
     CuratableDomain(DomainModel base, ManualCuration curation) {
         this(base, curation, base.memberRoots(), base.groupRootBindings(), null);
@@ -56,22 +61,43 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
             Collection<? extends Viewable> memberRoots,
             List<objectview.viewconfig.DomainGroupRoot> groupRootBindings,
             java.io.File modelFile) {
+        this(base, curation, memberRoots, groupRootBindings, modelFile, readBacking(modelFile));
+    }
+
+    CuratableDomain(DomainModel base, ManualCuration curation,
+            Collection<? extends Viewable> memberRoots,
+            List<objectview.viewconfig.DomainGroupRoot> groupRootBindings,
+            java.io.File modelFile, GeneratedProjectModel model, ProjectSaveGuard guard) {
+        this(base, curation, memberRoots, groupRootBindings, modelFile, new Backing(model, guard));
+    }
+
+    private CuratableDomain(DomainModel base, ManualCuration curation,
+            Collection<? extends Viewable> memberRoots,
+            List<objectview.viewconfig.DomainGroupRoot> groupRootBindings,
+            java.io.File modelFile, Backing backing) {
         super(base);
         this.curation = curation;
         this.memberRoots = memberRoots == null ? List.of() : List.copyOf(memberRoots);
         this.groupRootBindings = groupRootBindings == null
                 ? List.of() : List.copyOf(groupRootBindings);
         this.modelFile = modelFile;
-        domain.config.GeneratedProjectModel read = null;
-        if (modelFile != null && modelFile.isFile()) {
-            try {
-                modelFileDigest = digest(modelFile);
-                read = new domain.config.GeneratedProjectModelStore().load(modelFile);
-            } catch (Exception unreadable) {
-                read = null;   // an unreadable model contributes nothing, as before
-            }
+        this.workingModel = backing.model();
+        this.saveGuard = backing.guard();
+    }
+
+    private static Backing readBacking(java.io.File modelFile) {
+        if (modelFile == null) return new Backing(null, null);
+        try {
+            var parent = modelFile.getAbsoluteFile().getParentFile();
+            String key = modelFile.getName().replaceFirst("\\.model\\.json$", "");
+            var guard = ProjectSaveGuard.capture(DomainStorage.in(parent), key,
+                    modelFile, snapshotBeside(modelFile));
+            var model = new GeneratedProjectModelStore().load(modelFile);
+            guard.check();
+            return new Backing(model, guard);
+        } catch (Exception unreadable) {
+            return new Backing(null, null);
         }
-        this.workingModel = read;
     }
 
     @Override public ManualCuration curation() { return curation; }
@@ -197,6 +223,10 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
 
     @Override public java.io.File snapshotFile() {
         if (modelFile == null) return null;
+        return snapshotBeside(modelFile);
+    }
+
+    static java.io.File snapshotBeside(java.io.File modelFile) {
         String name = modelFile.getName();
         String baseName = name.endsWith(".model.json")
                 ? name.substring(0, name.length() - ".model.json".length()) : name;
@@ -229,42 +259,35 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
     }
 
     @Override public String modelWriteConflict() {
-        if (workingModel == null || modelFile == null) {
+        if (workingModel == null || saveGuard == null) {
             return "This domain has no readable model file.";
         }
-        if (!modelFile.isFile()) return "";
         try {
-            if (!java.nio.file.Files.isWritable(modelFile.toPath())) {
-                return "The model file is not writable: " + modelFile.getPath();
-            }
-            if (!digest(modelFile).equals(modelFileDigest)) {
-                return modelFile.getPath() + " changed on disk after this domain was opened"
-                        + " (another application, usually ModelBuilder, saved it). Writing"
-                        + " would discard that save; reopen the domain to work on the"
-                        + " current model.";
-            }
+            saveGuard.check();
             return "";
+        } catch (ProjectSaveGuard.Conflict conflict) {
+            return conflict.getMessage();
         } catch (java.io.IOException unreadable) {
             return "The model file cannot be read: " + unreadable.getMessage();
         }
     }
 
     @Override public void writeProjectModel() throws Exception {
-        String conflict = modelWriteConflict();
-        if (!conflict.isEmpty()) throw new IllegalStateException(conflict);
-        new domain.config.GeneratedProjectModelStore().save(workingModel, modelFile);
-        modelFileDigest = digest(modelFile);
-        unsavedModelChanges.clear();
+        saveProject(() -> { }, () -> null);
     }
 
-    private static String digest(java.io.File file) throws java.io.IOException {
-        try {
-            byte[] hash = java.security.MessageDigest.getInstance("SHA-256")
-                    .digest(java.nio.file.Files.readAllBytes(file.toPath()));
-            return java.util.HexFormat.of().formatHex(hash);
-        } catch (java.security.NoSuchAlgorithmException impossible) {
-            throw new IllegalStateException(impossible);
+    @Override public <T> T saveProject(Runnable prepare,
+            ProjectSaveGuard.Write<T> saveSnapshot) throws Exception {
+        if (workingModel == null || saveGuard == null) {
+            throw new IllegalStateException("This domain has no readable model file.");
         }
+        T result = saveGuard.write(() -> {
+            prepare.run();
+            new GeneratedProjectModelStore().save(workingModel, modelFile);
+            return saveSnapshot.run();
+        });
+        unsavedModelChanges.clear();
+        return result;
     }
 
     @Override public boolean exposesEntityUniverse() { return base.exposesEntityUniverse(); }

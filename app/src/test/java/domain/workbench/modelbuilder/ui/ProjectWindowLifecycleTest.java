@@ -53,8 +53,8 @@ class ProjectWindowLifecycleTest {
                 synchronizedBuild.indexOf("private void synchronizeCompletedBuild("));
         assertFalse(install.contains("ProjectLoad.load(") || install.contains("Store().load("),
                 "installing on the event thread must not read the model or snapshot");
-        assertTrue(synchronizedBuild.contains("markSaved(modelFile)"),
-                "the synchronized editor must agree that it matches the saved build");
+        assertTrue(synchronizedBuild.contains("markSaved(modelFile, built.guard())"),
+                "the synchronized editor must use the version read with the saved build");
     }
 
     @Test void preparedRunWindowsHaveARunSpecificSubject() {
