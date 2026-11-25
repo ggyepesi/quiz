@@ -427,7 +427,8 @@ public final class ValidationPanel extends JPanel {
         if (fixedTargetSummary != null) remove(fixedTargetSummary);
         JPanel summary = fixedTargetSummary = new JPanel(
                 new objectview.utils.swing.WrapLayout(FlowLayout.LEFT, 6, 4));
-        summary.add(new JLabel(purpose.showsDatasourceActions() ? "Loading:" : "Editing:"));
+        summary.add(new JLabel(wikipediaEvidenceOnly ? "Finding evidence for"
+                : purpose.showsDatasourceActions() ? "Loading:" : "Editing:"));
         summary.add(new JLabel(type + "." + field));
         if (scopeDescription != null && !scopeDescription.isBlank()) {
             summary.add(new JLabel("· " + scopeDescription));
@@ -480,6 +481,17 @@ public final class ValidationPanel extends JPanel {
 
     public void useFixedCandidateEvidence(SourceBinding binding) {
         fixedCandidateEvidence = binding;
+    }
+
+    public void useConfiguredEvidenceTarget(String type, String field, String scopeDescription,
+            SourceBinding recipe, BooleanSupplier beforeRun,
+            java.util.function.Consumer<Boolean> running) {
+        showWikipediaEvidenceOnly();
+        useFixedCandidateEvidence(recipe);
+        beforeLoad = beforeRun;
+        onAcquisition = running;
+        cancelProcessButton.setText("Cancel evidence search");
+        useFixedTarget(type, field, scopeDescription);
     }
 
     /** Curate the provenance-declared identity: select the type, apply the scope filter, show the
@@ -1193,7 +1205,7 @@ public final class ValidationPanel extends JPanel {
         String selection = selectedCards.isEmpty() ? "instance(s)" : "selected card(s)";
         String description = configuredValueDescription.replace("&", "&amp;")
                 .replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>");
-        if (!confirmLoad.test("<html><b>Load values for " + selectedFieldType + "." + selectedFieldPath
+        if (!confirmAcquisition.test("Load values", "<html><b>Load values for " + selectedFieldType + "." + selectedFieldPath
                 + "</b><br>Members: <b>" + members.size() + "</b> " + selection
                 + "<br><br>" + description
                 + "<br><br>Read this field even where it already has a value. "
@@ -1206,12 +1218,12 @@ public final class ValidationPanel extends JPanel {
                 "Review the values supplied by the field acquisition plan.", "Load field values failed");
     }
 
-    private java.util.function.Predicate<String> confirmLoad = plan -> JOptionPane.showConfirmDialog(
-            this, new JLabel(plan), "Load values", JOptionPane.OK_CANCEL_OPTION,
+    private java.util.function.BiPredicate<String, String> confirmAcquisition = (title, plan) -> JOptionPane.showConfirmDialog(
+            this, new JLabel(plan), title, JOptionPane.OK_CANCEL_OPTION,
             JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION;
 
-    void loadConfirmation(java.util.function.Predicate<String> confirmation) {
-        confirmLoad = confirmation;
+    void acquisitionConfirmation(java.util.function.BiPredicate<String, String> confirmation) {
+        confirmAcquisition = confirmation;
     }
 
     /**
@@ -1243,7 +1255,7 @@ public final class ValidationPanel extends JPanel {
         }
         plan.append("<br>Fetch values for eligible members and show them for review.</html>");
 
-        return confirmLoad.test(plan.toString());
+        return confirmAcquisition.test("Load values", plan.toString());
     }
 
     private static String describe(FieldSourceMapping source) {
@@ -1867,6 +1879,7 @@ public final class ValidationPanel extends JPanel {
      * when the model says so, nominate an already-typed instance; neither is automatic
      * field inference. */
     private void findWikipediaEvidence() {
+        if (acquisitionRunning || !beforeLoad.getAsBoolean()) return;
         String path = selectedFieldPath;
         if (path == null || path.isBlank()) return;
         DomainField drilled = domain.fields(selectedFieldType).stream()
@@ -1878,8 +1891,8 @@ public final class ValidationPanel extends JPanel {
         }
         ManualCuration curation = curationStore();
         List<FindDataProcess> jobs = new ArrayList<>();
-        domain.config.WikipediaCategoryRule categoryRule =
-                effectiveWikipediaCategoryRule(selectedFieldType, path);
+        domain.config.WikipediaCategoryRule categoryRule = fixedCandidateEvidence == null
+                ? effectiveWikipediaCategoryRule(selectedFieldType, path) : null;
         // What this field REFERS TO decides which category candidates are even plausible:
         // "Films set in <value>" matches "Films set in 1999" as honestly as it matches a
         // place, and a year offered as a Location is noise the reviewer rejects every run.
@@ -2146,7 +2159,9 @@ public final class ValidationPanel extends JPanel {
                         + " instance(s); they cannot create new identities.<br>";
         String message = "<html><div style='width: 520px'><b>Find Wikipedia evidence for "
                 + selectedFieldType + "."
-                + path + "</b><br><br>Eligible members: <b>" + jobs.size() + "</b><br>"
+                + path + "</b><br>"
+                + (fixedCandidateEvidence == null ? "" : WikipediaEvidenceRecipes.describe(fixedCandidateEvidence) + "<br>")
+                + "<br>Eligible members: <b>" + jobs.size() + "</b><br>"
                 + "Skipped: <b>" + skipped + "</b> ("
                 + (articleTableRowInstances
                         ? "no Wikidata identity"
@@ -2157,9 +2172,9 @@ public final class ValidationPanel extends JPanel {
                         : "no usable value/category evidence or identity")
                 + ")<br><br>"
                 + (infoboxRowLinks || tableColumnLinks || articleTableRowInstances ? ""
-                        : "Existing values are checked against article text. Configured category "
-                                + "relations can also propose new values from memberships acquired "
-                                + "by ModelBuilder. ")
+                        : "Existing values are checked against article text. ")
+                + (categoryRule == null || !categoryRule.configured() ? ""
+                        : "The configured category relation can also propose values from retained memberships. ")
                 + mentionExplanation
                 + (articlePassages || articlePassageInstances || articleTableRowInstances
                         || infoboxRowLinks
@@ -2170,12 +2185,11 @@ public final class ValidationPanel extends JPanel {
                                 + "); others are not offered.<br>")
                 + "Every result retains its article revision and exact source evidence; "
                 + "nothing is saved until you accept it.</div></html>";
-        if (JOptionPane.showConfirmDialog(this, new JLabel(message),
-                articleTableRowInstances ? "Find Wikipedia table-row instances"
+        String title = articleTableRowInstances ? "Find Wikipedia table-row instances"
                         : tableColumnLinks ? "Find Wikipedia table-column link evidence"
                         : infoboxRowLinks ? "Find Wikipedia infobox link evidence"
-                        : "Find Wikipedia text evidence", JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return;
+                        : "Find Wikipedia text evidence";
+        if (!confirmAcquisition.test(title, message)) return;
 
         runReviewBatch(jobs, skipped, path, "Review Wikipedia evidence — " + path,
                 articleTableRowInstances
@@ -2187,7 +2201,9 @@ public final class ValidationPanel extends JPanel {
                         : infoboxRowLinks
                         ? "Review loaded target instances linked from "
                                 + infoboxRowKey + "."
-                        : "Review exact article mentions and configured category relations.",
+                        : categoryRule != null && categoryRule.configured()
+                                ? "Review exact article mentions and configured category relations."
+                                : "Review the evidence found in the articles.",
                 "Wikipedia lookup failed");
     }
 

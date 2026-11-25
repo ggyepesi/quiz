@@ -7,12 +7,17 @@ import domain.config.GeneratedClassModel;
 import domain.config.GeneratedFieldModel;
 import domain.config.GeneratedProjectModel;
 import domain.config.GeneratedProjectModelStore;
+import domain.config.FieldSourceBindings;
+import domain.config.FieldDefinition;
 import domain.config.ModelSourceExecutionPlan;
 import domain.config.OwnedFieldSources;
 import domain.datasource.Datasources;
 import domain.datasource.api.ConfigurationElement;
 import domain.datasource.api.DatasourceRegistry;
+import domain.datasource.api.SourceBinding;
+import domain.datasource.api.SourceBindingSlot;
 import domain.datasource.api.SourceExecutionPlan;
+import domain.transform.ui.ConfiguredFieldEvidenceActions;
 import domain.transform.ui.ProjectBacking;
 import domain.transform.ui.FieldDefinitions;
 import domain.transform.ui.TransformController;
@@ -35,6 +40,7 @@ import work.QueryContext;
 import work.Query;
 
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -49,6 +55,7 @@ import java.awt.Cursor;
 import javax.swing.JRootPane;
 import java.awt.FlowLayout;
 import java.util.Locale;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -62,6 +69,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private final WorkbenchActionResultNavigator actions = new WorkbenchActionResultNavigator();
     private final WorkbenchActionResultNavigator.Action previewAction;
     private final WorkbenchActionResultNavigator.Action buildAction;
+    private final ConfiguredFieldEvidenceActions evidenceActions;
     private final SwingProcessRunner buildRunner;
     private final JPanel buildDetail = new JPanel(new BorderLayout());
     private final JLabel buildStatus = new JLabel();
@@ -96,6 +104,11 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private GeneratedClassModel selectedClass;
     private GeneratedClassModel previewInput;
     private ValidationPanel valuePanel;
+    private EvidenceTarget evidenceTarget;
+    private ValidationPanel runningEvidence;
+
+    private record EvidenceTarget(GeneratedFieldModel field, FieldDefinition definition,
+            List<SourceBinding> recipes) { }
 
     public UnifiedWorkbenchPanel(DomainModel domain) {
         this(domain, new SwingQuerySession(new QueryContext()));
@@ -124,6 +137,9 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         var acquisition = actions.addAction(source, "field-acquisition-plan", "Field acquisition plan",
                 new JScrollPane(planText), null);
         var load = actions.addAction(source, "field-values", "Load field values", acquisitionDetail, null);
+        evidenceActions = new ConfiguredFieldEvidenceActions(actions, source, "field-evidence",
+                this::evidencePanel);
+        refreshEvidence();
         var logs = new JButton("Query logs…");
         logs.addActionListener(event -> queries.showLogs(this));
         acquisitionDetail.add(acquisitionValues, BorderLayout.CENTER);
@@ -261,11 +277,13 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         project = Objects.requireNonNull(loaded.capability(ProjectBacking.class));
         transform = new TransformController(loaded, null);
         valuePanel = null;
+        evidenceTarget = null;
         selectedField = null;
         selectedClass = null;
         acquisitionTargetCurrent = false;
         acquisitionValues.removeAll();
         compilePlan();
+        refreshEvidence();
         configuration = projectConfiguration();
         if (showingProject) {
             configuration.selectConstruct(project.projectModel());
@@ -301,7 +319,9 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         actions.publishResults(buildAction, tabs, 0, buildActionSelected);
     }
 
-    private boolean busy() { return saving || loadingValues || previewing || building; }
+    private boolean busy() {
+        return saving || loadingValues || runningEvidence != null || previewing || building;
+    }
 
     private void constructSelected(Object construct) {
         var clazz = construct instanceof GeneratedClassModel value ? value : null;
@@ -392,7 +412,67 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         if (selectedField != field) acquisitionTargetCurrent = false;
         selectedField = field;
         showPlan(field);
+        refreshEvidence();
         if (loadActionSelected) refreshAcquisition();
+    }
+
+    private void refreshEvidence() {
+        var target = new EvidenceTarget(selectedField, selectedField == null ? null : selectedField.definition(),
+                FieldSourceBindings.bindings(selectedField, SourceBindingSlot.CANDIDATE_EVIDENCE));
+        if (target.equals(evidenceTarget)) return;
+        evidenceTarget = target;
+        var owner = project.projectModel().declaringClass(selectedField);
+        if (owner == null) {
+            evidenceActions.show(null, "", List.of(), "Select a field to see its configured evidence recipes.");
+            return;
+        }
+        String field = owner.className() + "." + OwnedFieldSources.declaredFieldPath(owner, selectedField);
+        evidenceActions.show(target, field, target.recipes(), "No configured evidence recipes for " + field + ".");
+    }
+
+    private JComponent evidencePanel(SourceBinding recipe) {
+        var target = evidenceTarget;
+        var field = target.field();
+        var owner = project.projectModel().declaringClass(field);
+        String path = OwnedFieldSources.declaredFieldPath(owner, field);
+        if (!loadedFieldMatches(owner.className(), path, field)) {
+            var detail = new JPanel(new BorderLayout());
+            detail.add(new JLabel(owner.className() + "." + path
+                    + " needs instances built with its current field definition."), BorderLayout.NORTH);
+            return detail;
+        }
+        var panel = new ValidationPanel(domain, null, queries.runner(), null, null, WorkbenchPurpose.DATASOURCE);
+        panel.useConfiguredEvidenceTarget(owner.className(), path, "Select cards to limit the search",
+                recipe, () -> {
+                    if (busy() || !configuration.resolveUnappliedEdits("finding field evidence")) return false;
+                    if (target == evidenceTarget) return true;
+                    // Resolving the draft rebuilt the recipe list. The same recipe on the same,
+                    // unchanged field keeps its panel, so the search continues there.
+                    var current = evidenceTarget;
+                    if (current != null && current.field() == target.field()
+                            && Objects.equals(current.definition(), target.definition())
+                            && current.recipes().contains(recipe) && evidenceActions.reveal(recipe)) {
+                        return true;
+                    }
+                    Dialogs.showMessage(this, "This evidence recipe or its field changed. Select the recipe again.",
+                            "Find configured evidence", JOptionPane.INFORMATION_MESSAGE);
+                    return false;
+                }, running -> {
+                    runningEvidence = running ? panel : null;
+                    configuration.setEditingEnabled(!running);
+                    updateSave();
+                });
+        return panel;
+    }
+
+    private boolean loadedFieldMatches(String type, String path, GeneratedFieldModel field) {
+        var resolved = DomainSchemas.resolve(domain, type, path);
+        var declared = FieldDefinitions.toFieldRef(field.definition());
+        return resolved != null && resolved.valueKind() == declared.valueKind()
+                && (resolved.valueKind() != objectview.field.FieldKind.ORDERED
+                        || FieldDefinitions.fromFieldRef(resolved).type() == field.type())
+                && resolved.collection() == declared.collection()
+                && Objects.equals(resolved.targetType(), declared.targetType());
     }
 
     private void refreshAcquisition() {
@@ -405,16 +485,10 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                     BorderLayout.NORTH);
         } else {
             String path = OwnedFieldSources.declaredFieldPath(owner, selectedField);
-            var resolved = DomainSchemas.resolve(domain, owner.className(), path);
-            var declared = FieldDefinitions.toFieldRef(selectedField.definition());
             if (selectedFieldPlan == null) {
                 acquisitionValues.add(new JLabel("Review the field acquisition plan before loading values."),
                         BorderLayout.NORTH);
-            } else if (resolved == null || resolved.valueKind() != declared.valueKind()
-                    || resolved.valueKind() == objectview.field.FieldKind.ORDERED
-                            && FieldDefinitions.fromFieldRef(resolved).type() != selectedField.type()
-                    || resolved.collection() != declared.collection()
-                    || !Objects.equals(resolved.targetType(), declared.targetType())) {
+            } else if (!loadedFieldMatches(owner.className(), path, selectedField)) {
                 acquisitionValues.add(new JLabel(owner.className() + "." + path
                         + " needs instances built with its current field definition."),
                         BorderLayout.NORTH);
@@ -623,6 +697,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         editBuild.setEnabled(!busy());
         if (loadingValues) {
             saveStatus.setText("Loading and reviewing field values");
+        } else if (runningEvidence != null) {
+            saveStatus.setText("Finding and reviewing configured field evidence");
         } else if (previewing) {
             saveStatus.setText("Previewing population for " + selectedClass.className());
         } else if (building) {
@@ -672,6 +748,10 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         }
         if (loadingValues) {
             SwingCancellationConfirmation.requestForVisibleRun(this, valuePanel::cancelFindData);
+            return;
+        }
+        if (runningEvidence != null) {
+            SwingCancellationConfirmation.requestForVisibleRun(this, runningEvidence::cancelFindData);
             return;
         }
         boolean draft = configuration.hasUnappliedEdits();

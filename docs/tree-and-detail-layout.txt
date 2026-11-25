@@ -51,6 +51,12 @@ stored configuration: DeityGroup.members
     reference: group members field: DeityGroup
   stored configuration: Refine
 
+== Configured evidence actions for DeityGroup.members ==
+Datasources
+  Configured field evidence
+    Table rows — section ‘Description > List of names, provenances and tasks (Wilkinson et al)’, display column ‘Name of the deity’
+    Infobox row links — Rendered.Members
+
 == Field source with Advanced settings folded ==
 ArticleDetails.views
   Definition

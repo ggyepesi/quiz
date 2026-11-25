@@ -353,8 +353,15 @@ Enrich's claim batches and external field-acquisition families. The current load
 or the cards explicitly selected in that view, are the write targets. Other loaded objects can
 still supply dependencies, such as eligible descendants for an inherited count or relation-route
 endpoints. The action requires a compatible field in the loaded instance schema.
-Acquired references must resolve to compatible loaded instances for acceptance. Candidate
-evidence recipes remain a separate review action.
+Acquired references must resolve to compatible loaded instances for acceptance.
+
+Under **Datasources → Configured field evidence**, each applied recipe for the selected field
+appears as its own action. Selecting a recipe opens its instance cards. Its **Find** button
+confirms the scope and runs the existing evidence review used by DataSourceApp. Applied recipes
+appear immediately. If resolving an unapplied edit
+changes the recipe list, the search continues when its recipe is still configured on the
+unchanged field; otherwise it asks to select the recipe again. Accepting a proposal updates the loaded instances and writes
+`.curation.json` through the shared review.
 
 If the field has unapplied edits, **Load values** first asks **Apply**, **Discard**, or **Stay**.
 It then confirms the scope and the resulting plan and reads populated fields too. Query Logs

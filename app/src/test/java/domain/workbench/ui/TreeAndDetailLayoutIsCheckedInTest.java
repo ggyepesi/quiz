@@ -15,6 +15,7 @@ import domain.datasource.api.SourceBindingTarget;
 import domain.datasource.api.SourceRecipe;
 import domain.datasource.pageviews.PageviewsDatasourceProvider;
 import domain.datasource.schema.FieldType;
+import domain.transform.ui.ConfiguredFieldEvidenceActions;
 import org.junit.jupiter.api.Test;
 
 import javax.swing.JLabel;
@@ -62,6 +63,14 @@ class TreeAndDetailLayoutIsCheckedInTest {
             describeCaptions(actual, actions.tree());
             actual.append("\n== Shipped DeityGroup.members projection ==\n");
             describeProjection(actual, projected, 0);
+            actual.append("\n== Configured evidence actions for DeityGroup.members ==\n");
+            var evidenceActions = new WorkbenchActionResultNavigator();
+            var evidence = new ConfiguredFieldEvidenceActions(evidenceActions,
+                    evidenceActions.addSource("datasources", "Datasources", null),
+                    "field-evidence", recipe -> detail("Review " + recipe.recipe().operationId()));
+            evidence.show(members, "DeityGroup.members",
+                    FieldSourceBindings.bindings(members, SourceBindingSlot.CANDIDATE_EVIDENCE), "");
+            describeCaptions(actual, evidenceActions.tree());
             actual.append("\n== Field source with Advanced settings folded ==\n");
             describeAdvancedOutline(actual);
         });

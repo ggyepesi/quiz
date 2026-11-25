@@ -1,5 +1,9 @@
 package domain.transform.ui;
 
+import domain.curation.FieldRulePromoter;
+import domain.datasource.api.SourceBinding;
+import domain.datasource.api.SourceBindingSlot;
+
 import domain.datasource.schema.FieldType;
 import domain.datasource.discovery.ui.DiscoveryWorkbench;
 import domain.config.GeneratedClassModel;
@@ -77,12 +81,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private final JButton forgetIdentitiesButton = new JButton("Forget staged");
     private final BoundedInstanceSelection datasourceSelection;
     private final DiscoveryWorkbench datasourceWorkbench;
-    private final domain.workbench.ui.WorkbenchActionResultNavigator.ActionGroup
-            configuredWikipediaEvidence;
+    private final ConfiguredFieldEvidenceActions configuredWikipediaEvidence;
     private final JPanel wikidataFieldActions = datasourceActionPlaceholder(
             "Choose a field or modeled group to see its configured Wikidata actions.");
-    private final JPanel wikipediaFieldActions = datasourceActionPlaceholder(
-            "Choose a field or modeled group to see its configured Wikipedia actions.");
     private final JButton analyzeRelationsButton =
             new JButton("Analyze relations…");
     private final JButton showClosurePathButton =
@@ -199,12 +200,11 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     "Load the current configured field",
                     wikidataFieldActions,
                     () -> showConfiguredFieldActions(wikidataFieldActions, false));
-            configuredWikipediaEvidence = datasourceWorkbench.addContextActionGroup(
-                    DiscoveryWorkbench.Source.WIKIPEDIA,
+            configuredWikipediaEvidence = new ConfiguredFieldEvidenceActions(
+                    datasourceWorkbench.navigator(),
+                    datasourceWorkbench.contextSource(DiscoveryWorkbench.Source.WIKIPEDIA),
                     "configured-field-wikipedia",
-                    "Configured field evidence",
-                    wikipediaFieldActions,
-                    this::refreshConfiguredEvidenceActions);
+                    this::configuredEvidencePanel);
         } else {
             datasourceSelection = null;
             datasourceWorkbench = null;
@@ -830,82 +830,30 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     /** Rebuilds the visible recipe children from the model's exact ordered list. The
      * group is navigation only: revealing it starts no request. */
     private void refreshConfiguredEvidenceActions() {
-        if (datasourceWorkbench == null || configuredWikipediaEvidence == null) return;
-        datasourceWorkbench.clearContextActions(configuredWikipediaEvidence);
-        RenderedScope scope = renderedScope;
-        DomainField field = datasourceTargetField(scope);
-        wikipediaFieldActions.removeAll();
-        if (scope == null) {
-            wikipediaFieldActions.add(new JLabel(
-                    "Wait for the current instance scope to finish rendering."),
-                    BorderLayout.NORTH);
-        } else if (field == null) {
-            wikipediaFieldActions.add(new JLabel("<html>Select a field on the left. "
-                    + "For a modeled group, select a group node; its members field is "
-                    + "used automatically.</html>"), BorderLayout.NORTH);
-        } else {
-            domain.curation.FieldRulePromoter rules = controller.domain().capability(
-                    domain.curation.FieldRulePromoter.class);
-            java.util.List<domain.datasource.api.SourceBinding> recipes = rules == null
-                    ? java.util.List.of() : rules.declaredBindings(
-                            field.type(), field.field(),
-                            domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE);
-            if (recipes.isEmpty()) {
-                wikipediaFieldActions.add(new JLabel("<html>No configured evidence recipes "
-                        + "for <b>" + field.displayPath() + "</b>. Configure them in "
-                        + "ModelBuilder.</html>"), BorderLayout.NORTH);
-            } else {
-                wikipediaFieldActions.add(new JLabel("<html><b>"
-                        + recipes.size() + " configured evidence recipe"
-                        + (recipes.size() == 1 ? "" : "s") + " for "
-                        + field.displayPath() + "</b><br>Choose a recipe below. It will be "
-                        + "applied to every selected instance; no request has started.</html>"),
-                        BorderLayout.NORTH);
-                for (int index = 0; index < recipes.size(); index++) {
-                    domain.datasource.api.SourceBinding recipe = recipes.get(index);
-                    JPanel detail = datasourceActionPlaceholder(
-                            "Select this recipe to inspect or run it.");
-                    String label = domain.datasource.wikipedia.WikipediaEvidenceRecipes
-                            .describe(recipe);
-                    datasourceWorkbench.addContextAction(configuredWikipediaEvidence,
-                            "recipe-" + index, label, detail,
-                            () -> showConfiguredEvidenceRecipe(detail, recipe));
-                }
-            }
+        if (configuredWikipediaEvidence == null) return;
+        DomainField field = datasourceTargetField(renderedScope);
+        if (field == null) {
+            configuredWikipediaEvidence.show(null, "", List.of(),
+                    "Select a field or modeled group to see its configured evidence.");
+            return;
         }
-        wikipediaFieldActions.revalidate();
-        wikipediaFieldActions.repaint();
+        var rules = controller.domain().capability(FieldRulePromoter.class);
+        var recipes = rules == null ? List.<SourceBinding>of()
+                : rules.declaredBindings(field.type(), field.field(), SourceBindingSlot.CANDIDATE_EVIDENCE);
+        configuredWikipediaEvidence.show(renderedScope, field.displayPath(), recipes,
+                "No configured evidence recipes for " + field.displayPath() + ".");
     }
 
-    private void showConfiguredEvidenceRecipe(JPanel host,
-            domain.datasource.api.SourceBinding recipe) {
+    private ValidationPanel configuredEvidencePanel(SourceBinding recipe) {
         RenderedScope scope = renderedScope;
         DomainField field = datasourceTargetField(scope);
-        host.removeAll();
-        if (scope == null || field == null || scope.visibleMembers().isEmpty()) {
-            host.add(new JLabel("Select one or more instances for this recipe."),
-                    BorderLayout.NORTH);
-        } else {
-            ValidationPanel panel = new ValidationPanel(
-                    controller.domain(), scope.visibleMembers(), queries.runner(),
-                    this::refreshAfterCuration, this::openScopedIdentities, purpose);
-            panel.showWikipediaEvidenceOnly();
-            panel.useFixedCandidateEvidence(recipe);
-            String scopeLabel = scope.visibleMembers().size() + " selected "
-                    + scope.selectedType() + " instance"
-                    + (scope.visibleMembers().size() == 1 ? "" : "s");
-            panel.useFixedTarget(field.type(), field.field(), scopeLabel);
-            JLabel title = new JLabel("<html><b>"
-                    + domain.datasource.wikipedia.WikipediaEvidenceRecipes.describe(recipe)
-                    + "</b><br>Runs this recipe only, once for every selected instance. "
-                    + "Each instance's matching rows remain a separate reviewable result; "
-                    + "non-matches are reported.</html>");
-            title.setBorder(BorderFactory.createEmptyBorder(3, 5, 5, 5));
-            host.add(title, BorderLayout.NORTH);
-            host.add(panel, BorderLayout.CENTER);
-        }
-        host.revalidate();
-        host.repaint();
+        if (scope == null || field == null || scope.visibleMembers().isEmpty()) return null;
+        var panel = new ValidationPanel(controller.domain(), scope.visibleMembers(), queries.runner(),
+                this::refreshAfterCuration, this::openScopedIdentities, purpose);
+        panel.useConfiguredEvidenceTarget(field.type(), field.field(),
+                scope.visibleMembers().size() + " " + scope.selectedType() + " instances in scope",
+                recipe, () -> true, ignored -> { });
+        return panel;
     }
 
     private DomainField datasourceTargetField(RenderedScope scope) {
@@ -978,6 +926,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         final String type = controller.selectedType();
         rightMode = RightMode.CARDS;
         renderedScope = null;
+        refreshConfiguredEvidenceActions();
         if (datasourceSelection != null && !datasourceSelection.isRunning()) {
             datasourceScopeType = "";
             datasourceAvailable = List.of();
@@ -1105,6 +1054,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     }
 
     private void updateScopeStatus() {
+        refreshConfiguredEvidenceActions();
         domain.curation.ManualCuration curation = curation();
         updateStagedIdentityButtons(curation);
         RenderedScope scope = renderedScope;
