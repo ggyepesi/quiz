@@ -232,6 +232,14 @@ class PanelLayoutIsCheckedInTest {
                     }
                 }
                 describe(actual, "Unified Workbench / Run graph", unified);
+                for (var nodes = root.depthFirstEnumeration(); nodes.hasMoreElements();) {
+                    var node = (javax.swing.tree.DefaultMutableTreeNode) nodes.nextElement();
+                    if ("Load instances".equals(node.toString())) {
+                        tree.setSelectionPath(new javax.swing.tree.TreePath(node.getPath()));
+                        break;
+                    }
+                }
+                describe(actual, "Unified Workbench / Load instances", unified);
             }
         });
     }
@@ -328,6 +336,7 @@ class PanelLayoutIsCheckedInTest {
                     + (field.isEnabled() ? "" : "  (disabled)");
         }
         if (component instanceof JTextArea area) {
+            if ("load.instances.status".equals(area.getName())) return "label: " + plain(area.getText());
             return "field.acquisition.plan".equals(area.getName())
                     ? "plan: " + plain(area.getText()).replaceAll("\\s+", " ")
                     : "textarea";

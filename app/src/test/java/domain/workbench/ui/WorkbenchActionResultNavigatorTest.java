@@ -113,6 +113,28 @@ class WorkbenchActionResultNavigatorTest {
         });
     }
 
+    @Test void openingAnAlreadySelectedResultTabInitializesItOnce() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            var navigator = new WorkbenchActionResultNavigator();
+            var source = navigator.addSource("project", "Project", null);
+            var other = navigator.addAction(source, "other", "Another action", new JPanel(), null);
+            var tabs = new WorkbenchResultViews();
+            var load = navigator.addAction(source, "load", "Load instances", tabs, null);
+            var initialized = new AtomicInteger();
+            tabs.addLazyTab("Instances", new JPanel(), initialized::incrementAndGet);
+            assertEquals(0, tabs.getSelectedIndex(), "Swing selects the first tab without opening its action");
+            navigator.selectAction(other);
+            navigator.publishResults(load, tabs, 0, false);
+            assertEquals(0, initialized.get(), "publishing a background result does not render it");
+
+            select(navigator.tree(), child(child(selectedParent(navigator.tree()), "Load instances"), "Instances"));
+            assertEquals(1, initialized.get());
+            navigator.selectAction(other);
+            navigator.selectAction(load);
+            assertEquals(1, initialized.get(), "returning to the action reuses its rendered content");
+        });
+    }
+
     @Test void aConfiguredActionCollectionShowsEveryChildAndCanBeRebuilt() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
             WorkbenchActionResultNavigator navigator =

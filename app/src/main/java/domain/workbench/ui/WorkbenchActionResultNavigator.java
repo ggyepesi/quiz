@@ -247,14 +247,24 @@ public final class WorkbenchActionResultNavigator extends JPanel {
             ActionGroup group = actionGroups.get(entry.id);
             if (group != null) group.reveal.run();
         } else if (entry.role == Role.ACTION) {
-            reveal(actions.get(entry.id));
+            Action action = actions.get(entry.id);
+            reveal(action);
+            tabOwners.forEach((tabs, owner) -> {
+                if (owner == action && tabs instanceof WorkbenchResultViews views) {
+                    views.revealTab(views.getSelectedIndex());
+                }
+            });
         } else {
             ResultTarget result = results.get(entry.id);
             if (result != null) {
                 reveal(result.action);
                 synchronizing = true;
                 try {
-                    result.tabs.setSelectedIndex(result.tabIndex);
+                    if (result.tabs instanceof WorkbenchResultViews views) {
+                        views.revealTab(result.tabIndex);
+                    } else {
+                        result.tabs.setSelectedIndex(result.tabIndex);
+                    }
                 } finally {
                     synchronizing = false;
                 }

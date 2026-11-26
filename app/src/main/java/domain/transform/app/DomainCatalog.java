@@ -12,10 +12,12 @@ import domain.curation.ManualCuration;
 import dataset.DomainStorage;
 import domain.legacy.LegacyDomains;
 import domain.transform.ui.DomainEntry;
+import domain.transform.ui.ProjectBacking;
 import domain.transform.ui.ReflectionDomain;
 import domain.runtime.WikidataDynamicObjectJsonStore;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import domain.DomainModel;
@@ -138,6 +140,17 @@ public final class DomainCatalog {
             consumed.add(d);
         }
         return out;
+    }
+
+    /** Opens an editable project and requires its saved model alongside the snapshot. */
+    public static DomainModel openProject(File snapshot, File model, DomainStorage storage)
+            throws Exception {
+        if (!model.isFile()) throw new IOException("No saved model at " + model.getPath());
+        DomainModel loaded = open(snapshot, model, storage);
+        if (loaded.capability(ProjectBacking.class) == null) {
+            throw new IOException("No saved model at " + model.getPath());
+        }
+        return loaded;
     }
 
     /**

@@ -98,7 +98,12 @@ public class SwingQueryRunner {
             QueryWorkflow<R> workflow,
             Query<R> query,
             java.util.function.Consumer<Exception> onError) {
+        run(workflow, query, null, onError, null);
+    }
 
+    private <R> void run(QueryWorkflow<R> workflow, Query<R> query,
+            QueryResultSink<R> onSuccess, java.util.function.Consumer<Exception> onError,
+            Runnable onCancelled) {
         if (isRunning()) {
             return;
         }
@@ -106,24 +111,26 @@ public class SwingQueryRunner {
         setRunning(true);
 
         currentWorker =
-                new SwingWorker<Void, Void>() {
+                new SwingWorker<R, Void>() {
                     @Override
-                    protected Void doInBackground() throws Exception {
-                        workflow.run(query);
-                        return null;
+                    protected R doInBackground() throws Exception {
+                        return workflow.run(query);
                     }
 
                     @Override
                     protected void done() {
                         try {
-                            get();
+                            R result = get();
+                            if (onSuccess != null) onSuccess.accept(result);
                         } catch (java.util.concurrent.CancellationException ignored) {
+                            if (onCancelled != null) onCancelled.run();
                         } catch (java.util.concurrent.ExecutionException ex) {
                             Throwable cause =
                                     ex.getCause() == null ? ex : ex.getCause();
 
-                            if (!QueryWorkflow.isCancellation(cause)
-                                    && onError != null) {
+                            if (QueryWorkflow.isCancellation(cause)) {
+                                if (onCancelled != null) onCancelled.run();
+                            } else if (onError != null) {
                                 onError.accept(cause instanceof Exception e
                                                        ? e
                                                        : ex);
@@ -148,6 +155,13 @@ public class SwingQueryRunner {
             QueryResultSink<R> sink,
             java.util.function.Consumer<Exception> onError) {
         run(new QueryWorkflow<>(context, sink, logListener), query, onError);
+    }
+
+    /** Delivers the outcome on the event thread, with no result delivery after cancellation. */
+    public <R> void runOnCompletion(Query<R> query, QueryResultSink<R> onSuccess,
+            java.util.function.Consumer<Exception> onError, Runnable onCancelled) {
+        run(new QueryWorkflow<>(context, ignored -> { }, logListener),
+                query, onSuccess, onError, onCancelled);
     }
 
     /**

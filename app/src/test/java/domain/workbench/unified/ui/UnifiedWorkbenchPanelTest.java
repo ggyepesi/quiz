@@ -21,6 +21,8 @@ import domain.config.GeneratedProjectModelStore;
 import domain.config.PopulationSelection;
 import domain.config.TransformationClassSource;
 import domain.config.TransformationStep;
+import domain.curation.CorrectionsSidecar;
+import domain.curation.ManualCuration;
 import domain.datasource.schema.FieldType;
 import domain.datasource.graph.GraphDiscoveryState;
 import domain.datasource.graph.GraphDiscoveryConfiguration;
@@ -44,6 +46,8 @@ import wikidata.api.WikidataApiClient;
 import wikidata.query.core.WikidataAccess;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import work.QueryContext;
+import work.WorkflowRecorder;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -63,6 +67,8 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
@@ -253,11 +259,18 @@ class UnifiedWorkbenchPanelTest {
             await(() -> actionNode(workbench, "Graph decisions") != null,
                     "the stopped build did not offer review");
             assertEquals(before, Files.readString(snapshot));
+            SwingUtilities.invokeAndWait(() -> startLoadingInstances(workbench));
+            await(() -> actionNode(workbench, "Instances (2)") != null,
+                    "the project did not reload after the stopped build");
             SwingUtilities.invokeAndWait(() -> {
                 selectAction(workbench, "Graph decisions");
                 find(workbench, JLabel.class, label -> ("Load " + graphFile).equals(label.getText()));
                 find(workbench, JButton.class, b -> "Review PositionGraph".equals(b.getText())).doClick();
-                assertTrue(backing.unsavedModelChanges().isEmpty());
+                var selected = find(workbench, SingleRootClassModelPanel.class, unused -> true)
+                        .selectedUserObject();
+                assertTrue(selected instanceof GeneratedClassModel current
+                        && current.declarationId().equals(graph.declarationId())
+                        && current != backing.projectModel().findClass(graph.className()));
             });
             await(() -> descendants(workbench).filter(QueryObjectResultPanel.class::isInstance)
                     .map(QueryObjectResultPanel.class::cast)
@@ -277,15 +290,16 @@ class UnifiedWorkbenchPanelTest {
                         .findFirst().orElseThrow());
                 find(view, JButton.class, b -> "Reject selection".equals(b.getText())).doClick();
                 assertEquals("Review (2)", tabs.getTitleAt(2));
-                assertEquals(List.of("Graph decisions for PositionGraph"), backing.unsavedModelChanges());
+                find(workbench, JLabel.class, label -> "Graph annotations have unsaved changes".equals(label.getText()));
             });
             assertEquals(beforeDecisions, Files.readString(graphFile));
             SwingUtilities.invokeAndWait(() ->
                     find(workbench, JButton.class, b -> "Save domain…".equals(b.getText())).doClick());
             awaitSaved(workbench);
             assertEquals(before, Files.readString(snapshot));
-            var savedGraphs = new GraphResults(backing.projectModel(), storage);
-            var saved = savedGraphs.restore(backing.projectModel().findClass(graph.className()), ignored -> { });
+            var savedModel = new GeneratedProjectModelStore().load(storage.modelFile(model.name()));
+            var savedGraphs = new GraphResults(savedModel, storage);
+            var saved = savedGraphs.restore(savedModel.findClass(graph.className()), ignored -> { });
             assertEquals(java.util.Set.of("Q1"), saved.acceptedIdentities());
             assertTrue(saved.awaitingDecision().isEmpty());
             SwingUtilities.invokeAndWait(() -> {
@@ -577,6 +591,223 @@ class UnifiedWorkbenchPanelTest {
         } finally {
             SwingUtilities.invokeAndWait(panel.get()::close);
         }
+    }
+
+    /**
+     * Load instances reads the saved snapshot again through the saved model and curation:
+     * the reading opening and a build's last step make, without the build. A field saved
+     * since the last build then belongs to the open project, so its recipes can run.
+     */
+    @Test void loadInstancesReadsTheSavedInstancesThroughTheSavedModelWithoutABuild() throws Exception {
+        var storage = DomainStorage.in(root.toFile());
+        var model = new GeneratedProjectModel();
+        model.name("Positions");
+        var position = new GeneratedClassModel("Position");
+        position.seedQids().addAll(List.of("Q1", "Q2"));
+        position.addField("holderCount", FieldType.NUMBER, FieldCardinality.SINGLE);
+        model.rootClass(position);
+        var first = new WikidataDynamicObject("Q1", "First position");
+        first.type(position.className());
+        first.put("holderCount", 5);
+        var second = new WikidataDynamicObject("Q2", "Second position");
+        second.type(position.className());
+        var run = new ProjectSave.Run(List.of(first, second), List.of(), null, model);
+        ProjectSave.plan(new ProjectSave.Input(model, run, null, List.of()), storage).write();
+        Path modelFile = storage.modelFile(model.name()).toPath();
+        Path snapshot = storage.snapshotFile(model.name()).toPath();
+        String savedInstances = Files.readString(snapshot);
+        var domain = DomainCatalog.modelBacked(storage).getFirst().opener().open();
+
+        // The model gains a field after the instances were built, as a Save elsewhere does.
+        var saved = new GeneratedProjectModelStore().load(modelFile.toFile());
+        saved.findClass(position.className()).addField("rank", FieldType.TEXT, FieldCardinality.SINGLE);
+        new GeneratedProjectModelStore().save(saved, modelFile.toFile());
+
+        var panel = new AtomicReference<UnifiedWorkbenchPanel>();
+        SwingUtilities.invokeAndWait(() -> {
+            var workbench = new UnifiedWorkbenchPanel(domain);
+            panel.set(workbench);
+            assertFalse(hasField(workbench, "rank"), "the open project predates the field");
+            selectAction(workbench, "Load instances");
+            var curation = ManualCuration.fileForSnapshot(snapshot.toFile());
+            var autofix = CorrectionsSidecar.beside(snapshot.toFile(), ".autofix.json");
+            String readiness = loadStatus(workbench);
+            assertTrue(readiness.startsWith("Reads " + modelFile), readiness);
+            assertTrue(readiness.contains(snapshot.toString()), readiness);
+            assertTrue(readiness.contains(curation.getPath()), readiness);
+            assertTrue(readiness.contains(autofix.getPath()), readiness);
+            find(workbench, JButton.class, button -> "Load instances".equals(button.getText())).doClick();
+            find(workbench, JLabel.class, label -> label.getText().equals("Loading instances from " + snapshot));
+            assertTrue(loadStatus(workbench).startsWith("Loading " + modelFile));
+            assertTrue(loadStatus(workbench).contains(curation.getPath()));
+            assertFalse(find(workbench, JButton.class, b -> "Cancel preview".equals(b.getText())).isEnabled());
+        });
+        try {
+            var workbench = panel.get();
+            await(() -> actionNode(workbench, "Instances (2)") != null, "instances were not loaded");
+            var cards = find(workbench, QueryObjectResultPanel.class, unused -> true);
+            await(() -> cards.displayedObjectsByType().containsKey("Position"),
+                    "the only result tab did not render the instances");
+            SwingUtilities.invokeAndWait(() -> {
+                assertEquals(List.of("Q1", "Q2"), cards.displayedObjectsByType().get("Position").stream()
+                        .map(objectview.Viewable::getIdentifier).sorted().toList());
+                assertTrue(hasField(workbench, "rank"), "the loaded project is read through the saved model");
+                assertEquals("2 saved instances loaded from " + snapshot + ".", loadStatus(workbench));
+            });
+            assertEquals(savedInstances, Files.readString(snapshot), "loading writes nothing");
+        } finally {
+            SwingUtilities.invokeAndWait(panel.get()::close);
+        }
+    }
+
+    @Test void cancellingLoadInstancesUnlocksTheOpenProjectAndAllowsRetry() throws Exception {
+        var opened = open();
+        var readStarted = new CountDownLatch(1);
+        var readAllowed = new CountDownLatch(1);
+        var session = new SwingQuerySession(new QueryContext() {
+            @Override public QueryContext withRecorder(WorkflowRecorder recorder) {
+                readStarted.countDown();
+                try {
+                    readAllowed.await();
+                } catch (InterruptedException cancelled) {
+                    Thread.currentThread().interrupt();
+                }
+                return super.withRecorder(recorder);
+            }
+        });
+        var panel = new AtomicReference<UnifiedWorkbenchPanel>();
+        SwingUtilities.invokeAndWait(() -> {
+            var workbench = new UnifiedWorkbenchPanel(opened.domain(), session);
+            panel.set(workbench);
+            startLoadingInstances(workbench);
+            assertTrue(find(workbench, JButton.class, button -> "Cancel load".equals(button.getText())).isEnabled());
+        });
+        try {
+            var workbench = panel.get();
+            assertTrue(readStarted.await(5, TimeUnit.SECONDS));
+            SwingUtilities.invokeAndWait(session.runner()::cancel);
+            await(() -> find(workbench, JButton.class, b -> "Load instances".equals(b.getText())).isEnabled(),
+                    "cancellation did not unlock the workbench");
+            SwingUtilities.invokeAndWait(() -> {
+                assertTrue(loadStatus(workbench).startsWith("Cancelled loading "));
+                assertTrue(find(workbench, JButton.class, b -> "Save domain…".equals(b.getText())).isEnabled());
+                assertFalse(find(workbench, JButton.class, b -> "Cancel load".equals(b.getText())).isEnabled());
+                assertTrue(actionNode(workbench, "Instances (1)") == null, "the cancelled read published no result");
+                assertTrue(hasField(workbench, "symbol"));
+            });
+            readAllowed.countDown();
+            SwingUtilities.invokeAndWait(() -> startLoadingInstances(workbench));
+            await(() -> actionNode(workbench, "Instances (1)") != null, "the retry did not load instances");
+        } finally {
+            readAllowed.countDown();
+            SwingUtilities.invokeAndWait(panel.get()::close);
+        }
+    }
+
+    @Test void aMissingOrUnreadableModelKeepsTheOpenProjectAndReportsTheFile() throws Exception {
+        var opened = open();
+        var panel = new AtomicReference<UnifiedWorkbenchPanel>();
+        var originalTree = new AtomicReference<SingleRootClassModelPanel>();
+        Files.delete(opened.modelPath());
+        SwingUtilities.invokeAndWait(() -> {
+            var workbench = new UnifiedWorkbenchPanel(opened.domain());
+            panel.set(workbench);
+            originalTree.set(find(workbench, SingleRootClassModelPanel.class, unused -> true));
+            startLoadingInstances(workbench);
+            assertEquals("No saved model at " + opened.modelPath() + ".", loadStatus(workbench));
+            assertTrue(find(workbench, JButton.class, b -> "Load instances".equals(b.getText())).isEnabled());
+        });
+        try {
+            var workbench = panel.get();
+            Files.writeString(opened.modelPath(), "{invalid");
+            SwingUtilities.invokeAndWait(() -> startLoadingInstances(workbench));
+            await(() -> loadStatus(workbench).startsWith("Could not load "), "the unreadable model was not reported");
+            SwingUtilities.invokeAndWait(() -> {
+                assertSame(originalTree.get(), find(workbench, SingleRootClassModelPanel.class, unused -> true));
+                assertTrue(hasField(workbench, "symbol"));
+                assertTrue(find(workbench, JButton.class, b -> "Save domain…".equals(b.getText())).isEnabled());
+            });
+            Files.writeString(opened.modelPath(), opened.savedModel());
+            SwingUtilities.invokeAndWait(() -> startLoadingInstances(workbench));
+            await(() -> actionNode(workbench, "Instances (1)") != null, "load did not recover after restoring the model");
+        } finally {
+            SwingUtilities.invokeAndWait(panel.get()::close);
+        }
+    }
+
+    @Test void reloadingAnExternallySavedProjectInvalidatesItsOpenBuildPlan() throws Exception {
+        var opened = open();
+        var storage = DomainStorage.in(root.toFile());
+        var model = opened.modelPath().toFile();
+        var snapshot = opened.domain().capability(ProjectBacking.class).snapshotFile();
+        var store = new GeneratedProjectModelStore();
+        var saved = store.load(model);
+        saved.buildOperations(List.of(new BuildOperation(BuildOperation.Kind.SAVE_PROJECT_RESULT, "")));
+        store.save(saved, model);
+        var current = DomainCatalog.open(snapshot, model, storage);
+        var panel = new AtomicReference<UnifiedWorkbenchPanel>();
+        SwingUtilities.invokeAndWait(() -> {
+            var workbench = new UnifiedWorkbenchPanel(current);
+            panel.set(workbench);
+            selectAction(workbench, "Build project");
+            find(workbench, JButton.class, b -> "Plan build".equals(b.getText())).doClick();
+            find(workbench, JButton.class, b -> "Execute".equals(b.getText()));
+        });
+        try {
+            var workbench = panel.get();
+            saved.buildOperations(List.of(new BuildOperation(BuildOperation.Kind.GENERATE_PROJECT, ""),
+                    new BuildOperation(BuildOperation.Kind.SAVE_PROJECT_RESULT, "")));
+            store.save(saved, model);
+            SwingUtilities.invokeAndWait(() -> startLoadingInstances(workbench));
+            await(() -> actionNode(workbench, "Instances (1)") != null, "the saved version was not reloaded");
+            SwingUtilities.invokeAndWait(() -> {
+                selectAction(workbench, "Build project");
+                assertFalse(descendants(workbench).filter(JButton.class::isInstance).map(JButton.class::cast)
+                        .anyMatch(button -> "Execute".equals(button.getText())));
+                find(workbench, JButton.class, b -> "Plan build".equals(b.getText())).doClick();
+                find(workbench, JButton.class, b -> b.getText().contains("1 · Generate project"));
+            });
+            assertFalse(storage.buildManifestFile(saved.name()).isFile(), "reloading and replanning do not build");
+        } finally {
+            SwingUtilities.invokeAndWait(panel.get()::close);
+        }
+    }
+
+    private static void startLoadingInstances(UnifiedWorkbenchPanel workbench) {
+        selectAction(workbench, "Load instances");
+        find(workbench, JButton.class, button -> "Load instances".equals(button.getText())).doClick();
+    }
+
+    private static String loadStatus(UnifiedWorkbenchPanel workbench) {
+        return find(workbench, JTextArea.class, status -> "load.instances.status".equals(status.getName())).getText();
+    }
+
+    @Test void loadInstancesIsRefusedWhileChangesAreUnsaved() throws Exception {
+        var opened = open();
+        var project = opened.domain().capability(ProjectBacking.class);
+        project.recordModelChange("Field configuration Person.birthDate");
+        var panel = new AtomicReference<UnifiedWorkbenchPanel>();
+        SwingUtilities.invokeAndWait(() -> {
+            var workbench = new UnifiedWorkbenchPanel(opened.domain());
+            panel.set(workbench);
+            selectAction(workbench, "Load instances");
+            find(workbench, JButton.class, button -> "Load instances".equals(button.getText())).doClick();
+            assertTrue(loadStatus(workbench).contains("before loading instances."));
+            assertTrue(loadStatus(workbench).contains(project.modelFile().getPath()));
+            assertTrue(actionNode(workbench, "Instances (" + opened.domain().memberRoots().size() + ")") == null,
+                    "an unsaved change is never replaced by the files");
+        });
+        SwingUtilities.invokeAndWait(panel.get()::close);
+    }
+
+    private static boolean hasField(UnifiedWorkbenchPanel workbench, String field) {
+        var tree = find(workbench, SingleRootClassModelPanel.class, unused -> true);
+        var nodes = descendants(tree).filter(javax.swing.JTree.class::isInstance)
+                .map(javax.swing.JTree.class::cast).findFirst().orElseThrow();
+        var rootNode = (DefaultMutableTreeNode) nodes.getModel().getRoot();
+        return java.util.Collections.list(rootNode.depthFirstEnumeration()).stream()
+                .map(node -> ((DefaultMutableTreeNode) node).getUserObject())
+                .anyMatch(value -> value instanceof GeneratedFieldModel f && field.equals(f.name()));
     }
 
     private static DefaultMutableTreeNode actionNode(UnifiedWorkbenchPanel workbench, String caption) {
