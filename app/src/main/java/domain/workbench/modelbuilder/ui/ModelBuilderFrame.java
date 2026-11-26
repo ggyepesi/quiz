@@ -2404,7 +2404,6 @@ public class ModelBuilderFrame extends JFrame {
         try {
             sourceWorkbench.applyEdits();
             ClassImportPlan plan = ClassImportPlan.of(source, projectModel, className);
-            java.util.Set<String> conflicts = plan.conflicts(ownership);
             DefaultListModel<String> dependencyModel = new DefaultListModel<>();
             plan.dependencyClassNames().forEach(dependencyModel::addElement);
             JList<String> dependencies = new JList<>(dependencyModel);
@@ -2441,8 +2440,16 @@ public class ModelBuilderFrame extends JFrame {
             // First, and outside the preview. Inside it the warning sat below a screenful
             // of description in a scrolling area, so the one question that loses work was
             // the one thing a reader had to go looking for.
-            if (!conflicts.isEmpty()) {
-                JLabel warning = new JLabel("<html><b>"
+            JLabel warning = new JLabel();
+            warning.setForeground(new java.awt.Color(150, 40, 40));
+            warning.setBorder(BorderFactory.createEmptyBorder(2, 2, 8, 2));
+            warning.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+            choices.add(warning);
+            Runnable updateConflicts = () -> {
+                java.util.Set<String> conflicts = plan.conflicts(ownership,
+                        new java.util.LinkedHashSet<>(dependencies.getSelectedValuesList()));
+                warning.setVisible(!conflicts.isEmpty());
+                warning.setText("<html><b>"
                         + (importing
                                 ? "Already here, so this import is refused: "
                                 : "Already here and REPLACED, losing what is here now: ")
@@ -2452,11 +2459,11 @@ public class ModelBuilderFrame extends JFrame {
                                 ? "Rename or remove them first."
                                 : "Cancel and rename it first if you want to keep both.")
                         + "</html>");
-                warning.setForeground(new java.awt.Color(150, 40, 40));
-                warning.setBorder(BorderFactory.createEmptyBorder(2, 2, 8, 2));
-                warning.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
-                choices.add(warning);
-            }
+            };
+            updateConflicts.run();
+            dependencies.addListSelectionListener(event -> {
+                if (!event.getValueIsAdjusting()) updateConflicts.run();
+            });
             JScrollPane previewScroll = new JScrollPane(preview);
             previewScroll.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
             choices.add(previewScroll);
@@ -2473,7 +2480,7 @@ public class ModelBuilderFrame extends JFrame {
             int accepted = JOptionPane.showConfirmDialog(this, choices,
                     importing ? "Import class" : "Paste class",
                     JOptionPane.OK_CANCEL_OPTION,
-                    conflicts.isEmpty()
+                    !warning.isVisible()
                             ? JOptionPane.PLAIN_MESSAGE : JOptionPane.WARNING_MESSAGE);
             if (accepted != JOptionPane.OK_OPTION) return;
 

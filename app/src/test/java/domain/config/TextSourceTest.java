@@ -142,4 +142,35 @@ class TextSourceTest {
         assertNull(norse.withoutResolvedImports().findTextSourceById(text.declarationId()),
                 "an imported text source is saved by the model that owns it");
     }
+
+    @Test void copyingAClassOnlyBringsTextSourcesOfTheSelectedClasses() {
+        TextSource remoteText = proseEdda();
+        GeneratedProjectModel source = library(remoteText);
+        var workIndex = new GeneratedClassModel("WorkIndex");
+        workIndex.addField("work", FieldType.ENTITY, FieldCardinality.SINGLE)
+                .entityClassName("NorseLiteraryWork");
+        source.addClass(workIndex);
+        TextSource localText = proseEdda();
+        localText.pages(List.of("Local edition"));
+        GeneratedProjectModel target = library(localText);
+        target.name("LocalModel");
+
+        var plan = ClassImportPlan.of(source, target, "WorkIndex");
+        assertTrue(plan.conflicts(ClassImportPlan.Ownership.COPY, Set.of()).isEmpty());
+        assertTrue(plan.conflicts(ClassImportPlan.Ownership.COPY, Set.of("NorseLiteraryWork"))
+                .contains(localText.name()));
+        plan.apply(Set.of(), ClassImportPlan.Ownership.COPY);
+
+        assertNotNull(target.findClass("WorkIndex"));
+        assertEquals(List.of("Local edition"),
+                target.findTextSourceById(localText.declarationId()).pages());
+        assertNull(target.findTextSourceById(remoteText.declarationId()));
+
+        var emptyTarget = new GeneratedProjectModel();
+        var fullCopy = ClassImportPlan.of(source, emptyTarget, "WorkIndex");
+        fullCopy.apply(fullCopy.dependencyClassNames(), ClassImportPlan.Ownership.COPY);
+        assertEquals(remoteText.pages(),
+                emptyTarget.findTextSourceById(remoteText.declarationId()).pages());
+        assertFalse(emptyTarget.findTextSourceById(remoteText.declarationId()).isImported());
+    }
 }

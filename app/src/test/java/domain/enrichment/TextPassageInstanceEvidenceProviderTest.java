@@ -1,6 +1,7 @@
 package domain.enrichment;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import domain.config.TextSource;
 import domain.datasource.api.SourceBinding;
 import domain.datasource.api.SourceBindingSlot;
 import domain.datasource.api.SourceBindingTarget;
@@ -10,6 +11,13 @@ import domain.runtime.WikidataDynamicObject;
 import objectview.field.FieldKind;
 import objectview.field.FieldRef;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import process.ProcessInputHandler;
+import process.ProcessRunner;
+import process.ProcessStatus;
+import wikipedia.WikipediaArticleClient;
+import work.CancellationToken;
 import work.QueryContext;
 
 import java.net.URI;
@@ -19,6 +27,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -49,22 +58,22 @@ class TextPassageInstanceEvidenceProviderTest {
     private final WikidataDynamicObject brother = character("Q1153419", "Vili");
     private final WikidataDynamicObject son = character("Q3554720", "Váli", "Vili");
 
-    private static domain.config.TextSource proseEdda() {
-        var text = new domain.config.TextSource("Prose Edda (Brodeur, 1916)");
+    private static TextSource proseEdda() {
+        var text = new TextSource("Prose Edda (Brodeur, 1916)");
         text.workQid("Q205882");
         text.pages(List.of(GYLFAGINNING));
         return text;
     }
 
-    private final domain.config.TextSource proseEdda = proseEdda();
+    private final TextSource proseEdda = proseEdda();
 
-    private WikipediaDatasourceProvider.TextPassageInstanceSpec spec() {
+    private static WikipediaDatasourceProvider.TextPassageInstanceSpec spec(String... sourceIds) {
         return WikipediaDatasourceProvider.textPassageInstances(new SourceBinding(
                 SourceBindingTarget.fieldValue("NorseLiteraryWork", "stories",
                         SourceBindingSlot.CANDIDATE_EVIDENCE),
                 new SourceRecipe(WikipediaDatasourceProvider.ID,
                         WikipediaDatasourceProvider.TEXT_PASSAGE_INSTANCES, Map.of(
-                                WikipediaDatasourceProvider.TEXT_SOURCES, proseEdda.declarationId(),
+                                WikipediaDatasourceProvider.TEXT_SOURCES, String.join(" | ", sourceIds),
                                 WikipediaDatasourceProvider.PASSAGE_TEXT_FIELD, "text",
                                 WikipediaDatasourceProvider.PASSAGE_SOURCE_FIELD, "work",
                                 WikipediaDatasourceProvider.PASSAGE_TITLE_FIELD, "title",
@@ -83,7 +92,7 @@ class TextPassageInstanceEvidenceProviderTest {
         List<URI> requests = new ArrayList<>();
         String response = new ObjectMapper().writeValueAsString(Map.of("parse", Map.of(
                 "title", GYLFAGINNING, "revid", 7, "text", HTML, "categories", List.of())));
-        var provider = new TextPassageInstanceEvidenceProvider(spec(), List.of(proseEdda),
+        var provider = new TextPassageInstanceEvidenceProvider(spec(proseEdda.declarationId()), List.of(proseEdda),
                 List.of(odin, loki, brother, son),
                 "NorseCharacter", domain(), new wikipedia.WikipediaArticleClient(uri -> {
                     requests.add(uri);
@@ -111,10 +120,12 @@ class TextPassageInstanceEvidenceProviderTest {
     }
 
     @Test void aTextSourceTheRecipeDoesNotNameIsNotRead() throws Exception {
-        var unnamed = new domain.config.TextSource("Another translation");
+        var unnamed = new TextSource("Another translation");
         unnamed.workQid("Q205882");
         unnamed.pages(List.of("Some other page"));
-        var provider = new TextPassageInstanceEvidenceProvider(spec(), List.of(unnamed), List.of(),
+        proseEdda.workQid("Q205874");
+        var provider = new TextPassageInstanceEvidenceProvider(spec(proseEdda.declarationId()),
+                List.of(proseEdda, unnamed), List.of(),
                 "NorseCharacter", domain(), new wikipedia.WikipediaArticleClient(uri -> {
                     throw new AssertionError("the recipe does not name this text source");
                 }));
@@ -122,8 +133,59 @@ class TextPassageInstanceEvidenceProviderTest {
         assertTrue(provider.discover(request()).execute(new QueryContext()).instances().isEmpty());
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void discoveryReportsEveryUnresolvedSourceBeforeReadingAnyPage(boolean includesDeclaredSource) {
+        String missing = "decl:missing-edition";
+        String anotherMissing = "decl:missing-translation";
+        var spec = includesDeclaredSource
+                ? spec(proseEdda.declarationId(), missing, anotherMissing)
+                : spec(missing, anotherMissing);
+        var provider = new TextPassageInstanceEvidenceProvider(spec, List.of(proseEdda),
+                List.of(), "", domain(), new WikipediaArticleClient(uri -> {
+                    throw new AssertionError("A recipe with unresolved sources must not fetch pages");
+                }));
+        var job = new FindDataProcess(request(), List.of(provider), false);
+        var outcome = new ProcessRunner(new QueryContext(), null, ProcessInputHandler.unsupported())
+                .run(new FindDataBatchProcess(List.of(job), 0, "stories"), new CancellationToken());
+
+        assertEquals(ProcessStatus.FAILED, outcome.status());
+        String message = outcome.error().getMessage();
+        assertTrue(message.contains("NorseLiteraryWork.stories"), message);
+        assertTrue(message.contains(missing), message);
+        assertTrue(message.contains(anotherMissing), message);
+    }
+
+    @Test void equalPageAndChapterTitlesOnDifferentSitesProduceSeparateStories() throws Exception {
+        var wikipediaText = proseEdda();
+        wikipediaText.site(WikipediaArticleClient.Site.WIKIPEDIA);
+        var provider = new TextPassageInstanceEvidenceProvider(
+                spec(proseEdda.declarationId(), wikipediaText.declarationId()),
+                List.of(proseEdda, wikipediaText), List.of(), "", domain(),
+                new WikipediaArticleClient(uri -> new ObjectMapper().writeValueAsString(
+                        Map.of("parse", Map.of("title", GYLFAGINNING, "revid", 7,
+                                "text", "<p>VI. Text on " + uri.getHost() + ".</p>",
+                                "categories", List.of())))));
+
+        var candidates = provider.discover(request()).execute(new QueryContext()).instances();
+        assertEquals(2, candidates.size());
+        var wikisource = candidates.getFirst();
+        var wikipedia = candidates.getLast();
+        assertNotEquals(wikisource.id(), wikipedia.id());
+        assertNotEquals(wikisource.candidateId(), wikipedia.candidateId());
+
+        var accepted = new WikidataDynamicObject(wikisource.id(), wikisource.displayName());
+        accepted.type("NorseStory");
+        var nextRequest = new EnrichmentRequest(request().subject(), "stories", true, List.of(),
+                request().targetSchema(), List.of(accepted));
+        var remaining = provider.discover(nextRequest).execute(new QueryContext()).instances();
+        assertEquals(List.of(wikipedia.id()),
+                remaining.stream().map(EnrichmentProposal.InstanceCandidate::id).toList());
+    }
+
     @Test void aWorkWithoutATextSourceOfItsOwnReadsNothing() throws Exception {
-        var provider = new TextPassageInstanceEvidenceProvider(spec(), List.of(proseEdda), List.of(),
+        var provider = new TextPassageInstanceEvidenceProvider(spec(proseEdda.declarationId()),
+                List.of(proseEdda), List.of(),
                 "NorseCharacter", domain(),
                 new wikipedia.WikipediaArticleClient(uri -> {
                     throw new AssertionError("no text source names this work");

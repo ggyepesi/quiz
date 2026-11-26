@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -24,10 +25,9 @@ public final class ClassImportPlan {
     private final String requestedClass;
     private final List<GeneratedClassModel> classes;
     private final List<Selection> selections;
-    private final List<TextSource> textSources;
+    private final List<ConfigurationReferenceInventory.Reference> textSourceReferences;
     private final List<EntityKindRule> kindRules;
     private final List<EntityRepresentationRule> representationRules;
-    private final Set<String> conflicts;
 
     private ClassImportPlan(
             GeneratedProjectModel source,
@@ -35,19 +35,17 @@ public final class ClassImportPlan {
             String requestedClass,
             List<GeneratedClassModel> classes,
             List<Selection> selections,
-            List<TextSource> textSources,
+            List<ConfigurationReferenceInventory.Reference> textSourceReferences,
             List<EntityKindRule> kindRules,
-            List<EntityRepresentationRule> representationRules,
-            Set<String> conflicts) {
+            List<EntityRepresentationRule> representationRules) {
         this.source = source;
         this.target = target;
         this.requestedClass = requestedClass;
         this.classes = List.copyOf(classes);
         this.selections = List.copyOf(selections);
-        this.textSources = List.copyOf(textSources);
+        this.textSourceReferences = List.copyOf(textSourceReferences);
         this.kindRules = List.copyOf(kindRules);
         this.representationRules = List.copyOf(representationRules);
-        this.conflicts = Set.copyOf(conflicts);
     }
 
     public static ClassImportPlan of(
@@ -110,19 +108,11 @@ public final class ClassImportPlan {
                 .filter(s -> s != null && selectionNames.contains(s.name()))
                 .toList();
         // A text source travels with the class whose recipe reads it.
-        LinkedHashSet<String> textIds = new LinkedHashSet<>();
-        for (GeneratedClassModel clazz : closure.values()) {
-            for (GeneratedFieldModel field : clazz.fields()) {
-                if (field == null) continue;
-                for (domain.datasource.api.SourceBinding binding : FieldSourceBindings.bindings(
-                        field, domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE)) {
-                    textIds.addAll(domain.datasource.wikipedia.WikipediaDatasourceProvider
-                            .textPassageInstances(binding).textSources());
-                }
-            }
-        }
-        List<TextSource> textSources = textIds.stream().map(source::findTextSourceById)
-                .filter(java.util.Objects::nonNull).toList();
+        var textSourceReferences = ConfigurationReferenceInventory.of(source).references().stream()
+                .filter(reference -> reference.target().kind()
+                        == ConfigurationReferenceInventory.SiteKind.TEXT_SOURCE)
+                .filter(reference -> closure.containsKey(reference.source().className()))
+                .toList();
         List<EntityKindRule> rules = source.entityKindRules().stream()
                 .filter(r -> r != null && closure.containsKey(r.className()))
                 .toList();
@@ -133,60 +123,77 @@ public final class ClassImportPlan {
                                 && closure.containsKey(
                                         rule.representationClassName()))
                         .toList();
-        LinkedHashSet<String> conflicts = new LinkedHashSet<>();
-        closure.keySet().stream().filter(n -> target.findClass(n) != null)
-                .forEach(conflicts::add);
-        selections.stream().map(Selection::name)
-                .filter(n -> target.findSelection(n) != null).forEach(conflicts::add);
-        textSources.stream().map(TextSource::name)
-                .filter(n -> target.findTextSource(n) != null).forEach(conflicts::add);
-
         return new ClassImportPlan(source, target, requested.className(),
-                new ArrayList<>(closure.values()), selections, textSources, rules,
-                representations, conflicts);
+                new ArrayList<>(closure.values()), selections, textSourceReferences, rules,
+                representations);
     }
 
     public String requestedClass() { return requestedClass; }
     public List<GeneratedClassModel> classes() { return classes; }
     public List<Selection> selections() { return selections; }
-    public List<TextSource> textSources() { return textSources; }
+    public List<TextSource> textSources() { return requiredTextSources(classNames()); }
     public List<EntityKindRule> kindRules() { return kindRules; }
-    public Set<String> conflicts() { return conflicts; }
+    public Set<String> conflicts() { return conflicts(Ownership.COPY); }
 
     /**
      * Conflicts for the requested operation. Re-importing a declaration already owned
      * by the same model is a refresh, not a collision; copy still replaces by name.
      */
     public Set<String> conflicts(Ownership ownership) {
-        if (ownership != Ownership.IMPORT) return conflicts;
-        LinkedHashSet<String> refused = new LinkedHashSet<>();
+        return conflicts(ownership, classNames());
+    }
+
+    public Set<String> conflicts(Ownership ownership, Set<String> selectedClassNames) {
+        Set<String> selected = selectedClasses(selectedClassNames, ownership);
+        LinkedHashSet<String> conflicts = new LinkedHashSet<>();
         for (GeneratedClassModel sourceClass : classes) {
+            if (!selected.contains(sourceClass.className())) continue;
             GeneratedClassModel existing = target.findClass(sourceClass.className());
-            String owner = sourceClass.isImported()
-                    ? sourceClass.importedFrom() : source.name();
-            if (existing != null && (!existing.isImported()
-                    || !existing.importedFrom().equalsIgnoreCase(owner))) {
-                refused.add(sourceClass.className());
+            if (existing != null
+                    && requiresReplacementWarning(ownership, existing.importedFrom(),
+                            sourceClass.importedFrom())) {
+                conflicts.add(sourceClass.className());
             }
         }
+        Set<String> requiredSelections = requiredSelectionNames(selected);
         for (Selection selection : selections) {
+            if (!requiredSelections.contains(selection.name())) continue;
             Selection existing = target.findSelection(selection.name());
-            String owner = selection.isImported()
-                    ? selection.importedFrom() : source.name();
-            if (existing != null && (!existing.isImported()
-                    || !existing.importedFrom().equalsIgnoreCase(owner))) {
-                refused.add(selection.name());
+            if (existing != null
+                    && requiresReplacementWarning(ownership, existing.importedFrom(),
+                            selection.importedFrom())) {
+                conflicts.add(selection.name());
             }
         }
-        for (TextSource text : textSources) {
+        for (TextSource text : requiredTextSources(selected)) {
             TextSource existing = target.findTextSource(text.name());
-            String owner = text.isImported() ? text.importedFrom() : source.name();
-            if (existing != null && (!existing.isImported()
-                    || !existing.importedFrom().equalsIgnoreCase(owner))) {
-                refused.add(text.name());
+            if (existing != null
+                    && requiresReplacementWarning(ownership, existing.importedFrom(),
+                            text.importedFrom())) {
+                conflicts.add(text.name());
             }
         }
-        return Set.copyOf(refused);
+        return Set.copyOf(conflicts);
+    }
+
+    private boolean requiresReplacementWarning(Ownership ownership,
+            String existingOwner, String sourceOwner) {
+        return ownership != Ownership.IMPORT
+                || importConflict(existingOwner, declaringModel(sourceOwner));
+    }
+
+    private String declaringModel(String importedFrom) {
+        return importedFrom.isBlank() ? source.name() : importedFrom;
+    }
+
+    private static boolean importConflict(String existingOwner, String declaringModel) {
+        return existingOwner.isBlank() || !existingOwner.equalsIgnoreCase(declaringModel);
+    }
+
+    private Set<String> classNames() {
+        LinkedHashSet<String> names = new LinkedHashSet<>();
+        classes.stream().map(GeneratedClassModel::className).forEach(names::add);
+        return names;
     }
 
     public Set<String> dependencyClassNames() {
@@ -214,12 +221,7 @@ public final class ClassImportPlan {
     public List<GeneratedClassModel> apply(
             Set<String> selectedClassNames,
             Ownership ownership) {
-        LinkedHashSet<String> selected = new LinkedHashSet<>();
-        if (selectedClassNames != null) selected.addAll(selectedClassNames);
-        selected.add(requestedClass);
-        if (ownership == Ownership.IMPORT) {
-            classes.stream().map(GeneratedClassModel::className).forEach(selected::add);
-        }
+        Set<String> selected = selectedClasses(selectedClassNames, ownership);
         validateSelectedClosure(selected);
 
         GeneratedProjectModel candidate = target.copy();
@@ -231,12 +233,10 @@ public final class ClassImportPlan {
         LinkedHashMap<String, List<String>> references = new LinkedHashMap<>();
         for (GeneratedClassModel sourceClass : classes) {
             if (!selected.contains(sourceClass.className())) continue;
-            String owner = sourceClass.isImported()
-                    ? sourceClass.importedFrom() : source.name();
+            String owner = declaringModel(sourceClass.importedFrom());
             GeneratedClassModel existing = candidate.findClass(sourceClass.className());
             if (ownership == Ownership.IMPORT && existing != null
-                    && (!existing.isImported()
-                    || !existing.importedFrom().equalsIgnoreCase(owner))) {
+                    && importConflict(existing.importedFrom(), owner)) {
                 throw new IllegalStateException("Cannot import " + owner + "."
                         + sourceClass.className() + ": a local or differently owned class "
                         + "already has that name. Rename or remove it explicitly first.");
@@ -261,11 +261,9 @@ public final class ClassImportPlan {
         for (Selection selection : selections) {
             if (!requiredSelections.contains(selection.name())) continue;
             Selection existing = candidate.findSelection(selection.name());
-            String owner = selection.isImported()
-                    ? selection.importedFrom() : source.name();
+            String owner = declaringModel(selection.importedFrom());
             if (ownership == Ownership.IMPORT && existing != null
-                    && (!existing.isImported()
-                    || !existing.importedFrom().equalsIgnoreCase(owner))) {
+                    && importConflict(existing.importedFrom(), owner)) {
                 throw new IllegalStateException("Cannot import " + owner + "."
                         + selection.name() + ": a local or differently owned selection "
                         + "already has that name. Rename or remove it explicitly first.");
@@ -275,12 +273,11 @@ public final class ClassImportPlan {
             else copy.importedFrom(owner);
             candidate.replaceSelection(copy);
         }
-        for (TextSource text : textSources) {
+        for (TextSource text : requiredTextSources(selected)) {
             TextSource existing = candidate.findTextSource(text.name());
-            String owner = text.isImported() ? text.importedFrom() : source.name();
+            String owner = declaringModel(text.importedFrom());
             if (ownership == Ownership.IMPORT && existing != null
-                    && (!existing.isImported()
-                    || !existing.importedFrom().equalsIgnoreCase(owner))) {
+                    && importConflict(existing.importedFrom(), owner)) {
                 throw new IllegalStateException("Cannot import " + owner + "." + text.name()
                         + ": a local or differently owned text source already has that name. "
                         + "Rename or remove it explicitly first.");
@@ -367,6 +364,24 @@ public final class ClassImportPlan {
             throw new IllegalStateException("Select the missing class dependencies:\n"
                     + String.join("\n", missing));
         }
+    }
+
+    private Set<String> selectedClasses(Set<String> selectedClassNames, Ownership ownership) {
+        if (ownership == Ownership.IMPORT) return classNames();
+        LinkedHashSet<String> selected = new LinkedHashSet<>();
+        if (selectedClassNames != null) selected.addAll(selectedClassNames);
+        selected.add(requestedClass);
+        return selected;
+    }
+
+    private List<TextSource> requiredTextSources(Set<String> selected) {
+        return textSourceReferences.stream()
+                .filter(reference -> selected.contains(reference.source().className()))
+                .map(reference -> reference.target().declarationId())
+                .distinct()
+                .map(source::findTextSourceById)
+                .filter(Objects::nonNull)
+                .toList();
     }
 
     private Set<String> requiredSelectionNames(Set<String> selected) {

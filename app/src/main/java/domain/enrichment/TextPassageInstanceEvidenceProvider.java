@@ -11,6 +11,7 @@ import domain.datasource.wikipedia.WikipediaDatasourceProvider;
 import objectview.Viewable;
 import objectview.field.FieldKind;
 import wikidata.WikidataIds;
+import wikipedia.WikipediaArticleClient;
 import work.Query;
 import work.QueryContext;
 
@@ -20,6 +21,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HexFormat;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -40,25 +42,29 @@ public final class TextPassageInstanceEvidenceProvider implements EnrichmentProv
 
     private final WikipediaDatasourceProvider.TextPassageInstanceSpec spec;
     private final List<TextSource> texts;
+    private final List<String> missingTextSourceIds;
     private final LoadedNameMatches names;
     private final String namedType;
-    private final wikipedia.WikipediaArticleClient pages;
+    private final WikipediaArticleClient pages;
     private final domain.DomainModel domain;
 
-    /** {@code texts} are the recipe's text sources as the project resolves them. */
+    /** {@code texts} are the text sources declared in or imported by the project. */
     public TextPassageInstanceEvidenceProvider(WikipediaDatasourceProvider.TextPassageInstanceSpec spec,
             List<TextSource> texts, Collection<? extends Viewable> namedCandidates, String namedType,
             domain.DomainModel domain) {
-        this(spec, texts, namedCandidates, namedType, domain, new wikipedia.WikipediaArticleClient());
+        this(spec, texts, namedCandidates, namedType, domain, new WikipediaArticleClient());
     }
 
     TextPassageInstanceEvidenceProvider(WikipediaDatasourceProvider.TextPassageInstanceSpec spec,
             List<TextSource> texts, Collection<? extends Viewable> namedCandidates, String namedType,
-            domain.DomainModel domain, wikipedia.WikipediaArticleClient pages) {
+            domain.DomainModel domain, WikipediaArticleClient pages) {
         this.spec = java.util.Objects.requireNonNull(spec);
         this.texts = texts == null ? List.of() : texts.stream()
                 .filter(text -> text != null && spec.textSources().contains(text.declarationId()))
                 .toList();
+        Set<String> missing = new LinkedHashSet<>(spec.textSources());
+        this.texts.forEach(text -> missing.remove(text.declarationId()));
+        this.missingTextSourceIds = List.copyOf(missing);
         this.names = LoadedNameMatches.of(namedCandidates, LoadedNameMatches::labelAndAliases);
         this.namedType = namedType == null ? "" : namedType.trim();
         this.domain = java.util.Objects.requireNonNull(domain);
@@ -105,6 +111,12 @@ public final class TextPassageInstanceEvidenceProvider implements EnrichmentProv
             }
 
             @Override public EnrichmentProposal execute(QueryContext context) throws Exception {
+                if (!missingTextSourceIds.isEmpty()) {
+                    throw new IllegalStateException("Text sources named by "
+                            + request.subject().type() + "." + request.targetField()
+                            + " are not declared or imported by this project: "
+                            + String.join(", ", missingTextSourceIds));
+                }
                 String targetType = request.targetSchema().targetType() == null
                         ? "" : request.targetSchema().targetType().trim();
                 Set<String> current = FieldValueCompatibility.compatibleReferenceIds(
@@ -118,7 +130,7 @@ public final class TextPassageInstanceEvidenceProvider implements EnrichmentProv
                     if (article == null) continue;
                     for (TextPassages.Passage passage : TextPassages.divide(article, text.division())) {
                         passages++;
-                        String instanceId = instanceId(request, title, passage);
+                        String instanceId = instanceId(request, text.site(), title, passage);
                         if (current.contains(instanceId)) continue;
                         String label = label(title, passage);
                         SourceRef source = new SourceRef(article.document().kind(),
@@ -191,11 +203,12 @@ public final class TextPassageInstanceEvidenceProvider implements EnrichmentProv
         };
     }
 
-    /** A passage is its owner, field, page and authored division label, so an edit to its
+    /** A passage is its owner, field, site, page and authored division label, so an edit to its
      *  wording keeps the accepted instance instead of proposing a second one. */
-    static String instanceId(EnrichmentRequest request, String page, TextPassages.Passage passage) {
+    private static String instanceId(EnrichmentRequest request, WikipediaArticleClient.Site site,
+            String page, TextPassages.Passage passage) {
         String material = request.subject().type() + '\0' + request.subject().targetId() + '\0'
-                + request.targetField() + '\0' + page + '\0' + passage.label();
+                + request.targetField() + '\0' + site.host() + '\0' + page + '\0' + passage.label();
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")
                     .digest(material.getBytes(StandardCharsets.UTF_8));
