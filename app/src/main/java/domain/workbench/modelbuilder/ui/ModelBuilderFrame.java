@@ -559,24 +559,11 @@ public class ModelBuilderFrame extends JFrame {
      * every named graph constraint's annotation instances. */
     private void refreshInstancesPanel() {
         if (lastRun == null) return;
-        domain.config.ConstructInventory inventory =
-                domain.config.ConstructInventory.of(projectModel);
-        java.util.Map<String,
-                domain.workbench.execution.ui.QueryObjectResultPanel.GroupedSection> annotations =
-                new java.util.LinkedHashMap<>();
-        for (GraphDiscoveryResultStore.Artifact result : graphResults.all()) {
-            annotations.put(result.type(), GraphResultPresentation.review(result,
-                    java.util.List.of(new domain.workbench.execution.ui.QueryObjectResultPanel
-                            .GroupAction("Apply accepted instances", () -> applyGraphResultFromInstances(result))),
-                    () -> savedGenerationRun = null));
-        }
-        wikidata.explore.query.result.ObjectQueryResult result = lastRun.objectResult();
-        instancesPanel.configuredGroups(
-                domain.transform.app.ConfiguredGroups.presentationBindings(
-                        projectModel, result.objects()));
-        instancesPanel.acceptGrouped(new wikidata.explore.query.result.ObjectQueryResult(
-                inventory.visibleInstances(result.objects()), result.primaryClass(),
-                result.generatedSource(), result.typeOrder(), result.partTypes()), annotations);
+        ProjectInstancesPresentation.show(instancesPanel, projectModel, lastRun.objectResult(),
+                graphResults.all(), result -> GraphResultPresentation.review(result,
+                        java.util.List.of(new QueryObjectResultPanel.GroupAction(
+                                "Apply accepted instances", () -> applyGraphResultFromInstances(result))),
+                        () -> savedGenerationRun = null));
     }
 
     private void applyGraphResultFromInstances(GraphDiscoveryResultStore.Artifact result) {

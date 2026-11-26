@@ -39,7 +39,8 @@ public final class GraphResultPresentation {
                     .map(GraphResultPresentation::candidate).toList());
         }
         return QueryObjectResultPanel.GroupedSection.presented(candidates(result.instances()),
-                partitions, actions, decisionActions(result, changed), shapeSample(result), decorator(result));
+                partitions, actions, changed == null ? List.of() : decisionActions(result, changed),
+                shapeSample(result), decorator(result));
     }
 
     static Viewable candidate(WikidataDynamicObject annotation) {

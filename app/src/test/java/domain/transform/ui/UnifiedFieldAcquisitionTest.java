@@ -686,7 +686,7 @@ class UnifiedFieldAcquisitionTest {
     private static ValidationPanel openLoadAction(UnifiedWorkbenchPanel panel, ProjectBacking backing) {
         var field = backing.projectModel().rootClass().fields().getFirst();
         find(panel, SingleRootClassModelPanel.class, item -> true).selectField(field);
-        selectAction(find(panel, WorkbenchActionResultNavigator.class, item -> true), "Load field values");
+        selectAction(find(panel, WorkbenchActionResultNavigator.class, item -> true), "Load the current configured field");
         return find(panel, ValidationPanel.class, item -> true);
     }
 

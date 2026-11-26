@@ -10,6 +10,7 @@ import domain.datasource.api.SourceReferenceSchema;
 import domain.datasource.api.discovery.RelatedRecordDiscoveryOperation;
 import domain.DomainModel;
 import domain.workbench.ui.WorkbenchActionResultNavigator;
+import domain.workbench.execution.ui.SwingQuerySession;
 import objectview.utils.swing.WrapLayout;
 import domain.datasource.pageviews.discovery.ui.PageviewsDiscoveryPanel;
 import domain.transform.ui.BoundedInstanceSelection;
@@ -68,8 +69,7 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
             new java.util.ArrayList<>();
     private final List<String> catalogProblems;
     private final List<String> unavailableOperations;
-    private final WorkbenchActionResultNavigator navigator =
-            new WorkbenchActionResultNavigator();
+    private final WorkbenchActionResultNavigator navigator;
     private final Map<Source, WorkbenchActionResultNavigator.Source> sourceNodes =
             new EnumMap<>(Source.class);
     private final Map<Source, WorkbenchActionResultNavigator.Action> defaultActions =
@@ -92,11 +92,23 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
     DiscoveryWorkbench(DomainModel model, InitialSelection initialSelection,
             DatasourceRegistry datasources,
             List<String> configurationProblems) {
+        this(new TransformController(model, new domain.transform.app.DomainSaver()),
+                initialSelection, datasources, configurationProblems, null, null);
+    }
+
+    /** Mount the same sources and bounded selection in a host's action navigator. */
+    public DiscoveryWorkbench(TransformController domain, WorkbenchActionResultNavigator navigator,
+            SwingQuerySession queries) {
+        this(domain, null, Datasources.standard(), Datasources.configured().problems(), navigator, queries);
+    }
+
+    private DiscoveryWorkbench(TransformController domain, InitialSelection initialSelection,
+            DatasourceRegistry datasources, List<String> configurationProblems,
+            WorkbenchActionResultNavigator hostNavigator, SwingQuerySession queries) {
         super(new BorderLayout(6, 6));
+        navigator = hostNavigator == null ? new WorkbenchActionResultNavigator() : hostNavigator;
         this.catalogProblems = List.copyOf(configurationProblems);
         List<String> unavailable = new java.util.ArrayList<>();
-        TransformController domain =
-                new TransformController(model, new domain.transform.app.DomainSaver());
         selection = new BoundedInstanceSelection(domain,
                 new BoundedInstanceSelection.Host() {
                     @Override public void selectionChanged(String reason) { }
@@ -109,10 +121,11 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
         wikipedia = new WikipediaDiscoveryPanel(domain, selection);
         commons = new CommonsDiscoveryPanel(domain, selection);
         pageviews = new PageviewsDiscoveryPanel(selection);
-        wikidata = new WikidataStatementDiscoveryPanel(domain, selection);
+        wikidata = new WikidataStatementDiscoveryPanel(domain, selection, queries);
         installRelatedRecordActions(domain, datasources, unavailable);
         this.unavailableOperations = List.copyOf(unavailable);
-        build(true);
+        build(true, hostNavigator != null);
+        if (hostNavigator != null) wikipedia.useHostProjectSave();
         populate(initialSelection);
     }
 
@@ -123,17 +136,23 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
      */
     public DiscoveryWorkbench(TransformController domain,
             BoundedInstanceSelection selection) {
+        this(domain, selection, null);
+    }
+
+    public DiscoveryWorkbench(TransformController domain,
+            BoundedInstanceSelection selection, SwingQuerySession queries) {
         super(new BorderLayout(6, 6));
+        navigator = new WorkbenchActionResultNavigator();
         this.catalogProblems = List.copyOf(Datasources.configured().problems());
         this.selection = java.util.Objects.requireNonNull(selection);
         List<String> unavailable = new java.util.ArrayList<>();
         wikipedia = new WikipediaDiscoveryPanel(domain, selection);
         commons = new CommonsDiscoveryPanel(domain, selection);
         pageviews = new PageviewsDiscoveryPanel(selection);
-        wikidata = new WikidataStatementDiscoveryPanel(domain, selection);
+        wikidata = new WikidataStatementDiscoveryPanel(domain, selection, queries);
         installRelatedRecordActions(domain, Datasources.standard(), unavailable);
         this.unavailableOperations = List.copyOf(unavailable);
-        build(false);
+        build(false, false);
     }
 
     private void installRelatedRecordActions(TransformController domain,
@@ -158,7 +177,7 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
         }
     }
 
-    private void build(boolean showSelection) {
+    private void build(boolean showSelection, boolean mounted) {
 
         addBuiltInActions();
         addConfiguredActions();
@@ -193,6 +212,13 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
             north.add(controls, BorderLayout.NORTH);
             north.add(selectionStatus, BorderLayout.SOUTH);
             north.setBorder(BorderFactory.createEmptyBorder(4, 4, 0, 4));
+            if (mounted) {
+                JPanel scope = new JPanel(new BorderLayout());
+                scope.add(north, BorderLayout.NORTH);
+                scope.add(selection.tabs(), BorderLayout.CENTER);
+                navigator.addSource("discovery-scope", "Datasource instance selection", scope);
+                return;
+            }
             JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
                     selection.tabs(), navigator);
             split.setResizeWeight(0.30);
@@ -203,6 +229,13 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
         } else {
             add(navigator, BorderLayout.CENTER);
         }
+    }
+
+    /** Invalidate the old scope and results after the host replaces the loaded data. */
+    public void refreshInstances() {
+        wikipedia.refreshProject();
+        selection.resetInstances();
+        populate(null);
     }
 
     private void addBuiltInActions() {

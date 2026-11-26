@@ -352,7 +352,11 @@ Selecting a field or reading its plan sends no datasource requests.
 Leaving, saving or closing over unapplied edits asks first, as described under
 [One draft and one Apply](#one-draft-and-one-apply).
 
-Under **Datasources → Load field values**, the displayed plan and the run share the prepared
+Unified Workbench mounts the same datasource actions as DataSourceApp in its action tree.
+**Datasource instance selection** supplies the shared bounded selection for source discovery.
+Opening a source, an action, or a result does not run a request.
+
+Under **Wikidata → Load the current configured field**, the displayed plan and the run share the prepared
 value steps for the selected field, including production-site overrides. The action uses
 Enrich's claim batches and external field-acquisition families. The current loaded class members,
 or the cards explicitly selected in that view, are the write targets. Other loaded objects can
@@ -360,7 +364,7 @@ still supply dependencies, such as eligible descendants for an inherited count o
 endpoints. The action requires a compatible field in the loaded instance schema.
 Acquired references must resolve to compatible loaded instances for acceptance.
 
-Under **Datasources → Configured field evidence**, each applied recipe for the selected field
+Under **Wikipedia → Configured field evidence**, each applied recipe for the selected field
 appears as its own action. Selecting a recipe opens its instance cards. Its **Find** button
 confirms the scope and runs the existing evidence review used by DataSourceApp. Applied recipes
 appear immediately. If resolving an unapplied edit
@@ -400,7 +404,10 @@ in the action tree. The results are for inspection.
 instances viewer in a separate window. It does not put the instances in the action pane.
 A completed build refreshes that same viewer without opening it, as ModelBuilder does; its
 **Instances** result offers **Show instances** rather than a second copy of the cards. The
-window belongs to the project's workbench window and closes with it.
+window belongs to the project's workbench window and closes with it. **Show instances**
+raises the existing viewer without resetting it. The window includes configured groups and
+the saved graph annotations, partitioned as in ModelBuilder. Use **Review graph decisions**
+to edit annotations.
 
 Select a local graph class and open **Project → Run graph** to run that graph on its own.
 **Plan graph run** shows ModelBuilder's traversal diagram and scope. **Execute** uses that

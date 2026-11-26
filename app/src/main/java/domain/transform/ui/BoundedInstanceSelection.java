@@ -41,6 +41,7 @@ public final class BoundedInstanceSelection {
     private final TransformController domain;
     /** Every source that runs over this selection; each keeps its own results. */
     private final List<Host> hosts = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private boolean hostBusy;
     private final Host host = new Host() {
         @Override public void selectionChanged(String reason) {
             hosts.forEach(value -> value.selectionChanged(reason));
@@ -214,9 +215,18 @@ public final class BoundedInstanceSelection {
     /** Disables selection edits while any source runs work over the selection; one
      *  source finishing does not re-enable them under another that is still running. */
     public void setRunning(Object source, boolean running) {
-        if (running) this.running.add(source);
-        else this.running.remove(source);
+        boolean changed = running ? this.running.add(source) : this.running.remove(source);
         updateControls();
+        if (changed) host.updateActions();
+    }
+
+    public boolean canRun() { return !hostBusy && !isRunning(); }
+
+    public void hostBusy(boolean busy) {
+        if (hostBusy == busy) return;
+        hostBusy = busy;
+        updateControls();
+        host.updateActions();
     }
 
     public int maximum() { return maximum; }
@@ -224,6 +234,11 @@ public final class BoundedInstanceSelection {
     /** Whether a datasource is currently reading this selection. Context owners use
      * this to keep the run's input stable until that run finishes. */
     public boolean isRunning() { return !running.isEmpty(); }
+
+    public void resetInstances() {
+        clearScopedSelection("Loaded instances changed. Select instances before running a datasource.");
+        scopedClass = null;
+    }
 
     /** Remove a contextual caller's old scope while it is computing a replacement.
      * The datasource tree remains navigable, but every Run action sees zero selected
@@ -484,7 +499,7 @@ public final class BoundedInstanceSelection {
 
     private void updateControls() {
         boolean hasType = className() != null && !classMembers.isEmpty();
-        boolean idle = running.isEmpty();
+        boolean idle = canRun();
         type.setEnabled(idle && type.getItemCount() > 0);
         sampleSize.setEnabled(idle && hasType);
         randomSample.setEnabled(idle && hasType);

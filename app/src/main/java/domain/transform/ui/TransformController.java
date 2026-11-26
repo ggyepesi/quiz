@@ -39,7 +39,7 @@ public final class TransformController {
 
     public static final String ALL_ENTITIES = "All entities";
 
-    private final WorkingDomain domain;
+    private WorkingDomain domain;
     private TypeSpec activeTypeSpec;
     private DomainModel activeView;   // cached TypeSpecDomainView for activeTypeSpec
     private final DomainWriter writer;
@@ -53,6 +53,15 @@ public final class TransformController {
     public TransformController(DomainModel base, DomainWriter writer) {
         this.domain = new WorkingDomain(base);
         this.writer = writer;
+    }
+
+    /** Replace the loaded project while keeping the controller used by mounted tools. */
+    public void replaceLoadedDomain(DomainModel base) {
+        domain = new WorkingDomain(base);
+        activeTypeSpec = null;
+        activeView = null;
+        selectedType = null;
+        fieldValueCache.clear();
     }
 
     // --- domain queries -------------------------------------------------------

@@ -67,8 +67,8 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
 
     private final JTabbedPane resultTabs =
             new domain.workbench.ui.WorkbenchResultViews();
-    private final ProjectBacking project;
-    private final FieldRulePromoter promoter;
+    private ProjectBacking project;
+    private FieldRulePromoter promoter;
     private final BoundedInstanceSelection selection;
     private GroupMembersView structuralGroupsView;
     private final IdentityHashMap<WikipediaDiscoveryRows.StructuralGroup, DiscoveryGroup>
@@ -378,6 +378,7 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
 
 
     private void analyzeRetained() {
+        if (!selection.canRun()) return;
         List<WikipediaDiscoveryQuery.Article> values = WikipediaDiscoveryQuery.retained(
                 articles());
         showAnalysis(WikipediaStructureAnalysis.analyze(values), "retained",
@@ -385,6 +386,7 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
     }
 
     private void fetchSelected() {
+        if (!selection.canRun()) return;
         List<WikidataDynamicObject> values = articles();
         if (values.isEmpty()) return;
         sourceStatus.setText("Fetching exactly " + values.size()
@@ -839,14 +841,14 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
         boolean bounded = selectedCount <= WikipediaDiscoveryQuery.MAX_ARTICLES;
         retained.setText("Analyze " + retainedCount + " retained article"
                 + (retainedCount == 1 ? "" : "s"));
-        retained.setEnabled(!running && retainedCount > 0);
+        retained.setEnabled(!running && selection.canRun() && retainedCount > 0);
         retained.setToolTipText(retainedCount > 0
                 ? "Analyze the structured articles stored in the loaded snapshot; no "
                         + "request is made."
                 : "No selected instance has a structured article in the loaded snapshot. "
                         + "Generate/Build retains it when a configured Wikipedia datasource "
                         + "requires article structure.");
-        fetch.setEnabled(!running && hasSelection && bounded);
+        fetch.setEnabled(!running && selection.canRun() && hasSelection && bounded);
         fetch.setText(running ? "Fetching selected articles…"
                 : selectedCount == selectedInstances
                 ? "Fetch " + selectedCount + " selected article"
@@ -867,7 +869,7 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
                         + " from the selection.");
         boolean infoboxTab = resultTabs.getSelectedComponent() != null
                 && resultTabs.getSelectedComponent() == infoboxView;
-        configureInfobox.setEnabled(!running && infoboxTab && selectedInfobox != null
+        configureInfobox.setEnabled(!running && selection.canRun() && infoboxTab && selectedInfobox != null
                 && project != null && promoter != null && project.projectModel() != null);
         configureInfobox.setToolTipText(project == null || promoter == null
                 ? "This saved domain has no editable ModelBuilder project."
@@ -898,6 +900,16 @@ public final class WikipediaDiscoveryPanel extends JPanel implements AutoCloseab
                 "Unsaved configuration", JOptionPane.DEFAULT_OPTION,
                 JOptionPane.WARNING_MESSAGE, null, options, options[0]);
         return choice == 1;
+    }
+
+    public void useHostProjectSave() {
+        saveModel.getParent().remove(saveModel);
+    }
+
+    public void refreshProject() {
+        project = domain.domain().capability(ProjectBacking.class);
+        promoter = domain.domain().capability(FieldRulePromoter.class);
+        updateActions();
     }
 
     /** Whether running work may stop: keeping it is the default. A caller that owns the

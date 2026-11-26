@@ -119,6 +119,7 @@ final class RelatedRecordDiscoveryPanel extends JPanel implements AutoCloseable 
     }
 
     private void fetchSelected() {
+        if (!selection.canRun()) return;
         List<RelatedRecordSeed> exact = seeds();
         if (exact.isEmpty()) return;
         status.setText(description());
@@ -214,7 +215,7 @@ final class RelatedRecordDiscoveryPanel extends JPanel implements AutoCloseable 
         boolean running = runner.isRunning();
         int count = selection.size();
         boolean bounded = count <= operation.maximumSeeds();
-        fetch.setEnabled(!running && count > 0 && bounded);
+        fetch.setEnabled(!running && selection.canRun() && count > 0 && bounded);
         fetch.setText(running ? "Fetching " + operation.recordTypeName() + " records…"
                 : "Fetch " + operation.recordTypeName() + " records for " + count
                         + " selected instance" + (count == 1 ? "" : "s"));

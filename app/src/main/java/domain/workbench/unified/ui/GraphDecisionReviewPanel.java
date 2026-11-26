@@ -53,11 +53,19 @@ final class GraphDecisionReviewPanel extends JPanel {
     }
 
     void reset(ProjectBacking project) {
+        reset(project, project.saveGuard() == null ? null
+                : new GraphResults(project.projectModel(), project.saveGuard().storage()));
+    }
+
+    void reset(ProjectBacking project, GraphResults restored) {
         this.project = project;
-        results = project.saveGuard() == null ? null
-                : new GraphResults(project.projectModel(), project.saveGuard().storage());
+        results = restored;
         edited.clear();
         select(null);
+    }
+
+    List<GraphDiscoveryResultStore.Artifact> annotations() {
+        return results == null ? List.of() : results.all();
     }
 
     void select(GeneratedClassModel graph) {

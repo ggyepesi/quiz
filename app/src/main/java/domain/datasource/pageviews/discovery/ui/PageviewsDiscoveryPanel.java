@@ -124,6 +124,7 @@ public final class PageviewsDiscoveryPanel extends JPanel implements AutoCloseab
     }
 
     private void fetchSelected() {
+        if (!selection.canRun()) return;
         List<WikidataDynamicObject> articles = articles();
         if (articles.isEmpty()) return;
         status.setText(description());
@@ -164,7 +165,7 @@ public final class PageviewsDiscoveryPanel extends JPanel implements AutoCloseab
         int count = articles().size();
         boolean bounded = count <= PageviewsDiscoveryQuery.MAX_ARTICLES;
         months.setEnabled(!running);
-        fetch.setEnabled(!running && count > 0 && bounded);
+        fetch.setEnabled(!running && selection.canRun() && count > 0 && bounded);
         fetch.setText(running ? "Reading views…" : "Read views of " + count
                 + " selected article" + (count == 1 ? "" : "s"));
         fetch.setToolTipText(count == 0

@@ -6,10 +6,7 @@ import domain.transform.discovery.WikidataStatementDiscoveryQuery;
 import domain.transform.discovery.WikidataStatementDiscoveryResult;
 import domain.transform.ui.BoundedInstanceSelection;
 import domain.transform.ui.TransformController;
-import wikidata.WikidataSparqlClient;
-import wikidata.api.WikidataApiClient;
 import domain.runtime.WikidataDynamicObject;
-import wikidata.query.core.QueryFactory;
 import domain.workbench.execution.ui.SwingQueryRunner;
 import domain.workbench.execution.ui.SwingQuerySession;
 
@@ -25,18 +22,10 @@ import java.util.List;
 public final class WikidataStatementDiscoveryPanel extends JPanel
         implements AutoCloseable {
     public static final String FETCH_STATEMENTS = "wikidata.fetch-statements";
-    private static final String USER_AGENT =
-            "quiz-discovery/1.0 (ggyepesi@gmail.com)";
-
     private final TransformController domain;
     private final BoundedInstanceSelection selection;
-    private final WikidataSparqlClient client =
-            new WikidataSparqlClient(USER_AGENT, 2);
-    private final QueryFactory queryFactory = new QueryFactory(
-            client, new WikidataApiClient(USER_AGENT), USER_AGENT);
-    private final SwingQuerySession queries =
-            new SwingQuerySession(queryFactory.newContext());
-    private final SwingQueryRunner runner = queries.runner();
+    private final SwingQuerySession queries;
+    private final SwingQueryRunner runner;
 
     private final JButton fetch = new JButton(
             "Fetch statements and qualifiers for 0 selected instances");
@@ -51,7 +40,15 @@ public final class WikidataStatementDiscoveryPanel extends JPanel
 
     public WikidataStatementDiscoveryPanel(
             TransformController domain, BoundedInstanceSelection selection) {
+        this(domain, selection, null);
+    }
+
+    WikidataStatementDiscoveryPanel(TransformController domain,
+            BoundedInstanceSelection selection, SwingQuerySession hostQueries) {
         super(new BorderLayout(6, 6));
+        queries = hostQueries == null ? SwingQuerySession.openWorkbench()
+                : hostQueries.companion();
+        runner = queries.runner();
         this.domain = java.util.Objects.requireNonNull(domain);
         this.selection = java.util.Objects.requireNonNull(selection);
         selection.addHost(new BoundedInstanceSelection.Host() {
@@ -90,7 +87,6 @@ public final class WikidataStatementDiscoveryPanel extends JPanel
         logs.addActionListener(event -> queries.showLogs(this));
         runner.registerRunButton(fetch);
         runner.registerCancelButton(cancel);
-        runner.cancelAction(client::cancelCurrentQuery);
         runner.onRunningChanged(running -> {
             selection.setRunning(this, running);
             updateActions();
@@ -98,6 +94,7 @@ public final class WikidataStatementDiscoveryPanel extends JPanel
     }
 
     private void fetchSelected() {
+        if (!selection.canRun()) return;
         List<String> qids = selection.selected().stream()
                 .map(WikidataDynamicObject::qid)
                 .filter(qid -> qid != null && !qid.isBlank())
@@ -154,7 +151,7 @@ public final class WikidataStatementDiscoveryPanel extends JPanel
         int count = selection.size();
         boolean running = runner.isRunning();
         boolean bounded = count <= selection.maximum();
-        fetch.setEnabled(!running && count > 0 && bounded);
+        fetch.setEnabled(!running && selection.canRun() && count > 0 && bounded);
         fetch.setText(running ? "Fetching Wikidata statements and qualifiers…"
                 : "Fetch statements and qualifiers for " + count
                 + " selected instance" + (count == 1 ? "" : "s"));
@@ -182,8 +179,6 @@ public final class WikidataStatementDiscoveryPanel extends JPanel
     @Override public void close() {
         if (closed) return;
         closed = true;
-        runner.cancel();
-        queryFactory.close();
-        client.close();
+        queries.close();
     }
 }

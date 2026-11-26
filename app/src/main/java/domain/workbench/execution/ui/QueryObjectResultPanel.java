@@ -161,18 +161,16 @@ public class QueryObjectResultPanel
 
     /** Opens the ordinary roots of a saved domain in the shared multi-instance view. */
     public void acceptDomain(domain.DomainModel domain) {
-        Map<String, List<Viewable>> sections = new LinkedHashMap<>();
-        for (Viewable member : domain.memberRoots()) {
-            sections.computeIfAbsent(member.typeName(), ignored -> new ArrayList<>()).add(member);
+        acceptSavedRoots(domain.memberRoots(), Map.of());
+    }
+
+    /** Saved roots are already classified; unlike query results, they need no reference walk. */
+    public void acceptSavedRoots(Collection<? extends Viewable> roots, Map<String, GroupedSection> peers) {
+        Map<String, List<Viewable>> ordinary = new LinkedHashMap<>();
+        for (Viewable member : roots) {
+            ordinary.computeIfAbsent(member.typeName(), ignored -> new ArrayList<>()).add(member);
         }
-        SwingUtilities.invokeLater(() -> {
-            holder.removeAll();
-            holder.add(sections.isEmpty() ? new JLabel("No saved instances.") : multiView(sections),
-                    BorderLayout.CENTER);
-            holder.revalidate();
-            holder.repaint();
-            displayedObjectsListener.run();
-        });
+        acceptGrouped(null, ordinary, peers);
     }
 
     /**
@@ -274,6 +272,11 @@ public class QueryObjectResultPanel
 
     public void acceptGrouped(ObjectQueryResult result,
                               Map<String, GroupedSection> sections) {
+        acceptGrouped(result, null, sections);
+    }
+
+    private void acceptGrouped(ObjectQueryResult result, Map<String, List<Viewable>> savedRoots,
+                               Map<String, GroupedSection> sections) {
         // A peer holding nothing is not a peer: it draws no tab, so counting it as one
         // would move the ordinary classes out of their side-by-side layout and into
         // tabs to make room for a section that is never added.
@@ -290,14 +293,15 @@ public class QueryObjectResultPanel
             activeContext = null;
             resultActions.clear();
 
-            if ((result == null || result.objects() == null || result.objects().isEmpty())
+            if ((savedRoots == null ? result == null || result.objects() == null || result.objects().isEmpty()
+                    : savedRoots.isEmpty())
                     && shownSections.isEmpty()) {
                 displayedObjectsByType = Map.of();
                 holder.add(new JLabel("No objects."), BorderLayout.CENTER);
             } else {
                 ObjectQueryResult shown = result == null
                         ? new ObjectQueryResult(List.of(), null, "") : result;
-                holder.add(buildView(shown, shownSections), BorderLayout.CENTER);
+                holder.add(buildView(shown, savedRoots, shownSections), BorderLayout.CENTER);
             }
 
             holder.setVisible(true);
@@ -309,7 +313,7 @@ public class QueryObjectResultPanel
         });
     }
 
-    private JComponent buildView(ObjectQueryResult result,
+    private JComponent buildView(ObjectQueryResult result, Map<String, List<Viewable>> savedRoots,
                                  Map<String, GroupedSection> peerSections) {
         // The result answers what it holds, by type. The panel used to walk the object
         // graph itself, so the headings it drew and the count the sample reported were
@@ -318,11 +322,14 @@ public class QueryObjectResultPanel
         // Owned components are instances too. Their ownership controls production and
         // identity, not visibility: showing Name here is the same class/instance view
         // TransformApp uses, and lets Person.structuredName navigate to the full card.
-        Map<String, List<Viewable>> byType = sections(result, peerSections.entrySet().stream()
+        var peers = peerSections.entrySet().stream()
                 .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey,
                         entry -> entry.getValue().all(), (left, right) -> left,
-                        LinkedHashMap::new)));
-        if (peerSections.isEmpty() && byType.size() <= 1
+                        LinkedHashMap::new));
+        Map<String, List<Viewable>> byType = savedRoots == null
+                ? sections(result, peers) : new LinkedHashMap<>(savedRoots);
+        if (savedRoots != null) byType.putAll(peers);
+        if (savedRoots == null && peerSections.isEmpty() && byType.size() <= 1
                 && byType.keySet().stream().noneMatch(configuredGroups::containsKey)) {
             showAllInDisplayedObjects(byType);
             return searchPanelView(result);
@@ -349,8 +356,10 @@ public class QueryObjectResultPanel
             String name = entry.getKey();
             List<Viewable> all = entry.getValue();
             GroupedSection grouped = peerSections.get(name);
+            var group = configuredGroups.get(name);
             JComponent body = grouped == null
-                    ? browser(all, context, false)
+                    ? (group == null ? browser(all, context, false)
+                            : new objectview.render.GroupView(group, context))
                     : groupedBrowser(grouped, context, types);
             int index = types.getTabCount();
             types.addTab(sectionTitle(name, all.size()), body);

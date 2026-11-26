@@ -264,6 +264,11 @@ class UnifiedWorkbenchPanelTest {
             SwingUtilities.invokeAndWait(() -> startLoadingInstances(workbench));
             await(() -> loadStatus(workbench).startsWith("2 saved instances loaded"),
                     "the project did not reload after the stopped build");
+            await(() -> workbench.instancesView().displayedObjectsByType().containsKey(graph.className()),
+                    "the standalone instances viewer must include the saved graph");
+            SwingUtilities.invokeAndWait(() -> find(workbench.instancesView(), javax.swing.JTabbedPane.class,
+                    tabs -> java.util.stream.IntStream.range(0, tabs.getTabCount())
+                            .mapToObj(tabs::getTitleAt).anyMatch(title -> title.startsWith("Review"))));
             SwingUtilities.invokeAndWait(() -> {
                 selectAction(workbench, "Graph decisions");
                 find(workbench, JLabel.class, label -> ("Load " + graphFile).equals(label.getText()));
@@ -514,7 +519,8 @@ class UnifiedWorkbenchPanelTest {
 
             selectAction(workbench, "Preview population");
             var preview = find(workbench, JButton.class, button -> "Preview population".equals(button.getText()));
-            results.set(find(workbench, WorkbenchResultViews.class, unused -> true));
+            results.set(find(workbench, WorkbenchResultViews.class,
+                    tabs -> "transform.preview.results".equals(tabs.getName())));
             workbench.unappliedDecision((construct, action) -> process.swing.Dialogs.UnappliedEdits.STAY);
             preview.doClick();
             assertEquals(0, results.get().getTabCount());
@@ -658,6 +664,7 @@ class UnifiedWorkbenchPanelTest {
             var workbench = panel.get();
             await(() -> loadStatus(workbench).startsWith("2 saved instances loaded"), "instances were not loaded");
             var cards = workbench.instancesView();
+            var previousContent = new AtomicReference<Component>();
             await(() -> cards.displayedObjectsByType().containsKey("Position"),
                     "the only result tab did not render the instances");
             SwingUtilities.invokeAndWait(() -> {
@@ -672,7 +679,21 @@ class UnifiedWorkbenchPanelTest {
                         .map(objectview.Viewable::getIdentifier).sorted().toList());
                 assertTrue(hasField(workbench, "rank"), "the loaded project is read through the saved model");
                 assertEquals("2 saved instances loaded from " + snapshot + ".", loadStatus(workbench));
+
+                // Leaving and reselecting Load instances used to show the pre-load text, as
+                // if nothing were loaded; the loaded state stays, and the window reopens.
+                selectAction(workbench, "Build project");
+                selectAction(workbench, "Load instances");
+                assertTrue(loadStatus(workbench).startsWith("2 saved instances loaded from "
+                        + snapshot + ". Show instances opens them"), loadStatus(workbench));
+                shown.clear();
+                previousContent.set(((java.awt.Container) cards.getComponent(0)).getComponent(0));
+                find(workbench, JButton.class, b -> "load.instances.show".equals(b.getName())).doClick();
+                assertEquals(List.of(new UnifiedWorkbenchPanel.InstancesShown(
+                        "Saved instances (2) — " + snapshot.getFileName(), true)), shown);
             });
+            SwingUtilities.invokeAndWait(() -> assertSame(previousContent.get(),
+                    ((java.awt.Container) cards.getComponent(0)).getComponent(0)));
             assertEquals(savedInstances, Files.readString(snapshot), "loading writes nothing");
         } finally {
             SwingUtilities.invokeAndWait(panel.get()::close);
@@ -799,6 +820,27 @@ class UnifiedWorkbenchPanelTest {
 
     private static String loadStatus(UnifiedWorkbenchPanel workbench) {
         return find(workbench, JTextArea.class, status -> "load.instances.status".equals(status.getName())).getText();
+    }
+
+    @Test void theUnifiedNavigatorMountsTheSharedDiscoveryActionsWithoutRunningThem() throws Exception {
+        var opened = open();
+        SwingUtilities.invokeAndWait(() -> {
+            try (var workbench = new UnifiedWorkbenchPanel(opened.domain())) {
+                Map.of(
+                        "Analyze retained articles", "Wikipedia",
+                        "Fetch selected articles", "Wikipedia",
+                        "Fetch structured depictions", "Commons",
+                        "Read article views", "Wikipedia pageviews",
+                        "Fetch statements and qualifiers", "Wikidata",
+                        "Load the current configured field", "Wikidata")
+                        .forEach((action, source) -> {
+                            assertEquals(source, actionNode(workbench, action).getParent().toString());
+                            selectAction(workbench, action);
+                        });
+                assertNull(actionNode(workbench, "Datasources"));
+                assertTrue(opened.domain().capability(ProjectBacking.class).unsavedModelChanges().isEmpty());
+            }
+        });
     }
 
     /** The configuration editors ask for over 600 px; on a laptop-height window that used

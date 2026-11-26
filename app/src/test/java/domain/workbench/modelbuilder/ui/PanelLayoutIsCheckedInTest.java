@@ -189,7 +189,7 @@ class PanelLayoutIsCheckedInTest {
                 var root = (javax.swing.tree.DefaultMutableTreeNode) tree.getModel().getRoot();
                 for (var nodes = root.depthFirstEnumeration(); nodes.hasMoreElements();) {
                     var node = (javax.swing.tree.DefaultMutableTreeNode) nodes.nextElement();
-                    if ("Load field values".equals(node.toString())) {
+                    if ("Load the current configured field".equals(node.toString())) {
                         tree.setSelectionPath(new javax.swing.tree.TreePath(node.getPath()));
                         break;
                     }

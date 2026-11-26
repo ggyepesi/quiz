@@ -116,6 +116,7 @@ public final class CommonsDiscoveryPanel extends JPanel implements AutoCloseable
     }
 
     private void fetchSelected() {
+        if (!selection.canRun()) return;
         List<WikidataDynamicObject> subjects = selection.selected();
         if (subjects.isEmpty()) return;
         int limit = (Integer) mediaLimit.getValue();
@@ -356,7 +357,7 @@ public final class CommonsDiscoveryPanel extends JPanel implements AutoCloseable
         int selectedCount = selection == null ? 0 : selection.size();
         mediaLimit.setEnabled(!running);
         boolean bounded = selectedCount <= CommonsDiscoveryQuery.MAX_SUBJECTS;
-        fetch.setEnabled(!running && selectedCount > 0 && bounded);
+        fetch.setEnabled(!running && selection.canRun() && selectedCount > 0 && bounded);
         fetch.setText(running ? "Fetching Commons depictions…"
                 : "Fetch " + selectedCount + " selected entit"
                         + (selectedCount == 1 ? "y" : "ies"));

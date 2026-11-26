@@ -21,9 +21,6 @@ import objectview.Viewable;
 import domain.group.ViewableGroup;
 import domain.transform.pipeline.ui.ViewStepsPanel;
 import domain.curation.ScopeFilter;
-import wikidata.WikidataSparqlClient;
-import wikidata.api.WikidataApiClient;
-import wikidata.query.core.QueryFactory;
 import domain.workbench.execution.ui.SwingQuerySession;
 import wikidata.ui.IdentityChip;
 
@@ -102,19 +99,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     private java.util.Map<String, java.util.Set<String>> inverseProperties;
     private domain.config.GeneratedProjectModel relationModel;
     private boolean relationModelLoaded;
-    // Primary datasource is WDQS (Wikidata queries + Explore); the factory owns the
-    // DBpedia binding (enrichment joins), and each SPARQL operation explicitly requests
-    // its datasource from the shared context. requestClient is closed by this panel.
-    private final WikidataSparqlClient requestClient = new WikidataSparqlClient(
-            "QuizProject/1.0 (ggyepesi@gmail.com)", 2);
-    private final QueryFactory queryFactory = new QueryFactory(
-            requestClient, new WikidataApiClient("QuizProject/1.0 (ggyepesi@gmail.com)"),
-            "QuizProject/1.0 (ggyepesi@gmail.com)");
-    private final SwingQuerySession queries =
-            new SwingQuerySession(queryFactory.newContext());
-    {
-        domain.workbench.ui.WikidataLabelLookup.install(queries.runner());
-    }
+    private final SwingQuerySession queries = SwingQuerySession.openWorkbench();
     private final JButton cancelQueryButton = new JButton("Cancel request");
     private final JButton cancelIdentityButton = new JButton("Cancel identity process");
     // Runs the identity-resolution process (off-EDT, with a review pause). Shares the
@@ -193,7 +178,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
                     "have Wikidata QIDs");
             datasourceWorkbench =
                     new DiscoveryWorkbench(
-                            controller, datasourceSelection);
+                            controller, datasourceSelection, queries);
             datasourceWorkbench.addContextAction(
                     DiscoveryWorkbench.Source.WIKIDATA,
                     "configured-field-wikidata",
@@ -266,7 +251,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         }
         top.add(button("Query logs…", () -> queries.showLogs(this)));
         queries.runner().registerCancelButton(cancelQueryButton);
-        queries.runner().cancelAction(requestClient::cancelCurrentQuery);
         top.add(cancelQueryButton);
         resolveRunner.registerCancelButton(cancelIdentityButton);
         // Identity resolution reads an external source, so only DataSourceApp runs it.
@@ -2723,7 +2707,6 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         queries.runner().cancel();
         resolveRunner.cancel();
         if (datasourceWorkbench != null) datasourceWorkbench.close();
-        requestClient.close();
-        queryFactory.close();
+        queries.close();
     }
 }

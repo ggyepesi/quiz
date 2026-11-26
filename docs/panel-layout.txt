@@ -1370,6 +1370,7 @@ subjects from Person
   box: Actions and results
   button: Load instances
   button: Cancel load  (disabled)
+  button: Show instances  (disabled)
   label: No saved instances in positions.snapshot.json. Build the project first.
   button: Query logs…
   button: Save domain…

@@ -4,6 +4,9 @@ import dataset.DomainStorage;
 import domain.DomainModel;
 import domain.DomainSchemas;
 import domain.build.ProjectBuild;
+import domain.build.GraphResults;
+import domain.runtime.WikidataDynamicObject;
+import domain.workbench.modelbuilder.ui.ProjectInstancesPresentation;
 import domain.compile.transform.TransformationExecution;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedFieldModel;
@@ -17,6 +20,8 @@ import domain.config.OwnedFieldSources;
 import domain.curation.CorrectionsSidecar;
 import domain.curation.ManualCuration;
 import domain.datasource.Datasources;
+import domain.datasource.discovery.ui.DiscoveryWorkbench;
+import domain.transform.ui.BoundedInstanceSelection;
 import domain.datasource.api.ConfigurationElement;
 import domain.datasource.api.DatasourceRegistry;
 import domain.datasource.api.SourceBinding;
@@ -78,12 +83,16 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private ProjectConfigurationPanel configuration;
     private TransformController transform;
     private final WorkbenchActionResultNavigator actions = new WorkbenchActionResultNavigator();
+    private final DiscoveryWorkbench discovery;
     private final SubclassDiscoveryPanel membershipDiscovery = new SubclassDiscoveryPanel(false);
     private final WorkbenchActionResultNavigator.Action previewAction;
     private final WorkbenchActionResultNavigator.Action buildAction;
     private final WorkbenchActionResultNavigator.Action loadInstancesAction;
     private final JPanel loadInstancesDetail = new JPanel(new BorderLayout());
     private final JButton loadInstances = new JButton("Load instances");
+    private final JButton showLoadedInstances = new JButton("Show instances");
+    /** The instances in the instances window, whichever of Load and Build put them there. */
+    private DomainModel shownInstances;
     private final JButton cancelLoadInstances = new JButton("Cancel load");
     private final JTextArea loadInstancesStatus = new JTextArea();
     /** The one instances view: Load instances and a completed build both fill it. The
@@ -170,13 +179,16 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         planText.setLineWrap(true);
         planText.setWrapStyleWord(true);
 
-        var source = actions.addSource("datasources", "Datasources", null);
+        discovery = new DiscoveryWorkbench(transform, actions, queries);
+        var source = discovery.contextSource(DiscoveryWorkbench.Source.WIKIDATA);
         var acquisition = actions.addAction(source, "field-acquisition-plan", "Field acquisition plan",
                 new JScrollPane(planText), null);
-        var load = actions.addAction(source, "field-values", "Load field values", acquisitionDetail, null);
+        var load = discovery.addContextAction(DiscoveryWorkbench.Source.WIKIDATA,
+                "field-values", "Load the current configured field", acquisitionDetail, null);
         membershipDiscovery.setQueryRunner(queries.runner());
         actions.addAction(source, "membership-types", "Find membership types", membershipDiscovery, null);
-        evidenceActions = new ConfiguredFieldEvidenceActions(actions, source, "field-evidence",
+        evidenceActions = new ConfiguredFieldEvidenceActions(actions,
+                discovery.contextSource(DiscoveryWorkbench.Source.WIKIPEDIA), "field-evidence",
                 this::evidencePanel);
         refreshEvidence();
         var logs = new JButton("Query logs…");
@@ -191,6 +203,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         previewTools.add(cancelPreview);
         previewTools.add(previewStatus);
         previewDetail.add(previewTools, BorderLayout.NORTH);
+        previewResults.setName("transform.preview.results");
         previewDetail.add(previewResults, BorderLayout.CENTER);
         previewAction = actions.addAction(transformSource, "preview-population", "Preview population",
                 previewDetail, null);
@@ -207,6 +220,12 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         var loadInstancesTools = new JPanel(new FlowLayout(FlowLayout.LEFT));
         loadInstancesTools.add(loadInstances);
         loadInstancesTools.add(cancelLoadInstances);
+        showLoadedInstances.setName("load.instances.show");
+        showLoadedInstances.setEnabled(false);
+        showLoadedInstances.addActionListener(event -> {
+            revealInstances(true);
+        });
+        loadInstancesTools.add(showLoadedInstances);
         loadInstancesStatus.setName("load.instances.status");
         loadInstancesStatus.setEditable(false);
         loadInstancesStatus.setOpaque(false);
@@ -263,6 +282,10 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         actions.selectAction(acquisition);
         compilePlan();
         configuration = projectConfiguration();
+        discovery.selection().addHost(new BoundedInstanceSelection.Host() {
+            @Override public void selectionChanged(String reason) { }
+            @Override public void updateActions() { updateSave(); }
+        });
         actions.setMinimumSize(new Dimension(0, ACTIONS_MINIMUM_HEIGHT));
         workspace = new JSplitPane(JSplitPane.VERTICAL_SPLIT, configuration, actions);
         workspace.setResizeWeight(0.72);
@@ -388,9 +411,9 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                     "Load " + modelFile.getName() + " and " + snapshot.getName(), say -> {
                         say.accept("Reading " + modelFile.getPath() + " and " + snapshot.getPath());
                         guard.check();
-                        var loaded = DomainCatalog.openProject(snapshot, modelFile, storage);
+                        var loaded = readInstances(modelFile, snapshot, storage, say);
                         guard.check();
-                        return new BuildProjectWorkflow.Loaded<>(loaded, loaded.memberRoots().size()
+                        return new BuildProjectWorkflow.Loaded<>(loaded, loaded.domain().memberRoots().size()
                                 + " saved instances loaded from " + snapshot.getPath());
                     }, this::installBuiltDomain,
                     "The open project has been refreshed. Select Instances to inspect it.",
@@ -426,11 +449,15 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private void showLoadInstancesReadiness() {
         File model = project.modelFile();
         File snapshot = project.snapshotFile();
-        loadInstancesStatus.setText(!project.unsavedModelChanges().isEmpty()
+        String loaded = shownInstances == null ? ""
+                : shownInstances.memberRoots().size() + " saved instances loaded from "
+                        + snapshot.getPath() + ". Show instances opens them; Load instances "
+                        + "reads them again.\n";
+        loadInstancesStatus.setText(loaded + (!project.unsavedModelChanges().isEmpty()
                 ? "Use " + saveVerb + " to write " + savePaths() + " before loading instances."
                 : !snapshot.isFile() ? "No saved instances in " + snapshot.getPath() + ". Build the project first."
                 : !model.isFile() ? "No saved model at " + model.getPath() + "."
-                : "Reads " + loadInstancePaths(model, snapshot) + ".");
+                : "Reads " + loadInstancePaths(model, snapshot) + "."));
     }
 
     private static String loadInstancePaths(File model, File snapshot) {
@@ -460,13 +487,14 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         loadingInstances = true;
         configuration.setEditingEnabled(false);
         loadInstancesStatus.setText("Loading " + loadInstancePaths(model, snapshot) + "…");
-        queries.runner().runOnCompletion(new LoadInstances(model, snapshot, storage),
-                loaded -> {
-                    installLoadedDomain(loaded);
+        queries.runner().runOnCompletion(new LoadInstances(model, snapshot, storage, queries::info),
+                result -> {
+                    installLoadedDomain(result);
+                    var loaded = result.domain();
                     if (buildPlanOpen) resetBuild("Saved instances reloaded. Plan the build again.");
                     loadInstancesStatus.setText(loaded.memberRoots().size()
                             + " saved instances loaded from " + snapshot.getPath() + ".");
-                    showInstances(loaded, true);
+                    updateInstances(loaded, true);
                     finishLoadingInstances();
                 },
                 failure -> {
@@ -497,15 +525,36 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         instancesShown = listener == null ? ignored -> { } : listener;
     }
 
-    private void showInstances(DomainModel instances, boolean reveal) {
-        instancesView.acceptDomain(instances);
+    private void updateInstances(DomainModel instances, boolean reveal) {
+        shownInstances = instances;
+        showLoadedInstances.setEnabled(true);
+        var model = project.projectModel();
+        ProjectInstancesPresentation.showSaved(instancesView, model, instances, graphReview.annotations());
+        revealInstances(reveal);
+    }
+
+    private void revealInstances(boolean reveal) {
+        if (shownInstances == null) return;
         instancesShown.accept(new InstancesShown(
-                "Saved instances (" + instances.memberRoots().size() + ") — " + project.snapshotFile().getName(),
+                "Saved instances (" + shownInstances.memberRoots().size() + ") — " + project.snapshotFile().getName(),
                 reveal));
     }
 
-    private record LoadInstances(File model, File snapshot, DomainStorage storage)
-            implements Query<DomainModel> {
+    private record LoadedInstances(DomainModel domain, GraphResults graphs) { }
+
+    private static LoadedInstances readInstances(File model, File snapshot, DomainStorage storage,
+            Consumer<String> report) throws Exception {
+        var loaded = DomainCatalog.openProject(snapshot, model, storage);
+        var backing = loaded.capability(ProjectBacking.class);
+        var graphs = new GraphResults(backing.projectModel(), storage);
+        graphs.restore(loaded.instances().stream().filter(WikidataDynamicObject.class::isInstance)
+                .map(WikidataDynamicObject.class::cast).toList(), report);
+        backing.saveGuard().check();
+        return new LoadedInstances(loaded, graphs);
+    }
+
+    private record LoadInstances(File model, File snapshot, DomainStorage storage, Consumer<String> report)
+            implements Query<LoadedInstances> {
         @Override public String purpose() { return "Load instances"; }
         @Override public String skeleton() {
             return "Read the saved instances through the saved model and curation";
@@ -515,26 +564,27 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                     "Curation", ManualCuration.fileForSnapshot(snapshot).getPath(),
                     "Auto fixes", CorrectionsSidecar.beside(snapshot, ".autofix.json").getPath());
         }
-        @Override public DomainModel execute(QueryContext context) throws Exception {
+        @Override public LoadedInstances execute(QueryContext context) throws Exception {
             context.cancellation().throwIfCancelled();
-            var loaded = DomainCatalog.openProject(snapshot, model, storage);
+            var loaded = readInstances(model, snapshot, storage, report);
             context.cancellation().throwIfCancelled();
             return loaded;
         }
-        @Override public int rowCount(DomainModel result) { return result.memberRoots().size(); }
-        @Override public String summary(DomainModel result) {
+        @Override public int rowCount(LoadedInstances result) { return result.domain().memberRoots().size(); }
+        @Override public String summary(LoadedInstances result) {
             return rowCount(result) + " saved instances loaded from " + snapshot.getPath();
         }
     }
 
-    private void installBuiltDomain(DomainModel loaded) {
+    private void installBuiltDomain(LoadedInstances loaded) {
         installLoadedDomain(loaded);
         configuration.setEditingEnabled(false);
-        builtDomain = loaded;
+        builtDomain = loaded.domain();
     }
 
     /** Makes a freshly read project the open one, keeping the reader's place in it. */
-    private void installLoadedDomain(DomainModel loaded) {
+    private void installLoadedDomain(LoadedInstances result) {
+        var loaded = result.domain();
         var loadedProject = Objects.requireNonNull(loaded.capability(ProjectBacking.class),
                 "The loaded instances have no saved project model.");
         boolean showingProject = configuration.selectedConstruct() == project.projectModel();
@@ -543,8 +593,9 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         configuration.close();
         domain = loaded;
         project = loadedProject;
-        graphReview.reset(project);
-        transform = new TransformController(loaded, null);
+        graphReview.reset(project, result.graphs());
+        transform.replaceLoadedDomain(loaded);
+        discovery.refreshInstances();
         valuePanel = null;
         evidenceTarget = null;
         selectedField = null;
@@ -598,10 +649,10 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         }
         if (builtDomain != null) {
             var built = builtDomain;
-            showInstances(built, false);
+            updateInstances(built, false);
             var detail = new JPanel(new FlowLayout(FlowLayout.LEFT));
             var show = new JButton("Show instances");
-            show.addActionListener(event -> showInstances(built, true));
+            show.addActionListener(event -> revealInstances(true));
             detail.add(show);
             detail.add(new JLabel(built.memberRoots().size() + " saved instances in "
                     + project.snapshotFile().getPath()));
@@ -611,6 +662,10 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     }
 
     private boolean busy() {
+        return projectBusy() || discovery.selection().isRunning();
+    }
+
+    private boolean projectBusy() {
         return saving || loadingValues || loadingInstances || runningEvidence != null || previewing || building
                 || graphReview.isLoading() || runningGraph || queries.runner().isRunning();
     }
@@ -999,6 +1054,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     }
 
     private void updateSave() {
+        discovery.selection().hostBusy(projectBusy());
         boolean dirty = !project.unsavedModelChanges().isEmpty();
         // Enabled whenever not saving: unapplied edits can be the only change, and the
         // form cannot announce every keystroke. Save itself says when there is nothing.
@@ -1065,6 +1121,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
      */
     public void requestClose(Runnable closeWindow) {
         if (saving || graphReview.isLoading()) return;
+        if (!discovery.requestStopRun(this)) return;
         if (building) {
             SwingCancellationConfirmation.requestForVisibleRun(this, buildRunner::cancel);
             return;
@@ -1113,6 +1170,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     }
 
     @Override public void close() {
+        discovery.close();
         configuration.close();
         queries.logs().resetForProjectSwitch();
     }
