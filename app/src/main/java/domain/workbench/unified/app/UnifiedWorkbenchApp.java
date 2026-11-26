@@ -2,6 +2,7 @@ package domain.workbench.unified.app;
 
 import domain.transform.app.DomainCatalog;
 import domain.transform.ui.DomainNavigator;
+import domain.workbench.execution.ui.InstancesWindow;
 import domain.workbench.execution.ui.SwingQuerySession;
 import domain.workbench.unified.ui.UnifiedWorkbenchPanel;
 import wikidata.WikidataSparqlClient;
@@ -9,6 +10,7 @@ import wikidata.api.WikidataApiClient;
 import wikidata.query.core.QueryFactory;
 
 import javax.swing.JFrame;
+import objectview.utils.swing.SwingWindowActivation;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
@@ -24,6 +26,17 @@ public final class UnifiedWorkbenchApp {
                     var panel = new UnifiedWorkbenchPanel(domain, new SwingQuerySession(factory.newContext(
                             java.nio.file.Path.of(aux.Constants.wikidataDataDirectory))));
                     var frame = new JFrame("Unified Workbench — " + name);
+                    // Instances get a window of their own, as in ModelBuilder; it belongs to
+                    // this project's frame and closes with it.
+                    var instancesWindow = new JFrame[1];
+                    panel.onInstancesShown(shown -> {
+                        if (instancesWindow[0] == null && !shown.reveal()) return;
+                        if (instancesWindow[0] == null) {
+                            instancesWindow[0] = InstancesWindow.create(panel.instancesView(), null);
+                        }
+                        instancesWindow[0].setTitle(shown.title());
+                        if (shown.reveal()) SwingWindowActivation.showAndFocus(instancesWindow[0]);
+                    });
                     frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
                     frame.add(panel);
                     frame.addWindowListener(new WindowAdapter() {
@@ -32,6 +45,7 @@ public final class UnifiedWorkbenchApp {
                         }
 
                         @Override public void windowClosed(WindowEvent event) {
+                            if (instancesWindow[0] != null) instancesWindow[0].dispose();
                             panel.close();
                             factory.close();
                             client.close();

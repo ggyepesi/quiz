@@ -1109,7 +1109,6 @@ subjects from Person
   button: Apply field source
   box: Actions and results
   plan: Position.holderCount Statement property Property: P1082
-  button: Load instances
   button: Query logs…
   button: Save domain…
 
@@ -1163,7 +1162,6 @@ subjects from Person
   button: Apply field source
   box: Actions and results
   label: Position.holderCount needs instances built with its current field definition.
-  button: Load instances
   button: Query logs…
   button: Save domain…
 
@@ -1194,7 +1192,6 @@ subjects from Person
   button: Preview population
   button: Cancel preview  (disabled)
   label: Check loaded Position instances for SelectedPosition.
-  button: Load instances
   button: Query logs…
   button: Save domain…
 
@@ -1225,7 +1222,6 @@ subjects from Person
   button: Plan build
   button: Edit build steps
   label: Plan the saved build of positions.model.json
-  button: Load instances
   button: Query logs…
   button: Save domain…
 
@@ -1264,7 +1260,6 @@ subjects from Person
   button: Plan build
   button: Edit build steps
   label: Plan the saved build of positions.model.json
-  button: Load instances
   button: Query logs…
   button: Save domain…
 
@@ -1301,7 +1296,6 @@ subjects from Person
   label: Select a class, field, or vocabulary below the domain to configure it.
   box: Actions and results
   label: Select a graph class to review its decisions.
-  button: Load instances
   button: Query logs…
   button: Save domain…
 
@@ -1339,7 +1333,6 @@ subjects from Person
   box: Actions and results
   button: Plan graph run  (disabled)
   label: Select a configured local graph class.
-  button: Load instances
   button: Query logs…
   button: Save domain…
 
@@ -1375,8 +1368,8 @@ subjects from Person
     combo: 4 item(s)
   label: Select a class, field, or vocabulary below the domain to configure it.
   box: Actions and results
+  button: Load instances
   button: Cancel load  (disabled)
   label: No saved instances in positions.snapshot.json. Build the project first.
-  button: Load instances
   button: Query logs…
   button: Save domain…

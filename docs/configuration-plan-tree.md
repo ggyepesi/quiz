@@ -396,6 +396,12 @@ build, progress view and report as ModelBuilder. A completed build reloads its s
 snapshot into the open workbench before publishing **Instances**, **Steps** and **Files written**
 in the action tree. The results are for inspection.
 
+**Project → Load instances** reads the saved project snapshot and opens the shared
+instances viewer in a separate window. It does not put the instances in the action pane.
+A completed build refreshes that same viewer without opening it, as ModelBuilder does; its
+**Instances** result offers **Show instances** rather than a second copy of the cards. The
+window belongs to the project's workbench window and closes with it.
+
 Select a local graph class and open **Project → Run graph** to run that graph on its own.
 **Plan graph run** shows ModelBuilder's traversal diagram and scope. **Execute** uses that
 plan's loaded class instances or configured population and the shared graph cache and query.
@@ -406,7 +412,8 @@ to the output population.
 
 When a build stops for a graph decision in the open project, its **Graph decisions** result
 offers to load the waiting graph's annotations for review. You can also select a local graph class and open
-**Project → Review graph decisions** directly. **Load graph annotations** reads the displayed
+**Project → Run graph → Review graph decisions** directly, without running the graph.
+**Load graph annotations** reads the displayed
 `.graph.snapshot.json` file. The review uses ModelBuilder's candidate cards and the
 **All**, **Accepted**, **Review** and **Rejected** tabs. Accepting, rejecting or clearing a
 manual decision updates the card while keeping it in its original tab.

@@ -525,10 +525,6 @@ public class ModelBuilderFrame extends JFrame {
     private void showInstancesWindow() {
         refreshInstancesPanel();
         if (instancesWindow == null) {
-            instancesWindow = new JFrame("Generated instances");
-            instancesWindow.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-            instancesWindow.setLayout(new BorderLayout());
-
             JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
             nameCollisionsButton.setToolTipText(
                     "Names shared by several distinct entities (ambiguous quiz "
@@ -550,10 +546,7 @@ public class ModelBuilderFrame extends JFrame {
                     this::updateCreatePopulationSelectionButton);
             updateCreatePopulationSelectionButton();
 
-            instancesWindow.add(toolbar, BorderLayout.NORTH);
-            instancesWindow.add(instancesPanel, BorderLayout.CENTER);
-            instancesWindow.setSize(1100, 850);
-            instancesWindow.setLocationByPlatform(true);
+            instancesWindow = domain.workbench.execution.ui.InstancesWindow.create(instancesPanel, toolbar);
         }
         // Stamp the generated class (+ count) on the title — a single-class run
         // renders as a plain search view with no type label, so without this

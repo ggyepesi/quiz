@@ -78,6 +78,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -261,7 +262,7 @@ class UnifiedWorkbenchPanelTest {
                     "the stopped build did not offer review");
             assertEquals(before, Files.readString(snapshot));
             SwingUtilities.invokeAndWait(() -> startLoadingInstances(workbench));
-            await(() -> actionNode(workbench, "Instances (2)") != null,
+            await(() -> loadStatus(workbench).startsWith("2 saved instances loaded"),
                     "the project did not reload after the stopped build");
             SwingUtilities.invokeAndWait(() -> {
                 selectAction(workbench, "Graph decisions");
@@ -551,7 +552,9 @@ class UnifiedWorkbenchPanelTest {
             assertEquals(List.of("holderCount"), persisted.transformationSource().steps().stream()
                     .map(TransformationStep::fieldPath).toList());
 
+            var shown = new java.util.concurrent.CopyOnWriteArrayList<UnifiedWorkbenchPanel.InstancesShown>();
             SwingUtilities.invokeAndWait(() -> {
+                workbench.onInstancesShown(shown::add);
                 find(workbench, JButton.class, button -> "Plan build".equals(button.getText())).doClick();
                 find(workbench, JLabel.class, label -> label.getText().contains("Run the saved build of")
                         && label.getText().contains(modelFile.toString()));
@@ -569,9 +572,15 @@ class UnifiedWorkbenchPanelTest {
                         .filter(message -> message.contains("Results") || message.contains("Process failed"))
                         .toList();
                 assertTrue(actionNode(workbench, "Instances (3)") != null, () -> report + "\n" + messages);
+                // A build refreshes the one instances view without opening its window, as
+                // ModelBuilder does; its result offers Show instances instead of a copy.
+                assertEquals(List.of(false), shown.stream().map(UnifiedWorkbenchPanel.InstancesShown::reveal).toList());
                 selectAction(workbench, "Instances (3)");
+                assertFalse(descendants(workbench).anyMatch(QueryObjectResultPanel.class::isInstance));
+                find(workbench, JButton.class, button -> "Show instances".equals(button.getText())).doClick();
+                assertEquals(List.of(false, true), shown.stream().map(UnifiedWorkbenchPanel.InstancesShown::reveal).toList());
             });
-            var built = find(workbench, QueryObjectResultPanel.class, unused -> true);
+            var built = workbench.instancesView();
             await(() -> built.displayedObjectsByType().containsKey(output.className()),
                     "built instance cards did not render");
             SwingUtilities.invokeAndWait(() -> {
@@ -625,9 +634,11 @@ class UnifiedWorkbenchPanelTest {
         new GeneratedProjectModelStore().save(saved, modelFile.toFile());
 
         var panel = new AtomicReference<UnifiedWorkbenchPanel>();
+        var shown = new java.util.concurrent.CopyOnWriteArrayList<UnifiedWorkbenchPanel.InstancesShown>();
         SwingUtilities.invokeAndWait(() -> {
             var workbench = new UnifiedWorkbenchPanel(domain);
             panel.set(workbench);
+            workbench.onInstancesShown(shown::add);
             assertFalse(hasField(workbench, "rank"), "the open project predates the field");
             selectAction(workbench, "Load instances");
             var curation = ManualCuration.fileForSnapshot(snapshot.toFile());
@@ -645,11 +656,18 @@ class UnifiedWorkbenchPanelTest {
         });
         try {
             var workbench = panel.get();
-            await(() -> actionNode(workbench, "Instances (2)") != null, "instances were not loaded");
-            var cards = find(workbench, QueryObjectResultPanel.class, unused -> true);
+            await(() -> loadStatus(workbench).startsWith("2 saved instances loaded"), "instances were not loaded");
+            var cards = workbench.instancesView();
             await(() -> cards.displayedObjectsByType().containsKey("Position"),
                     "the only result tab did not render the instances");
             SwingUtilities.invokeAndWait(() -> {
+                assertNull(actionNode(workbench, "Instances (2)"));
+                assertFalse(SwingUtilities.isDescendingFrom(cards, workbench));
+                assertEquals(List.of(new UnifiedWorkbenchPanel.InstancesShown(
+                        "Saved instances (2) — " + snapshot.getFileName(), true)), shown,
+                        "Load instances opens the instances window, titled with what it holds");
+                assertEquals("Project", actionNode(workbench, "Load instances").getParent().toString());
+                assertEquals("Run graph", actionNode(workbench, "Review graph decisions").getParent().toString());
                 assertEquals(List.of("Q1", "Q2"), cards.displayedObjectsByType().get("Position").stream()
                         .map(objectview.Viewable::getIdentifier).sorted().toList());
                 assertTrue(hasField(workbench, "rank"), "the loaded project is read through the saved model");
@@ -698,7 +716,7 @@ class UnifiedWorkbenchPanelTest {
             });
             readAllowed.countDown();
             SwingUtilities.invokeAndWait(() -> startLoadingInstances(workbench));
-            await(() -> actionNode(workbench, "Instances (1)") != null, "the retry did not load instances");
+            await(() -> loadStatus(workbench).startsWith("1 saved instances loaded"), "the retry did not load instances");
         } finally {
             readAllowed.countDown();
             SwingUtilities.invokeAndWait(panel.get()::close);
@@ -730,7 +748,7 @@ class UnifiedWorkbenchPanelTest {
             });
             Files.writeString(opened.modelPath(), opened.savedModel());
             SwingUtilities.invokeAndWait(() -> startLoadingInstances(workbench));
-            await(() -> actionNode(workbench, "Instances (1)") != null, "load did not recover after restoring the model");
+            await(() -> loadStatus(workbench).startsWith("1 saved instances loaded"), "load did not recover after restoring the model");
         } finally {
             SwingUtilities.invokeAndWait(panel.get()::close);
         }
@@ -760,7 +778,7 @@ class UnifiedWorkbenchPanelTest {
                     new BuildOperation(BuildOperation.Kind.SAVE_PROJECT_RESULT, "")));
             store.save(saved, model);
             SwingUtilities.invokeAndWait(() -> startLoadingInstances(workbench));
-            await(() -> actionNode(workbench, "Instances (1)") != null, "the saved version was not reloaded");
+            await(() -> loadStatus(workbench).startsWith("1 saved instances loaded"), "the saved version was not reloaded");
             SwingUtilities.invokeAndWait(() -> {
                 selectAction(workbench, "Build project");
                 assertFalse(descendants(workbench).filter(JButton.class::isInstance).map(JButton.class::cast)
@@ -803,9 +821,8 @@ class UnifiedWorkbenchPanelTest {
         opened.domain().capability(ProjectBacking.class).recordModelChange("Build steps");
         SwingUtilities.invokeAndWait(() -> {
             try (var workbench = new UnifiedWorkbenchPanel(opened.domain())) {
-                var load = find(workbench, JButton.class, button -> "Load instances".equals(button.getText()));
-                var footer = load.getParent();
-                var logs = find(footer, JButton.class, button -> "Query logs…".equals(button.getText()));
+                var logs = find(workbench, JButton.class, button -> "Query logs…".equals(button.getText()));
+                var footer = logs.getParent();
                 var save = find(footer, JButton.class, button -> "Save domain…".equals(button.getText()));
                 int singleRowWidth = footer.getPreferredSize().width;
 
@@ -820,7 +837,7 @@ class UnifiedWorkbenchPanelTest {
                 assertTrue(save.getY() >= logs.getY() + logs.getHeight(), "the Save button must wrap");
                 assertTrue(footer.getHeight() > singleRowHeight, "the footer must grow for the second row");
                 var visible = new Rectangle(0, 0, footer.getWidth(), footer.getHeight());
-                for (JButton button : List.of(load, logs, save)) {
+                for (JButton button : List.of(logs, save)) {
                     assertTrue(visible.contains(button.getBounds()), button.getText() + " is clipped");
                 }
             }

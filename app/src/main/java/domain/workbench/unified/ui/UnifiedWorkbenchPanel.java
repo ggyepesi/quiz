@@ -68,6 +68,7 @@ import java.util.List;
 import java.io.File;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 /** One opened project for field acquisition, local transformations and builds. */
 public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable {
@@ -85,7 +86,10 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private final JButton loadInstances = new JButton("Load instances");
     private final JButton cancelLoadInstances = new JButton("Cancel load");
     private final JTextArea loadInstancesStatus = new JTextArea();
-    private final WorkbenchResultViews loadInstancesResults = new WorkbenchResultViews();
+    /** The one instances view: Load instances and a completed build both fill it. The
+     *  application hosts it in its own window, as ModelBuilder does. */
+    private final QueryObjectResultPanel instancesView = new QueryObjectResultPanel();
+    private Consumer<InstancesShown> instancesShown = ignored -> { };
     private boolean loadingInstances;
     private boolean loadInstancesActionSelected;
     private final WorkbenchActionResultNavigator.Action graphRunAction;
@@ -201,6 +205,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         });
         var projectActions = actions.addSource("project", "Project", null);
         var loadInstancesTools = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        loadInstancesTools.add(loadInstances);
         loadInstancesTools.add(cancelLoadInstances);
         loadInstancesStatus.setName("load.instances.status");
         loadInstancesStatus.setEditable(false);
@@ -211,17 +216,11 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         loadInstancesHeader.add(loadInstancesTools, BorderLayout.NORTH);
         loadInstancesHeader.add(loadInstancesStatus, BorderLayout.CENTER);
         loadInstancesDetail.add(loadInstancesHeader, BorderLayout.NORTH);
-        loadInstancesDetail.add(loadInstancesResults, BorderLayout.CENTER);
         SwingCancellationConfirmation.wire(cancelLoadInstances, this,
                 () -> loadingInstances && queries.runner().isRunning(), queries.runner()::cancel);
         loadInstancesAction = actions.addAction(projectActions, "load-instances", "Load instances",
                 loadInstancesDetail, null);
-        loadInstances.addActionListener(event -> {
-            // The button sits in the window's bottom row; its status and result are
-            // the Load instances action's, so pressing it reveals that action.
-            actions.selectAction(loadInstancesAction);
-            loadSavedInstances();
-        });
+        loadInstances.addActionListener(event -> loadSavedInstances());
         buildAction = actions.addAction(projectActions, "build-project", "Build project", buildDetail, null);
         graphRunAction = actions.addAction(projectActions, "run-graph", "Run graph", graphRunDetail, null);
         planGraph.addActionListener(event -> planGraphRun());
@@ -231,7 +230,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                     configuration.setEditingEnabled(!loading);
                     updateSave();
                 }, queries::info, this::updateSave);
-        graphReviewAction = actions.addAction(projectActions, "review-graph-decisions",
+        graphReviewAction = actions.addAction(graphRunAction, "review-graph-decisions",
                 "Review graph decisions", graphReview, null);
         planBuild.addActionListener(event -> planBuild());
         editBuild.addActionListener(event -> configuration.selectConstruct(project.projectModel()));
@@ -271,7 +270,6 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
 
         var footer = new JPanel(new WrapLayout(FlowLayout.RIGHT, 5, 5));
         footer.add(saveStatus);
-        footer.add(loadInstances);
         footer.add(logs);
         footer.add(save);
         add(footer, BorderLayout.SOUTH);
@@ -466,13 +464,9 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                 loaded -> {
                     installLoadedDomain(loaded);
                     if (buildPlanOpen) resetBuild("Saved instances reloaded. Plan the build again.");
-                    actions.clearResults(loadInstancesAction);
-                    loadInstancesResults.removeAll();
                     loadInstancesStatus.setText(loaded.memberRoots().size()
                             + " saved instances loaded from " + snapshot.getPath() + ".");
-                    addInstancesTab(loadInstancesResults, loaded);
-                    actions.publishResults(loadInstancesAction, loadInstancesResults, 0,
-                            loadInstancesActionSelected);
+                    showInstances(loaded, true);
                     finishLoadingInstances();
                 },
                 failure -> {
@@ -491,6 +485,23 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         loadingInstances = false;
         configuration.setEditingEnabled(true);
         updateSave();
+    }
+
+    /** New instances are in {@link #instancesView()}: its window takes {@code title}, and
+     *  opens when {@code reveal} is set. A build only refreshes it, as in ModelBuilder. */
+    public record InstancesShown(String title, boolean reveal) { }
+
+    public QueryObjectResultPanel instancesView() { return instancesView; }
+
+    public void onInstancesShown(Consumer<InstancesShown> listener) {
+        instancesShown = listener == null ? ignored -> { } : listener;
+    }
+
+    private void showInstances(DomainModel instances, boolean reveal) {
+        instancesView.acceptDomain(instances);
+        instancesShown.accept(new InstancesShown(
+                "Saved instances (" + instances.memberRoots().size() + ") — " + project.snapshotFile().getName(),
+                reveal));
     }
 
     private record LoadInstances(File model, File snapshot, DomainStorage storage)
@@ -585,15 +596,18 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
             detail.add(annotation);
             tabs.addTab("Graph decisions", detail);
         }
-        if (builtDomain != null) addInstancesTab(tabs, builtDomain);
+        if (builtDomain != null) {
+            var built = builtDomain;
+            showInstances(built, false);
+            var detail = new JPanel(new FlowLayout(FlowLayout.LEFT));
+            var show = new JButton("Show instances");
+            show.addActionListener(event -> showInstances(built, true));
+            detail.add(show);
+            detail.add(new JLabel(built.memberRoots().size() + " saved instances in "
+                    + project.snapshotFile().getPath()));
+            tabs.addTab("Instances (" + built.memberRoots().size() + ")", detail);
+        }
         actions.publishResults(buildAction, tabs, 0, buildActionSelected);
-    }
-
-    /** The loaded instances as one result tab, rendered only when the reader opens it. */
-    private static void addInstancesTab(WorkbenchResultViews tabs, DomainModel loaded) {
-        var instances = new QueryObjectResultPanel();
-        tabs.addLazyTab("Instances (" + loaded.memberRoots().size() + ")", instances,
-                () -> instances.acceptDomain(loaded));
     }
 
     private boolean busy() {

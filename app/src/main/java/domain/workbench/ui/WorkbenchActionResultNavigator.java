@@ -125,12 +125,21 @@ public final class WorkbenchActionResultNavigator extends JPanel {
     public Action addAction(Source source, String id, String label,
             JComponent detail, Runnable reveal) {
         Objects.requireNonNull(source, "source");
+        return addAction(source.id(), required(id, "Action id"), label, detail, reveal);
+    }
+
+    public Action addAction(Action parent, String id, String label, JComponent detail, Runnable reveal) {
+        return addAction(parent.id(), parent.id().action() + "/" + required(id, "Action id"),
+                label, detail, reveal);
+    }
+
+    private Action addAction(NodeId parent, String id, String label, JComponent detail, Runnable reveal) {
         Objects.requireNonNull(detail, "detail");
-        NodeId key = NodeId.action(source.id().source(), required(id, "Action id"));
+        NodeId key = NodeId.action(parent.source(), id);
         requireNew(key);
         Entry entry = new Entry(key, Role.ACTION, required(label, "Action label"));
         Action action = new Action(entry, detail, reveal == null ? () -> { } : reveal);
-        shell.addChild(source.id(), key, entry.label, detail);
+        shell.addChild(parent, key, entry.label, detail);
         entries.put(key, entry);
         actions.put(key, action);
         return action;
@@ -210,7 +219,7 @@ public final class WorkbenchActionResultNavigator extends JPanel {
 
     public void clearResults(Action action) {
         if (action == null) return;
-        shell.removeChildren(action.id()).forEach(this::forget);
+        shell.removeChildren(action.id(), results::containsKey).forEach(this::forget);
         detachTabs(action);
     }
 

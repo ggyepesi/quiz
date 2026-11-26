@@ -191,20 +191,27 @@ public final class TreeAndDetailPanel<K> extends JPanel {
 
     /** Removes every descendant and returns their ids in tree order. */
     public List<K> removeChildren(K parentId) {
+        return removeChildren(parentId, id -> true);
+    }
+
+    public List<K> removeChildren(K parentId, java.util.function.Predicate<K> matching) {
         DefaultMutableTreeNode parent = nodes.get(parentId);
         if (parent == null) return List.of();
         List<DefaultMutableTreeNode> children = new ArrayList<>();
         for (int index = 0; index < parent.getChildCount(); index++) {
-            children.add((DefaultMutableTreeNode) parent.getChildAt(index));
+            var child = (DefaultMutableTreeNode) parent.getChildAt(index);
+            @SuppressWarnings("unchecked")
+            Item<K> item = (Item<K>) child.getUserObject();
+            if (matching.test(item.id())) children.add(child);
         }
         K selected = selectedId();
         List<K> removed = new ArrayList<>();
         for (DefaultMutableTreeNode child : children) {
             collectAndRemove(child, removed);
         }
-        parent.removeAllChildren();
         if (!children.isEmpty()) {
-            int[] indices = java.util.stream.IntStream.range(0, children.size()).toArray();
+            int[] indices = children.stream().mapToInt(parent::getIndex).toArray();
+            children.forEach(parent::remove);
             model.nodesWereRemoved(parent, indices, children.toArray());
         }
         if (selected != null && removed.contains(selected)) {
