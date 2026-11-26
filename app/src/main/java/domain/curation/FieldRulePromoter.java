@@ -54,6 +54,11 @@ public interface FieldRulePromoter extends domain.DomainCapability {
         return one == null ? java.util.List.of() : java.util.List.of(one);
     }
 
+    /** The text sources the backing model declares or imports; none without a model. */
+    default java.util.List<domain.config.TextSource> textSources() {
+        return java.util.List.of();
+    }
+
     record PromotionPreview(
             boolean eligible,
             String reason,

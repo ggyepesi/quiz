@@ -2329,13 +2329,11 @@
           "operationId" : "text-passage-instances",
           "parameters" : {
             "@class" : "java.util.ImmutableCollections$MapN",
-            "division" : "NUMBERED_CHAPTERS",
-            "pages" : "Q205882 = The Prose Edda (1916 translation by Arthur Gilchrist Brodeur)/Gylfaginning | Q205882 = The Prose Edda (1916 translation by Arthur Gilchrist Brodeur)/Skáldskaparmál",
             "passageReferencesField" : "characters",
             "passageSourceField" : "work",
             "passageTextField" : "text",
             "passageTitleField" : "title",
-            "site" : "WIKISOURCE"
+            "textSources" : "decl:6fd0104d-58af-4a47-9952-71910268ed3a"
           }
         }
       } ] ],
@@ -2738,6 +2736,15 @@
     }
   } ] ],
   "selections" : [ "java.util.ArrayList", [ ] ],
+  "textSources" : [ "java.util.ArrayList", [ {
+    "@class" : "domain.config.TextSource",
+    "name" : "Prose Edda (Brodeur, 1916)",
+    "declarationId" : "decl:6fd0104d-58af-4a47-9952-71910268ed3a",
+    "workQid" : "Q205882",
+    "site" : "WIKISOURCE",
+    "pages" : [ "java.util.ArrayList", [ "The Prose Edda (1916 translation by Arthur Gilchrist Brodeur)/Gylfaginning", "The Prose Edda (1916 translation by Arthur Gilchrist Brodeur)/Skáldskaparmál" ] ],
+    "division" : "NUMBERED_CHAPTERS"
+  } ] ],
   "entityKindRules" : [ "java.util.ArrayList", [ ] ],
   "entityRepresentationRules" : [ "java.util.ArrayList", [ ] ],
   "imports" : [ "java.util.ArrayList", [ {

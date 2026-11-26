@@ -70,9 +70,7 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     public static final String PASSAGE_BLOCK_KIND = "blockKind";
     public static final String TEXT_PASSAGE_INSTANCES = "text-passage-instances";
     public static final String FAMILY_TEXT_PASSAGE_INSTANCES = "mediawiki-text-passage-instances";
-    public static final String TEXT_SITE = "site";
-    public static final String TEXT_PAGES = "pages";
-    public static final String TEXT_DIVISION = "division";
+    public static final String TEXT_SOURCES = "textSources";
     public static final String PASSAGE_TITLE_FIELD = "passageTitleField";
     public static final String PASSAGE_REFERENCES_FIELD = "passageReferencesField";
     public static final int MAX_ARTICLE_PASSAGES = 40;
@@ -600,10 +598,12 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     }
 
     /**
-     * One proposed target-class instance per passage of explicitly named pages. The pages
-     * are authored source configuration (a work's texts are not reachable through its
-     * Wikidata sitelink); the page's own divisions bound each passage; names in a passage
-     * propose loaded instances for an optional reference field, for review only.
+     * One proposed target-class instance per passage of the work's named text sources.
+     * A text source is a project declaration (a work's texts are not reachable through its
+     * Wikidata sitelink), so the recipe names text sources by declaration id and a work
+     * reads those whose work is itself; each page's own divisions bound each passage;
+     * names in a passage propose loaded instances for an optional reference field, for
+     * review only.
      */
     private record TextPassageInstances() implements DatasourceOperation {
         @Override public String id() { return TEXT_PASSAGE_INSTANCES; }
@@ -616,18 +616,10 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         @Override public BindingScope scope() { return BindingScope.FIELD_VALUE; }
         @Override public List<ParameterDescriptor> parameters() {
             return List.of(
-                    new ParameterDescriptor(TEXT_SITE, "Site", ParameterDescriptor.Kind.CHOICE,
-                            false, "WIKISOURCE", List.of("WIKISOURCE", "WIKIPEDIA"),
-                            "MediaWiki site that holds the pages"),
-                    new ParameterDescriptor(TEXT_PAGES, "Pages", ParameterDescriptor.Kind.TEXT,
-                            true, "", List.of(),
-                            "Source instance QID = page title, separated by |; a QID may "
-                                    + "name several pages"),
-                    new ParameterDescriptor(TEXT_DIVISION, "Divided by",
-                            ParameterDescriptor.Kind.CHOICE, false, "NUMBERED_CHAPTERS",
-                            java.util.Arrays.stream(domain.datasource.evidence.TextPassages
-                                    .Division.values()).map(Enum::name).toList(),
-                            "Numbered chapters or section headings"),
+                    new ParameterDescriptor(TEXT_SOURCES, "Text sources",
+                            ParameterDescriptor.Kind.TEXT, true, "", List.of(),
+                            "Declaration ids of the project's text sources, separated by |; "
+                                    + "each work reads the text sources of that work"),
                     new ParameterDescriptor(PASSAGE_TEXT_FIELD, "Passage text field",
                             ParameterDescriptor.Kind.TEXT, true, "", List.of(),
                             "Text field on the proposed instance"),
@@ -649,6 +641,10 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
                 SourceBinding binding) {
             TextPassageInstanceSpec spec = textPassageInstances(binding);
             List<ModelConfigurationReference> references = new ArrayList<>();
+            for (String id : spec.textSources()) {
+                references.add(ModelConfigurationReference.textSourceReference(
+                        id, "text source", TEXT_SOURCES, true));
+            }
             for (var field : List.of(
                     java.util.Map.entry(spec.textField(), "passage text field"),
                     java.util.Map.entry(spec.sourceField(), "source instance field"),
@@ -671,11 +667,9 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
                     binding.target().className() + "." + binding.target().fieldPath()
                             + " — review one target-class instance per passage",
                     java.util.Map.of(
-                            "input", spec.pageCount() + " authored "
-                                    + spec.site().label() + " page(s)",
-                            "operation", "Divide each page by "
-                                    + spec.division().label().toLowerCase(java.util.Locale.ROOT)
-                                    + "; propose one instance per passage",
+                            "input", spec.textSources().size() + " text source(s)",
+                            "operation", "Divide each page of the work's text sources at its "
+                                    + "authored divisions; propose one instance per passage",
                             "output", "Fill " + spec.textField() + " with the passage and "
                                     + spec.sourceField() + " with its source instance"
                                     + (spec.referencesField().isBlank() ? ""
@@ -685,33 +679,22 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         }
     }
 
-    /** The authored pages per source QID, the division and the target-class fields. */
+    /** The text sources the recipe reads, by declaration id, and the target-class fields. */
     public record TextPassageInstanceSpec(
-            wikipedia.WikipediaArticleClient.Site site,
-            java.util.Map<String, List<String>> pages,
-            domain.datasource.evidence.TextPassages.Division division,
+            List<String> textSources,
             String textField, String sourceField, String titleField, String referencesField) {
         public TextPassageInstanceSpec {
-            site = site == null ? wikipedia.WikipediaArticleClient.Site.WIKISOURCE : site;
-            pages = pages == null ? java.util.Map.of() : java.util.Map.copyOf(pages);
-            division = division == null
-                    ? domain.datasource.evidence.TextPassages.Division.NUMBERED_CHAPTERS : division;
+            textSources = textSources == null ? List.of() : List.copyOf(textSources);
             textField = textField == null ? "" : textField.trim();
             sourceField = sourceField == null ? "" : sourceField.trim();
             titleField = titleField == null ? "" : titleField.trim();
             referencesField = referencesField == null ? "" : referencesField.trim();
         }
         public boolean configured() {
-            return !pages.isEmpty() && !textField.isBlank() && !sourceField.isBlank();
+            return !textSources.isEmpty() && !textField.isBlank() && !sourceField.isBlank();
         }
-        public List<String> pagesOf(String qid) {
-            return pages.getOrDefault(qid == null ? "" : qid.trim().toUpperCase(java.util.Locale.ROOT),
-                    List.of());
-        }
-        public int pageCount() { return pages.values().stream().mapToInt(List::size).sum(); }
         public String description() {
-            return pageCount() + " " + site.label() + " page(s) by "
-                    + division.label().toLowerCase(java.util.Locale.ROOT);
+            return textSources.size() + " text source(s)";
         }
     }
 
@@ -719,29 +702,15 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         if (binding == null || binding.recipe() == null
                 || !ID.equals(binding.recipe().providerId())
                 || !TEXT_PASSAGE_INSTANCES.equals(binding.recipe().operationId())) {
-            return new TextPassageInstanceSpec(null, null, null, "", "", "", "");
+            return new TextPassageInstanceSpec(List.of(), "", "", "", "");
         }
         var recipe = binding.recipe();
-        wikipedia.WikipediaArticleClient.Site site;
-        try {
-            site = wikipedia.WikipediaArticleClient.Site.valueOf(
-                    recipe.parameter(TEXT_SITE).trim().toUpperCase(java.util.Locale.ROOT));
-        } catch (IllegalArgumentException unset) {
-            site = wikipedia.WikipediaArticleClient.Site.WIKISOURCE;
+        List<String> ids = new ArrayList<>();
+        for (String id : recipe.parameter(TEXT_SOURCES).split("\\|")) {
+            String clean = id.trim();
+            if (!clean.isEmpty() && !ids.contains(clean)) ids.add(clean);
         }
-        java.util.Map<String, List<String>> pages = new java.util.LinkedHashMap<>();
-        for (String entry : recipe.parameter(TEXT_PAGES).split("\\|")) {
-            int equals = entry.indexOf('=');
-            if (equals < 0) continue;
-            String qid = entry.substring(0, equals).trim().toUpperCase(java.util.Locale.ROOT);
-            String title = entry.substring(equals + 1).trim();
-            if (!wikidata.WikidataIds.isQid(qid) || title.isBlank()) continue;
-            pages.computeIfAbsent(qid, key -> new ArrayList<>()).add(title);
-        }
-        java.util.Map<String, List<String>> immutable = new java.util.LinkedHashMap<>();
-        pages.forEach((qid, titles) -> immutable.put(qid, List.copyOf(titles)));
-        return new TextPassageInstanceSpec(site, immutable,
-                domain.datasource.evidence.TextPassages.Division.parse(recipe.parameter(TEXT_DIVISION)),
+        return new TextPassageInstanceSpec(ids,
                 recipe.parameter(PASSAGE_TEXT_FIELD), recipe.parameter(PASSAGE_SOURCE_FIELD),
                 recipe.parameter(PASSAGE_TITLE_FIELD), recipe.parameter(PASSAGE_REFERENCES_FIELD));
     }

@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Stories from an authored Wikisource page: one proposed instance per numbered chapter, its
+ * Stories from a work's text source, an authored Wikisource page: one proposed instance per numbered chapter, its
  * text and source work, and the loaded characters it names uniquely. A name two loaded
  * characters share (Vili) is a review warning, never a reference; no passage is bulk-safe.
  */
@@ -49,15 +49,22 @@ class TextPassageInstanceEvidenceProviderTest {
     private final WikidataDynamicObject brother = character("Q1153419", "Vili");
     private final WikidataDynamicObject son = character("Q3554720", "Váli", "Vili");
 
-    private static WikipediaDatasourceProvider.TextPassageInstanceSpec spec() {
+    private static domain.config.TextSource proseEdda() {
+        var text = new domain.config.TextSource("Prose Edda (Brodeur, 1916)");
+        text.workQid("Q205882");
+        text.pages(List.of(GYLFAGINNING));
+        return text;
+    }
+
+    private final domain.config.TextSource proseEdda = proseEdda();
+
+    private WikipediaDatasourceProvider.TextPassageInstanceSpec spec() {
         return WikipediaDatasourceProvider.textPassageInstances(new SourceBinding(
                 SourceBindingTarget.fieldValue("NorseLiteraryWork", "stories",
                         SourceBindingSlot.CANDIDATE_EVIDENCE),
                 new SourceRecipe(WikipediaDatasourceProvider.ID,
                         WikipediaDatasourceProvider.TEXT_PASSAGE_INSTANCES, Map.of(
-                                WikipediaDatasourceProvider.TEXT_SITE, "WIKISOURCE",
-                                WikipediaDatasourceProvider.TEXT_PAGES, "Q205882 = " + GYLFAGINNING,
-                                WikipediaDatasourceProvider.TEXT_DIVISION, "NUMBERED_CHAPTERS",
+                                WikipediaDatasourceProvider.TEXT_SOURCES, proseEdda.declarationId(),
                                 WikipediaDatasourceProvider.PASSAGE_TEXT_FIELD, "text",
                                 WikipediaDatasourceProvider.PASSAGE_SOURCE_FIELD, "work",
                                 WikipediaDatasourceProvider.PASSAGE_TITLE_FIELD, "title",
@@ -76,7 +83,8 @@ class TextPassageInstanceEvidenceProviderTest {
         List<URI> requests = new ArrayList<>();
         String response = new ObjectMapper().writeValueAsString(Map.of("parse", Map.of(
                 "title", GYLFAGINNING, "revid", 7, "text", HTML, "categories", List.of())));
-        var provider = new TextPassageInstanceEvidenceProvider(spec(), List.of(odin, loki, brother, son),
+        var provider = new TextPassageInstanceEvidenceProvider(spec(), List.of(proseEdda),
+                List.of(odin, loki, brother, son),
                 "NorseCharacter", domain(), new wikipedia.WikipediaArticleClient(uri -> {
                     requests.add(uri);
                     return response;
@@ -102,10 +110,23 @@ class TextPassageInstanceEvidenceProviderTest {
         assertFalse(stories.getFirst().source().recordUrl().isBlank());
     }
 
-    @Test void aWorkWithoutAuthoredPagesReadsNothing() throws Exception {
-        var provider = new TextPassageInstanceEvidenceProvider(spec(), List.of(), "NorseCharacter", domain(),
+    @Test void aTextSourceTheRecipeDoesNotNameIsNotRead() throws Exception {
+        var unnamed = new domain.config.TextSource("Another translation");
+        unnamed.workQid("Q205882");
+        unnamed.pages(List.of("Some other page"));
+        var provider = new TextPassageInstanceEvidenceProvider(spec(), List.of(unnamed), List.of(),
+                "NorseCharacter", domain(), new wikipedia.WikipediaArticleClient(uri -> {
+                    throw new AssertionError("the recipe does not name this text source");
+                }));
+
+        assertTrue(provider.discover(request()).execute(new QueryContext()).instances().isEmpty());
+    }
+
+    @Test void aWorkWithoutATextSourceOfItsOwnReadsNothing() throws Exception {
+        var provider = new TextPassageInstanceEvidenceProvider(spec(), List.of(proseEdda), List.of(),
+                "NorseCharacter", domain(),
                 new wikipedia.WikipediaArticleClient(uri -> {
-                    throw new AssertionError("no page is authored for this work");
+                    throw new AssertionError("no text source names this work");
                 }));
         var other = new EnrichmentRequest(new EnrichmentProposal.Subject("NorseLiteraryWork", "Q205874",
                 "Q205874", "Poetic Edda"), "stories", true, List.of(), request().targetSchema(), List.of(),

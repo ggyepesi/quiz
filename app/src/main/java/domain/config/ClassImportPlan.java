@@ -24,6 +24,7 @@ public final class ClassImportPlan {
     private final String requestedClass;
     private final List<GeneratedClassModel> classes;
     private final List<Selection> selections;
+    private final List<TextSource> textSources;
     private final List<EntityKindRule> kindRules;
     private final List<EntityRepresentationRule> representationRules;
     private final Set<String> conflicts;
@@ -34,6 +35,7 @@ public final class ClassImportPlan {
             String requestedClass,
             List<GeneratedClassModel> classes,
             List<Selection> selections,
+            List<TextSource> textSources,
             List<EntityKindRule> kindRules,
             List<EntityRepresentationRule> representationRules,
             Set<String> conflicts) {
@@ -42,6 +44,7 @@ public final class ClassImportPlan {
         this.requestedClass = requestedClass;
         this.classes = List.copyOf(classes);
         this.selections = List.copyOf(selections);
+        this.textSources = List.copyOf(textSources);
         this.kindRules = List.copyOf(kindRules);
         this.representationRules = List.copyOf(representationRules);
         this.conflicts = Set.copyOf(conflicts);
@@ -106,6 +109,20 @@ public final class ClassImportPlan {
         List<Selection> selections = source.selections().stream()
                 .filter(s -> s != null && selectionNames.contains(s.name()))
                 .toList();
+        // A text source travels with the class whose recipe reads it.
+        LinkedHashSet<String> textIds = new LinkedHashSet<>();
+        for (GeneratedClassModel clazz : closure.values()) {
+            for (GeneratedFieldModel field : clazz.fields()) {
+                if (field == null) continue;
+                for (domain.datasource.api.SourceBinding binding : FieldSourceBindings.bindings(
+                        field, domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE)) {
+                    textIds.addAll(domain.datasource.wikipedia.WikipediaDatasourceProvider
+                            .textPassageInstances(binding).textSources());
+                }
+            }
+        }
+        List<TextSource> textSources = textIds.stream().map(source::findTextSourceById)
+                .filter(java.util.Objects::nonNull).toList();
         List<EntityKindRule> rules = source.entityKindRules().stream()
                 .filter(r -> r != null && closure.containsKey(r.className()))
                 .toList();
@@ -121,15 +138,18 @@ public final class ClassImportPlan {
                 .forEach(conflicts::add);
         selections.stream().map(Selection::name)
                 .filter(n -> target.findSelection(n) != null).forEach(conflicts::add);
+        textSources.stream().map(TextSource::name)
+                .filter(n -> target.findTextSource(n) != null).forEach(conflicts::add);
 
         return new ClassImportPlan(source, target, requested.className(),
-                new ArrayList<>(closure.values()), selections, rules,
+                new ArrayList<>(closure.values()), selections, textSources, rules,
                 representations, conflicts);
     }
 
     public String requestedClass() { return requestedClass; }
     public List<GeneratedClassModel> classes() { return classes; }
     public List<Selection> selections() { return selections; }
+    public List<TextSource> textSources() { return textSources; }
     public List<EntityKindRule> kindRules() { return kindRules; }
     public Set<String> conflicts() { return conflicts; }
 
@@ -156,6 +176,14 @@ public final class ClassImportPlan {
             if (existing != null && (!existing.isImported()
                     || !existing.importedFrom().equalsIgnoreCase(owner))) {
                 refused.add(selection.name());
+            }
+        }
+        for (TextSource text : textSources) {
+            TextSource existing = target.findTextSource(text.name());
+            String owner = text.isImported() ? text.importedFrom() : source.name();
+            if (existing != null && (!existing.isImported()
+                    || !existing.importedFrom().equalsIgnoreCase(owner))) {
+                refused.add(text.name());
             }
         }
         return Set.copyOf(refused);
@@ -246,6 +274,20 @@ public final class ClassImportPlan {
             if (ownership == Ownership.COPY) copy.importedFrom("");
             else copy.importedFrom(owner);
             candidate.replaceSelection(copy);
+        }
+        for (TextSource text : textSources) {
+            TextSource existing = candidate.findTextSource(text.name());
+            String owner = text.isImported() ? text.importedFrom() : source.name();
+            if (ownership == Ownership.IMPORT && existing != null
+                    && (!existing.isImported()
+                    || !existing.importedFrom().equalsIgnoreCase(owner))) {
+                throw new IllegalStateException("Cannot import " + owner + "." + text.name()
+                        + ": a local or differently owned text source already has that name. "
+                        + "Rename or remove it explicitly first.");
+            }
+            TextSource copy = text.copy();
+            copy.importedFrom(ownership == Ownership.COPY ? "" : owner);
+            candidate.replaceTextSource(copy);
         }
         for (EntityKindRule rule : kindRules) {
             if (!selected.contains(rule.className())) continue;

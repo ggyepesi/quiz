@@ -1872,6 +1872,12 @@ public final class ValidationPanel extends JPanel {
                 .articlePassageInstances(binding);
     }
 
+    /** The text sources of the project this domain was built from. */
+    private java.util.List<domain.config.TextSource> projectTextSources() {
+        FieldRulePromoter ruleModel = domain.capability(FieldRulePromoter.class);
+        return ruleModel == null ? java.util.List.of() : ruleModel.textSources();
+    }
+
     private WikipediaDatasourceProvider.TextPassageInstanceSpec
             configuredTextPassageInstances(String ownerType, String field) {
         return WikipediaDatasourceProvider.textPassageInstances(
@@ -2035,6 +2041,7 @@ public final class ValidationPanel extends JPanel {
                         textPassageSpec.referencesField());
         EnrichmentProvider provider = textPassageInstances
                 ? new domain.enrichment.TextPassageInstanceEvidenceProvider(textPassageSpec,
+                        projectTextSources(),
                         namedSchema == null || namedSchema.targetType().isBlank() ? List.of()
                                 : domain.instancesOf(namedSchema.targetType()),
                         namedSchema == null ? "" : namedSchema.targetType(), domain)

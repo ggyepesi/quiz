@@ -16,9 +16,12 @@ public record ModelConfigurationReference(
         String role,
         String classParameterKey,
         String fieldParameterKey,
-        boolean required) {
+        boolean required,
+        String declarationId) {
 
-    public enum Kind { CLASS, FIELD }
+    /** CLASS and FIELD name model classes; TEXT_SOURCE names a text-source declaration
+     *  by its {@link #declarationId}. */
+    public enum Kind { CLASS, FIELD, TEXT_SOURCE }
     public enum ClassSource {
         /** The recipe stores the referenced class name. */
         NAMED,
@@ -34,7 +37,18 @@ public record ModelConfigurationReference(
         role = clean(role);
         classParameterKey = clean(classParameterKey);
         fieldParameterKey = clean(fieldParameterKey);
-        if (classSource == ClassSource.NAMED && className.isBlank()) {
+        declarationId = clean(declarationId);
+        if (kind == Kind.TEXT_SOURCE) {
+            if (declarationId.isBlank()) {
+                throw new IllegalArgumentException("A text-source reference needs its declaration id");
+            }
+            if (!className.isBlank() || !fieldPath.isBlank()) {
+                throw new IllegalArgumentException("A text-source reference names no class or field");
+            }
+        } else if (!declarationId.isBlank()) {
+            throw new IllegalArgumentException("Only a text-source reference carries a declaration id");
+        }
+        if (kind != Kind.TEXT_SOURCE && classSource == ClassSource.NAMED && className.isBlank()) {
             throw new IllegalArgumentException("A model reference needs a class name");
         }
         if (classSource == ClassSource.BINDING_FIELD_TARGET && !className.isBlank()) {
@@ -52,20 +66,20 @@ public record ModelConfigurationReference(
     public static ModelConfigurationReference classReference(
             String className, String role, boolean required) {
         return new ModelConfigurationReference(
-                Kind.CLASS, ClassSource.NAMED, className, "", role, "", "", required);
+                Kind.CLASS, ClassSource.NAMED, className, "", role, "", "", required, "");
     }
 
     public static ModelConfigurationReference classParameterReference(
             String className, String role, String parameterKey, boolean required) {
         return new ModelConfigurationReference(Kind.CLASS, ClassSource.NAMED,
-                className, "", role, parameterKey, "", required);
+                className, "", role, parameterKey, "", required, "");
     }
 
     public static ModelConfigurationReference fieldReference(
             String className, String fieldPath, String role, boolean required) {
         return new ModelConfigurationReference(
                 Kind.FIELD, ClassSource.NAMED, className, fieldPath,
-                role, "", "", required);
+                role, "", "", required, "");
     }
 
     public static ModelConfigurationReference fieldParameterReference(
@@ -73,14 +87,21 @@ public record ModelConfigurationReference(
             String classParameterKey, String fieldParameterKey, boolean required) {
         return new ModelConfigurationReference(Kind.FIELD, ClassSource.NAMED,
                 className, fieldPath, role, classParameterKey, fieldParameterKey,
-                required);
+                required, "");
     }
 
     public static ModelConfigurationReference bindingTargetField(
             String fieldPath, String role, boolean required) {
         return new ModelConfigurationReference(Kind.FIELD,
                 ClassSource.BINDING_FIELD_TARGET, "", fieldPath,
-                role, "", "", required);
+                role, "", "", required, "");
+    }
+
+    /** A recipe parameter that names one text source by declaration id. */
+    public static ModelConfigurationReference textSourceReference(
+            String declarationId, String role, String parameterKey, boolean required) {
+        return new ModelConfigurationReference(Kind.TEXT_SOURCE, ClassSource.NAMED, "", "",
+                role, parameterKey, "", required, declarationId);
     }
 
     private static String clean(String value) {

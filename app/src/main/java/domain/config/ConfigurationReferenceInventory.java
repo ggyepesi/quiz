@@ -23,7 +23,7 @@ import java.util.Objects;
  */
 public final class ConfigurationReferenceInventory {
 
-    public enum SiteKind { CLASS, FIELD, SELECTION, CONFIGURATION, DATASOURCE_INPUT }
+    public enum SiteKind { CLASS, FIELD, SELECTION, TEXT_SOURCE, CONFIGURATION, DATASOURCE_INPUT }
 
     /** A model address. Field and configuration paths locate a site within its declaration. */
     public record Site(
@@ -93,6 +93,7 @@ public final class ConfigurationReferenceInventory {
         SOURCE_BINDING_CONTEXT,
         DATASOURCE_RECIPE_CLASS,
         DATASOURCE_RECIPE_FIELD,
+        DATASOURCE_RECIPE_TEXT_SOURCE,
         DATASOURCE_INPUT
     }
 
@@ -201,6 +202,7 @@ public final class ConfigurationReferenceInventory {
             case CLASS -> project.resolveClass(target.declarationId(), target.className());
             case FIELD -> resolveField(project, target.className(), target.fieldPath());
             case SELECTION -> project.resolveSelection(target.declarationId(), target.name());
+            case TEXT_SOURCE -> project.findTextSourceById(target.declarationId());
             case DATASOURCE_INPUT -> project.resolveClass(
                     target.declarationId(), target.className());
             case CONFIGURATION -> resolveGraphNodeOwner(project, target);
@@ -299,6 +301,7 @@ public final class ConfigurationReferenceInventory {
             case FIELD -> resolveField(project, target.className(), target.fieldPath()) != null;
             case SELECTION -> project.resolveSelection(
                     target.declarationId(), target.name()) != null;
+            case TEXT_SOURCE -> project.findTextSourceById(target.declarationId()) != null;
             case CONFIGURATION, DATASOURCE_INPUT -> true;
         };
     }
@@ -651,6 +654,16 @@ public final class ConfigurationReferenceInventory {
             }
             for (ModelConfigurationReference modelReference
                     : operation.configurationReferences(binding)) {
+                if (modelReference.kind() == ModelConfigurationReference.Kind.TEXT_SOURCE) {
+                    // Named by declaration id, so a rename never rewrites the recipe.
+                    TextSource text = project.findTextSourceById(modelReference.declarationId());
+                    add(entries, bindingSite, new Site(SiteKind.TEXT_SOURCE,
+                                    modelReference.declarationId(), "", "",
+                                    text == null ? "" : text.name()),
+                            Relation.DATASOURCE_RECIPE_TEXT_SOURCE, modelReference.role(),
+                            modelReference.required(), null);
+                    continue;
+                }
                 String className = modelReference.classSource()
                         == ModelConfigurationReference.ClassSource.BINDING_FIELD_TARGET
                         ? bindingFieldTargetClass(project, binding) : modelReference.className();

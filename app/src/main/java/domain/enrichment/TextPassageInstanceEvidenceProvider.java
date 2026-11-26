@@ -1,5 +1,6 @@
 package domain.enrichment;
 
+import domain.config.TextSource;
 import domain.datasource.EntityRef;
 import domain.datasource.SourceRef;
 import domain.datasource.evidence.EvidenceFragment;
@@ -25,7 +26,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Proposes one target-class instance per passage of a source instance's authored pages.
+ * Proposes one target-class instance per passage of a source instance's text sources: the
+ * recipe's text sources whose work is that instance.
  *
  * <p>Assembly only, over two separate constructs: {@link TextPassages} divides each page at
  * its authored divisions, and {@link LoadedNameMatches} proposes the loaded instances a
@@ -37,20 +39,26 @@ public final class TextPassageInstanceEvidenceProvider implements EnrichmentProv
     static final String RECIPE_VERSION = "text-passage-instances-v1";
 
     private final WikipediaDatasourceProvider.TextPassageInstanceSpec spec;
+    private final List<TextSource> texts;
     private final LoadedNameMatches names;
     private final String namedType;
     private final wikipedia.WikipediaArticleClient pages;
     private final domain.DomainModel domain;
 
+    /** {@code texts} are the recipe's text sources as the project resolves them. */
     public TextPassageInstanceEvidenceProvider(WikipediaDatasourceProvider.TextPassageInstanceSpec spec,
-            Collection<? extends Viewable> namedCandidates, String namedType, domain.DomainModel domain) {
-        this(spec, namedCandidates, namedType, domain, new wikipedia.WikipediaArticleClient());
+            List<TextSource> texts, Collection<? extends Viewable> namedCandidates, String namedType,
+            domain.DomainModel domain) {
+        this(spec, texts, namedCandidates, namedType, domain, new wikipedia.WikipediaArticleClient());
     }
 
     TextPassageInstanceEvidenceProvider(WikipediaDatasourceProvider.TextPassageInstanceSpec spec,
-            Collection<? extends Viewable> namedCandidates, String namedType, domain.DomainModel domain,
-            wikipedia.WikipediaArticleClient pages) {
+            List<TextSource> texts, Collection<? extends Viewable> namedCandidates, String namedType,
+            domain.DomainModel domain, wikipedia.WikipediaArticleClient pages) {
         this.spec = java.util.Objects.requireNonNull(spec);
+        this.texts = texts == null ? List.of() : texts.stream()
+                .filter(text -> text != null && spec.textSources().contains(text.declarationId()))
+                .toList();
         this.names = LoadedNameMatches.of(namedCandidates, LoadedNameMatches::labelAndAliases);
         this.namedType = namedType == null ? "" : namedType.trim();
         this.domain = java.util.Objects.requireNonNull(domain);
@@ -69,10 +77,12 @@ public final class TextPassageInstanceEvidenceProvider implements EnrichmentProv
 
     @Override public Query<EnrichmentProposal> discover(EnrichmentRequest request) {
         if (!supports(request)) {
-            throw new IllegalArgumentException("Text passage instances require configured pages "
-                    + "and a reference-list target field");
+            throw new IllegalArgumentException("Text passage instances require configured text "
+                    + "sources and a reference-list target field");
         }
-        List<String> titles = spec.pagesOf(request.subject().id());
+        List<TextSource> sources = texts.stream()
+                .filter(text -> text.workQid().equalsIgnoreCase(request.subject().id())).toList();
+        List<String> titles = sources.stream().flatMap(text -> text.pages().stream()).toList();
         return new Query<>() {
             private int passages;
             private int named;
@@ -80,9 +90,9 @@ public final class TextPassageInstanceEvidenceProvider implements EnrichmentProv
 
             @Override public String purpose() { return "Propose one instance per text passage"; }
             @Override public String skeleton() {
-                return "Read " + titles.size() + " " + spec.site().label() + " page(s); divide by "
-                        + spec.division().label().toLowerCase(Locale.ROOT)
-                        + "; propose an instance per passage and the loaded instances it names";
+                return "Read " + titles.size() + " page(s) of " + sources.size()
+                        + " text source(s); divide each at its authored divisions; propose an "
+                        + "instance per passage and the loaded instances it names";
             }
             @Override public String queryType() { return "Retained source text"; }
             @Override public String description() {
@@ -90,7 +100,8 @@ public final class TextPassageInstanceEvidenceProvider implements EnrichmentProv
             }
             @Override public Map<String, String> parameters() {
                 return Map.of("field", request.targetField(), "pages", String.join(" | ", titles),
-                        "site", spec.site().host());
+                        "text sources", String.join(" | ",
+                                sources.stream().map(TextSource::name).toList()));
             }
 
             @Override public EnrichmentProposal execute(QueryContext context) throws Exception {
@@ -100,12 +111,12 @@ public final class TextPassageInstanceEvidenceProvider implements EnrichmentProv
                         domain, request.targetSchema(), request.currentValue());
                 List<EnrichmentProposal.InstanceCandidate> instances = new ArrayList<>();
                 List<EnrichmentProposal.FieldCandidate> fields = new ArrayList<>();
-                for (String title : titles) {
+                for (TextSource text : sources) for (String title : text.pages()) {
                     context.cancellation().throwIfCancelled();
-                    var page = pages.structuredByTitle(spec.site(), title).execute(context);
+                    var page = pages.structuredByTitle(text.site(), title).execute(context);
                     WikipediaArticle article = page == null ? null : page.article().structuredArticle();
                     if (article == null) continue;
-                    for (TextPassages.Passage passage : TextPassages.divide(article, spec.division())) {
+                    for (TextPassages.Passage passage : TextPassages.divide(article, text.division())) {
                         passages++;
                         String instanceId = instanceId(request, title, passage);
                         if (current.contains(instanceId)) continue;

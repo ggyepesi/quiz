@@ -38,6 +38,7 @@ public final class GeneratedProjectModelValidator {
         ConfigurationReferenceInventory references =
                 ConfigurationReferenceInventory.of(project);
         validateSelectionsAndKindRules(project, problems);
+        validateTextSources(project, problems);
         validateTransformations(project, problems);
         validateTransformationBuildSteps(project, problems);
         validateDependencyCycles(project, problems);
@@ -66,6 +67,7 @@ public final class GeneratedProjectModelValidator {
             validateQualifierConditions(clazz, problems);
             validateArticlePassageInstances(project, clazz, problems);
             validateArticleTableRowInstances(project, clazz, problems);
+            validateTextPassageInstances(project, clazz, problems);
             validateInfoboxRowLinks(clazz, problems);
             validateAggregateClass(project, clazz, problems);
             validateGraphClass(project, clazz, problems);
@@ -174,6 +176,112 @@ public final class GeneratedProjectModelValidator {
                 problems.add(Problem.error(selection.name(),
                         "Declaration identity is also used by another class or selection: "
                                 + selection.declarationId()));
+            }
+        }
+        for (TextSource text : project.textSources()) {
+            if (text == null || text.declarationId().isBlank()) continue;
+            if (!ids.add(text.declarationId())) {
+                problems.add(Problem.error(text.name(),
+                        "Declaration identity is also used by another declaration: "
+                                + text.declarationId()));
+            }
+        }
+    }
+
+    /** A text source is named once in its project and names its work and pages. */
+    private static void validateTextSources(
+            GeneratedProjectModel project, List<Problem> problems) {
+        Set<String> names = new HashSet<>();
+        for (TextSource text : project.textSources()) {
+            if (text == null) continue;
+            String where = "text source " + (text.name().isBlank() ? "(unnamed)" : text.name());
+            if (text.name().isBlank()) {
+                problems.add(Problem.error(where, "A text source needs a name."));
+            } else if (!names.add(text.name().toLowerCase(java.util.Locale.ROOT))) {
+                problems.add(Problem.error(where, "Another text source has the same name."));
+            }
+            if (!wikidata.WikidataIds.isQid(text.workQid())) {
+                problems.add(Problem.error(where,
+                        "A text source names the Wikidata item of its work."));
+            }
+            if (text.pages().isEmpty()) {
+                problems.add(Problem.error(where, "A text source names at least one page."));
+            }
+        }
+    }
+
+    /** The recipe's text sources exist here, and its fields have the shapes it writes. */
+    private static void validateTextPassageInstances(
+            GeneratedProjectModel project, GeneratedClassModel owner, List<Problem> problems) {
+        for (GeneratedFieldModel field : owner.fields()) {
+            if (field == null) continue;
+            for (domain.datasource.api.SourceBinding binding : FieldSourceBindings.bindings(
+                    field, domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE)) {
+                if (binding.recipe() == null
+                        || !domain.datasource.wikipedia.WikipediaDatasourceProvider.ID
+                                .equals(binding.recipe().providerId())
+                        || !domain.datasource.wikipedia.WikipediaDatasourceProvider
+                                .TEXT_PASSAGE_INSTANCES.equals(binding.recipe().operationId())) {
+                    continue;
+                }
+                var spec = domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .textPassageInstances(binding);
+                String where = path(owner, field);
+                if (spec.textSources().isEmpty()) {
+                    problems.add(Problem.error(where,
+                            "Text passage instances name at least one text source."));
+                }
+                for (String id : spec.textSources()) {
+                    if (project.findTextSourceById(id) == null) {
+                        problems.add(Problem.error(where, "Text source " + id
+                                + " is not declared or imported by this project."));
+                    }
+                }
+                if (field.type() != FieldType.ENTITY
+                        || field.cardinality() != FieldCardinality.COLLECTION
+                        || field.entityClassName().isBlank()) {
+                    problems.add(Problem.error(where, "Text passage instances require a "
+                            + "list-valued ENTITY field with a declared target class."));
+                    continue;
+                }
+                GeneratedClassModel target = project.findClass(field.entityClassName());
+                if (target == null) continue;
+                java.util.function.Function<String, GeneratedFieldModel> declared = name ->
+                        target.effectiveFields(project).stream()
+                                .filter(candidate -> name.equals(candidate.name()))
+                                .findFirst().orElse(null);
+                GeneratedFieldModel text = declared.apply(spec.textField());
+                if (text == null || text.type() != FieldType.TEXT
+                        || text.cardinality() != FieldCardinality.SINGLE) {
+                    problems.add(Problem.error(where, "Passage text target '" + target.className()
+                            + "." + spec.textField() + "' must be one Text value."));
+                }
+                GeneratedFieldModel source = declared.apply(spec.sourceField());
+                if (source == null || source.type() != FieldType.ENTITY
+                        || !project.isSameOrSubclass(owner.className(), source.entityClassName())) {
+                    problems.add(Problem.error(where, "Source instance target '"
+                            + target.className() + "." + spec.sourceField()
+                            + "' must be an ENTITY field that accepts " + owner.className() + "."));
+                }
+                if (!spec.titleField().isBlank()) {
+                    GeneratedFieldModel title = declared.apply(spec.titleField());
+                    if (title == null || title.type() != FieldType.TEXT
+                            || title.cardinality() != FieldCardinality.SINGLE) {
+                        problems.add(Problem.error(where, "Passage title target '"
+                                + target.className() + "." + spec.titleField()
+                                + "' must be one Text value."));
+                    }
+                }
+                if (!spec.referencesField().isBlank()) {
+                    GeneratedFieldModel named = declared.apply(spec.referencesField());
+                    if (named == null || named.type() != FieldType.ENTITY
+                            || named.cardinality() != FieldCardinality.COLLECTION
+                            || named.entityClassName().isBlank()) {
+                        problems.add(Problem.error(where, "Named instances target '"
+                                + target.className() + "." + spec.referencesField()
+                                + "' must be an ENTITY list with a declared target class."));
+                    }
+                }
             }
         }
     }

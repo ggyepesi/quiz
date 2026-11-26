@@ -32,6 +32,11 @@ public class GeneratedProjectModel {
     // for every existing model; a domain opts into them as roles are pulled out of
     // "class" overloading.
     private final List<Selection> selections = new ArrayList<>();
+    // Named texts of works (TextSource). Absent from a model that declares none, so
+    // adding the construct leaves every existing model file and signature unchanged.
+    @com.fasterxml.jackson.annotation.JsonInclude(
+            com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY)
+    private final List<TextSource> textSources = new ArrayList<>();
     private final List<EntityKindRule> entityKindRules = new ArrayList<>();
     private final List<EntityRepresentationRule> entityRepresentationRules = new ArrayList<>();
     private final List<ModelImport> imports = new ArrayList<>();
@@ -250,6 +255,49 @@ public class GeneratedProjectModel {
         return Collections.unmodifiableList(entityKindRules);
     }
 
+    /** The texts this project declares or imports; a recipe is offered only these. */
+    public List<TextSource> textSources() {
+        return Collections.unmodifiableList(textSources);
+    }
+
+    public void addTextSource(TextSource source) {
+        if (source != null) textSources.add(source);
+    }
+
+    public TextSource findTextSource(String name) {
+        if (name == null || name.isBlank()) return null;
+        return textSources.stream().filter(java.util.Objects::nonNull)
+                .filter(source -> source.name().equalsIgnoreCase(name.trim()))
+                .findFirst().orElse(null);
+    }
+
+    public TextSource findTextSourceById(String declarationId) {
+        String id = DeclarationIds.clean(declarationId);
+        if (id.isBlank()) return null;
+        return textSources.stream().filter(java.util.Objects::nonNull)
+                .filter(source -> id.equals(source.declarationId()))
+                .findFirst().orElse(null);
+    }
+
+    /** Replaces the same-named text source; an import may refresh only a text source
+     *  owned by the same model. The replacement keeps its own identity, because recipes
+     *  name a text source by declaration id alone. */
+    public void replaceTextSource(TextSource replacement) {
+        if (replacement == null) return;
+        TextSource existing = findTextSource(replacement.name());
+        if (existing == null) {
+            addTextSource(replacement);
+            return;
+        }
+        if (existing.isImported() && (!replacement.isImported()
+                || !existing.importedFrom().equalsIgnoreCase(replacement.importedFrom()))) {
+            throw new IllegalStateException("Text source '" + existing.name()
+                    + "' is imported from " + existing.importedFrom()
+                    + " and cannot be changed here; change it in that model.");
+        }
+        textSources.set(textSources.indexOf(existing), replacement);
+    }
+
     public List<BuildOperation> buildOperations() {
         return Collections.unmodifiableList(buildOperations);
     }
@@ -359,6 +407,8 @@ public class GeneratedProjectModel {
         this.classes.addAll(other.classes);
         this.selections.clear();
         this.selections.addAll(other.selections);
+        this.textSources.clear();
+        this.textSources.addAll(other.textSources);
         this.entityKindRules.clear();
         this.entityKindRules.addAll(other.entityKindRules);
         this.entityRepresentationRules.clear();
@@ -708,6 +758,9 @@ public class GeneratedProjectModel {
         for (Selection selection : selections) {
             if (selection != null) selection.ensureDeclarationId(name());
         }
+        for (TextSource source : textSources) {
+            if (source != null) source.ensureDeclarationId(name());
+        }
         for (GeneratedClassModel clazz : classes) {
             if (clazz == null || clazz.transformationSource() == null) continue;
             TransformationClassSource source = clazz.transformationSource();
@@ -935,6 +988,9 @@ public class GeneratedProjectModel {
                 c.selections.add(s.copy());
             }
         }
+        for (TextSource source : textSources) {
+            if (source != null) c.textSources.add(source.copy());
+        }
         for (EntityKindRule rule : entityKindRules) {
             if (rule != null) c.entityKindRules.add(rule.copy());
         }
@@ -954,6 +1010,7 @@ public class GeneratedProjectModel {
         GeneratedProjectModel authored = copy();
         authored.classes.removeIf(GeneratedClassModel::isImported);
         authored.selections.removeIf(Selection::isImported);
+        authored.textSources.removeIf(TextSource::isImported);
         authored.entityKindRules.removeIf(EntityKindRule::isImported);
         authored.entityRepresentationRules.removeIf(
                 EntityRepresentationRule::isImported);

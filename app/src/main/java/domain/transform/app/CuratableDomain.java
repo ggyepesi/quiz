@@ -410,6 +410,10 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
         return promoter().declaredBinding(type, field, slot);
     }
 
+    @Override public java.util.List<domain.config.TextSource> textSources() {
+        return promoter().textSources();
+    }
+
     @Override public java.util.List<domain.datasource.api.SourceBinding> declaredBindings(
             String type, String field,
             domain.datasource.api.SourceBindingSlot slot) {

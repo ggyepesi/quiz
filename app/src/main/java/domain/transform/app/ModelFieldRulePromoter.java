@@ -142,6 +142,10 @@ final class ModelFieldRulePromoter {
                 : FieldSourceBindings.binding(declared, slot);
     }
 
+    java.util.List<domain.config.TextSource> textSources() {
+        return model == null ? java.util.List.of() : java.util.List.copyOf(model.textSources());
+    }
+
     java.util.List<SourceBinding> declaredBindings(
             String type, String field, SourceBindingSlot slot) {
         GeneratedFieldModel declared = declaredField(type, field);
