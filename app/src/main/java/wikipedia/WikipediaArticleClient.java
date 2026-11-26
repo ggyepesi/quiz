@@ -22,9 +22,36 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/** Reads immutable, versioned English Wikipedia article text. */
+/** Reads immutable, versioned page text from English Wikipedia or another MediaWiki site. */
 public final class WikipediaArticleClient {
     private static final ObjectMapper JSON = new ObjectMapper();
+
+    /**
+     * The MediaWiki site a page is read from. Each site has the same parse API and HTML,
+     * so the one structured parse serves all of them; the site names the host and the
+     * source kind recorded on the retained document.
+     */
+    public enum Site {
+        WIKIPEDIA("en.wikipedia.org", "Wikipedia (English)"),
+        WIKISOURCE("en.wikisource.org", "Wikisource (English)");
+
+        private final String host;
+        private final String label;
+
+        Site(String host, String label) {
+            this.host = host;
+            this.label = label;
+        }
+
+        public String host() { return host; }
+        public String label() { return label; }
+        public String pageUrl(String title) {
+            // A subpage separator stays a path separator: Wikisource texts live on
+            // subpages such as "The Prose Edda (…)/Gylfaginning".
+            return "https://" + host + "/wiki/"
+                    + encode(title.replace(' ', '_')).replace("%2F", "/");
+        }
+    }
     private final Fetcher fetcher;
 
     public WikipediaArticleClient() {
@@ -76,28 +103,36 @@ public final class WikipediaArticleClient {
      * acquisition cannot.
      */
     public Query<StructuredPage> structuredByTitle(String title) {
+        return structuredByTitle(Site.WIKIPEDIA, title);
+    }
+
+    /** One page's structure from the named site, through the same parse as Wikipedia. */
+    public Query<StructuredPage> structuredByTitle(Site site, String title) {
         String requested = title == null ? "" : title.trim();
         if (requested.isBlank()) throw new IllegalArgumentException("Article title is required");
-        URI uri = parseApi(requested);
+        URI uri = parseApi(site, requested);
         return new Query<>() {
-            @Override public String purpose() { return "Read structured Wikipedia article"; }
+            @Override public String purpose() {
+                return site == Site.WIKIPEDIA ? "Read structured Wikipedia article"
+                        : "Read structured " + site.label() + " page";
+            }
             @Override public String skeleton() {
                 return "parsed HTML + wikitext + revision + sections + links + categories"
                         + " + infobox";
             }
             @Override public String queryType() { return "Wikipedia API"; }
             @Override public String description() {
-                return "Complete English Wikipedia article structure";
+                return "Complete " + site.label() + " page structure";
             }
             @Override public Map<String, String> parameters() {
-                return Map.of("title", requested);
+                return Map.of("title", requested, "site", site.host());
             }
             @Override public StructuredPage execute(QueryContext context) throws Exception {
                 return context.step("Read structured article", "Wikipedia API", skeleton(),
                         parameters(), step -> {
                             step.request(uri.toString());
                             StructuredPage page =
-                                    parseStructuredPage(JSON.readTree(fetcher.fetch(uri)));
+                                    parseStructuredPage(JSON.readTree(fetcher.fetch(uri)), site);
                             Article article = page == null ? null : page.article();
                             step.summary(article == null ? "Article unavailable"
                                     : article.text().length() + " character(s), "
@@ -150,7 +185,11 @@ public final class WikipediaArticleClient {
      * infobox (#461). The infobox is read by its own parser, from this response.
      */
     static StructuredPage parseStructuredPage(JsonNode root) {
-        Parsed parsed = parseStructuredWithElements(root);
+        return parseStructuredPage(root, Site.WIKIPEDIA);
+    }
+
+    static StructuredPage parseStructuredPage(JsonNode root, Site site) {
+        Parsed parsed = parseStructuredWithElements(root, site);
         if (parsed == null) return null;
         boolean parse = !root.path("parse").isMissingNode() && !root.path("parse").isNull();
         return new StructuredPage(parsed.article(),
@@ -161,11 +200,11 @@ public final class WikipediaArticleClient {
                           List<ArticleElementInventory.ElementKind> elements) { }
 
     static Article parseStructured(JsonNode root) {
-        Parsed parsed = parseStructuredWithElements(root);
+        Parsed parsed = parseStructuredWithElements(root, Site.WIKIPEDIA);
         return parsed == null ? null : parsed.article();
     }
 
-    private static Parsed parseStructuredWithElements(JsonNode root) {
+    private static Parsed parseStructuredWithElements(JsonNode root, Site site) {
         JsonNode page = root.path("parse");
         if (page.isMissingNode() || page.isNull()) {
             Article extract = parse(root);
@@ -184,7 +223,7 @@ public final class WikipediaArticleClient {
             if (!value.isBlank()) categories.add(value);
         }
         ParsedArticleText parsed = parseArticleText(html);
-        SourceDocument document = sourceDocument(title, revision, parsed.text(),
+        SourceDocument document = sourceDocument(site, title, revision, parsed.text(),
                 categories, parsed.links());
         WikipediaArticle structured = new WikipediaArticle(document, parsed.text(),
                 categories, parsed.structuredSections());
@@ -202,6 +241,11 @@ public final class WikipediaArticleClient {
     /** Builds one digest over every retained part of the article evidence. */
     public static SourceDocument sourceDocument(String title, String revision,
             String text, List<String> categories, List<ArticleIntroduction.Link> links) {
+        return sourceDocument(Site.WIKIPEDIA, title, revision, text, categories, links);
+    }
+
+    public static SourceDocument sourceDocument(Site site, String title, String revision,
+            String text, List<String> categories, List<ArticleIntroduction.Link> links) {
         List<String> safeCategories = categories == null ? List.of() : categories;
         List<ArticleIntroduction.Link> safeLinks = links == null ? List.of() : links;
         String safeText = text == null ? "" : text;
@@ -209,8 +253,8 @@ public final class WikipediaArticleClient {
                 + safeLinks.stream().map(link -> link.start() + ":" + link.end()
                         + ":" + link.text() + "->" + link.targetTitle())
                         .collect(java.util.stream.Collectors.joining("\n"));
-        return new SourceDocument("Wikipedia (English)", title, title,
-                pageUrl(title), revision, new ContentDigest("sha256",
+        return new SourceDocument(site.label(), title, title,
+                site.pageUrl(title), revision, new ContentDigest("sha256",
                 sha256(safeText + "\nCategories:\n"
                         + String.join("\n", safeCategories) + linkEvidence)),
                 Instant.now().toString());
@@ -226,6 +270,10 @@ public final class WikipediaArticleClient {
             return new ParsedArticleText("", List.of(), List.of());
         }
         Element body = Jsoup.parseBodyFragment(extract, "https://en.wikipedia.org/").body();
+        // Wikisource marks its scan-page anchors "not for export"; each leaves a zero-width
+        // space in the text, which hid a chapter numeral that opened a new scan page.
+        // Wikipedia pages carry no such elements.
+        body.select(".ws-noexport").remove();
         WikipediaHtmlFragmentParser.Parsed fragment =
                 WikipediaHtmlFragmentParser.parseChildren(body);
         String normalized = fragment.value().text();
@@ -658,14 +706,14 @@ public final class WikipediaArticleClient {
                 + encode(title));
     }
 
-    private static URI parseApi(String title) {
-        return URI.create("https://en.wikipedia.org/w/api.php?action=parse"
+    private static URI parseApi(Site site, String title) {
+        return URI.create("https://" + site.host() + "/w/api.php?action=parse"
                 + "&prop=text%7Cwikitext%7Csections%7Ccategories%7Clinks%7Crevid&redirects=1"
                 + "&format=json&formatversion=2&page=" + encode(title));
     }
 
     public static String pageUrl(String title) {
-        return "https://en.wikipedia.org/wiki/" + encode(title.replace(' ', '_'));
+        return Site.WIKIPEDIA.pageUrl(title);
     }
 
     private static String sha256(String text) {

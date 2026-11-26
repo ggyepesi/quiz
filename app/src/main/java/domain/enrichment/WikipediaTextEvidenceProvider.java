@@ -33,14 +33,16 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
         INFOBOX_ROW_LINKS,
         ARTICLE_TABLE_ROW_INSTANCES,
         ARTICLE_PASSAGES,
-        ARTICLE_PASSAGE_INSTANCES
+        ARTICLE_PASSAGE_INSTANCES,
+        /** Authored pages divided into passages; run by TextPassageInstanceEvidenceProvider. */
+        TEXT_PASSAGE_INSTANCES
     }
 
     private final WikimediaEntityLookup lookup;
     private final wikipedia.WikipediaArticleClient articles;
     private final domain.config.WikipediaCategoryRule categoryRule;
     private final domain.config.EntityKindRule referentKind;
-    private final Map<String, List<MentionTerm>> mentionCandidates;
+    private final LoadedNameMatches mentionCandidates;
     private final WikipediaLinkedReferenceResolver linkedCandidates;
     private final CandidateEvidenceMode candidateEvidenceMode;
     private final domain.datasource.wikipedia.WikipediaDatasourceProvider
@@ -180,20 +182,10 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
                 unique.putIfAbsent(candidate.getIdentifier(), candidate);
             }
         }
-        java.util.LinkedHashMap<String, List<MentionTerm>> index = new java.util.LinkedHashMap<>();
-        for (Viewable candidate : unique.values()) {
-            String phrase = clean(candidate.getDisplayName());
-            String first = firstWord(phrase);
-            if (first.isBlank()) continue;
-            index.computeIfAbsent(first.toLowerCase(Locale.ROOT), ignored -> new ArrayList<>())
-                    .add(new MentionTerm(candidate, phrase,
-                            candidate instanceof domain.runtime.WikidataDynamicObject w
-                                    ? domain.provenance.WikipediaCorrespondence.title(w) : ""));
-        }
-        java.util.LinkedHashMap<String, List<MentionTerm>> immutable =
-                new java.util.LinkedHashMap<>();
-        index.forEach((key, value) -> immutable.put(key, List.copyOf(value)));
-        this.mentionCandidates = Map.copyOf(immutable);
+        // An introduction names a loaded instance by its label; the one matcher decides
+        // which names are unique among the loaded candidates.
+        this.mentionCandidates = LoadedNameMatches.of(unique.values(),
+                candidate -> List.of(clean(candidate.getDisplayName())));
         this.linkedCandidates = new WikipediaLinkedReferenceResolver(unique.values());
     }
 
@@ -335,7 +327,7 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
                     case LOADED_INTRODUCTION_MENTIONS ->
                             mentionedCandidates(article, context);
                     case NONE, INFOBOX_ROW_LINKS, ARTICLE_TABLE_ROW_INSTANCES, ARTICLE_PASSAGES,
-                            ARTICLE_PASSAGE_INSTANCES -> List.of();
+                            ARTICLE_PASSAGE_INSTANCES, TEXT_PASSAGE_INSTANCES -> List.of();
                 };
                 return proposal(request, article, categoryValues, categoryRule, candidates,
                         candidateEvidenceMode == CandidateEvidenceMode.ARTICLE_PASSAGES
@@ -569,50 +561,16 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
                 : context.isBlank() ? sentence : context + " — " + sentence;
     }
 
-    /**
-     * Exact matching indexed by the first word of each candidate label. A domain may
-     * hold thousands of target instances; scanning every label across every article
-     * would turn one explicit review action into subjects × candidates × article-length
-     * work. The index changes only lookup, never matching semantics.
-     */
-    private static List<MentionHit> mentionedCandidates(
-            String text, Map<String, List<MentionTerm>> candidates,
+    /** Unique loaded labels named in the text outside its links, through the shared
+     *  matcher; an ambiguous label nominates nothing. */
+    private static List<MentionHit> mentionedCandidates(String text, LoadedNameMatches candidates,
             List<domain.datasource.evidence.ArticleIntroduction.Link> links) {
-        if (text == null || text.isBlank() || candidates == null || candidates.isEmpty()) {
-            return List.of();
-        }
-        java.util.LinkedHashMap<String, MentionHit> hits = new java.util.LinkedHashMap<>();
-        for (int start = 0; start < text.length();) {
-            if (!Character.isLetterOrDigit(text.charAt(start))
-                    || start > 0 && Character.isLetterOrDigit(text.charAt(start - 1))) {
-                start++;
-                continue;
-            }
-            int end = start + 1;
-            while (end < text.length() && Character.isLetterOrDigit(text.charAt(end))) end++;
-            if (insideLink(start, links)) {
-                start = end;
-                continue;
-            }
-            String first = text.substring(start, end).toLowerCase(Locale.ROOT);
-            for (MentionTerm candidate : candidates.getOrDefault(first, List.of())) {
-                String phrase = candidate.phrase();
-                long identitiesWithLabel = candidates.getOrDefault(first, List.of()).stream()
-                        .filter(term -> term.phrase().equalsIgnoreCase(phrase))
-                        .map(term -> term.candidate().getIdentifier()).distinct().count();
-                if (identitiesWithLabel != 1) continue;
-                int phraseEnd = start + phrase.length();
-                if (phraseEnd > text.length()
-                        || !text.regionMatches(true, start, phrase, 0, phrase.length())) continue;
-                boolean right = phraseEnd == text.length()
-                        || !Character.isLetterOrDigit(text.charAt(phraseEnd));
-                if (right) hits.putIfAbsent(candidate.candidate().getIdentifier(),
-                        new MentionHit(candidate.candidate(), phrase, start, false,
-                                "Article introduction", "typed-introduction-mention-v2"));
-            }
-            start = end;
-        }
-        return List.copyOf(hits.values());
+        List<LoadedNameMatches.Skip> skipped = links == null ? List.of() : links.stream()
+                .map(link -> new LoadedNameMatches.Skip(link.start(), link.end())).toList();
+        return candidates.find(text, skipped).hits().stream()
+                .map(hit -> new MentionHit(hit.candidate(), hit.phrase(), hit.offset(), false,
+                        "Article introduction", "typed-introduction-mention-v2"))
+                .toList();
     }
 
     /**
@@ -650,9 +608,7 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
      * into candidates, and unrelated links never trigger title lookups. */
     private boolean hasCandidateLabel(WikipediaLinkedReferenceResolver.Link link) {
         String phrase = clean(link == null ? null : link.text());
-        String first = firstWord(phrase).toLowerCase(Locale.ROOT);
-        return mentionCandidates.getOrDefault(first, List.of()).stream()
-                .anyMatch(term -> term.phrase().equalsIgnoreCase(phrase));
+        return mentionCandidates.names(phrase);
     }
 
     /** Extract bounded content paragraphs while dropping Wikipedia's standard navigation
@@ -808,7 +764,6 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
         return phrase.substring(0, end);
     }
 
-    private record MentionTerm(Viewable candidate, String phrase, String articleTitle) { }
     private record MentionHit(Viewable candidate, String phrase, int offset, boolean linked,
                               String section, String recipe) { }
     private record StructuredPassage(String section, int start, String value) { }

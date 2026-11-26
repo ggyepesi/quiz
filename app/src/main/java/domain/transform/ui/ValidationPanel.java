@@ -1815,6 +1815,10 @@ public final class ValidationPanel extends JPanel {
      *  execution so the button cannot promise a mode the action then fails to run. */
     private WikipediaTextEvidenceProvider.CandidateEvidenceMode
             configuredCandidateEvidence(String ownerType, String field) {
+        if (configuredTextPassageInstances(ownerType, field).configured()) {
+            return WikipediaTextEvidenceProvider.CandidateEvidenceMode
+                    .TEXT_PASSAGE_INSTANCES;
+        }
         if (configuredArticleTableRowInstances(ownerType, field) != null) {
             return WikipediaTextEvidenceProvider.CandidateEvidenceMode
                     .ARTICLE_TABLE_ROW_INSTANCES;
@@ -1868,6 +1872,12 @@ public final class ValidationPanel extends JPanel {
                 .articlePassageInstances(binding);
     }
 
+    private WikipediaDatasourceProvider.TextPassageInstanceSpec
+            configuredTextPassageInstances(String ownerType, String field) {
+        return WikipediaDatasourceProvider.textPassageInstances(
+                candidateEvidenceBinding(ownerType, field));
+    }
+
     private WikipediaDatasourceProvider.ArticlePassageSpec
             configuredArticlePassageSpec(String ownerType, String field) {
         SourceBinding binding = candidateEvidenceBinding(ownerType, field);
@@ -1914,6 +1924,11 @@ public final class ValidationPanel extends JPanel {
         boolean articleTableRowInstances = candidateMode
                 == WikipediaTextEvidenceProvider.CandidateEvidenceMode
                         .ARTICLE_TABLE_ROW_INSTANCES;
+        boolean textPassageInstances = candidateMode
+                == WikipediaTextEvidenceProvider.CandidateEvidenceMode
+                        .TEXT_PASSAGE_INSTANCES;
+        WikipediaDatasourceProvider.TextPassageInstanceSpec textPassageSpec =
+                configuredTextPassageInstances(selectedFieldType, path);
         boolean infoboxRowLinks = candidateMode
                 == WikipediaTextEvidenceProvider.CandidateEvidenceMode
                         .INFOBOX_ROW_LINKS;
@@ -1943,6 +1958,15 @@ public final class ValidationPanel extends JPanel {
                 || fieldSchema.targetType().isBlank())) {
             JOptionPane.showMessageDialog(this,
                     "Article passage instances require a reference list with a declared "
+                            + "target class. " + selectedFieldType + "." + path
+                            + " does not have that field shape.");
+            return;
+        }
+        if (textPassageInstances && (fieldSchema == null
+                || !fieldSchema.reference() || !fieldSchema.collection()
+                || fieldSchema.targetType().isBlank())) {
+            JOptionPane.showMessageDialog(this,
+                    "Text passage instances require a reference list with a declared "
                             + "target class. " + selectedFieldType + "." + path
                             + " does not have that field shape.");
             return;
@@ -2003,7 +2027,18 @@ public final class ValidationPanel extends JPanel {
                 rowCandidates.add(candidate);
             }
         }
-        EnrichmentProvider provider = articleTableRowInstances
+        // Names in a passage propose loaded instances of the named-instances field's own
+        // target class, read from the proposed story class's declared field.
+        objectview.field.FieldRef namedSchema = !textPassageInstances
+                || textPassageSpec.referencesField().isBlank() ? null
+                : DomainSchemas.resolve(domain, fieldSchema.targetType(),
+                        textPassageSpec.referencesField());
+        EnrichmentProvider provider = textPassageInstances
+                ? new domain.enrichment.TextPassageInstanceEvidenceProvider(textPassageSpec,
+                        namedSchema == null || namedSchema.targetType().isBlank() ? List.of()
+                                : domain.instancesOf(namedSchema.targetType()),
+                        namedSchema == null ? "" : namedSchema.targetType(), domain)
+                : articleTableRowInstances
                 ? new WikipediaTableRowInstanceEvidenceProvider(
                         tableRowSpec, rowCandidates,
                         rowReferencesSchema == null ? "" : rowReferencesSchema.targetType(),
@@ -2044,7 +2079,7 @@ public final class ValidationPanel extends JPanel {
                                     && !entry.getValue().links().isEmpty());
             boolean hasCurrentValue = current != null
                     && (!(current instanceof Collection<?> values) || !values.isEmpty());
-            boolean usableEvidence = articleTableRowInstances
+            boolean usableEvidence = articleTableRowInstances || textPassageInstances
                     ? true
                     : tableColumnLinks
                     ? !mentionCandidates.isEmpty()
