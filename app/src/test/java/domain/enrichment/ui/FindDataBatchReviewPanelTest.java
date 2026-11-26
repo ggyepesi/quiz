@@ -137,6 +137,57 @@ class FindDataBatchReviewPanelTest {
         assertTrue(!all.isEnabled());
     }
 
+    @Test void theReviewFitsEvenWhenTheUsableAreaIsSmallerThanItsPreferredMinimum() {
+        var usable = new java.awt.Dimension(850, 650);
+        assertEquals(usable, FindDataBatchReviewPanel.reviewSize(usable));
+        assertEquals(new java.awt.Dimension(1728, 900),
+                FindDataBatchReviewPanel.reviewSize(new java.awt.Dimension(1920, 1000)));
+    }
+
+    @Test void selectAllStagesEveryProposedInstanceTogetherInOneAction() {
+        SourceRef source = new SourceRef(
+                "Wikipedia (English)", "Achilles", "https://example.test/Achilles");
+        var first = instance("episode-1", "Achilles — Introduction", source);
+        var second = instance("episode-2", "Achilles — Myths", source);
+        EnrichmentProposal proposal = new EnrichmentProposal(
+                new EnrichmentProposal.Subject(
+                        "Character", "Q41746", "Q41746", "Achilles"),
+                List.of(), List.of(reference(first, source), reference(second, source)),
+                List.of(), List.of(first, second));
+        var staged = new java.util.ArrayList<java.util.List<String>>();
+        var closed = new java.util.concurrent.atomic.AtomicBoolean();
+
+        javax.swing.JPanel review = FindDataBatchReviewPanel.reviewPanel("Review",
+                List.of(proposal), List.of(), batch -> {
+                    staged.add(batch.accepted().stream()
+                            .map(decision -> decision.instances().getFirst().id()).toList());
+                    return true;
+                }, () -> closed.set(true));
+        javax.swing.JButton stage = button(review, "review.stageSelected");
+        assertEquals("Stage selected (1)", stage.getText(),
+                "the first proposal starts selected so a one-result review acts at once");
+
+        button(review, "review.selectAll").doClick();
+        assertEquals("Stage selected (2)", stage.getText());
+        stage.doClick();
+
+        assertEquals(List.of(List.of("episode-1", "episode-2")), staged,
+                "passage instances are never staged by default, but an explicit "
+                        + "selection of all of them is one decision");
+        assertTrue(closed.get());
+    }
+
+    private static javax.swing.JButton button(java.awt.Container root, String name) {
+        for (java.awt.Component child : root.getComponents()) {
+            if (child instanceof javax.swing.JButton b && name.equals(b.getName())) return b;
+            if (child instanceof java.awt.Container c) {
+                javax.swing.JButton found = button(c, name);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
     @Test void eachProposedInstanceIsOneIndependentReviewDecision() {
         SourceRef source = new SourceRef(
                 "Wikipedia (English)", "Achilles", "https://example.test/Achilles");

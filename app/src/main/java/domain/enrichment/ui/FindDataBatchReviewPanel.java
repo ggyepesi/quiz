@@ -61,6 +61,48 @@ public final class FindDataBatchReviewPanel {
             Component owner, String title, String prompt,
             List<EnrichmentProposal> proposals, List<Viewable> sourceReport,
             Predicate<BatchReviewDecision> onDone) {
+        JDialog dialog = Dialogs.reviewDialog(owner, title);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.setContentPane(reviewPanel(prompt, proposals, sourceReport, onDone,
+                dialog::dispose));
+        dialog.setSize(reviewSize(owner));
+        dialog.setLocationRelativeTo(owner);
+        dialog.setVisible(true);
+        return dialog;
+    }
+
+    /** Proposal cards carry whole passages, so the review takes most of the usable area
+     * of the screen it opens on rather than a fixed size that shows two rows. */
+    static Dimension reviewSize(Component owner) {
+        java.awt.GraphicsConfiguration screen = owner == null ? null
+                : owner.getGraphicsConfiguration();
+        java.awt.Rectangle usable;
+        if (screen != null) {
+            usable = screen.getBounds();
+            java.awt.Insets insets = java.awt.Toolkit.getDefaultToolkit()
+                    .getScreenInsets(screen);
+            usable = new java.awt.Rectangle(usable.x + insets.left, usable.y + insets.top,
+                    usable.width - insets.left - insets.right,
+                    usable.height - insets.top - insets.bottom);
+        } else if (!java.awt.GraphicsEnvironment.isHeadless()) {
+            usable = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment()
+                    .getMaximumWindowBounds();
+        } else {
+            return new Dimension(900, 680);
+        }
+        return reviewSize(usable.getSize());
+    }
+
+    static Dimension reviewSize(Dimension usable) {
+        return new Dimension(Math.min(usable.width, Math.max(900, usable.width * 9 / 10)),
+                Math.min(usable.height, Math.max(680, usable.height * 9 / 10)));
+    }
+
+    /** The review content without its dialog, so the staging controls can be exercised
+     * headlessly. {@code close} runs after a successful stage and on Close. */
+    static JPanel reviewPanel(
+            String prompt, List<EnrichmentProposal> proposals, List<Viewable> sourceReport,
+            Predicate<BatchReviewDecision> onDone, Runnable close) {
         Map<String, EnrichmentDecision> applicable = new LinkedHashMap<>();
         List<EnrichmentDecision> safeDefaults = new ArrayList<>();
         List<Viewable> cards = new ArrayList<>();
@@ -87,10 +129,9 @@ public final class FindDataBatchReviewPanel {
             cards.add(card);
             if (decision != null) {
                 applicable.put(id, decision);
-                // Creating a new instance is a semantic admission decision and is not a
-                // bulk-safe fill, except where its provider marks the candidate bulk-safe
-                // (a configured structural table row). Others remain available through
-                // Stage selected card.
+                // A new instance is never accepted by DEFAULT unless its provider marks the
+                // candidate bulk-safe (a configured structural table row). The reader may
+                // still stage any explicit selection of cards, including all of them.
                 if (bulkSafeDefault(decision, overwrite)) {
                     safeDefaults.add(decision);
                 }
@@ -103,30 +144,57 @@ public final class FindDataBatchReviewPanel {
 
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBorder(javax.swing.BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        panel.add(new JLabel("<html>" + CategorizedReviewPanel.html(prompt)
-                + "<br><br>Stage applies and saves the selected result, then refreshes the "
-                + "existing instances/group view. Overwrites and "
-                + "new instances marked for individual review are excluded from Stage all "
-                + "safe. Instances produced by an exact configured structure, such as "
-                + "table rows, are included when the provider marks them safe.</html>"),
-                BorderLayout.NORTH);
-        JButton close = new JButton("Close without staging");
-        JButton selected = new JButton("Stage selected card");
+        // The explanation is read once; the cards are what the reader works through, so
+        // it is a short scrollable strip rather than a block that pushes them down.
+        javax.swing.JEditorPane explanation = new javax.swing.JEditorPane("text/html",
+                "<html>" + CategorizedReviewPanel.html(prompt)
+                + "<br><br>Select cards (Cmd/Ctrl-click, Shift-click or Select all) and "
+                + "Stage selected applies and saves them, then refreshes the existing "
+                + "instances/group view. Stage all safe results takes only fills and "
+                + "instances produced by an exact configured structure, such as table "
+                + "rows; overwrites and other new instances are staged only when you "
+                + "select them.</html>");
+        explanation.setEditable(false);
+        explanation.setOpaque(false);
+        explanation.putClientProperty(javax.swing.JEditorPane.HONOR_DISPLAY_PROPERTIES, true);
+        explanation.setFont(new JLabel().getFont());
+        javax.swing.JScrollPane explanationScroll = new javax.swing.JScrollPane(explanation,
+                javax.swing.JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        explanationScroll.setBorder(javax.swing.BorderFactory.createEmptyBorder());
+        int lines = explanation.getFontMetrics(explanation.getFont()).getHeight();
+        explanationScroll.setPreferredSize(new Dimension(0, 5 * lines));
+        panel.add(explanationScroll, BorderLayout.NORTH);
+        JButton closeButton = new JButton("Close without staging");
+        JButton selectAll = new JButton("Select all");
+        JButton selectNone = new JButton("Select none");
+        JButton selected = new JButton(stageSelectedLabel(0));
+        selected.setName("review.stageSelected");
+        selectAll.setName("review.selectAll");
         selected.setEnabled(false);
         JButton all = new JButton("Stage all safe results (" + safeDefaults.size() + ")");
         all.setEnabled(!safeDefaults.isEmpty());
-        AtomicReference<EnrichmentDecision> selectedDecision = new AtomicReference<>();
+        AtomicReference<List<EnrichmentDecision>> selectedDecisions =
+                new AtomicReference<>(List.of());
+        JPanel footer = new JPanel(new objectview.utils.swing.WrapLayout(
+                FlowLayout.RIGHT, 8, 4));
+        JLabel outcome = new JLabel(" ");
         if (!cards.isEmpty()) {
             SearchableView review = SearchableView.builder(cards)
                     .sample(cards.get(0)).mode(RenderingMode.CARD)
                     .collapsible(false).columns(2)
-                    .selectionListener(value -> {
-                        EnrichmentDecision decision = value instanceof Viewable card
-                                ? applicable.get(card.getIdentifier()) : null;
-                        selectedDecision.set(decision);
-                        selected.setEnabled(decision != null);
+                    .valueLinker(wikidata.ui.WikidataLinks.valueLinker())
+                    .selectionSetListener(selection -> {
+                        List<EnrichmentDecision> decisions = stageable(selection, applicable);
+                        selectedDecisions.set(decisions);
+                        selected.setText(stageSelectedLabel(decisions.size()));
+                        selected.setEnabled(!decisions.isEmpty());
                     }).build();
             panel.add(review, BorderLayout.CENTER);
+            selectAll.addActionListener(e -> review.renderContext().selectAll());
+            selectNone.addActionListener(e -> review.renderContext().clearSelection());
+            footer.add(selectAll);
+            footer.add(selectNone);
             // A one-result review should be actionable immediately. More generally,
             // the first proposal is what the reader is initially looking at; source
             // report cards follow it and are never staged.
@@ -134,26 +202,35 @@ public final class FindDataBatchReviewPanel {
                     .filter(card -> applicable.containsKey(card.getIdentifier()))
                     .findFirst().ifPresent(review.renderContext()::select);
         }
-        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 4));
-        JLabel outcome = new JLabel(" ");
         footer.add(outcome);
-        footer.add(close); footer.add(selected); footer.add(all);
+        footer.add(closeButton); footer.add(selected); footer.add(all);
         panel.add(footer, BorderLayout.SOUTH);
-        JDialog dialog = Dialogs.reviewDialog(owner, title);
-        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-        dialog.setContentPane(panel); dialog.setSize(new Dimension(900, 680));
-        dialog.setLocationRelativeTo(owner);
-        close.addActionListener(e -> dialog.dispose());
+        closeButton.addActionListener(e -> close.run());
         selected.addActionListener(e -> {
-            EnrichmentDecision decision = selectedDecision.get();
-            if (accept(onDone, decision == null ? List.of() : List.of(decision), outcome,
-                    selected, all)) dialog.dispose();
+            if (accept(onDone, selectedDecisions.get(), outcome, selected, all)) close.run();
         });
         all.addActionListener(e -> {
-            if (accept(onDone, safeDefaults, outcome, selected, all)) dialog.dispose();
+            if (accept(onDone, safeDefaults, outcome, selected, all)) close.run();
         });
-        dialog.setVisible(true);
-        return dialog;
+        return panel;
+    }
+
+    static String stageSelectedLabel(int count) {
+        return count == 0 ? "Stage selected" : "Stage selected (" + count + ")";
+    }
+
+    /** The decisions behind the selected cards, in the order the reader selected them.
+     * Source-report cards and cards with nothing to stage are skipped. */
+    static List<EnrichmentDecision> stageable(
+            List<Object> selection, Map<String, EnrichmentDecision> applicable) {
+        List<EnrichmentDecision> result = new ArrayList<>();
+        for (Object value : selection == null ? List.<Object>of() : selection) {
+            if (value instanceof Viewable card) {
+                EnrichmentDecision decision = applicable.get(card.getIdentifier());
+                if (decision != null) result.add(decision);
+            }
+        }
+        return List.copyOf(result);
     }
 
     static boolean bulkSafeDefault(EnrichmentDecision decision, boolean overwrite) {

@@ -192,8 +192,10 @@ construct per thing produced:
    events, class membership or field relations. A separate configured passage-instance
    operation may propose one instance of a field's declared target class per bounded passage
    only when the model explicitly maps the passage text and source instance into fields of
-   that target class. Each proposed instance is an independent review decision, is never in
-   bulk-safe acceptance, and enters the ordinary typed object graph only after acceptance.
+   that target class. Each proposed instance is its own review card and is never accepted by
+   default (it is not in Stage all safe results); the reader may stage any explicit selection
+   of cards together, including all of them, and an instance enters the ordinary typed object
+   graph only after acceptance.
    A configured table-row instance operation is the corresponding structural recipe: it
    names the exact retained section, table and display column, a concrete target class, the
    target fields for the row cells and source instance, and an optional field for resolved
