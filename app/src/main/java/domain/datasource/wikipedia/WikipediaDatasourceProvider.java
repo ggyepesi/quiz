@@ -698,6 +698,13 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         }
     }
 
+    /** Whether the binding is this provider's text-passage-instances recipe. */
+    public static boolean textPassageInstanceOperation(SourceBinding binding) {
+        return binding != null && binding.recipe() != null
+                && ID.equals(binding.recipe().providerId())
+                && TEXT_PASSAGE_INSTANCES.equals(binding.recipe().operationId());
+    }
+
     public static TextPassageInstanceSpec textPassageInstances(SourceBinding binding) {
         if (binding == null || binding.recipe() == null
                 || !ID.equals(binding.recipe().providerId())

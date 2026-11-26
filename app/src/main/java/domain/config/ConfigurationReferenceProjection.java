@@ -6,10 +6,24 @@ import java.util.List;
 import java.util.Optional;
 
 /** Projects the reference inventory into the same Uses and Used by branches for each editor. */
-final class ConfigurationReferenceProjection {
+public final class ConfigurationReferenceProjection {
     static final String DETAIL = "reference";
 
     private ConfigurationReferenceProjection() { }
+
+    public static ConfigurationNode forTextSource(
+            GeneratedProjectModel project, TextSource text) {
+        var site = ConfigurationReferenceInventory.textSourceSite(text);
+        List<ConfigurationNode> children = new ArrayList<>();
+        children.add(new ConfigurationNode(id(site, "definition"),
+                ConfigurationNode.Kind.STORED_CONFIGURATION, "Definition", "definition", List.of()));
+        if (project != null) {
+            var inventory = ConfigurationReferenceInventory.of(project);
+            usedBy(site, inventory.referencesToTextSource(text)).ifPresent(children::add);
+        }
+        return new ConfigurationNode(id(site, "text-source"),
+                ConfigurationNode.Kind.STORED_CONFIGURATION, "Text source", "definition", children);
+    }
 
     static Optional<ConfigurationNode> uses(ConfigurationReferenceInventory.Site owner,
             List<ConfigurationReferenceInventory.Reference> references) {

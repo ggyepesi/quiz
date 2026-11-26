@@ -56,6 +56,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     private final AggregateClassPanel aggregateClassPanel;
     private final EffectiveClassPanel effectiveClassPanel = new EffectiveClassPanel();
     private final GraphConstraintsPanel graphConstraintsPanel;
+    private final TextSourceEditorPanel textSourceEditor = new TextSourceEditorPanel();
     private final JTabbedPane editorTabs = new JTabbedPane();
 
     /**
@@ -271,6 +272,8 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             case GeneratedClassModel clazz -> configurationAccess == ConfigurationAccess.UNIFIED_WORKBENCH
                     && clazz.materializedByTransformation()
                     && classSourcePanel.hasCurrentTransformationDraft();
+            case domain.config.TextSource text -> canEditSelectedConstruct()
+                    && textSourceEditor.differs();
             case null, default -> false;
         };
     }
@@ -278,6 +281,10 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     /** Applies them as the editor's Apply does; false when Apply refused. */
     public boolean applyUnappliedEdits() {
         if (!hasUnappliedEdits()) return true;
+        if (selected instanceof domain.config.TextSource) {
+            applyTextSourceEdits();
+            return true;
+        }
         return selected instanceof GeneratedClassModel ? classSourcePanel.applyTransformationDraft()
                 : fieldSourcePanel.applyUnappliedEdits();
     }
@@ -291,6 +298,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     }
 
     public String editedConstructName() {
+        if (selected instanceof domain.config.TextSource text) return "Text source " + text.name();
         return selected instanceof GeneratedClassModel clazz ? "Transformation for " + clazz.className()
                 : fieldSourcePanel.editedConstructName();
     }
@@ -362,6 +370,16 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         Consumer<Object> destination = consumer == null ? ignored -> { } : consumer;
         Consumer<ConfigurationReferenceInventory.Site> navigate = site -> {
             Object resolved = ConfigurationReferenceInventory.resolve(projectModel, site);
+            if (resolved instanceof ConfigurationReferenceInventory.BindingSite binding) {
+                Object owner = ConfigurationReferenceInventory.resolve(projectModel, binding.storageSite());
+                if (owner != null) {
+                    destination.accept(owner);
+                    if (owner == selected && owner instanceof GeneratedFieldModel) {
+                        fieldSourcePanel.selectBinding(binding.bindingSite());
+                    }
+                }
+                return;
+            }
             if (resolved != null) {
                 destination.accept(resolved);
                 if (resolved == selected && site.kind()
@@ -382,7 +400,8 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 statementSourcePanel.configurationEditor().tree(),
                 ownedClassPanel.configurationEditor().tree(),
                 aggregateClassPanel.configurationEditor().tree(),
-                fieldSourcePanel.configurationTree(), graphConstraintsPanel.configurationTree());
+                fieldSourcePanel.configurationTree(), graphConstraintsPanel.configurationTree(),
+                textSourceEditor.configurationTree());
     }
 
     /** Shows the same editors without ModelBuilder's source-authoring or execution actions. */
@@ -529,6 +548,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                         && !domain.config.OwnedClassSemantics.isOwnerReferenceField(owner, field);
             }
             case domain.config.Selection selection -> !selection.isImported();
+            case domain.config.TextSource text -> !text.isImported();
             default -> true;
         };
         return editingEnabled && declarationOwnedHere && switch (configurationAccess) {
@@ -628,6 +648,19 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
             showImportedNotice(null);
             selectionEditor.edit(null);
             layout.show(cardPanel, "selection");
+        } else if (selected instanceof domain.config.TextSource
+                || selected == SingleRootClassModelPanel.ConfigurationSection.TEXT_SOURCES) {
+            domain.config.TextSource text = selected instanceof domain.config.TextSource source
+                    ? source : null;
+            effectiveClassPanel.clear();
+            kindBox.setEnabled(editingEnabled);
+            kindHeader.setVisible(false);
+            showImportedNotice(null);
+            importedNotice.setVisible(text != null && text.isImported());
+            if (text != null && text.isImported()) importedNotice.setText("Imported from "
+                    + text.importedFrom() + " — owned and edited there.");
+            textSourceEditor.edit(projectModel, text);
+            layout.show(cardPanel, "text-source");
         } else if (selected instanceof GeneratedProjectModel) {
             effectiveClassPanel.clear();
             kindBox.setEnabled(editingEnabled);
@@ -674,6 +707,11 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         }
         changingSelection = true;
         try {
+            if (next == selected && next instanceof domain.config.TextSource) {
+                textSourceEditor.refreshDeclaration(projectModel);
+                applySelectionEditability();
+                return;
+            }
             if (selected != null && selected != next
                     && isLiveSelection(selected)) {
                 applyEdits();
@@ -694,6 +732,9 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         }
         if (value instanceof domain.config.Selection selection) {
             return projectModel.selections().contains(selection);
+        }
+        if (value instanceof domain.config.TextSource text) {
+            return projectModel.textSources().contains(text);
         }
         return value == projectModel
                 || value instanceof SingleRootClassModelPanel.ConfigurationSection;
@@ -877,6 +918,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
     public void applyEdits() {
         if (localConfiguration()) return;
         if (selected instanceof GeneratedClassModel clazz) flushEditor(clazz);
+        if (selected instanceof domain.config.TextSource) applyTextSourceEdits();
 
         // A field editor keeps pending Swing values even after another tree node
         // is selected. Always flush it before save, generation or preview.
@@ -886,6 +928,11 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
         // any other node never reached model.json. It decides for itself whether it is
         // holding anything, which is what lets this be unconditional like the field one.
         graphConstraintsPanel.applyPendingEdits();
+    }
+
+    /** Writes the text-source draft and lets the tree relabel what changed. */
+    private void applyTextSourceEdits() {
+        if (textSourceEditor.applyEdits()) afterChange.accept(null);
     }
 
     public RuleNode temporaryRuleNodeForSelected() {
@@ -1176,6 +1223,7 @@ public class ModelSourceWorkbenchPanel extends JPanel implements AutoCloseable {
                 fieldSourcePanel,
                 "field");
         cardPanel.add(graphConstraintsPanel, "graph-constraints");
+        cardPanel.add(textSourceEditor, "text-source");
         cardPanel.add(
                 new JLabel(
                         "Select the class or a field."),

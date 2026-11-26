@@ -17,6 +17,7 @@ import domain.workbench.execution.ui.SwingQueryRunner;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -59,7 +60,9 @@ public class FieldSourcePanel extends JPanel {
         TABLE_ROW_INSTANCES("One target instance per configured article table row"),
         ARTICLE_PASSAGES("Bounded passages from the full article"),
         ARTICLE_PASSAGE_INSTANCES(
-                "One target instance per bounded article passage");
+                "One target instance per bounded article passage"),
+        TEXT_PASSAGE_INSTANCES(
+                "One target instance per passage of the work's text sources");
 
         private final String label;
         CandidateEvidenceChoice(String label) { this.label = label; }
@@ -79,6 +82,12 @@ public class FieldSourcePanel extends JPanel {
     private final JComboBox<String> tableRowDetailsFieldBox = new JComboBox<>();
     private final JComboBox<String> tableRowSourceFieldBox = new JComboBox<>();
     private final JComboBox<String> tableRowReferencesFieldBox = new JComboBox<>();
+    // Text sources are project declarations named by id; the list shows their names.
+    private final OrderedChoiceList<String> textPassageSources = new OrderedChoiceList<>(true);
+    private final JComboBox<String> textPassageTextFieldBox = new JComboBox<>();
+    private final JComboBox<String> textPassageSourceFieldBox = new JComboBox<>();
+    private final JComboBox<String> textPassageTitleFieldBox = new JComboBox<>();
+    private final JComboBox<String> textPassageNamedFieldBox = new JComboBox<>();
     private final JButton examplesButton = new JButton("Examples…");
     private final JLabel applyStatusLabel = new JLabel(" ");
 
@@ -104,6 +113,11 @@ public class FieldSourcePanel extends JPanel {
     private FormRow sourceContextRow;
     private FormRow qualifierConditionRow;
     private FormRow passageTextFieldRow;
+    private FormRow textPassageSourcesRow;
+    private FormRow textPassageTextFieldRow;
+    private FormRow textPassageSourceFieldRow;
+    private FormRow textPassageTitleFieldRow;
+    private FormRow textPassageNamedFieldRow;
     private FormRow passageSourceFieldRow;
     private FormRow passageBlockKindRow;
     private FormRow infoboxEvidenceKeyRow;
@@ -358,6 +372,19 @@ public class FieldSourcePanel extends JPanel {
                 ignored -> captureSelectedCandidateEvidence());
         candidateEvidenceRecipes.selectionChanged(this::showCandidateEvidenceBinding);
         candidateEvidenceRecipes.describe(this::candidateEvidenceDescription);
+        textPassageSources.describe(this::textSourceName);
+        for (JComboBox<String> box : textPassageFieldBoxes()) {
+            box.setRenderer(new DefaultListCellRenderer() {
+                @Override public Component getListCellRendererComponent(JList<?> list,
+                        Object value, int index, boolean selected, boolean focus) {
+                    super.getListCellRendererComponent(list, value, index, selected, focus);
+                    if (value != null && value.equals(box.getClientProperty("unavailableField"))) {
+                        setText(value + " (unavailable for this target)");
+                    }
+                    return this;
+                }
+            });
+        }
         passageBlockKindBox.addItem("ALL");
         java.util.Arrays.stream(
                         domain.datasource.evidence.WikipediaArticle.Block.Kind.values())
@@ -772,6 +799,13 @@ public class FieldSourcePanel extends JPanel {
         return tableEvidenceSectionField;
     }
 
+    OrderedChoiceList<String> textPassageSources() { return textPassageSources; }
+
+    java.util.List<JComboBox<String>> textPassageFieldBoxes() {
+        return java.util.List.of(textPassageTextFieldBox, textPassageSourceFieldBox,
+                textPassageTitleFieldBox, textPassageNamedFieldBox);
+    }
+
     void addCandidateEvidenceRecipe(String label) {
         selectConfigurationDetail(FieldConfigurationProjection.EVIDENCE);
         java.util.Arrays.stream(CandidateEvidenceChoice.values())
@@ -787,6 +821,12 @@ public class FieldSourcePanel extends JPanel {
     /** Selects the first node whose detail is that section; false when none offers it. */
     boolean selectConfigurationDetail(String detailKey) {
         return configuration.selectDetail(detailKey);
+    }
+
+    void selectBinding(ConfigurationReferenceInventory.Site site) {
+        configuration.nodes().stream()
+                .filter(node -> node.bindingSite() != null && node.bindingSite().bindingSite().equals(site))
+                .findFirst().ifPresent(node -> configuration.select(node.id()));
     }
 
     javax.swing.JTextField tableEvidenceNameField() {
@@ -1182,6 +1222,9 @@ public class FieldSourcePanel extends JPanel {
                 : domain.datasource.wikipedia.WikipediaDatasourceProvider
                         .articlePassages(binding)
                 ? CandidateEvidenceChoice.ARTICLE_PASSAGES
+                : domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .textPassageInstanceOperation(binding)
+                ? CandidateEvidenceChoice.TEXT_PASSAGE_INSTANCES
                 : CandidateEvidenceChoice.NONE;
         infoboxEvidenceKeyField.setText(choice == CandidateEvidenceChoice.INFOBOX_ROW_LINKS
                 && binding != null ? binding.recipe().parameter("property") : "");
@@ -1195,7 +1238,84 @@ public class FieldSourcePanel extends JPanel {
         passageBlockKindBox.setSelectedItem(articlePassageSpec.filtered()
                 ? articlePassageSpec.blockKind().name() : "ALL");
         refreshTableRowInstanceFields(tableRowSpec);
+        refreshTextPassageFields(choice == CandidateEvidenceChoice.TEXT_PASSAGE_INSTANCES
+                ? domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .textPassageInstances(binding) : null);
         refreshCandidateEvidenceApplicability();
+    }
+
+    private void refreshTextPassageFields(
+            domain.datasource.wikipedia.WikipediaDatasourceProvider.TextPassageInstanceSpec
+                    selected) {
+        java.util.List<String> available = projectModel == null ? java.util.List.of()
+                : projectModel.textSources().stream().filter(java.util.Objects::nonNull)
+                        .map(domain.config.TextSource::declarationId).toList();
+        textPassageSources.show(selected == null ? java.util.List.of() : selected.textSources(),
+                available);
+        refreshTextPassageDestinations(selected == null ? "" : selected.textField(),
+                selected == null ? "" : selected.sourceField(),
+                selected == null ? "" : selected.titleField(),
+                selected == null ? "" : selected.referencesField());
+    }
+
+    private void refreshTextPassageDestinations() {
+        if (candidateEvidenceChoice(candidateEvidenceRecipes.selected())
+                != CandidateEvidenceChoice.TEXT_PASSAGE_INSTANCES) return;
+        refreshTextPassageDestinations(selectedText(textPassageTextFieldBox),
+                selectedText(textPassageSourceFieldBox), selectedText(textPassageTitleFieldBox),
+                selectedText(textPassageNamedFieldBox));
+    }
+
+    private void refreshTextPassageDestinations(
+            String textField, String sourceField, String titleField, String namedField) {
+        FieldDefinition definition = fieldDefinitionPanel.definition();
+        GeneratedClassModel target = definition == null || projectModel == null
+                ? null : projectModel.findClass(definition.entityClassName());
+        GeneratedClassModel owner = ownerClass();
+        List<String> textFields = new ArrayList<>();
+        List<String> sourceFields = new ArrayList<>();
+        List<String> namedFields = new ArrayList<>();
+        if (target != null) {
+            for (GeneratedFieldModel candidate : target.effectiveFields(projectModel)) {
+                boolean oneText = candidate.type() == FieldType.TEXT
+                        && candidate.cardinality() == FieldCardinality.SINGLE;
+                if (oneText) {
+                    textFields.add(candidate.name());
+                }
+                if (candidate.type() == FieldType.ENTITY && owner != null
+                        && projectModel.isSameOrSubclass(
+                                owner.className(), candidate.entityClassName())) {
+                    sourceFields.add(candidate.name());
+                }
+                if (candidate.type() == FieldType.ENTITY
+                        && candidate.cardinality() == FieldCardinality.COLLECTION
+                        && !candidate.entityClassName().isBlank()) {
+                    namedFields.add(candidate.name());
+                }
+            }
+        }
+        showDestinationChoices(textPassageTextFieldBox, textFields, textField);
+        showDestinationChoices(textPassageSourceFieldBox, sourceFields, sourceField);
+        showDestinationChoices(textPassageTitleFieldBox, textFields, titleField);
+        showDestinationChoices(textPassageNamedFieldBox, namedFields, namedField);
+    }
+
+    private static void showDestinationChoices(JComboBox<String> box, List<String> fields, String selected) {
+        boolean unavailable = !selected.isBlank() && !fields.contains(selected);
+        box.putClientProperty("unavailableField", unavailable ? selected : null);
+        box.removeAllItems();
+        box.addItem("");
+        fields.forEach(box::addItem);
+        if (unavailable) box.addItem(selected);
+        box.setSelectedItem(selected);
+    }
+
+    /** A text source by name; an id the project does not have says so rather than vanishing. */
+    private String textSourceName(String id) {
+        domain.config.TextSource text = projectModel == null ? null
+                : projectModel.findTextSourceById(id);
+        return text == null ? id + " (not declared or imported here)"
+                : text.name() + (text.isImported() ? " — from " + text.importedFrom() : "");
     }
 
     private CandidateEvidenceChoice candidateEvidenceChoice(
@@ -1218,6 +1338,9 @@ public class FieldSourcePanel extends JPanel {
                 : domain.datasource.wikipedia.WikipediaDatasourceProvider
                         .articlePassages(binding)
                 ? CandidateEvidenceChoice.ARTICLE_PASSAGES
+                : domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .textPassageInstanceOperation(binding)
+                ? CandidateEvidenceChoice.TEXT_PASSAGE_INSTANCES
                 : CandidateEvidenceChoice.NONE;
     }
 
@@ -1355,6 +1478,13 @@ public class FieldSourcePanel extends JPanel {
         applicable(passageTextFieldRow, passageInstances);
         applicable(passageSourceFieldRow, passageInstances);
         applicable(passageBlockKindRow, articlePassages);
+        boolean textPassages = selected == CandidateEvidenceChoice.TEXT_PASSAGE_INSTANCES;
+        applicable(textPassageSourcesRow, textPassages);
+        applicable(textPassageTextFieldRow, textPassages);
+        applicable(textPassageSourceFieldRow, textPassages);
+        applicable(textPassageTitleFieldRow, textPassages);
+        applicable(textPassageNamedFieldRow, textPassages);
+        textPassageSources.setEditingEnabled(referenceCollection);
         passageTextFieldBox.setEnabled(referenceCollection);
         passageSourceFieldBox.setEnabled(referenceCollection);
     }
@@ -1408,6 +1538,19 @@ public class FieldSourcePanel extends JPanel {
                         domain.datasource.wikipedia.WikipediaDatasourceProvider
                                 .PASSAGE_SOURCE_FIELD,
                         selectedText(passageSourceFieldBox))
+                : selected == CandidateEvidenceChoice.TEXT_PASSAGE_INSTANCES
+                ? java.util.Map.of(
+                        domain.datasource.wikipedia.WikipediaDatasourceProvider.TEXT_SOURCES,
+                        String.join(" | ", textPassageSources.chosen()),
+                        domain.datasource.wikipedia.WikipediaDatasourceProvider.PASSAGE_TEXT_FIELD,
+                        selectedText(textPassageTextFieldBox),
+                        domain.datasource.wikipedia.WikipediaDatasourceProvider.PASSAGE_SOURCE_FIELD,
+                        selectedText(textPassageSourceFieldBox),
+                        domain.datasource.wikipedia.WikipediaDatasourceProvider.PASSAGE_TITLE_FIELD,
+                        selectedText(textPassageTitleFieldBox),
+                        domain.datasource.wikipedia.WikipediaDatasourceProvider
+                                .PASSAGE_REFERENCES_FIELD,
+                        selectedText(textPassageNamedFieldBox))
                 : selected == CandidateEvidenceChoice.ARTICLE_PASSAGES
                 ? "ALL".equals(selectedText(passageBlockKindBox))
                         ? java.util.Map.of()
@@ -1470,6 +1613,9 @@ public class FieldSourcePanel extends JPanel {
             case ARTICLE_PASSAGE_INSTANCES ->
                     domain.datasource.wikipedia.WikipediaDatasourceProvider
                             .ARTICLE_PASSAGE_INSTANCES;
+            case TEXT_PASSAGE_INSTANCES ->
+                    domain.datasource.wikipedia.WikipediaDatasourceProvider
+                            .TEXT_PASSAGE_INSTANCES;
         };
     }
 
@@ -1778,6 +1924,18 @@ public class FieldSourcePanel extends JPanel {
                 "Source instance goes into:", passageSourceFieldBox);
         passageBlockKindRow = FormRow.add(form, c, y++,
                 "Article block kind:", passageBlockKindBox);
+        textPassageSources.setToolTipText("The project's text sources this recipe reads; "
+                + "each work reads those that name it. Text sources are declared under "
+                + "Text sources in the project tree.");
+        textPassageSourcesRow = FormRow.add(form, c, y++, "Text sources:", textPassageSources);
+        textPassageTextFieldRow = FormRow.add(form, c, y++,
+                "Passage goes into:", textPassageTextFieldBox);
+        textPassageSourceFieldRow = FormRow.add(form, c, y++,
+                "Source work goes into:", textPassageSourceFieldBox);
+        textPassageTitleFieldRow = FormRow.add(form, c, y++,
+                "Title goes into:", textPassageTitleFieldBox);
+        textPassageNamedFieldRow = FormRow.add(form, c, y++,
+                "Named instances go into:", textPassageNamedFieldBox);
         assignRows(detailForRow, evidenceStart, y, FieldConfigurationProjection.EVIDENCE);
         int primaryContinuation = y;
         qualifierDateModeBox.setToolTipText("YEAR keeps the legacy year-only "
@@ -1945,6 +2103,21 @@ public class FieldSourcePanel extends JPanel {
             refreshPassageInstanceFields(null);
             refreshCandidateEvidenceApplicability();
         });
+        if (objectTypeBox.getEditor().getEditorComponent() instanceof JTextField targetDraft) {
+            targetDraft.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+                @Override public void insertUpdate(javax.swing.event.DocumentEvent event) {
+                    refreshTextPassageDestinations();
+                }
+
+                @Override public void removeUpdate(javax.swing.event.DocumentEvent event) {
+                    refreshTextPassageDestinations();
+                }
+
+                @Override public void changedUpdate(javax.swing.event.DocumentEvent event) {
+                    refreshTextPassageDestinations();
+                }
+            });
+        }
 
         typeBox.addActionListener(e -> {
             updateRecommendation();
@@ -1959,6 +2132,7 @@ public class FieldSourcePanel extends JPanel {
             }
             refreshCandidateEvidenceApplicability();
             refreshPassageInstanceFields(null);
+            refreshTextPassageDestinations();
         });
         shapeBox.addActionListener(e -> {
             updateRecommendation();
@@ -2105,7 +2279,8 @@ public class FieldSourcePanel extends JPanel {
         if (bindingSite == null) return;
         var target = bindingSite.binding().target();
         if (target.slot() == domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE) {
-            candidateEvidenceRecipes.selectValue(bindingSite.binding());
+            if (target.contextual()) candidateEvidenceRecipes.selectValue(bindingSite.binding());
+            else candidateEvidenceRecipes.selectIndex(bindingSite.authoredIndex());
         }
     }
 

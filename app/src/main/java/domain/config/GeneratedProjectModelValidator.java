@@ -217,13 +217,8 @@ public final class GeneratedProjectModelValidator {
             if (field == null) continue;
             for (domain.datasource.api.SourceBinding binding : FieldSourceBindings.bindings(
                     field, domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE)) {
-                if (binding.recipe() == null
-                        || !domain.datasource.wikipedia.WikipediaDatasourceProvider.ID
-                                .equals(binding.recipe().providerId())
-                        || !domain.datasource.wikipedia.WikipediaDatasourceProvider
-                                .TEXT_PASSAGE_INSTANCES.equals(binding.recipe().operationId())) {
-                    continue;
-                }
+                if (!domain.datasource.wikipedia.WikipediaDatasourceProvider
+                        .textPassageInstanceOperation(binding)) continue;
                 var spec = domain.datasource.wikipedia.WikipediaDatasourceProvider
                         .textPassageInstances(binding);
                 String where = path(owner, field);

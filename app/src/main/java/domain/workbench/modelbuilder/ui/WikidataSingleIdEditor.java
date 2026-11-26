@@ -129,12 +129,13 @@ final class WikidataSingleIdEditor extends JPanel implements TextBackedEditor {
 
     private void storageChanged() {
         String id = normalized(storage.getText());
+        editing = false;
         value.setPlainText(id);
         if (valid(id)) {
             WikidataLabels.request(java.util.List.of(id));
-            if (!editing) draft.setText(id);
+            draft.setText(id);
         } else {
-            draft.setText(storage.getText() == null ? "" : storage.getText().trim());
+            draft.setText(storage.getText());
         }
         showCard();
         refreshActions();

@@ -18,6 +18,7 @@ public class SingleRootClassModelPanel extends JPanel {
 
     public enum ConfigurationSection {
         VOCABULARIES("Vocabularies / populations"),
+        TEXT_SOURCES("Text sources"),
         USES("Uses");
         private final String label;
         ConfigurationSection(String label) { this.label = label; }
@@ -150,6 +151,8 @@ public class SingleRootClassModelPanel extends JPanel {
                 // Only the vocabulary section opens an editor. Uses reports what was
                 // imported and configures nothing, so it is inspection, not a surface.
                 || value == ConfigurationSection.VOCABULARIES
+                || value instanceof domain.config.TextSource
+                || value == ConfigurationSection.TEXT_SOURCES
                 || value instanceof GeneratedProjectModel;
     }
 
@@ -179,6 +182,8 @@ public class SingleRootClassModelPanel extends JPanel {
         String selFieldName = selected instanceof GeneratedFieldModel f ? f.name() : null;
         String selSelectionName = selected instanceof Selection selection
                 ? selection.name() : null;
+        String selTextSourceId = selected instanceof domain.config.TextSource text
+                ? text.declarationId() : null;
         ConfigurationSection selSection = selected instanceof ConfigurationSection section
                 ? section : null;
         boolean selDomain = selected instanceof GeneratedProjectModel;
@@ -199,6 +204,10 @@ public class SingleRootClassModelPanel extends JPanel {
                 selectSection(selSection);
             } else if (selSelectionName != null) {
                 selectSelectionByName(selSelectionName);
+            } else if (selTextSourceId != null) {
+                domain.config.TextSource text = projectModel.findTextSourceById(selTextSourceId);
+                if (text != null) selectTextSource(text);
+                else selectSection(ConfigurationSection.TEXT_SOURCES);
             } else if (selFieldName != null) {
                 selectFieldByName(selClassName, selFieldName);
             } else if (selClassName != null) {
@@ -298,12 +307,18 @@ public class SingleRootClassModelPanel extends JPanel {
         if (node != null) selectNode(node);
     }
 
+    public void selectTextSource(domain.config.TextSource text) {
+        DefaultMutableTreeNode node = findNodeForUserObject(rootTreeNode, text);
+        if (node != null) selectNode(node);
+    }
+
     public void selectConstruct(Object target) {
         switch (target) {
             case GeneratedProjectModel project when project == projectModel -> selectNode(rootTreeNode);
             case GeneratedClassModel clazz -> selectClass(clazz);
             case GeneratedFieldModel field -> selectField(field);
             case Selection selection -> selectSelection(selection);
+            case domain.config.TextSource text -> selectTextSource(text);
             default -> { }
         }
     }
@@ -322,10 +337,16 @@ public class SingleRootClassModelPanel extends JPanel {
         boolean selectionContext = selected instanceof Selection;
         boolean vocabularyContext = vocabulary
                 || selected == ConfigurationSection.VOCABULARIES;
+        boolean textSource = selected instanceof domain.config.TextSource;
+        boolean textSourceContext = textSource
+                || selected == ConfigurationSection.TEXT_SOURCES;
 
-        renameClassButton.setText(vocabulary ? "Rename vocabulary" : "Rename class");
-        addClassButton.setText(vocabularyContext ? "Add vocabulary" : "Add class");
-        removeButton.setText(population ? "Remove population" : "Remove");
+        renameClassButton.setText(vocabulary ? "Rename vocabulary"
+                : textSource ? "Rename text source" : "Rename class");
+        addClassButton.setText(vocabularyContext ? "Add vocabulary"
+                : textSourceContext ? "Add text source" : "Add class");
+        removeButton.setText(population ? "Remove population"
+                : textSource ? "Remove text source" : "Remove");
 
         // An imported class is owned by the model it comes from and is not edited
         // here. Removing it is still this project's decision: dropping an import ends
@@ -340,9 +361,12 @@ public class SingleRootClassModelPanel extends JPanel {
         if (selected instanceof domain.config.Selection selection) {
             imported = selection.isImported();
         }
+        if (selected instanceof domain.config.TextSource text) {
+            imported = text.isImported();
+        }
 
         renameClassButton.setEnabled(
-                editingEnabled && (classContext || vocabulary) && !imported);
+                editingEnabled && (classContext || vocabulary || textSource) && !imported);
         addClassButton.setEnabled(editingEnabled);
         // Copying needs a class to copy. Pasting needs something copied and somewhere to
         // put it, and neither is about what happens to be selected.
@@ -350,10 +374,11 @@ public class SingleRootClassModelPanel extends JPanel {
         pasteClassButton.setEnabled(editingEnabled && pasteAvailable.getAsBoolean());
         importClassButton.setEnabled(editingEnabled && classContext);
         addFieldButton.setEnabled(editingEnabled && classContext && !imported);
-        removeButton.setEnabled(editingEnabled && (classContext || selectionContext)
+        removeButton.setEnabled(editingEnabled
+                && (classContext || selectionContext || textSource)
                 && !derivedOwner
                 && !(imported && (selected instanceof GeneratedFieldModel
-                        || selected instanceof domain.config.Selection)));
+                        || selected instanceof domain.config.Selection || textSource)));
     }
 
     private void buildUi(boolean structuralEdits) {
@@ -395,6 +420,8 @@ public class SingleRootClassModelPanel extends JPanel {
     private void renameSelected() {
         if (selectedUserObject() instanceof VocabularySelection vocabulary) {
             renameVocabulary(vocabulary);
+        } else if (selectedUserObject() instanceof domain.config.TextSource text) {
+            renameTextSource(text);
         } else {
             renameClass();
         }
@@ -405,6 +432,9 @@ public class SingleRootClassModelPanel extends JPanel {
         if (selected instanceof VocabularySelection
                 || selected == ConfigurationSection.VOCABULARIES) {
             addVocabulary();
+        } else if (selected instanceof domain.config.TextSource
+                || selected == ConfigurationSection.TEXT_SOURCES) {
+            addTextSource();
         } else {
             addClass();
         }
@@ -431,6 +461,42 @@ public class SingleRootClassModelPanel extends JPanel {
         }
         refresh();
         selectSelection(vocabulary);
+        modelChanged.run();
+    }
+
+    private void renameTextSource(domain.config.TextSource text) {
+        String name = JOptionPane.showInputDialog(this, "Text source name:", text.name());
+        if (name == null) return;
+        try {
+            if (!projectModel.renameTextSource(text.name(), name)) {
+                JOptionPane.showMessageDialog(this, "Another text source is named '"
+                                + name.trim() + "', or the name is blank.",
+                        "Cannot rename text source", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+        } catch (IllegalStateException imported) {
+            JOptionPane.showMessageDialog(this, imported.getMessage(),
+                    "Cannot rename text source", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        refresh();
+        selectTextSource(text);
+        modelChanged.run();
+    }
+
+    private void addTextSource() {
+        String name = JOptionPane.showInputDialog(this, "New text source name:", "Text");
+        if (name == null || name.isBlank()) return;
+        if (projectModel.findTextSource(name) != null) {
+            JOptionPane.showMessageDialog(this, "A text source named '" + name.trim()
+                            + "' already exists.",
+                    "Cannot add text source", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        domain.config.TextSource created = new domain.config.TextSource(name.trim());
+        projectModel.addTextSource(created);
+        refresh();
+        selectTextSource(created);
         modelChanged.run();
     }
 
@@ -484,6 +550,14 @@ public class SingleRootClassModelPanel extends JPanel {
             selectionsNode.add(new DefaultMutableTreeNode(s));
         }
         projectNode.add(selectionsNode);
+
+        // Always present, like vocabularies: it is where a project's first text is added.
+        DefaultMutableTreeNode textsNode =
+                new DefaultMutableTreeNode(ConfigurationSection.TEXT_SOURCES);
+        for (domain.config.TextSource text : projectModel.textSources()) {
+            textsNode.add(new DefaultMutableTreeNode(text));
+        }
+        projectNode.add(textsNode);
 
         // Derived from the imported classes, so it is present exactly when something is
         // imported. Nothing is configured here — it reports which models this project
@@ -621,6 +695,35 @@ public class SingleRootClassModelPanel extends JPanel {
             return;
         }
 
+        if (selected instanceof domain.config.TextSource text) {
+            var uses = domain.config.ConfigurationReferenceInventory.of(projectModel)
+                    .referencesToTextSource(text);
+            if (!uses.isEmpty()) {
+                String recipes = String.join("\n", uses.stream()
+                        .map(reference -> reference.source().displayName()).distinct().toList());
+                JOptionPane.showMessageDialog(this, "Cannot delete " + text.name()
+                                + " while these recipes use it. Open them from Used by.\n\n"
+                                + recipes,
+                        "Cannot delete text source", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            int answer = JOptionPane.showConfirmDialog(this,
+                    "Delete text source " + text.name() + "?", "Delete text source",
+                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (answer != JOptionPane.OK_OPTION) return;
+            try {
+                if (!removeTextSource(text)) {
+                    JOptionPane.showMessageDialog(this, "Cannot delete " + text.name()
+                                    + ". Check Used by for recipes that still read it.",
+                            "Cannot delete text source", JOptionPane.WARNING_MESSAGE);
+                }
+            } catch (IllegalStateException imported) {
+                JOptionPane.showMessageDialog(this, imported.getMessage(),
+                        "Cannot delete text source", JOptionPane.WARNING_MESSAGE);
+            }
+            return;
+        }
+
         if (selected instanceof GeneratedFieldModel f) {
             GeneratedClassModel owner = owningClassOf(f);
             if (domain.config.OwnedClassSemantics
@@ -655,6 +758,14 @@ public class SingleRootClassModelPanel extends JPanel {
             modelChanged.run();
             return;
         }
+    }
+
+    /** The mutation behind the confirmed Remove command for a text source. */
+    boolean removeTextSource(domain.config.TextSource text) {
+        if (text == null || !projectModel.removeTextSource(text.name())) return false;
+        refresh();
+        modelChanged.run();
+        return true;
     }
 
     /** The mutation behind the confirmed Remove command; exposed for its lifecycle test. */
@@ -825,6 +936,11 @@ public class SingleRootClassModelPanel extends JPanel {
                 setText("◇ " + seln.name() + "   [" + detail + "]");
                 setForeground(sel ? getTextSelectionColor()
                         : new Color(90, 110, 60));
+            } else if (uo instanceof domain.config.TextSource text) {
+                setText("¶ " + text.name() + "   [" + text.description() + "]"
+                        + (text.isImported() ? "   imported from " + text.importedFrom() : ""));
+                setForeground(sel ? getTextSelectionColor()
+                        : new Color(110, 80, 50));
             }
             return this;
         }

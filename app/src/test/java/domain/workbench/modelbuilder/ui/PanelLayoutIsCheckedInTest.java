@@ -123,6 +123,17 @@ class PanelLayoutIsCheckedInTest {
             describe(actual, "Field section " + section, field);
         }
 
+        // A work's stories: the text source it reads, and the recipe that names it.
+        GeneratedProjectModel stories = storiesProject();
+        TextSourceEditorPanel text = new TextSourceEditorPanel();
+        text.edit(stories, stories.textSources().getFirst());
+        describe(actual, "Text source - TextSourceEditorPanel", text);
+        FieldSourcePanel storiesField = new FieldSourcePanel();
+        storiesField.setProjectModel(stories);
+        storiesField.edit(stories.findClass("Work").fields().getFirst());
+        storiesField.selectConfigurationDetail(FieldConfigurationProjection.EVIDENCE);
+        describe(actual, "Field section field-candidate-evidence - text passages", storiesField);
+
         GeneratedProjectModel graphProject = new GeneratedProjectModel();
         GeneratedClassModel position = new GeneratedClassModel("Position");
         GeneratedFieldModel jurisdiction = position.addField(
@@ -354,6 +365,44 @@ class PanelLayoutIsCheckedInTest {
     }
 
     // --- one class of every kind ---
+
+    private static GeneratedProjectModel storiesProject() {
+        GeneratedProjectModel project = new GeneratedProjectModel();
+        GeneratedClassModel work = new GeneratedClassModel("Work");
+        project.rootClass(work);
+        GeneratedClassModel character = new GeneratedClassModel("Character");
+        project.addClass(character);
+        GeneratedClassModel story = new GeneratedClassModel("Story");
+        story.classKind(domain.config.ClassKind.SOURCE);
+        project.addClass(story);
+        story.addField("title", FieldType.TEXT, FieldCardinality.SINGLE);
+        story.addField("text", FieldType.TEXT, FieldCardinality.SINGLE);
+        story.addField("work", FieldType.ENTITY, FieldCardinality.SINGLE).entityClassName("Work");
+        story.addField("characters", FieldType.ENTITY, FieldCardinality.COLLECTION)
+                .entityClassName("Character");
+        GeneratedFieldModel storiesField = work.addField(
+                "stories", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        storiesField.entityClassName("Story");
+        domain.config.TextSource text = new domain.config.TextSource("Prose Edda (Brodeur, 1916)");
+        text.workQid("Q205882");
+        text.pages(List.of("The Prose Edda (1916 translation by Arthur Gilchrist Brodeur)/Gylfaginning"));
+        project.addTextSource(text);
+        domain.config.FieldSourceBindings.put(storiesField, new domain.datasource.api.SourceBinding(
+                domain.datasource.api.SourceBindingTarget.fieldValue("Work", "stories",
+                        domain.datasource.api.SourceBindingSlot.CANDIDATE_EVIDENCE),
+                new domain.datasource.api.SourceRecipe(
+                        domain.datasource.wikipedia.WikipediaDatasourceProvider.ID,
+                        domain.datasource.wikipedia.WikipediaDatasourceProvider.TEXT_PASSAGE_INSTANCES,
+                        java.util.Map.of(
+                                domain.datasource.wikipedia.WikipediaDatasourceProvider.TEXT_SOURCES,
+                                text.declarationId(),
+                                domain.datasource.wikipedia.WikipediaDatasourceProvider.PASSAGE_TEXT_FIELD, "text",
+                                domain.datasource.wikipedia.WikipediaDatasourceProvider.PASSAGE_SOURCE_FIELD, "work",
+                                domain.datasource.wikipedia.WikipediaDatasourceProvider.PASSAGE_TITLE_FIELD, "title",
+                                domain.datasource.wikipedia.WikipediaDatasourceProvider.PASSAGE_REFERENCES_FIELD,
+                                "characters"))));
+        return project;
+    }
 
     private static GeneratedProjectModel project() {
         GeneratedProjectModel project = new GeneratedProjectModel();

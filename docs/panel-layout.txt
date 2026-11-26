@@ -652,7 +652,7 @@ subjects from Person
   box: Configured evidence recipes
     list
     label: Add:
-    combo: 7 item(s)  (disabled)
+    combo: 8 item(s)  (disabled)
     button: Add  (disabled)
     button: Remove  (disabled)
     button: Up  (disabled)
@@ -671,6 +671,54 @@ subjects from Person
   combo: 7 item(s)
   text: []
   check: only related items that are the chosen class
+  button: Examples…
+  button: Re-fetch on next enrich
+  button: Apply field source
+
+== Text source - TextSourceEditorPanel ==
+  label: Prose Edda (Brodeur, 1916)
+  box: Text source settings
+  label: Work (Wikidata item):
+  ids: [Q205882]
+    label: Q205882
+    button: Change
+    button: Remove
+  label: Site:
+  combo: 2 item(s)
+  label: Pages, one per line:
+  textarea
+  label: Divided by:
+  combo: 2 item(s)
+  label: A story recipe reads the text sources it names; each work reads those that name it.
+
+== Field section field-candidate-evidence - text passages ==
+  box: Field settings
+  label: Wikipedia evidence:
+  box: Configured evidence recipes
+    list
+    label: Add:
+    combo: 8 item(s)
+    button: Add  (disabled)
+    button: Remove
+    button: Up  (disabled)
+    button: Down  (disabled)
+  label: Text sources:
+  piece: OrderedChoiceList
+    list
+    button: Add  (disabled)
+    button: Remove  (disabled)
+    button: Up  (disabled)
+    button: Down  (disabled)
+    label: Available:
+    combo: 1 item(s)
+  label: Passage goes into:
+  combo: 3 item(s)
+  label: Source work goes into:
+  combo: 2 item(s)
+  label: Title goes into:
+  combo: 3 item(s)
+  label: Named instances go into:
+  combo: 2 item(s)
   button: Examples…
   button: Re-fetch on next enrich
   button: Apply field source

@@ -205,8 +205,16 @@ public final class ConfigurationReferenceInventory {
             case TEXT_SOURCE -> project.findTextSourceById(target.declarationId());
             case DATASOURCE_INPUT -> project.resolveClass(
                     target.declarationId(), target.className());
-            case CONFIGURATION -> resolveGraphNodeOwner(project, target);
+            case CONFIGURATION -> resolveConfiguration(project, target);
         };
+    }
+
+    private static Object resolveConfiguration(GeneratedProjectModel project, Site target) {
+        var graph = resolveGraphNodeOwner(project, target);
+        if (graph != null) return graph;
+        return of(project).bindingSites().stream()
+                .filter(binding -> binding.bindingSite().equals(target))
+                .findFirst().orElse(null);
     }
 
     private static GeneratedClassModel resolveGraphNodeOwner(
@@ -233,6 +241,14 @@ public final class ConfigurationReferenceInventory {
         if (clazz == null) return List.of();
         return entries.stream().map(Entry::reference)
                 .filter(reference -> isClassTarget(reference.target(), clazz)).toList();
+    }
+
+    public List<Reference> referencesToTextSource(TextSource text) {
+        if (text == null) return List.of();
+        String id = text.declarationId();
+        return entries.stream().map(Entry::reference)
+                .filter(reference -> reference.target().kind() == SiteKind.TEXT_SOURCE
+                        && id.equals(reference.target().declarationId())).toList();
     }
 
     /** Central class-reference rewrite used by {@link GeneratedProjectModel#renameClass}. */
@@ -657,9 +673,10 @@ public final class ConfigurationReferenceInventory {
                 if (modelReference.kind() == ModelConfigurationReference.Kind.TEXT_SOURCE) {
                     // Named by declaration id, so a rename never rewrites the recipe.
                     TextSource text = project.findTextSourceById(modelReference.declarationId());
-                    add(entries, bindingSite, new Site(SiteKind.TEXT_SOURCE,
-                                    modelReference.declarationId(), "", "",
-                                    text == null ? "" : text.name()),
+                    Site targetText = text == null
+                            ? new Site(SiteKind.TEXT_SOURCE, modelReference.declarationId(), "", "", "")
+                            : textSourceSite(text);
+                    add(entries, bindingSite, targetText,
                             Relation.DATASOURCE_RECIPE_TEXT_SOURCE, modelReference.role(),
                             modelReference.required(), null);
                     continue;
@@ -763,6 +780,10 @@ public final class ConfigurationReferenceInventory {
     private static Site selectionSite(Selection selection) {
         return new Site(SiteKind.SELECTION, selection.declarationId(), "", "",
                 selection.name());
+    }
+
+    static Site textSourceSite(TextSource text) {
+        return new Site(SiteKind.TEXT_SOURCE, text.declarationId(), "", "", text.name());
     }
 
     private static Site configurationSite(String path, String name) {

@@ -279,6 +279,39 @@ public class GeneratedProjectModel {
                 .findFirst().orElse(null);
     }
 
+    /** Renames a text source this project owns. Recipes name it by id, so nothing else
+     *  changes; a blank name or one another text source has is refused. */
+    public boolean renameTextSource(String oldName, String newName) {
+        TextSource text = findTextSource(oldName);
+        String next = newName == null ? "" : newName.trim();
+        requireOwnedText(text, "renamed");
+        if (text == null || next.isBlank()) return false;
+        TextSource conflict = findTextSource(next);
+        if (conflict != null && conflict != text) return false;
+        text.name(next);
+        return true;
+    }
+
+    /** Removes a text source no recipe reads; a read one must be dropped from its recipes first. */
+    public boolean removeTextSource(String name) {
+        TextSource text = findTextSource(name);
+        requireOwnedText(text, "removed");
+        if (text == null || textSourceReferenced(text)) return false;
+        return textSources.remove(text);
+    }
+
+    /** Whether a recipe of this project reads the text source. */
+    public boolean textSourceReferenced(TextSource text) {
+        return text != null && !ConfigurationReferenceInventory.of(this)
+                .referencesToTextSource(text).isEmpty();
+    }
+
+    private static void requireOwnedText(TextSource text, String verb) {
+        if (text == null || !text.isImported()) return;
+        throw new IllegalStateException("Text source '" + text.name() + "' is imported from "
+                + text.importedFrom() + " and cannot be " + verb + " here; change it in that model.");
+    }
+
     /** Replaces the same-named text source; an import may refresh only a text source
      *  owned by the same model. The replacement keeps its own identity, because recipes
      *  name a text source by declaration id alone. */

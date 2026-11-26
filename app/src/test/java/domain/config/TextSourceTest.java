@@ -173,4 +173,22 @@ class TextSourceTest {
                 emptyTarget.findTextSourceById(remoteText.declarationId()).pages());
         assertFalse(emptyTarget.findTextSourceById(remoteText.declarationId()).isImported());
     }
+
+    @Test void aTextSourceARecipeReadsCannotBeRemovedAndRenamingKeepsTheRecipeValid() {
+        TextSource text = proseEdda();
+        GeneratedProjectModel model = library(text);
+
+        assertFalse(model.removeTextSource(text.name()), "a recipe still reads it");
+        assertTrue(model.renameTextSource(text.name(), "Brodeur's Prose Edda"));
+        assertTrue(GeneratedProjectModelValidator.validate(model).valid(),
+                "the recipe names it by id, so a rename leaves it valid");
+
+        TextSource unread = new TextSource("Unread");
+        unread.workQid("Q1");
+        unread.pages(List.of("Some page"));
+        model.addTextSource(unread);
+        assertFalse(model.renameTextSource("Unread", "Brodeur's Prose Edda"), "names are unique");
+        assertTrue(model.removeTextSource("Unread"));
+        assertNull(model.findTextSource("Unread"));
+    }
 }
