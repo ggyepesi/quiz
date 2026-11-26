@@ -38,6 +38,7 @@ import domain.workbench.modelbuilder.ui.GraphRunWorkflow;
 import domain.workbench.ui.WorkbenchActionResultNavigator;
 import domain.workbench.ui.WorkbenchResultViews;
 import objectview.view.SearchableView;
+import objectview.utils.swing.WrapLayout;
 import process.swing.Dialogs;
 import process.swing.SwingCancellationConfirmation;
 import process.swing.SwingProcessInputHandler;
@@ -59,6 +60,7 @@ import javax.swing.SwingWorker;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Cursor;
+import java.awt.Dimension;
 import javax.swing.JRootPane;
 import java.awt.FlowLayout;
 import java.util.Locale;
@@ -199,7 +201,6 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         });
         var projectActions = actions.addSource("project", "Project", null);
         var loadInstancesTools = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        loadInstancesTools.add(loadInstances);
         loadInstancesTools.add(cancelLoadInstances);
         loadInstancesStatus.setName("load.instances.status");
         loadInstancesStatus.setEditable(false);
@@ -211,11 +212,16 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         loadInstancesHeader.add(loadInstancesStatus, BorderLayout.CENTER);
         loadInstancesDetail.add(loadInstancesHeader, BorderLayout.NORTH);
         loadInstancesDetail.add(loadInstancesResults, BorderLayout.CENTER);
-        loadInstances.addActionListener(event -> loadSavedInstances());
         SwingCancellationConfirmation.wire(cancelLoadInstances, this,
                 () -> loadingInstances && queries.runner().isRunning(), queries.runner()::cancel);
         loadInstancesAction = actions.addAction(projectActions, "load-instances", "Load instances",
                 loadInstancesDetail, null);
+        loadInstances.addActionListener(event -> {
+            // The button sits in the window's bottom row; its status and result are
+            // the Load instances action's, so pressing it reveals that action.
+            actions.selectAction(loadInstancesAction);
+            loadSavedInstances();
+        });
         buildAction = actions.addAction(projectActions, "build-project", "Build project", buildDetail, null);
         graphRunAction = actions.addAction(projectActions, "run-graph", "Run graph", graphRunDetail, null);
         planGraph.addActionListener(event -> planGraphRun());
@@ -258,13 +264,14 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         actions.selectAction(acquisition);
         compilePlan();
         configuration = projectConfiguration();
+        actions.setMinimumSize(new Dimension(0, ACTIONS_MINIMUM_HEIGHT));
         workspace = new JSplitPane(JSplitPane.VERTICAL_SPLIT, configuration, actions);
         workspace.setResizeWeight(0.72);
-        workspace.setDividerLocation(510);
         add(workspace, BorderLayout.CENTER);
 
-        var footer = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        var footer = new JPanel(new WrapLayout(FlowLayout.RIGHT, 5, 5));
         footer.add(saveStatus);
+        footer.add(loadInstances);
         footer.add(logs);
         footer.add(save);
         add(footer, BorderLayout.SOUTH);
@@ -272,9 +279,16 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     }
 
     private ProjectConfigurationPanel projectConfiguration() {
-        return ProjectConfigurationPanel.editWorkingConfiguration(project, transform,
+        var panel = ProjectConfigurationPanel.editWorkingConfiguration(project, transform,
                 this::constructSelected, this::fieldApplied, this::refreshPreview, this::updateSave);
+        // The editors' own minimum (over 600 px) would otherwise win the split on any
+        // window shorter than about 870 px and squeeze the actions out of sight.
+        panel.setMinimumSize(new Dimension(0, CONFIGURATION_MINIMUM_HEIGHT));
+        return panel;
     }
+
+    static final int CONFIGURATION_MINIMUM_HEIGHT = 160;
+    static final int ACTIONS_MINIMUM_HEIGHT = 200;
 
     private boolean canRunGraph() {
         return project.saveGuard() != null && GraphRunWorkflow.hasTraversal(selectedClass)
@@ -985,7 +999,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         graphReview.setReviewEnabled(!busy());
         membershipDiscovery.setDiscoveryEnabled(!busy());
         if (loadingInstances) {
-            saveStatus.setText("Loading instances from " + project.snapshotFile().getPath());
+            saveStatus.setText("Loading instances…");
         } else if (loadingValues) {
             saveStatus.setText("Loading and reviewing field values");
         } else if (runningEvidence != null) {

@@ -62,6 +62,7 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.TreePath;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Rectangle;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -637,7 +638,7 @@ class UnifiedWorkbenchPanelTest {
             assertTrue(readiness.contains(curation.getPath()), readiness);
             assertTrue(readiness.contains(autofix.getPath()), readiness);
             find(workbench, JButton.class, button -> "Load instances".equals(button.getText())).doClick();
-            find(workbench, JLabel.class, label -> label.getText().equals("Loading instances from " + snapshot));
+            find(workbench, JLabel.class, label -> "Loading instances…".equals(label.getText()));
             assertTrue(loadStatus(workbench).startsWith("Loading " + modelFile));
             assertTrue(loadStatus(workbench).contains(curation.getPath()));
             assertFalse(find(workbench, JButton.class, b -> "Cancel preview".equals(b.getText())).isEnabled());
@@ -780,6 +781,57 @@ class UnifiedWorkbenchPanelTest {
 
     private static String loadStatus(UnifiedWorkbenchPanel workbench) {
         return find(workbench, JTextArea.class, status -> "load.instances.status".equals(status.getName())).getText();
+    }
+
+    /** The configuration editors ask for over 600 px; on a laptop-height window that used
+     *  to win the split and squeeze Load instances and Build out of sight. */
+    @Test void theActionsKeepTheirRoomInAShortWindow() throws Exception {
+        var opened = open();
+        SwingUtilities.invokeAndWait(() -> {
+            try (var workbench = new UnifiedWorkbenchPanel(opened.domain())) {
+                workbench.setSize(900, 600);
+                layoutTree(workbench);
+                var actions = find(workbench, WorkbenchActionResultNavigator.class, unused -> true);
+                assertTrue(actions.getHeight() >= UnifiedWorkbenchPanel.ACTIONS_MINIMUM_HEIGHT,
+                        "actions are " + actions.getHeight() + " px tall");
+            }
+        });
+    }
+
+    @Test void narrowingTheWorkbenchKeepsEveryWrappedFooterButtonInsideItsBounds() throws Exception {
+        var opened = open();
+        opened.domain().capability(ProjectBacking.class).recordModelChange("Build steps");
+        SwingUtilities.invokeAndWait(() -> {
+            try (var workbench = new UnifiedWorkbenchPanel(opened.domain())) {
+                var load = find(workbench, JButton.class, button -> "Load instances".equals(button.getText()));
+                var footer = load.getParent();
+                var logs = find(footer, JButton.class, button -> "Query logs…".equals(button.getText()));
+                var save = find(footer, JButton.class, button -> "Save domain…".equals(button.getText()));
+                int singleRowWidth = footer.getPreferredSize().width;
+
+                workbench.setSize(singleRowWidth + 40, 600);
+                layoutTree(workbench);
+                int singleRowHeight = footer.getHeight();
+
+                // Make room for only half of Save, well beyond the layout's inter-button gap.
+                workbench.setSize(singleRowWidth - save.getWidth() / 2, 600);
+                layoutTree(workbench);
+
+                assertTrue(save.getY() >= logs.getY() + logs.getHeight(), "the Save button must wrap");
+                assertTrue(footer.getHeight() > singleRowHeight, "the footer must grow for the second row");
+                var visible = new Rectangle(0, 0, footer.getWidth(), footer.getHeight());
+                for (JButton button : List.of(load, logs, save)) {
+                    assertTrue(visible.contains(button.getBounds()), button.getText() + " is clipped");
+                }
+            }
+        });
+    }
+
+    private static void layoutTree(Container container) {
+        container.doLayout();
+        for (Component child : container.getComponents()) {
+            if (child instanceof Container nested) layoutTree(nested);
+        }
     }
 
     @Test void loadInstancesIsRefusedWhileChangesAreUnsaved() throws Exception {
