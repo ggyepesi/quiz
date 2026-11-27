@@ -1,6 +1,7 @@
 package domain.config;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import domain.transform.FilterCondition;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -60,6 +61,52 @@ public final class TransformationClassSource {
             if (!steps.get(index).sameStep(other.steps.get(index))) return false;
         }
         return true;
+    }
+
+    /**
+     * The one declaration edit for promoting a filter chain into a class producer.
+     *
+     * <p>All-or-nothing by construction: every refusal is decided before the first edit,
+     * so a refused promotion leaves the model exactly as it was. Keep new checks above the
+     * edits ({@code TransformationClassSourceTest} holds this).</p>
+     */
+    public static PopulationSelection applyFilters(GeneratedProjectModel model,
+            GeneratedClassModel output, String inputClass, List<FilterCondition> conditions) {
+        GeneratedClassModel input = model.findClass(inputClass);
+        if (input == null) throw new IllegalArgumentException(
+                "Transformation input class no longer exists: " + inputClass);
+        String selectionName = filterPublicationName(output.className());
+        Selection named = model.findSelection(selectionName);
+        // A same-named frozen population can bound other operations. Never retarget it.
+        if (named != null && (!(named instanceof PopulationSelection existing)
+                || existing.isImported() || !existing.className().equals(output.className()))) {
+            throw new IllegalArgumentException("Selection '" + selectionName
+                    + "' already exists" + (named instanceof PopulationSelection existing
+                            ? " as a population of " + existing.className() : "")
+                    + ", so it cannot become the published population of "
+                    + output.className() + ". Rename or remove it first; nothing was changed.");
+        }
+        TransformationClassSource recipe = new TransformationClassSource();
+        recipe.inputClassReference(input.declarationId(), input.className());
+        for (FilterCondition condition : conditions) {
+            recipe.addStep(TransformationStep.filter(condition.field().field(),
+                    condition.operator(), condition.value(), condition.value2()));
+        }
+        if (!recipe.configured()) throw new IllegalArgumentException(
+                "Complete the filter conditions before creating a transformation.");
+        // Every check is above this line; from here the edit cannot be refused.
+        PopulationSelection population = named instanceof PopulationSelection existing
+                ? existing : new PopulationSelection(selectionName);
+        population.className(output.className());
+        model.replaceSelection(population);
+        output.populationMode(ClassPopulationMode.MATERIALIZED_TRANSFORM);
+        output.subclassCondition(SubclassCondition.none());
+        output.transformationSource(recipe);
+        return population;
+    }
+
+    public static String filterPublicationName(String outputClass) {
+        return outputClass + "Population";
     }
 
     public TransformationClassSource copy() {

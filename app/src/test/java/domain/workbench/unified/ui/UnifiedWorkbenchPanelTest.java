@@ -11,6 +11,8 @@ import domain.config.ClassConfigurationProjection;
 import domain.config.ClassKind;
 import domain.config.GraphClassSource;
 import domain.config.ClassPopulationMode;
+import domain.curation.ScopeFilter;
+import domain.transform.pipeline.ui.ViewStepsPanel;
 import domain.config.FieldCardinality;
 import domain.config.FieldConfigurationProjection;
 import domain.config.FieldSourceType;
@@ -447,6 +449,117 @@ class UnifiedWorkbenchPanelTest {
             }
         });
         assertEquals(2, working.transformationSource().steps().size());
+    }
+
+    @Test void createsAFilterProducedClassPreviewsAndBuildsItInTheSameWindow() throws Exception {
+        var storage = DomainStorage.in(root.toFile());
+        var model = new GeneratedProjectModel();
+        model.name("Positions");
+        var input = new GeneratedClassModel("Position");
+        input.seedQids().addAll(List.of("Q1", "Q2"));
+        input.addField("holderCount", FieldType.NUMBER, FieldCardinality.SINGLE);
+        model.rootClass(input);
+        var first = new WikidataDynamicObject("Q1", "Held position");
+        first.type(input.className());
+        first.put("holderCount", 5);
+        var second = new WikidataDynamicObject("Q2", "Empty position");
+        second.type(input.className());
+        second.put("holderCount", 0);
+        ProjectSave.plan(new ProjectSave.Input(model,
+                new ProjectSave.Run(List.of(first, second), List.of(), null, model),
+                null, List.of()), storage).write();
+        var modelFile = storage.modelFile(model.name()).toPath();
+        var snapshot = storage.snapshotFile(model.name()).toPath();
+        String originalModel = Files.readString(modelFile);
+        String originalSnapshot = Files.readString(snapshot);
+        var domain = DomainCatalog.modelBacked(storage).getFirst().opener().open();
+        var working = domain.capability(ProjectBacking.class).projectModel();
+        var panel = new AtomicReference<UnifiedWorkbenchPanel>();
+        try {
+            SwingUtilities.invokeAndWait(() -> {
+                var workbench = new UnifiedWorkbenchPanel(domain);
+                panel.set(workbench);
+                selectAction(workbench, "Filter groups");
+                var filters = find(workbench, ViewStepsPanel.class,
+                        unused -> true);
+                filters.selectField("holderCount", ScopeFilter.ALL);
+                find(filters, JComboBox.class, combo -> "filter.operator".equals(combo.getName()))
+                        .setSelectedItem(FilterOperator.GREATER_THAN);
+                find(filters, JComboBox.class, combo -> "filter.value".equals(combo.getName()))
+                        .getEditor().setItem("0");
+                filters.filterGroupNamePrompt(() -> "Has holders");
+                find(filters, JButton.class, button -> "Add filter group".equals(button.getText())).doClick();
+                assertNull(working.findClass("PositionsWithHolders"),
+                        "making a group does not declare a class");
+                find(workbench, JTextField.class, field -> "transform.outputClass".equals(field.getName()))
+                        .setText("PositionsWithHolders");
+                find(workbench, JButton.class, button -> "Create transformed class".equals(button.getText()))
+                        .doClick();
+                var output = working.findClass("PositionsWithHolders");
+                assertTrue(output.materializedByTransformation());
+                assertEquals("Position", output.baseClassName());
+                assertEquals("holderCount", output.transformationSource().steps().getFirst().fieldPath());
+                assertTrue(working.buildOperations().isEmpty(), "never edit the build order implicitly");
+                var publication = (PopulationSelection) working.findSelection("PositionsWithHoldersPopulation");
+                assertEquals(output.className(), publication.className());
+                assertTrue(publication.instanceQids().isEmpty(), "the build publishes the members");
+                var tree = find(workbench, SingleRootClassModelPanel.class, unused -> true);
+                assertSame(output, tree.selectedUserObject());
+                selectAction(workbench, "Preview population");
+                find(workbench, JButton.class, button -> "Preview population".equals(button.getText())).doClick();
+            });
+            var workbench = panel.get();
+            await(() -> actionNode(workbench, "Matching instances (1)") != null,
+                    "the new class's transformation did not preview");
+            assertEquals(originalModel, Files.readString(modelFile));
+            assertEquals(originalSnapshot, Files.readString(snapshot));
+            assertTrue(domain.instancesOf("PositionsWithHolders").isEmpty());
+            SwingUtilities.invokeAndWait(() -> {
+                selectAction(workbench, "Build project");
+                find(workbench, JButton.class, button -> "Edit build steps".equals(button.getText())).doClick();
+                var build = find(workbench, JPanel.class, candidate -> "project.build".equals(candidate.getName()));
+                var options = find(build, JComboBox.class, unused -> true);
+                for (var operation : List.of(BuildOperation.Kind.GENERATE_PROJECT,
+                        BuildOperation.Kind.RUN_TRANSFORMATION,
+                        BuildOperation.Kind.PUBLISH_POPULATION, BuildOperation.Kind.SAVE_PROJECT_RESULT)) {
+                    int index = java.util.stream.IntStream.range(0, options.getItemCount())
+                            .filter(i -> options.getItemAt(i) instanceof BuildOperation step
+                                    && step.kind() == operation).findFirst().orElseThrow();
+                    options.setSelectedIndex(index);
+                    find(build, JButton.class, button -> "Add".equals(button.getText())).doClick();
+                }
+                workbench.persistenceConfirmation(message -> message.contains(modelFile.toString()));
+                workbench.showSaveSuccess(false);
+                find(workbench, JButton.class, button -> "Save domain…".equals(button.getText())).doClick();
+            });
+            awaitSaved(workbench);
+            assertEquals(originalSnapshot, Files.readString(snapshot));
+            // The test supplies the upstream acquisition output for this saved model;
+            // the actual build still runs transformation, publication and project save.
+            var savedBeforeBuild = new GeneratedProjectModelStore().load(modelFile.toFile());
+            var generate = savedBeforeBuild.buildOperations().getFirst();
+            GenerationStepOutputStore.of(storage, savedBeforeBuild.name(), generate.declarationId())
+                    .save(savedBeforeBuild, List.of(first, second), List.of(), SelfReferenceLedger.EMPTY,
+                            GraphDiscoveryState.EMPTY, Map.of());
+            SwingUtilities.invokeAndWait(() -> {
+                find(workbench, JButton.class, button -> "Plan build".equals(button.getText())).doClick();
+                find(workbench, JButton.class, button -> "Execute".equals(button.getText())).doClick();
+            });
+            await(() -> find(workbench, JButton.class, button -> "Save domain…".equals(button.getText()))
+                    .isEnabled(), "build did not finish");
+            var manifest = storage.buildManifestFile(model.name()).toPath();
+            var report = Files.isRegularFile(manifest) ? Files.readString(manifest) : "No build manifest";
+            assertTrue(actionNode(workbench, "Instances (2)") != null, report);
+            await(() -> workbench.instancesView().displayedObjectsByType().containsKey("PositionsWithHolders"),
+                    "the built class is not in the open instances viewer");
+            assertEquals(List.of("Q1"), workbench.instancesView().displayedObjectsByType()
+                    .get("PositionsWithHolders").stream().map(objectview.Viewable::getIdentifier).toList());
+            var saved = new GeneratedProjectModelStore().load(modelFile.toFile());
+            assertEquals(List.of("Q1"), ((PopulationSelection) saved.findSelection(
+                    "PositionsWithHoldersPopulation")).instanceQids());
+        } finally {
+            if (panel.get() != null) SwingUtilities.invokeAndWait(panel.get()::close);
+        }
     }
 
     @Test void editPreviewSaveAndBuildUpdateTheSameOpenProject() throws Exception {

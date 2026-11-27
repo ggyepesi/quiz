@@ -5,6 +5,8 @@ import objectview.viewconfig.FieldTypeSource;
 import objectview.field.FieldSchema;
 import objectview.field.FieldPath;
 import domain.transform.EditableGroup;
+import domain.config.GeneratedClassModel;
+import domain.config.TransformationClassSource;
 import domain.transform.FacetGroup;
 import domain.transform.FilterCondition;
 import domain.transform.NearestAncestorGroup;
@@ -605,6 +607,38 @@ public final class TransformController {
         }
         return domain.defineManualSubclass(name, baseType, source.getMembers(),
                 name.trim() + "Population");
+    }
+
+    /** Declare the same filter-produced class as TransformApp's Save, without stamping
+     *  the preview matches or writing any files. A build materializes the declaration. */
+    public GeneratedClassModel declareTransformedClass(String className, OperationGroup source) {
+        ProjectBacking backing = domain.capability(ProjectBacking.class);
+        if (backing == null || backing.projectModel() == null) {
+            throw new IllegalArgumentException("Open a model-backed project first.");
+        }
+        String name = className == null ? "" : className.trim();
+        if (!javax.lang.model.SourceVersion.isIdentifier(name)
+                || javax.lang.model.SourceVersion.isKeyword(name)) {
+            throw new IllegalArgumentException("Enter a Java class name, for example SelectedPosition.");
+        }
+        var model = backing.projectModel();
+        if (model.findClass(name) != null || types().contains(name)) {
+            throw new IllegalArgumentException("Class already exists: " + name);
+        }
+        if (source == null || source.getMembers().isEmpty()) {
+            throw new IllegalArgumentException("Select a filter group with matching instances.");
+        }
+        String base = source.memberType();
+        var conditions = WorkingDomain.filterChain(source, base);
+        GeneratedClassModel input = model.findClass(base);
+        if (input == null) throw new IllegalArgumentException("No declared input class: " + base);
+        GeneratedClassModel output = new GeneratedClassModel(name);
+        output.baseClassName(input.className());
+        output.baseClassId(input.declarationId());
+        TransformationClassSource.applyFilters(model, output, base, conditions);
+        model.addClass(output);
+        backing.recordModelChange("Create transformed class " + name);
+        return output;
     }
 
     public boolean removeGroup(

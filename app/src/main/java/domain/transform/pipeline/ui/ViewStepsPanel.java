@@ -41,6 +41,9 @@ public final class ViewStepsPanel extends JPanel {
     // Declaring a new field acts on the selected class, so its button sits by the Class row.
     private final Runnable onNewField;
     private final WorkbenchPurpose purpose;
+    private final boolean filterGroupsOnly;
+    private boolean filterGroupCreationEnabled = true;
+    private java.util.function.Supplier<String> filterGroupName = this::askFilterGroupName;
 
     private final JComboBox<String> memberTypeCombo = new JComboBox<>();
     private final JComboBox<String> selectionCombo = new JComboBox<>();
@@ -83,6 +86,23 @@ public final class ViewStepsPanel extends JPanel {
             java.util.function.BiConsumer<DomainField, ScopeFilter> onSelectionChanged,
             Runnable onNewField,
             WorkbenchPurpose purpose) {
+        this(controller, listener, filterGroupCreator, workingSet,
+                onSelectionChanged, onNewField, purpose, false);
+    }
+
+    public static ViewStepsPanel forFilterGroups(TransformController controller, Listener listener,
+            java.util.function.BiConsumer<String, FilterCondition> creator,
+            java.util.function.Supplier<? extends java.util.Collection<? extends Viewable>> members) {
+        return new ViewStepsPanel(controller, listener, creator, members,
+                null, null, WorkbenchPurpose.TRANSFORM, true);
+    }
+
+    private ViewStepsPanel(TransformController controller, Listener listener,
+            java.util.function.BiConsumer<String, FilterCondition> filterGroupCreator,
+            java.util.function.Supplier<? extends java.util.Collection<? extends Viewable>> workingSet,
+            java.util.function.BiConsumer<DomainField, ScopeFilter> onSelectionChanged,
+            Runnable onNewField, WorkbenchPurpose purpose, boolean filterGroupsOnly) {
+        this.filterGroupsOnly = filterGroupsOnly;
         this.controller = controller;
         this.listener = listener;
         this.filterGroupCreator = filterGroupCreator;
@@ -141,7 +161,10 @@ public final class ViewStepsPanel extends JPanel {
 
         add(memberRow(), BorderLayout.NORTH);
 
-        if (this.purpose.showsTransformActions()) {
+        if (filterGroupsOnly) {
+            add(fieldBlock(), BorderLayout.CENTER);
+            add(filterPanel(), BorderLayout.SOUTH);
+        } else if (this.purpose.showsTransformActions()) {
             JSplitPane split = new JSplitPane(
                     JSplitPane.VERTICAL_SPLIT,
                     fieldBlock(),
@@ -203,13 +226,13 @@ public final class ViewStepsPanel extends JPanel {
         JPanel p = new JPanel(new WrapLayout(FlowLayout.LEFT, 6, 4));
         p.add(new JLabel("Class:"));
         p.add(memberTypeCombo);
-        if (selectionCombo.getItemCount() > 1) {
+        if (!filterGroupsOnly && selectionCombo.getItemCount() > 1) {
             p.add(new JLabel("Selection:"));
             p.add(selectionCombo);
             p.add(new JLabel("∩"));
             p.add(secondSelectionCombo);
         }
-        if (purpose.showsTransformActions()) {
+        if (!filterGroupsOnly && purpose.showsTransformActions()) {
             // "New field…" sits with the class it declares a field on.
             JButton newField = new JButton("New field…");
             newField.setName("transform.newField");
@@ -246,7 +269,7 @@ public final class ViewStepsPanel extends JPanel {
         scopes.add(allScope);
         scopes.add(missingScope);
         scopes.add(presentScope);
-        p.add(scopes, BorderLayout.SOUTH);
+        if (!filterGroupsOnly) p.add(scopes, BorderLayout.SOUTH);
         return p;
     }
 
@@ -366,7 +389,7 @@ public final class ViewStepsPanel extends JPanel {
     private void onFieldSelectionChanged() {
         DomainField f = currentField();
         if (purpose.showsTransformActions()) filterCondition.edit(f, null);
-        addFilterGroup.setEnabled(f != null);
+        addFilterGroup.setEnabled(filterGroupCreationEnabled && f != null);
         updateScopeLabels();
         // Rebuilding rows for a newly selected group's explicit TypeSpec is a schema
         // refresh, not a user field/scope edit. Calling the parent here re-enters the
@@ -419,18 +442,33 @@ public final class ViewStepsPanel extends JPanel {
 
     /** Create a named filter group from the rule currently shown in this editor. */
     public void requestAddFilterGroup() {
+        if (!filterGroupCreationEnabled) return;
         FilterCondition c = filterCondition.condition();
         if (c == null) {
             JOptionPane.showMessageDialog(this, "Select a field first.");
             return;
         }
+        createFilterGroup(filterGroupName.get(), c);
+    }
+
+    private String askFilterGroupName() {
         JTextField name = new JTextField("Filter", 24);
         name.selectAll();
         int answer = JOptionPane.showConfirmDialog(this, name,
                 "Name the new filter group", JOptionPane.OK_CANCEL_OPTION,
                 JOptionPane.PLAIN_MESSAGE);
-        if (answer != JOptionPane.OK_OPTION) return;
-        createFilterGroup(name.getText(), c);
+        return answer == JOptionPane.OK_OPTION ? name.getText() : null;
+    }
+
+    public void filterGroupCreationEnabled(boolean enabled) {
+        filterGroupCreationEnabled = enabled;
+        addFilterGroup.setEnabled(enabled && currentField() != null);
+        if (filterGroupsOnly) memberTypeCombo.setEnabled(enabled);
+    }
+
+    /** Hosts normally use the standard name dialog; test hosts can supply a response. */
+    public void filterGroupNamePrompt(java.util.function.Supplier<String> prompt) {
+        filterGroupName = prompt == null ? this::askFilterGroupName : prompt;
     }
 
     void createFilterGroup(String name, FilterCondition condition) {

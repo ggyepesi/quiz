@@ -22,6 +22,7 @@ import domain.curation.ManualCuration;
 import domain.datasource.Datasources;
 import domain.datasource.discovery.ui.DiscoveryWorkbench;
 import domain.transform.ui.BoundedInstanceSelection;
+import domain.transform.pipeline.ui.FilterGroupsPanel;
 import domain.datasource.api.ConfigurationElement;
 import domain.datasource.api.DatasourceRegistry;
 import domain.datasource.api.SourceBinding;
@@ -42,7 +43,6 @@ import domain.workbench.execution.ui.SwingQuerySession;
 import domain.workbench.modelbuilder.ui.GraphRunWorkflow;
 import domain.workbench.ui.WorkbenchActionResultNavigator;
 import domain.workbench.ui.WorkbenchResultViews;
-import objectview.view.SearchableView;
 import objectview.utils.swing.WrapLayout;
 import process.swing.Dialogs;
 import process.swing.SwingCancellationConfirmation;
@@ -86,6 +86,10 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private final DiscoveryWorkbench discovery;
     private final SubclassDiscoveryPanel membershipDiscovery = new SubclassDiscoveryPanel(false);
     private final WorkbenchActionResultNavigator.Action previewAction;
+    private final WorkbenchActionResultNavigator.Action filterGroupsAction;
+    private final JPanel filterGroupsDetail = new JPanel(new BorderLayout());
+    private FilterGroupsPanel filterGroups;
+    private boolean filterGroupsSelected;
     private final WorkbenchActionResultNavigator.Action buildAction;
     private final WorkbenchActionResultNavigator.Action loadInstancesAction;
     private final JPanel loadInstancesDetail = new JPanel(new BorderLayout());
@@ -195,6 +199,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         logs.addActionListener(event -> queries.showLogs(this));
         acquisitionDetail.add(acquisitionValues, BorderLayout.CENTER);
         var transformSource = actions.addSource("transform", "Transform", null);
+        filterGroupsAction = actions.addAction(transformSource, "filter-groups", "Filter groups",
+                filterGroupsDetail, this::showFilterGroups);
         var previewDetail = new JPanel(new BorderLayout());
         var previewTools = new JPanel(new FlowLayout(FlowLayout.LEFT));
         SwingCancellationConfirmation.wire(cancelPreview, this,
@@ -267,6 +273,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         resetGraphRun("");
         actions.setSelectionListener(selection -> {
             loadActionSelected = load.id().equals(selection.id());
+            filterGroupsSelected = filterGroupsAction.id().equals(selection.id());
             previewActionSelected = previewAction.id().source().equals(selection.id().source())
                     && previewAction.id().action().equals(selection.id().action());
             buildActionSelected = buildAction.id().source().equals(selection.id().source())
@@ -595,6 +602,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         project = loadedProject;
         graphReview.reset(project, result.graphs());
         transform.replaceLoadedDomain(loaded);
+        discardFilterGroups();
+        if (filterGroupsSelected) showFilterGroups();
         discovery.refreshInstances();
         valuePanel = null;
         evidenceTarget = null;
@@ -682,6 +691,29 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         fieldSelected(construct instanceof GeneratedFieldModel field ? field : null);
     }
 
+    private void showFilterGroups() {
+        if (filterGroups == null) {
+            filterGroups = new FilterGroupsPanel(transform,
+                    () -> !busy() && configuration.resolveUnappliedEdits("creating a transformed class"),
+                    this::transformedClassCreated);
+            filterGroupsDetail.add(filterGroups, BorderLayout.CENTER);
+        }
+        filterGroups.editingEnabled(!busy());
+    }
+
+    private void discardFilterGroups() {
+        if (filterGroups == null) return;
+        filterGroups.close();
+        filterGroupsDetail.removeAll();
+        filterGroups = null;
+    }
+
+    private void transformedClassCreated(GeneratedClassModel output) {
+        configuration.showNewConstruct(output);
+        if (buildPlanOpen) resetBuild("");
+        updateSave();
+    }
+
     private void refreshPreview() {
         clearPreviewResults();
         previewInput = TransformationExecution.inputClass(project.projectModel(), selectedClass);
@@ -719,15 +751,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
 
     private void showPreview(String input, TransformationExecution.Preview result) {
         previewCompleted = true;
-        var view = SearchableView.builder(result.members())
-                .sample(domain.configSample(input))
-                .hiddenFields(domain.structuralFields(input))
-                .fieldTypes(domain.fieldTypes(input))
-                .fieldSchemas(value -> transform.renderedFieldSchema(value, input))
-                .typeSchemas(domain::fieldSchema)
-                .subtypeConfigs(transform.subtypeConfigs(input))
-                .valueLinker(wikidata.ui.WikidataLinks.valueLinker())
-                .collapsible(true).build();
+        var view = FilterGroupsPanel.instanceCards(transform, input, result.members(), null);
         previewStatus.setText(result.members().size() + " of " + result.examined()
                 + " loaded " + input + " instances match.");
         previewResults.addTab("Matching instances (" + result.members().size() + ")", view);
@@ -1060,6 +1084,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         // form cannot announce every keystroke. Save itself says when there is nothing.
         save.setEnabled(!busy());
         preview.setEnabled(previewInput != null && !busy());
+        if (filterGroups != null) filterGroups.editingEnabled(!busy());
         cancelPreview.setEnabled(previewing && queries.runner().isRunning());
         planBuild.setEnabled(!busy());
         loadInstances.setEnabled(!busy());
@@ -1170,6 +1195,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     }
 
     @Override public void close() {
+        discardFilterGroups();
         discovery.close();
         configuration.close();
         queries.logs().resetForProjectSwitch();

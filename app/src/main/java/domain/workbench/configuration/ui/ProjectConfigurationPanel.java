@@ -145,6 +145,12 @@ public final class ProjectConfigurationPanel extends JPanel implements AutoClose
 
     public void selectConstruct(Object construct) { constructs.selectConstruct(construct); }
 
+    /** Show a declaration created by another component over this same working model. */
+    public void showNewConstruct(Object construct) {
+        constructs.refresh();
+        constructs.selectConstruct(construct);
+    }
+
     public Object selectedConstruct() { return details.selected(); }
 
     public void setEditingEnabled(boolean enabled) {

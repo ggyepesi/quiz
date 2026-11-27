@@ -201,7 +201,8 @@ public final class DomainSaver implements DomainWriter {
                 var saved = working.subclassProducer(type);
                 if (saved instanceof domain.transform.ui.WorkingDomain.SavedSubclassTransformation
                         transformation) {
-                    saveTransformation(candidate, subclass, transformation);
+                    domain.config.TransformationClassSource.applyFilters(candidate, subclass,
+                            transformation.inputClass(), transformation.conditions());
                 } else if (saved
                         instanceof domain.transform.ui.WorkingDomain.SavedManualSubclass manual) {
                     saveManualSubclass(candidate, subclass, manual);
@@ -209,50 +210,6 @@ public final class DomainSaver implements DomainWriter {
             }
         }
         model.copyContentsFrom(candidate);
-    }
-
-    private static void saveTransformation(
-            domain.config.GeneratedProjectModel model,
-            domain.config.GeneratedClassModel output,
-            domain.transform.ui.WorkingDomain.SavedSubclassTransformation saved) {
-        domain.config.GeneratedClassModel input =
-                model.findClass(saved.inputClass());
-        if (input == null) throw new IllegalArgumentException(
-                "Transformation input class no longer exists: " + saved.inputClass());
-        String selectionName = output.className() + "Population";
-        domain.config.Selection named = model.findSelection(selectionName);
-        // The publication selection is reused only when it already publishes this class.
-        // A manual subclass's frozen population of the same name is over the BASE class;
-        // retargeting it would silently change what every graph start or bound naming it
-        // means, and keep its hand-picked QIDs until the next publish.
-        if (named != null && !(named instanceof domain.config.PopulationSelection
-                existing && existing.className().equals(output.className()))) {
-            throw new IllegalArgumentException("Selection '" + selectionName
-                    + "' already exists" + (named instanceof domain.config
-                            .PopulationSelection existing
-                            ? " as a population of " + existing.className() : "")
-                    + ", so it cannot become the published population of "
-                    + output.className() + ". Rename or remove it in ModelBuilder first;"
-                    + " nothing was saved.");
-        }
-        output.populationMode(
-                domain.config.ClassPopulationMode.MATERIALIZED_TRANSFORM);
-        output.subclassCondition(domain.config.SubclassCondition.none());
-        domain.config.TransformationClassSource transformation =
-                new domain.config.TransformationClassSource();
-        transformation.inputClassReference(input.declarationId(), input.className());
-        for (var condition : saved.conditions()) {
-            transformation.addStep(domain.config.TransformationStep.filter(
-                    condition.field().field(), condition.operator(),
-                    condition.value(), condition.value2()));
-        }
-        output.transformationSource(transformation);
-
-        domain.config.PopulationSelection population =
-                named instanceof domain.config.PopulationSelection existing
-                        ? existing : new domain.config.PopulationSelection(selectionName);
-        population.className(output.className());
-        model.replaceSelection(population);
     }
 
     private static void saveManualSubclass(

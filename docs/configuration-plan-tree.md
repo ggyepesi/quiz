@@ -385,6 +385,17 @@ supplied each value. Accepting results updates the cards and writes the project'
 **Save model** or **Save domain** writes the applied configuration to `.model.json` through the
 shared save guard. Reopening shows the saved recipe and the accepted values with their provenance.
 
+To create a transformed class from a loaded project, open **Transform → Filter groups**.
+Choose the input class and field, set the condition, and use **Add filter group** to see the
+matching instances. Select that filter group, enter the output class name, and use
+**Create transformed class**. The open configuration gains the class, its ordered filter
+recipe and its named population publication immediately, without writing files or
+reclassifying the loaded instances. The group is temporary; the recipe is what you save.
+In the shared Build editor, place **Run transformation** and **Publish population** after
+their input steps and before **Save project**. Keep **Generate project** upstream so the
+build can refresh a snapshot produced under an older model. Creating the class does not
+add or reorder build steps.
+
 For a transformed class, select **Population: transformation** to edit its ordered filters. Then
 choose **Transform → Preview population** in **Actions and results**. The explicit preview checks
 the loaded input instances with the same membership and filter evaluator as **Build project**, and

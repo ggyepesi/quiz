@@ -34,6 +34,7 @@ final class FilterConditionEditor extends JPanel {
         super(new WrapLayout(FlowLayout.LEFT, 6, 3));
         this.values = values;
         this.sample = sample;
+        operator.setName("filter.operator");
         value.setName("filter.value");
         value.setPrototypeDisplayValue("wwwwwwww");
         add(new JLabel("Operator:"));
