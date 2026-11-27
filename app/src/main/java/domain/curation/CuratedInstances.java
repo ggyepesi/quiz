@@ -74,6 +74,21 @@ public final class CuratedInstances {
     }
 
     /**
+     * Gives each curated instance its class's schema where it has none. A snapshot
+     * instance receives its schema when the snapshot loads; one created here does not,
+     * and ObjectView lists fields from the schema, never from the values present — so a
+     * curated NorseStory showed only provenance fields while holding its title and text.
+     */
+    public static void attachSchemas(Collection<WikidataDynamicObject> instances,
+            java.util.function.Function<String, objectview.field.FieldSchema> schemaOf) {
+        if (instances == null || schemaOf == null) return;
+        for (WikidataDynamicObject instance : instances) {
+            if (instance == null || instance.dynamicFieldSchema() != null) continue;
+            instance.dynamicFieldSchema(schemaOf.apply(instance.typeName()));
+        }
+    }
+
+    /**
      * The pooled objects a curated field names. A reference that names nothing stays
      * unresolved and is reported: a stand-in carrying only the QID would be stamped as a
      * class member, indistinguishable from an instance whose acquisition failed.

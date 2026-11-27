@@ -209,6 +209,7 @@ public final class DomainCatalog {
             BareReferenceCollapse.apply(pool);
             base = ProductCompiler.compile(effectiveProject, pool, loaded.roleSelections());
         }
+        CuratedInstances.attachSchemas(curatedInstances, base::fieldSchema);
         // Carry the curation store so the workbench can offer a "Curate…" action.
         java.util.List<objectview.viewconfig.DomainGroupRoot> savedGroupRoots =
                 new java.util.ArrayList<>();

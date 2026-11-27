@@ -55,6 +55,9 @@ public class QueryObjectResultPanel
     private java.util.function.Function<Viewable, JComponent> cardDecorator =
             ignored -> null;
     private Map<String, objectview.group.ViewableGroup<?>> configuredGroups = Map.of();
+    /** The domain's class schemas; when set, every card and section reads its fields from
+     *  its class, not from whichever instance happens to come first. */
+    private java.util.function.Function<String, objectview.field.FieldSchema> schemas;
 
     public QueryObjectResultPanel() {
         super(new BorderLayout());
@@ -128,6 +131,12 @@ public class QueryObjectResultPanel
         button.setEnabled(resultActionsEnabled);
         resultActions.add(button);
         return button;
+    }
+
+    /** The class schemas the shown instances are rendered with (one domain schema for
+     *  both the section and each card), or {@code null} to use each object's own. */
+    public void schemas(java.util.function.Function<String, objectview.field.FieldSchema> byType) {
+        schemas = byType;
     }
 
     /** The explicit group-class presentations for the result currently being shown. */
@@ -339,6 +348,7 @@ public class QueryObjectResultPanel
         showAllInDisplayedObjects(byType);
 
         RenderContext context = new RenderContext();
+        if (schemas != null) context.setSchemas(schemas);
         context.setInPlaceNavigation(true);
         java.util.Map<Viewable, java.util.function.Function<Viewable, JComponent>>
                 peerDecorations = new IdentityHashMap<>();
@@ -375,6 +385,7 @@ public class QueryObjectResultPanel
         Set<String> shownClasses = visibleClassesFor(byType.keySet());
         showInDisplayedObjects(byType, shownClasses);
         MultiView multi = new MultiView();
+        if (schemas != null) multi.context().setSchemas(schemas);
         multi.context().setCardDecorator(cardDecorator);
         multi.context().setValueLinker(WikidataLinks.valueLinker());
         multi.sectionNoun("Classes");

@@ -62,6 +62,8 @@ class DomainCatalogConfiguredTest {
         assertEquals(List.of(), staged.unresolved());
         assertSame(instance(opened, "Q133147"),
                 ((List<?>) staged.instances().getFirst().get("characters")).getFirst());
+        assertTrue(fieldNames(staged.instances().getFirst()).contains("characters"),
+                "a staged story lists its class's fields, not only provenance");
         var sidecar = opened.capability(Curatable.class).curation();
         sidecar.putInstance(curated);
         sidecar.save();
@@ -71,6 +73,14 @@ class DomainCatalogConfiguredTest {
         assertSame(instance(reopened, "Q133147"),
                 ((List<?>) instance(reopened, curated.id()).get("characters")).getFirst(),
                 "reopening the curation must retain the reference to the loaded subclass");
+        assertTrue(fieldNames(instance(reopened, curated.id())).contains("characters"),
+                "a reopened curated story lists its class's fields, not only provenance");
+    }
+
+    private static List<String> fieldNames(WikidataDynamicObject instance) {
+        return instance.dynamicFieldSchema() == null ? List.of()
+                : instance.dynamicFieldSchema().fields().stream()
+                        .map(objectview.field.FieldRef::name).toList();
     }
 
     private static WikidataDynamicObject instance(DomainModel domain, String id) {

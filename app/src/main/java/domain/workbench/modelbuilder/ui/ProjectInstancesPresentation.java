@@ -29,6 +29,7 @@ public final class ProjectInstancesPresentation {
     public static void showSaved(QueryObjectResultPanel viewer, GeneratedProjectModel model,
             DomainModel domain, Collection<GraphDiscoveryResultStore.Artifact> graphs) {
         viewer.configuredGroups(ConfiguredGroups.presentationBindings(model, domain.instances()));
+        viewer.schemas(domain::fieldSchema);
         viewer.acceptSavedRoots(ConstructInventory.of(model).visibleInstances(domain.memberRoots()),
                 sections(graphs, graph -> GraphResultPresentation.review(graph, java.util.List.of(), null)));
     }
