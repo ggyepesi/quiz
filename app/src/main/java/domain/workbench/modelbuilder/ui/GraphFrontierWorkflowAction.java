@@ -1,5 +1,6 @@
 package domain.workbench.modelbuilder.ui;
 
+import domain.workbench.execution.ui.GraphCoverageCardDecorator;
 import domain.datasource.graph.GraphDiscoveryState;
 import domain.datasource.graph.GraphExpansionCoverage;
 import domain.datasource.graph.GraphExpansionPattern;

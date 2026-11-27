@@ -5,4 +5,3 @@ domain/config/GeneratedProjectModelValidator.java::|| "source".equals(reference)
 domain/workbench/modelbuilder/ui/FieldSourcePanel.java::m.subjectField("source".equals(subj) ? "" : subj);
 domain/workbench/modelbuilder/ui/SingleRootClassModelPanel.java::+ (name.trim().equalsIgnoreCase("name")
 wikidata/explore/query/logical/GenerateDomainQuery.java::|| "WikidataDynamicObject".equals(o.typeName())) {
-domain/workbench/modelbuilder/ui/ModelBuilderFrame.java::|| "WikidataDynamicObject".equals(o.typeName())) {

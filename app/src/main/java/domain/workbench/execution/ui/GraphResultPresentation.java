@@ -1,10 +1,9 @@
-package domain.workbench.modelbuilder.ui;
+package domain.workbench.execution.ui;
 
 import objectview.Viewable;
 import process.swing.workflow.ProcessWorkflowResults;
 import domain.runtime.WikidataDynamicObject;
 import domain.build.GraphDiscoveryResultStore;
-import domain.workbench.execution.ui.QueryObjectResultPanel;
 
 import javax.swing.BoxLayout;
 import javax.swing.JComponent;
@@ -43,7 +42,7 @@ public final class GraphResultPresentation {
                 shapeSample(result), decorator(result));
     }
 
-    static Viewable candidate(WikidataDynamicObject annotation) {
+    public static Viewable candidate(WikidataDynamicObject annotation) {
         Object value = annotation == null ? null
                 : annotation.get(GraphDiscoveryResultStore.ANNOTATED_INSTANCE);
         return value instanceof Viewable view ? view : annotation;
@@ -56,7 +55,7 @@ public final class GraphResultPresentation {
     }
 
     /** The output-class schema without its hidden reverse reference to the annotation. */
-    static Viewable shapeSample(GraphDiscoveryResultStore.Artifact artifact) {
+    public static Viewable shapeSample(GraphDiscoveryResultStore.Artifact artifact) {
         Viewable sample = artifact == null ? null
                 : artifact.model().representativeSample(artifact.outputClass());
         if (sample instanceof WikidataDynamicObject dynamic) {
@@ -71,7 +70,7 @@ public final class GraphResultPresentation {
         return value -> decoration(annotations.get(value));
     }
 
-    static List<ProcessWorkflowResults.SelectionAction> decisionActions(
+    public static List<ProcessWorkflowResults.SelectionAction> decisionActions(
             GraphDiscoveryResultStore.Artifact artifact) {
         return decisionActions(artifact, () -> { });
     }
@@ -102,7 +101,7 @@ public final class GraphResultPresentation {
         return result;
     }
 
-    static JComponent decoration(WikidataDynamicObject annotation) {
+    public static JComponent decoration(WikidataDynamicObject annotation) {
         if (annotation == null) return null;
         JPanel panel = new JPanel();
         panel.setOpaque(false);

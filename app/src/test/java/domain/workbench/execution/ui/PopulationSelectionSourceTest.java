@@ -1,4 +1,4 @@
-package domain.workbench.modelbuilder.ui;
+package domain.workbench.execution.ui;
 
 import objectview.Viewable;
 import org.junit.jupiter.api.Test;
@@ -27,7 +27,7 @@ class PopulationSelectionSourceTest {
         shown.put("Position", List.of(position));
         shown.put("PositionDiscovery", List.of(annotation));
 
-        var choices = ModelBuilderFrame.populationSourcesShownIn(shown, project);
+        var choices = InstancesWindow.populationSourcesShownIn(shown, project);
 
         assertEquals(List.of("Position"), List.copyOf(choices.keySet()),
                 "the graph annotation is not a population source and the unrelated "

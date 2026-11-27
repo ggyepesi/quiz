@@ -1,4 +1,4 @@
-package domain.workbench.modelbuilder.ui;
+package domain.workbench.execution.ui;
 
 import domain.datasource.graph.GraphDiscoveryState;
 import domain.datasource.graph.GraphExpansionCoverage;
@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 /** Adds graph coverage to a card title; datasource provenance remains a field. */
-final class GraphCoverageCardDecorator implements Function<Viewable, JComponent> {
+public final class GraphCoverageCardDecorator implements Function<Viewable, JComponent> {
     private record Key(String type, String id) { }
     private record Marker(String label, GraphExpansionCoverage.State state) { }
 
@@ -26,7 +26,7 @@ final class GraphCoverageCardDecorator implements Function<Viewable, JComponent>
         this(graph, graph == null ? java.util.List.of() : graph.patterns());
     }
 
-    GraphCoverageCardDecorator(GraphDiscoveryState graph,
+    public GraphCoverageCardDecorator(GraphDiscoveryState graph,
             java.util.Collection<? extends domain.datasource.graph.GraphEdgeDefinition> edges) {
         if (graph == null) return;
         Map<String, String> targetByPattern = new HashMap<>();

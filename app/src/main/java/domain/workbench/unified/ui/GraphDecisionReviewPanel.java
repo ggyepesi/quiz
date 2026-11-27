@@ -5,7 +5,7 @@ import domain.build.GraphResults;
 import domain.config.GeneratedClassModel;
 import domain.transform.ui.ProjectBacking;
 import domain.workbench.execution.ui.QueryObjectResultPanel;
-import domain.workbench.modelbuilder.ui.GraphResultPresentation;
+import domain.workbench.execution.ui.GraphResultPresentation;
 
 import javax.swing.JButton;
 import javax.swing.JLabel;

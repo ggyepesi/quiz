@@ -1,5 +1,6 @@
 package domain.workbench.modelbuilder.ui;
 
+import domain.workbench.execution.ui.GraphResultPresentation;
 import domain.build.GraphDiscoveryResultStore;
 import domain.build.GraphResults;
 import domain.config.GeneratedClassModel;

@@ -1,4 +1,4 @@
-package domain.workbench.modelbuilder.ui;
+package domain.workbench.execution.ui;
 
 import domain.datasource.EntityRef;
 import domain.datasource.graph.GraphDiscoveryState;

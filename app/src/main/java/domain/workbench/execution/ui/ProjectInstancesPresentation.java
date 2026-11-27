@@ -1,11 +1,10 @@
-package domain.workbench.modelbuilder.ui;
+package domain.workbench.execution.ui;
 
 import domain.DomainModel;
 import domain.build.GraphDiscoveryResultStore;
 import domain.config.ConstructInventory;
 import domain.config.GeneratedProjectModel;
 import domain.transform.app.ConfiguredGroups;
-import domain.workbench.execution.ui.QueryObjectResultPanel;
 import wikidata.explore.query.result.ObjectQueryResult;
 
 import java.util.Collection;

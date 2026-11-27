@@ -6,7 +6,7 @@ import domain.DomainSchemas;
 import domain.build.ProjectBuild;
 import domain.build.GraphResults;
 import domain.runtime.WikidataDynamicObject;
-import domain.workbench.modelbuilder.ui.ProjectInstancesPresentation;
+import domain.workbench.execution.ui.ProjectInstancesPresentation;
 import domain.compile.transform.TransformationExecution;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedFieldModel;

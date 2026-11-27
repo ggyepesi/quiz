@@ -1,4 +1,4 @@
-package domain.workbench.modelbuilder.ui;
+package domain.workbench.execution.ui;
 
 import org.junit.jupiter.api.Test;
 import domain.runtime.WikidataDynamicObject;
@@ -29,7 +29,7 @@ class LoadedInstancesCountVisibilityTest {
         int nextMethod = source.indexOf("\n    private ", accept + 1);
         String body = source.substring(accept, nextMethod);
 
-        assertTrue(body.contains("refreshInstancesWindowTitle();"),
+        assertTrue(body.contains("instancesWindow.refreshRun();"),
                 "installing a loaded/generated run must refresh the visible count");
     }
 
@@ -40,7 +40,7 @@ class LoadedInstancesCountVisibilityTest {
         GenerationRun loaded = new GenerationRun(new GeneratedProjectModel(), 0, null,
                 java.util.List.of(first, duplicate, second), null, java.util.List.of());
 
-        String title = ModelBuilderFrame.instancesTitle(loaded, loaded.modelSnapshot());
+        String title = InstancesWindow.instancesTitle(loaded, loaded.modelSnapshot());
         assertEquals("Generated instances — Position 2  (2 distinct)", title);
 
         JPanel visibleTitle = new JPanel(new BorderLayout());

@@ -23,11 +23,11 @@ class ProjectWindowLifecycleTest {
         var windows = Pattern.compile("private JFrame (\\w+);").matcher(source);
         while (windows.find()) {
             String field = windows.group(1);
-            assertTrue(close.contains("closeWindow(" + field + ")")
-                            || close.contains("discardNameCollisionInspection()")
-                            && field.equals("nameCollisionsWindow"),
+            assertTrue(close.contains("closeWindow(" + field + ")"),
                     field + " must close at the project boundary");
         }
+        assertTrue(close.contains("instancesWindow.close()"),
+                "the shared instances window and its collision browser close at the same boundary");
         assertTrue(close.contains("getOwnedWindows()"),
                 "modeless dialogs are project-owned too");
         assertTrue(close.contains("SwingProcessWorkflow")

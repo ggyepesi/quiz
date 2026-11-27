@@ -15,7 +15,7 @@ import domain.datasource.schema.FieldType;
 import domain.runtime.WikidataDynamicObject;
 import domain.runtime.WikidataDynamicObjectJsonStore;
 import domain.runtime.SnapshotDomain;
-import domain.workbench.modelbuilder.ui.ProjectInstancesPresentation;
+import domain.workbench.execution.ui.ProjectInstancesPresentation;
 import objectview.field.FieldRole;
 import objectview.field.FieldSet;
 import objectview.field.LinkedTextSequence;

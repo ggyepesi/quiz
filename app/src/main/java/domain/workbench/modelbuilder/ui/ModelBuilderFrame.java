@@ -11,7 +11,6 @@ import domain.datasource.schema.FieldType;
 import wikidata.WikidataIds;
 
 import aux.SplitPaneUtils;
-import objectview.render.RenderContext;
 import wikidata.WikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import aux.Constants;
@@ -34,7 +33,7 @@ import wikidata.explore.query.logical.EnrichInstancesQuery;
 import wikidata.explore.query.logical.RemapInstancesQuery;
 import domain.workbench.execution.GenerationRunState;
 import domain.workbench.execution.ui.BuildProjectWorkflow;
-import domain.workbench.execution.ui.QueryObjectResultPanel;
+import domain.workbench.execution.ui.InstancesWindow;
 import domain.workbench.execution.ui.SwingQueryRunner;
 import domain.workbench.execution.ui.SwingQuerySession;
 import domain.workbench.execution.ui.WorkflowLogWindow;
@@ -82,27 +81,9 @@ public class ModelBuilderFrame extends JFrame {
     private final ModelSourceWorkbenchPanel sourceWorkbench =
             new ModelSourceWorkbenchPanel(projectModel, graphResults);
 
-    private final QueryObjectResultPanel instancesPanel =
-            new QueryObjectResultPanel();
-
-    // Generated instances live in their own window (like the query logs), so
-    // the main window is all about configuration.
-    private JFrame instancesWindow;
-
-    // Name collisions from the last run (names mapping to >1 entity), shown on
-    // demand in their own panel from the instances window.
-    private JFrame nameCollisionsWindow;
-    /** The searchable collision list and its selected ordinary instance browser. */
-    private NameCollisionInspectionPanel nameCollisionInspection;
-
-    private final JButton nameCollisionsButton =
-            new JButton("Name collisions");
-
-    private final JButton graphFrontierButton =
-            new JButton("Graph frontier");
-
-    private final JButton createPopulationSelectionButton =
-            new JButton("Create population selection…");
+    private final InstancesWindow instancesWindow = new InstancesWindow(this, projectModel,
+            runState, graphResults, this::showGraphFrontier, this::applyGraphResultFromInstances,
+            this::modelFile, this::populationCreated);
 
     private final JButton runReportButton =
             new JButton("Run report");
@@ -271,7 +252,7 @@ public class ModelBuilderFrame extends JFrame {
         this.sourceWorkbench.domainStatus(() -> new DomainOverviewPanel.Status(
                 modelFile().isFile(), snapshotFile().isFile(),
                 runState.current() == null ? 0 : runState.current().size()));
-        this.instancesPanel.onHiddenClassSectionsChanged(
+        this.instancesWindow.onHiddenClassSectionsChanged(
                 this::rememberInstanceClassVisibility);
 
         // Continue from the saved model (so edits like sharesBorderWith / the
@@ -331,9 +312,7 @@ public class ModelBuilderFrame extends JFrame {
         graphResultsFollowLoadedModel();
         runState.replaceProject(replacementLedger);
         refreshRunControls();
-        updateNameCollisionsButton();
-        instancesPanel.clear();
-        instancesPanel.hiddenClassSections(rememberedInstanceClassVisibility());
+        instancesWindow.reset(rememberedInstanceClassVisibility());
     }
 
     /** Close every non-modal window whose contents describe the open project. */
@@ -352,13 +331,12 @@ public class ModelBuilderFrame extends JFrame {
     /** Close views of generated/configured data while preserving the workflow whose
      * completed build is synchronizing this same project. */
     private void closeProjectDataWindows() {
-        closeWindow(instancesWindow);
+        instancesWindow.close();
         closeWindow(statementsWindow);
         closeWindow(explorerWindow);
         closeWindow(entityKindsWindow);
         closeWindow(graphWindow);
         closeWindow(guideWindow);
-        discardNameCollisionInspection();
     }
 
     private static void closeWindow(Window window) {
@@ -508,51 +486,6 @@ public class ModelBuilderFrame extends JFrame {
         return panel;
     }
 
-    // Lazily-created window hosting the generated-instances result panel.
-    private void showInstancesWindow() {
-        refreshInstancesPanel();
-        if (instancesWindow == null) {
-            JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
-            nameCollisionsButton.setToolTipText(
-                    "Names shared by several distinct entities (ambiguous quiz "
-                            + "answers) — select a name to inspect the actual instances");
-            nameCollisionsButton.addActionListener(e -> showNameCollisions());
-            updateNameCollisionsButton();
-            toolbar.add(nameCollisionsButton);
-            graphFrontierButton.setToolTipText(
-                    "Review nodes reached by configured graph discovery but not yet "
-                            + "expanded in the reverse direction");
-            graphFrontierButton.addActionListener(e -> showGraphFrontier());
-            toolbar.add(graphFrontierButton);
-            createPopulationSelectionButton.setToolTipText(
-                    "Create a reusable population from a class shown in this instances window");
-            createPopulationSelectionButton.addActionListener(
-                    ignored -> createPopulationSelectionFromInstancesPanel());
-            toolbar.add(createPopulationSelectionButton);
-            instancesPanel.onDisplayedObjectsChanged(
-                    this::updateCreatePopulationSelectionButton);
-            updateCreatePopulationSelectionButton();
-
-            instancesWindow = domain.workbench.execution.ui.InstancesWindow.create(instancesPanel, toolbar);
-        }
-        // Stamp the generated class (+ count) on the title — a single-class run
-        // renders as a plain search view with no type label, so without this
-        // there's no on-screen indication of which class you're looking at.
-        refreshInstancesWindowTitle();
-        showAndFocus(instancesWindow);
-    }
-
-    /** One window owns the complete generated result: ordinary class instances and
-     * every named graph constraint's annotation instances. */
-    private void refreshInstancesPanel() {
-        if (runState.current() == null) return;
-        ProjectInstancesPresentation.show(instancesPanel, projectModel, runState.current().objectResult(),
-                graphResults.all(), result -> GraphResultPresentation.review(result,
-                        java.util.List.of(new QueryObjectResultPanel.GroupAction(
-                                "Apply accepted instances", () -> applyGraphResultFromInstances(result))),
-                        runState::markUnsaved));
-    }
-
     private void applyGraphResultFromInstances(GraphDiscoveryResultStore.Artifact result) {
         String action = "Apply accepted instances";
         File destination = snapshotBesideModel(openModelFile);
@@ -584,110 +517,15 @@ public class ModelBuilderFrame extends JFrame {
                 runState.current() == null ? java.util.List.of() : runState.current().dynamicObjects());
     }
 
-    private void updateCreatePopulationSelectionButton() {
-        java.util.Map<String, java.util.List<Viewable>> choices =
-                populationSourcesShownIn(instancesPanel.displayedObjectsByType(), projectModel);
-        createPopulationSelectionButton.setEnabled(!choices.isEmpty());
-        createPopulationSelectionButton.setToolTipText(choices.isEmpty()
-                ? "No class with instances is currently shown"
-                : "Create a reusable population from "
-                        + (choices.size() == 1
-                                ? choices.keySet().iterator().next()
-                                : "one of the classes shown in this instances window"));
-    }
-
-    private void createPopulationSelectionFromInstancesPanel() {
-        java.util.Map<String, java.util.List<Viewable>> choices =
-                populationSourcesShownIn(instancesPanel.displayedObjectsByType(), projectModel);
-        if (choices.isEmpty()) return;
-        String className;
-        if (choices.size() == 1) {
-            className = choices.keySet().iterator().next();
-        } else {
-            Object chosen = JOptionPane.showInputDialog(this,
-                    "Create the population selection from which shown class?",
-                    "Choose shown class", JOptionPane.QUESTION_MESSAGE, null,
-                    choices.keySet().toArray(String[]::new),
-                    choices.keySet().iterator().next());
-            if (chosen == null) return;
-            className = chosen.toString();
-        }
-        List<String> qids = choices.get(className).stream()
-                .map(domain.provenance.SourceIdentities::wikidataQid)
-                .filter(java.util.Objects::nonNull).distinct().toList();
-        if (qids.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "No shown " + className + " instances have Wikidata QIDs.");
-            return;
-        }
-        String entered = JOptionPane.showInputDialog(this, "Population selection name:",
-                className + "Population");
-        if (entered == null) return;
-        String name = entered.trim();
-        if (!name.matches("[A-Za-z_$][A-Za-z0-9_$]*")) {
-            JOptionPane.showMessageDialog(this,
-                    "Enter a population selection name shaped like a Java class name.");
-            return;
-        }
-        Selection existing = projectModel.findSelection(name);
-        if (existing != null && existing.isImported()) {
-            JOptionPane.showMessageDialog(this, "Population " + name
-                    + " is imported from " + existing.importedFrom()
-                    + " and must be changed there.");
-            return;
-        }
-        String description = "Create population selection \"" + name + "\" from all "
-                + qids.size() + " shown " + className + " instances.\n\n"
-                + "Save " + (projectModel.isModel() ? "model" : "domain")
-                + " will write it to\n" + modelFile().getPath() + ".";
-        if (!process.swing.Dialogs.confirmPersistence(
-                this, "Create population selection", description)) return;
-        PopulationSelection population = new PopulationSelection(name);
-        population.className(className);
-        population.instanceQids(qids);
+    private void populationCreated(PopulationSelection population) {
         projectModel.replaceSelection(population);
         modelChanged();
         classModelPanel.refresh();
-        logWindow.info("Created population selection " + name + " with " + qids.size()
-                + " " + className + " QIDs. Use \"Save "
-                + (projectModel.isModel() ? "model" : "domain") + "\" to persist it.");
+        logWindow.info("Created population selection " + population.name() + " with "
+                + population.instanceQids().size() + " " + population.className()
+                + " QIDs. Use \"Save " + (projectModel.isModel() ? "model" : "domain")
+                + "\" to persist it.");
     }
-
-    static java.util.Map<String, java.util.List<Viewable>> populationSourcesShownIn(
-            java.util.Map<String, java.util.List<Viewable>> shown,
-            GeneratedProjectModel project) {
-        java.util.Map<String, java.util.List<Viewable>> choices =
-                new java.util.LinkedHashMap<>();
-        if (shown == null || project == null) return choices;
-        shown.forEach((name, values) -> {
-            GeneratedClassModel clazz = project.findClass(name);
-            if (clazz != null
-                    && clazz.classKind() != domain.config.ClassKind.GRAPH
-                    && values != null && !values.isEmpty()) {
-                choices.put(name, values);
-            }
-        });
-        return java.util.Collections.unmodifiableMap(choices);
-    }
-
-    /** A run may arrive after the window has already opened (notably Load instances,
-     * which materializes the snapshot and then installs it on the EDT). Keep the
-     * visible count attached to the run rather than to whichever action opened the
-     * window first. */
-    private void refreshInstancesWindowTitle() {
-        if (instancesWindow != null) {
-            String title = instancesTitle();
-            String annotations = graphResults.all().stream()
-                    .map(result -> result.type() + " " + result.instances().size())
-                    .collect(java.util.stream.Collectors.joining(", "));
-            instancesWindow.setTitle(annotations.isBlank()
-                    ? title : title + " · graph annotations: " + annotations);
-        }
-    }
-
-    /** Presents bounded samples with the same Instances component without replacing
-     * the generated domain result that the main Instances window owns. */
-
 
     // Lazily-created window hosting the discovery tools moved out of the main
     // frame, so the main window stays focused on domain + configuration.
@@ -849,72 +687,6 @@ public class ModelBuilderFrame extends JFrame {
         showAndFocus(graphWindow);
     }
 
-    private String instancesTitle() {
-        return instancesTitle(runState.current(), projectModel);
-    }
-
-    static String instancesTitle(GenerationRun run, GeneratedProjectModel model) {
-        if (run == null) {
-            return "Generated instances";
-        }
-        // Per-class counts, biggest first — the total alone was misleading (it
-        // reads as if every instance is the root class, when it's the whole pool
-        // across classes, e.g. films + nominations + categories).
-        // Count DISTINCT entities per class, by QID — the served/saved artifact is
-        // keyed by QID (one instance per QID), so counting raw pool objects
-        // over-reports: a QID that is both a class root and a bare reference child, or
-        // a blank-QID ref, is one saved entity but several pool objects. Skipping
-        // non-QID objects + deduping by QID makes this preview match the reload.
-        java.util.Map<String, java.util.Set<String>> qidsByType =
-                new java.util.LinkedHashMap<>();
-        if (run.dynamicObjects() != null) {
-            for (WikidataDynamicObject o : run.dynamicObjects()) {
-                if (o == null || o.typeName() == null || o.typeName().isBlank()
-                        // untyped sentinel: demoted duplicate statements / bare
-                        // reference children, not first-class class instances.
-                        || "WikidataDynamicObject".equals(o.typeName())) {
-                    continue;
-                }
-                String qid = o.qid();
-                if (qid == null || !WikidataIds.isQid(qid)) {
-                    continue;   // not a saved entity — don't inflate the count
-                }
-                qidsByType.computeIfAbsent(
-                        o.typeName(), k -> new java.util.HashSet<>()).add(qid);
-            }
-        }
-        if (qidsByType.isEmpty()) {
-            return "Generated instances  (" + run.size() + ")";
-        }
-        int total = qidsByType.values().stream().mapToInt(java.util.Set::size).sum();
-        String breakdown = qidsByType.entrySet().stream()
-                                     .sorted((a, b) -> Integer.compare(b.getValue().size(), a.getValue().size()))
-                                     .map(e -> e.getKey() + " " + e.getValue().size())
-                                     .collect(java.util.stream.Collectors.joining(", "));
-        return "Generated instances — " + breakdown
-                + "  (" + total + " distinct)" + partsNote(model, run);
-    }
-
-    /** A single-class preview deliberately does NOT materialize owned components: one
-     *  empty part per instance answers neither question a preview asks. Say so on the
-     *  panel, or their absence reads as a fault in the model. */
-    private static String partsNote(GeneratedProjectModel model, GenerationRun run) {
-        boolean modelHasParts = model != null && model.classes().stream()
-                .filter(java.util.Objects::nonNull)
-                .anyMatch(clazz -> clazz.fields().stream().anyMatch(field ->
-                        field != null && field.type()
-                                == domain.datasource.schema.FieldType.ENTITY
-                                && field.mapping().productionKind()
-                                == domain.config.FieldProductionKind.OWNED_COMPONENT));
-        if (!modelHasParts || run == null || run.dynamicObjects() == null) {
-            return "";
-        }
-        boolean anyPart = run.dynamicObjects().stream()
-                .anyMatch(o -> o != null && o.isPart());
-        return anyPart ? "" : "   ⚠ parts not materialized (preview — "
-                + "Generate domain or Enrich produces them with their values)";
-    }
-
     private void wireActions() {
         SwingQueryRunner queryRunner = querySession.runner();
 
@@ -941,7 +713,7 @@ public class ModelBuilderFrame extends JFrame {
         sourceWorkbench.graphInstances(() -> runState.current() == null
                 ? List.of() : runState.current().instances());
         sourceWorkbench.onGraphResult(this::applyGraphResult);
-        sourceWorkbench.afterGraphResultApplied(this::showInstancesWindow);
+        sourceWorkbench.afterGraphResultApplied(instancesWindow::show);
         sourceWorkbench.log(logWindow::info);
 
         sourceWorkbench.afterChange(v -> {
@@ -1197,7 +969,7 @@ public class ModelBuilderFrame extends JFrame {
                                 // Applying installs the data while the workflow dialog still
                                 // exists. Reveal the destination only after that dialog closes,
                                 // otherwise its close can steal activation back on macOS.
-                                showInstancesWindow();
+                                instancesWindow.show();
                             }
                         };
                 logWindow.registerPipeline(
@@ -1303,7 +1075,7 @@ public class ModelBuilderFrame extends JFrame {
 
         sourceWorkbench.onReloadField(this::forgetFetchedDeclaration);
 
-        showInstancesButton.addActionListener(e -> showInstancesWindow());
+        showInstancesButton.addActionListener(e -> instancesWindow.show());
         showStatementsButton.addActionListener(e -> showStatementsWindow(queryRunner));
 
         showExplorerButton.addActionListener(e -> showExplorerWindow());
@@ -1550,7 +1322,7 @@ public class ModelBuilderFrame extends JFrame {
                         if (!decisions.isEmpty()) acceptGenerationRun(decisions.get(0));
                     }
                     @Override public void afterApply() {
-                        showInstancesWindow();
+                        instancesWindow.show();
                     }
                 };
         logWindow.registerPipeline(title + " — " + snapshot.name(), pipeline,
@@ -1740,17 +1512,8 @@ public class ModelBuilderFrame extends JFrame {
             sourceWorkbench.graphInstances(() -> runState.current() == null
                     ? List.of() : runState.current().instances());
 
+            instancesWindow.refreshRun();
             if (run != null) {
-                // Graph state is presentation metadata, like the QID chip: show it in
-                // card titles without inventing stored fields or affecting search/sort.
-                instancesPanel.cardDecorator(new GraphCoverageCardDecorator(
-                        runState.visibleGraphLedger(),
-                        domain.build.WikidataGraphExpansionPlan
-                                .compile(run.modelSnapshot()).edges()));
-                // The instances window has one projection: the accepted run plus every
-                // graph result still owned by its named graph class. Sending the run on
-                // its own removes valid annotation tabs after Generate, Load or Enrich.
-                refreshInstancesPanel();
                 // Generation runs on a COPY of the model, so a descriptive vocabulary
                 // built from the loaded data (e.g. NomineeType, WorkGenre) lands on
                 // that copy and is otherwise lost. Fold the built values back into the
@@ -1778,39 +1541,14 @@ public class ModelBuilderFrame extends JFrame {
                                        + "\" to persist "
                                        + "to " + snapshotFile().getName() + ").");
                 reportNameCollisions();
-                updateGraphFrontierButton();
                 // What the declared expectations found. Silent when they all held, so a
                 // clean run says nothing and a gap is the only thing that speaks up.
                 // The results window is gone the moment it is accepted, taking every
                 // rule bucket with it. The run still HOLDS what it did — so say it here,
                 // where it stays readable and is saved with the run log.
                 logWindow.info(domain.build.RunAudits.report(run));
-            } else {
-                instancesPanel.clear();
-                updateGraphFrontierButton();
             }
-            refreshInstancesWindowTitle();
         });
-    }
-
-    /**
-     * Every edge with a reviewable frontier. A statement pattern is persisted in the
-     * ledger; a field edge is derived from the model, so both are asked for here and
-     * the two callers cannot disagree about which edges exist.
-     */
-    private java.util.List<domain.datasource.graph.GraphEdgeDefinition> reviewableEdges() {
-        if (runState.current() == null) return java.util.List.of();
-        return domain.build.WikidataGraphExpansionPlan
-                .compile(projectModel).edges();
-    }
-
-    private void updateGraphFrontierButton() {
-        domain.datasource.graph.GraphDiscoveryState state = runState.visibleGraphLedger();
-        int count = reviewableEdges().stream().mapToInt(
-                edge -> state.frontier(edge).size()).sum();
-        graphFrontierButton.setText(count == 0
-                ? "Graph frontier" : "Graph frontier (" + count + ")");
-        graphFrontierButton.setEnabled(runState.current() != null && count > 0);
     }
 
     private void showGraphFrontier() {
@@ -1823,7 +1561,7 @@ public class ModelBuilderFrame extends JFrame {
             return;
         }
         GraphFrontierWorkflowAction action = new GraphFrontierWorkflowAction(
-                currentRunWorkflowSubject(), runState.visibleGraphLedger(), reviewableEdges(),
+                currentRunWorkflowSubject(), runState.visibleGraphLedger(), instancesWindow.reviewableEdges(),
                 runState.current().dynamicObjects(),
                 this::applyGraphFrontier, generateDomainButton::doClick);
         process.swing.workflow.SwingProcessWorkflow.start(this, processRunner, action);
@@ -1838,7 +1576,7 @@ public class ModelBuilderFrame extends JFrame {
                 // Resolved against the edges offered for review, not the persisted
                 // patterns: a field edge is derived from the model and is not in there,
                 // so an id lookup could only ever find a statement pattern.
-                domain.datasource.graph.GraphEdgeDefinition edge = reviewableEdges().stream()
+                domain.datasource.graph.GraphEdgeDefinition edge = instancesWindow.reviewableEdges().stream()
                         .filter(candidate -> candidate.id().equals(decision.patternId()))
                         .findFirst().orElse(null);
                 if (runState.queueExpansion(edge, domain.datasource.EntityRef.wikidata(decision.qid()))) {
@@ -1846,9 +1584,7 @@ public class ModelBuilderFrame extends JFrame {
                 }
             }
         }
-        instancesPanel.cardDecorator(new GraphCoverageCardDecorator(
-                runState.graphLedger(), reviewableEdges()));
-        updateGraphFrontierButton();
+        instancesWindow.frontierChanged();
         runState.explainNextGeneration("Expand " + decisions.size() + " graph-frontier node(s)");
         logWindow.info("Queued " + queued
                 + " graph-frontier node(s) in the snapshot ledger"
@@ -1961,14 +1697,9 @@ public class ModelBuilderFrame extends JFrame {
     // name (5 Agenors, 5 Lycuses, …). Make that explicit after a run: list the
     // names that map to >1 QID, so the user can disambiguate or exclude.
     private void reportNameCollisions() {
-        // A collision window is a view of one concrete run. Never leave the previous
-        // run's instances visible under the current run's button/count.
-        discardNameCollisionInspection();
         var byClass = runState.refreshNameCollisions();
-        if (byClass.isEmpty()) {
-            updateNameCollisionsButton();
-            return;
-        }
+        instancesWindow.nameCollisionsChanged();
+        if (byClass.isEmpty()) return;
         var ambiguity = domain.build.NameCollisions.Meaning.ENTITY_AMBIGUITY;
         var statement = domain.build.NameCollisions.Meaning.STATEMENT_REPETITION;
         var owned = domain.build.NameCollisions.Meaning.OWNED_REPETITION;
@@ -1997,8 +1728,6 @@ public class ModelBuilderFrame extends JFrame {
                 "repeated owned-part label(s)",
                 "owned parts whose display name is inherited from their owner",
                 "owned parts", false);
-
-        updateNameCollisionsButton();
     }
 
     private void reportSharedLabels(
@@ -2036,51 +1765,6 @@ public class ModelBuilderFrame extends JFrame {
                 explanation + (inspectableAsCollision
                         ? "; open \"Name collisions (" + labels + ")\" to inspect." : "."),
                 rows);
-    }
-
-    private void updateNameCollisionsButton() {
-        int n = runState.nameCollisions().size();
-        nameCollisionsButton.setText(
-                n == 0 ? "Name collisions" : "Name collisions (" + n + ")");
-        nameCollisionsButton.setEnabled(n > 0);
-    }
-
-    private void showNameCollisions() {
-        if (runState.nameCollisions().isEmpty()) {
-            return;
-        }
-        if (nameCollisionsWindow != null && nameCollisionsWindow.isDisplayable()) {
-            showAndFocus(nameCollisionsWindow);
-            return;
-        }
-        RenderContext context = new RenderContext();
-        context.setInPlaceNavigation(true);
-        context.setValueLinker(wikidata.ui.WikidataLinks.valueLinker());
-        if (nameCollisionInspection != null) nameCollisionInspection.close();
-        nameCollisionInspection = new NameCollisionInspectionPanel(runState.nameCollisions(), context);
-
-        if (nameCollisionsWindow == null || !nameCollisionsWindow.isDisplayable()) {
-            nameCollisionsWindow = new JFrame("Name collisions");
-            nameCollisionsWindow.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-            nameCollisionsWindow.setSize(1200, 760);
-            nameCollisionsWindow.setLocationByPlatform(true);
-        }
-        nameCollisionsWindow.getContentPane().removeAll();
-        nameCollisionsWindow.add(nameCollisionInspection, BorderLayout.CENTER);
-        nameCollisionsWindow.revalidate();
-        nameCollisionsWindow.repaint();
-        showAndFocus(nameCollisionsWindow);
-    }
-
-    private void discardNameCollisionInspection() {
-        if (nameCollisionInspection != null) {
-            nameCollisionInspection.close();
-            nameCollisionInspection = null;
-        }
-        if (nameCollisionsWindow != null) {
-            nameCollisionsWindow.dispose();
-            nameCollisionsWindow = null;
-        }
     }
 
     /** Information buttons are idempotent: reveal and focus their retained window
@@ -2394,7 +2078,7 @@ public class ModelBuilderFrame extends JFrame {
         restampRenamedInstances();
         classModelPanel.refresh();
         sourceWorkbench.refreshDomainOverview();
-        refreshInstancesPanel();
+        instancesWindow.refresh();
         if (graphWindow != null && graphWindow.isVisible()) {
             graphPanel.setModel(projectModel);
         }
@@ -2858,7 +2542,7 @@ public class ModelBuilderFrame extends JFrame {
                     reportGenerationError(failed.cause());
             case dataset.DomainStorage.Rename.Done done -> {
                 projectModel.name(done.name()); // file paths now use the new key
-                rememberInstanceClassVisibility(instancesPanel.hiddenClassSections());
+                rememberInstanceClassVisibility(instancesWindow.hiddenClassSections());
                 rememberCurrentDomain();
                 modelChanged();
                 refreshProjectPicker();
@@ -3123,7 +2807,7 @@ public class ModelBuilderFrame extends JFrame {
         runState.restoreGraphLedger(loaded.projection().graphDiscovery());
         graphResults.restore(loaded.projection().objects(), this::logInfo);
         acceptGenerationRun(loaded.run(), true);
-        if (revealInstances) showInstancesWindow();
+        if (revealInstances) instancesWindow.show();
         logWindow.info("Loaded " + loaded.run().dynamicObjects().size()
                 + " saved object(s) from " + file.getName()
                 + "; mapped " + loaded.run().instances().size()

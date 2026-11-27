@@ -435,6 +435,12 @@ raises the existing viewer without resetting it. The window includes configured 
 the saved graph annotations, partitioned as in ModelBuilder. Use **Review graph decisions**
 to edit annotations.
 
+ModelBuilder's **Show instances** window, toolbar and editable graph tabs use the shared
+run-backed `InstancesWindow`. It presents the accepted run and the project's graph results;
+the host still starts graph-frontier workflows, applies graph results and owns configuration
+changes. This extraction does not change how either workbench loads instances or applies saved
+curation. The Unified Workbench's saved-domain viewer keeps its existing behavior for now (#580).
+
 Select a local graph class and open **Build → Project → Run graph** to run that graph on its own.
 **Plan graph run** shows ModelBuilder's traversal diagram and scope. **Execute** uses that
 plan's loaded class instances or configured population and the shared graph cache and query.

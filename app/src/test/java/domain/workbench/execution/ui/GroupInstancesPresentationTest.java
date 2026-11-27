@@ -10,7 +10,6 @@ import domain.datasource.schema.FieldType;
 import domain.runtime.SnapshotDomain;
 import domain.runtime.WikidataDynamicObject;
 import domain.transform.app.DomainCatalog;
-import domain.workbench.modelbuilder.ui.ProjectInstancesPresentation;
 import objectview.demo.MultiView;
 import objectview.render.GroupMembersView;
 import objectview.render.GroupView;
