@@ -210,6 +210,8 @@ public final class WikidataAccess implements CancellableWork {
                 log.subquery(title, "", status + (detail.isBlank() ? "" : " " + detail));
             } else if ("OK".equals(status)) {
                 request.done(detail.isBlank() ? "OK" : detail);
+            } else if ("CANCELLED".equals(status)) {
+                request.cancelled(detail);
             } else {
                 request.failed(status + (detail.isBlank() ? "" : " " + detail));
             }

@@ -106,7 +106,7 @@ public final class WikipediaInfoboxAcquisition {
             }
             List<batch.WorkDescriptor> failed =
                     new batch.BatchExecutor<Map<String, Acquired>>(
-                    batch.BatchPolicy.defaults().withResume(false), batchProgress(group),
+                    batch.BatchPolicy.defaults().withResume(false), group.batchProgress(),
                     wikidata.WikidataBatchFailureClassifier.INSTANCE, cancellation,
                     // How hard a run may work is one policy; Wikipedia is not exempt
                     // from the network profile the reader chose for Wikidata.
@@ -331,20 +331,6 @@ public final class WikipediaInfoboxAcquisition {
     }
 
     @FunctionalInterface interface Fetcher { String fetch(URI uri) throws Exception; }
-
-    private static batch.BatchProgress batchProgress(GenerationLog log) {
-        return new batch.BatchProgress() {
-            @Override public Running started(String title, String request) {
-                GenerationLog.Running running = log.subqueryStarted(title, request);
-                return new Running() {
-                    @Override public void detail(String text) { log.message(text + "\n"); }
-                    @Override public void done(String summary) { running.done(summary); }
-                    @Override public void failed(String error) { running.failed(error); }
-                };
-            }
-            @Override public void message(String text) { log.message(text); }
-        };
-    }
 
     private static List<Declaration> declarations(GeneratedProjectModel model) {
         List<Declaration> result = new ArrayList<>();

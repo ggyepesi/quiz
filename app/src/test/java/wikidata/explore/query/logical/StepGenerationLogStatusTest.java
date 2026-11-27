@@ -143,4 +143,31 @@ class StepGenerationLogStatusTest {
         assertEquals(LogStatus.ADAPTED,
                 query.steps().iterator().next().status());
     }
+
+    @Test void aCancelledBatchAndItsEndpointRequestAreNotFailures() throws Exception {
+        LogNode root = new LogNode(LogKind.WORKFLOW, "Generate domain");
+        WorkflowRecorder recorder = new WorkflowRecorder(root);
+        recorder.start();
+        QueryContext context = new QueryContext().withRecorder(recorder);
+
+        context.step("Generate", "Domain", null, Map.of(), step -> {
+            GenerationLog log = StepGenerationLog.of(context, step);
+            try (GenerationLog.Group group = log.group("Fetch fields")) {
+                var batch = group.batchProgress().started("First batch", "SELECT ?s WHERE { }");
+                var transport = WikidataAccess.structuredRequestLog(Datasource.WIKIDATA, group);
+                transport.accept("[SPARQL 1] START GET\nSELECT ?s WHERE { }");
+                transport.accept("[SPARQL 1] CANCELLED timeMs=12");
+                batch.cancelled("Process cancelled");
+            }
+            return null;
+        });
+
+        LogNode group = root.steps().iterator().next().steps().iterator().next();
+        LogNode batch = group.steps().iterator().next();
+        assertEquals(LogStatus.CANCELLED, group.status());
+        assertEquals(LogStatus.CANCELLED, batch.status());
+        assertEquals(LogStatus.CANCELLED, batch.steps().iterator().next().status());
+        assertTrue(group.summary().contains("1 cancelled"), group.summary());
+        assertFalse(group.summary().contains("failed"), group.summary());
+    }
 }

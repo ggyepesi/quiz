@@ -62,7 +62,7 @@ public final class WikipediaCategoryAcquisition {
                 units.add(unit(List.copyOf(unit), group, cancellation, api, fetcher));
             }
             new batch.BatchExecutor<Map<String, List<CategoryMembership>>>(
-                    batch.BatchPolicy.defaults().withResume(false), batchProgress(group),
+                    batch.BatchPolicy.defaults().withResume(false), group.batchProgress(),
                     wikidata.WikidataBatchFailureClassifier.INSTANCE, cancellation,
                     // How hard a run may work is one policy; Wikipedia is not exempt
                     // from the network profile the reader chose for Wikidata.
@@ -126,20 +126,6 @@ public final class WikipediaCategoryAcquisition {
                 return List.of(unit(qids.subList(0, middle), log, cancellation, api, fetcher),
                         unit(qids.subList(middle, qids.size()), log, cancellation, api, fetcher));
             }
-        };
-    }
-
-    private static batch.BatchProgress batchProgress(GenerationLog log) {
-        return new batch.BatchProgress() {
-            @Override public Running started(String title, String request) {
-                GenerationLog.Running running = log.subqueryStarted(title, request);
-                return new Running() {
-                    @Override public void detail(String text) { log.message(text + "\n"); }
-                    @Override public void done(String summary) { running.done(summary); }
-                    @Override public void failed(String error) { running.failed(error); }
-                };
-            }
-            @Override public void message(String text) { log.message(text); }
         };
     }
 

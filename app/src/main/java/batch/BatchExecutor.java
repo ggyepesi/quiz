@@ -260,11 +260,24 @@ public final class BatchExecutor<R> {
     }
 
     private RunResult<R> runOrSplit(Attempt<R> attempt) throws Exception {
-        Exception last = null;
         BatchProgress.Running running = Objects.requireNonNull(
                 progress.started(attempt.unit().title(), attempt.unit().request()),
                 "BatchProgress.started returned null");
+        try {
+            return runOrSplit(attempt, running);
+        } catch (Exception error) {
+            if (!(error instanceof BatchFailedException)
+                    && failureClassifier.classify(error).failure() == BatchFailure.CANCELLED) {
+                running.cancelled(message(error));
+                restoreInterruptIfNeeded(error);
+            }
+            throw error;
+        }
+    }
 
+    private RunResult<R> runOrSplit(Attempt<R> attempt, BatchProgress.Running running)
+            throws Exception {
+        Exception last = null;
         // The loop bound is the largest budget any kind could claim; each failure then
         // checks its OWN budget, because UNAVAILABLE deliberately gets fewer attempts
         // than TRANSIENT (see BatchPolicy: retries here stack on the transport's).
@@ -279,6 +292,7 @@ public final class BatchExecutor<R> {
                         failureClassifier.classify(error),
                         "FailureClassifier returned null");
                 BatchFailure failure = decision.failure();
+                if (failure == BatchFailure.CANCELLED) throw error;
                 int budget = policy.attemptsFor(failure);
                 running.detail("Attempt " + tries + "/" + budget + " failed: "
                         + failure + ": " + message(error));
@@ -291,11 +305,6 @@ public final class BatchExecutor<R> {
                     running.detail("Retry budget exhausted; splitting into smaller batches");
                 } else if (failure == BatchFailure.UNAVAILABLE) {
                     running.detail("Unavailable retry budget exhausted; preserving as unavailable");
-                }
-                if (failure == BatchFailure.CANCELLED) {
-                    running.failed(failure + ": " + message(error));
-                    restoreInterruptIfNeeded(error);
-                    throw error;
                 }
                 if (failure == BatchFailure.FATAL) {
                     running.failed(failure + ": " + message(error));

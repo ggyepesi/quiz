@@ -22,13 +22,13 @@ public interface GenerationLog {
         subquery(title, request, "FAILED: " + (error == null ? "" : error));
     }
 
-    /** A sub-query shown in the log WHILE it runs: {@link #done}/{@link #failed}
-     *  finish it. Returned by {@link #subqueryStarted}. */
+    /** A sub-query shown in the log WHILE it runs. Returned by {@link #subqueryStarted}. */
     interface Running {
         void done(String summary);
         /** The original work was replaced by smaller work and therefore recovered. */
         default void adapted(String summary) { done(summary); }
         void failed(String error);
+        default void cancelled(String reason) { }
     }
 
     /**
@@ -56,7 +56,7 @@ public interface GenerationLog {
      * Opens a sub-query in the log <em>before</em> it is issued, so the running
      * query is visible instead of appearing only once it returns. The caller must
      * finish it via the returned handle. Default: no live node — the handle records
-     * the query atomically on {@link Running#done}/{@link Running#failed}, so sinks
+     * the query atomically at completion, so sinks
      * that don't support a running state behave exactly as before.
      */
     default Running subqueryStarted(String title, String request) {
@@ -66,6 +66,10 @@ public interface GenerationLog {
             }
             @Override public void failed(String error) {
                 subqueryFailed(title, request, error);
+            }
+            @Override public void cancelled(String reason) {
+                subquery(title, request, reason == null || reason.isBlank()
+                        ? "CANCELLED" : "CANCELLED: " + reason);
             }
         };
     }
@@ -110,6 +114,10 @@ public interface GenerationLog {
                         visible.failed(wikidata.api.WikidataApiClient.BatchLog
                                 .withDetails(details, error));
                     }
+                    @Override public void cancelled(String reason) {
+                        visible.cancelled(wikidata.api.WikidataApiClient.BatchLog
+                                .withDetails(details, reason));
+                    }
                 };
             }
             @Override public void logged(String title, String request, String summary) {
@@ -143,6 +151,10 @@ public interface GenerationLog {
                     @Override public void failed(String error) {
                         visible.failed(wikidata.api.WikidataApiClient.BatchLog
                                 .withDetails(details, error));
+                    }
+                    @Override public void cancelled(String reason) {
+                        visible.cancelled(wikidata.api.WikidataApiClient.BatchLog
+                                .withDetails(details, reason));
                     }
                 };
             }

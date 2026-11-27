@@ -80,6 +80,7 @@ public final class StepGenerationLog {
                     // Batches within a group can record concurrently, so count atomically.
                     private final AtomicInteger n = new AtomicInteger();
                     private final AtomicInteger failures = new AtomicInteger();
+                    private final AtomicInteger cancellations = new AtomicInteger();
                     private final AtomicReference<String> firstFailure =
                             new AtomicReference<>();
                     @Override public void message(String text) {
@@ -131,15 +132,21 @@ public final class StepGenerationLog {
                                 recordFailure(error);
                                 child.failed(error);
                             }
+                            @Override public void cancelled(String reason) {
+                                cancellations.incrementAndGet();
+                                child.cancelled(reason);
+                            }
                         };
                     }
                     @Override public void close() {
                         int failed = failures.get();
+                        int cancelled = cancellations.get();
                         String summary = n.get() + " request(s)"
                                 + (failed == 0 ? "" : "; " + failed + " failed: "
-                                + concise(firstFailure.get()));
-                        sub.completeGroup(summary, failed == 0
-                                ? LogStatus.OK : LogStatus.PARTIAL);
+                                + concise(firstFailure.get()))
+                                + (cancelled == 0 ? "" : "; " + cancelled + " cancelled");
+                        sub.completeGroup(summary, cancelled > 0 ? LogStatus.CANCELLED
+                                : failed == 0 ? LogStatus.OK : LogStatus.PARTIAL);
                         echo(echoPrefix, title + " — " + summary);
                     }
                     private void recordFailure(String error) {
@@ -168,6 +175,9 @@ public final class StepGenerationLog {
             @Override public void failed(String error) {
                 finish(() -> step.failSubquery(child, error), "FAILED " + error);
             }
+            @Override public void cancelled(String reason) {
+                finish(() -> step.cancelSubquery(child, reason), "CANCELLED " + reason);
+            }
             private void finish(Runnable completion, String outcome) {
                 if (!finished.compareAndSet(false, true)) return;
                 completion.run();
@@ -191,6 +201,10 @@ public final class StepGenerationLog {
             @Override public void failed(String error) {
                 step.failSubquery(child, error);
                 echo(echoPrefix, title + "  FAILED " + error);
+            }
+            @Override public void cancelled(String reason) {
+                step.cancelSubquery(child, reason);
+                echo(echoPrefix, title + "  CANCELLED " + reason);
             }
         };
     }

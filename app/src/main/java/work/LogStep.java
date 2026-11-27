@@ -113,6 +113,12 @@ public final class LogStep {
         }
     }
 
+    public void cancelSubquery(LogNode child, String reason) {
+        if (recorder != null) {
+            recorder.completeSubquery(child, reason, LogStatus.CANCELLED);
+        }
+    }
+
     /** Marks logical work as replaced by smaller work rather than failed. */
     public void adaptSubquery(LogNode child, String summary) {
         if (recorder != null) {

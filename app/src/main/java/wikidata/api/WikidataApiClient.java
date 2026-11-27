@@ -707,6 +707,7 @@ public class WikidataApiClient {
             default void detail(String text) { }
             void done(String summary);
             void failed(String error);
+            default void cancelled(String reason) { }
         }
 
         void logged(String title, String request, String summary);
@@ -734,6 +735,9 @@ public class WikidataApiClient {
                 @Override public void failed(String error) {
                     BatchLog.this.failed(title, request,
                             BatchLog.withDetails(details, error));
+                }
+                @Override public void cancelled(String reason) {
+                    logged(title, request, "CANCELLED: " + BatchLog.withDetails(details, reason));
                 }
             };
         }
@@ -1265,6 +1269,9 @@ public class WikidataApiClient {
                     }
                     @Override public void failed(String error) {
                         running.failed(error + " (" + ms(started) + " ms)");
+                    }
+                    @Override public void cancelled(String reason) {
+                        running.cancelled(reason + " (" + ms(started) + " ms)");
                     }
                 };
             }

@@ -346,11 +346,19 @@ class BatchExecutorTest {
         AtomicInteger runs = new AtomicInteger();
         FakeUnit unit = new FakeUnit(List.of("a"), runs,
                 ignored -> new InterruptedException("cancelled"));
+        List<String> outcomes = new ArrayList<>();
+        BatchProgress progress = (title, request) -> new BatchProgress.Running() {
+            @Override public void done(String summary) { outcomes.add("done"); }
+            @Override public void failed(String error) { outcomes.add("failed"); }
+            @Override public void cancelled(String reason) { outcomes.add("cancelled"); }
+        };
+        var executor = new BatchExecutor<List<String>>(new BatchPolicy(3, 7, 0, false),
+                progress, CLASSIFIER, new CancellationToken(), BatchCheckpointStore.NONE);
 
-        assertThrows(InterruptedException.class,
-                () -> executor(new BatchPolicy(3, 7, 0, false)).run(List.of(unit)));
-        assertEquals(1, runs.get());
+        assertThrows(InterruptedException.class, () -> executor.run(List.of(unit)));
         assertTrue(Thread.interrupted());
+        assertEquals(1, runs.get());
+        assertEquals(List.of("cancelled"), outcomes);
     }
 
     @Test

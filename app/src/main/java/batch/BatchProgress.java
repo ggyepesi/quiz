@@ -12,7 +12,7 @@ package batch;
  */
 public interface BatchProgress {
 
-    /** An opened unit, finished exactly once by {@link #done} or {@link #failed}. */
+    /** An opened unit, finished by its actual outcome. */
     interface Running {
         /** Detail retained with this attempt (for example its retry decision). */
         default void detail(String text) { }
@@ -20,6 +20,8 @@ public interface BatchProgress {
         default void adapted(String summary) { done(summary); }
         void done(String summary);
         void failed(String error);
+        /** The run stopped this unit; the provider did not fail it. */
+        default void cancelled(String reason) { }
     }
 
     /**

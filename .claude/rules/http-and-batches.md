@@ -51,6 +51,8 @@ classification must reflect what actually happened:
 - **429 / 5xx** → `UNAVAILABLE`, honouring `Retry-After` — the server said how long; don't
   second-guess it.
 - **A status the server will not reconsider** (400, 404) → `FATAL`, and not worth five attempts.
+- **The run was cancelled** → `CANCELLED`, not a failed request or a retry. Both the
+  logical batch and its in-flight endpoint attempt keep that outcome in Query logs.
 
 **Never launder a timeout into an HTTP outcome.** A read timeout fires after the headers have
 arrived, so the connection still answers 200; wrapping it with that status hands the classifier

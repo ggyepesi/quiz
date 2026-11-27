@@ -129,6 +129,9 @@ public final class SharedPopulationClosureDemo {
                     @Override public void failed(String error) {
                         System.out.println("MAP FAILED: " + title + " — " + error);
                     }
+                    @Override public void cancelled(String reason) {
+                        System.out.println("MAP CANCELLED: " + title + " — " + reason);
+                    }
                 };
             }
 
