@@ -6,12 +6,14 @@ import domain.datasource.schema.FieldType;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedFieldModel;
 import domain.config.GeneratedProjectModel;
+import domain.config.GeneratedProjectModelStore;
 import domain.config.VocabularySelection;
 import domain.config.PopulationSelection;
 import domain.config.StatementClassSource;
 
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
+import java.io.File;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -23,6 +25,55 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SingleRootClassModelPanelTest {
+
+    @Test void norseMythologyShowsDeclaredSubclassesUnderReadOnlyImportedBases() throws Exception {
+        var project = new GeneratedProjectModelStore().load(
+                new File("../data/wikidata/norsemythology/norsemythology.model.json"));
+        SwingUtilities.invokeAndWait(() -> {
+            var panel = new SingleRootClassModelPanel(project);
+            JTree tree = find(panel, JTree.class);
+            var root = (DefaultMutableTreeNode) tree.getModel().getRoot();
+            var base = project.findClass("MythologicalCharacter");
+            assertTrue(base.isImported());
+            assertNestedClass(root, base, project.findClass("NorseCharacter"));
+            assertNestedClass(root, project.findClass("NorseCharacter"), project.findClass("NorseGiant"));
+            var jotunn = project.findClass("Jotunn");
+            assertNestedClass(root, project.findClass("NorseGiant"), jotunn);
+            assertNestedClass(root, project.findClass("MythologicalWork"), project.findClass("NorseLiteraryWork"));
+            panel.selectClass(base);
+            assertFalse(button(panel, "Rename class").isEnabled());
+            assertFalse(button(panel, "Add field").isEnabled());
+            panel.selectClass(jotunn);
+            assertSame(jotunn, panel.selectedUserObject());
+            assertTrue(button(panel, "Rename class").isEnabled());
+            panel.refresh();
+            assertSame(jotunn, panel.selectedUserObject());
+        });
+    }
+
+    @Test void invalidInheritanceDoesNotHideClassesFromTheEditor() {
+        var project = modelWithEdition();
+        var first = new GeneratedClassModel("First");
+        var second = new GeneratedClassModel("Second");
+        first.baseClassName("Second");
+        second.baseClassName("First");
+        project.addClass(first);
+        project.addClass(second);
+        var panel = new SingleRootClassModelPanel(project);
+        var root = (DefaultMutableTreeNode) find(panel, JTree.class).getModel().getRoot();
+        assertSame(root, nodeFor(root, first).getParent());
+        assertSame(root, nodeFor(root, second).getParent());
+    }
+
+    private static void assertNestedClass(DefaultMutableTreeNode root,
+            GeneratedClassModel base, GeneratedClassModel child) {
+        var node = nodeFor(root, child);
+        assertNotNull(node, child.className());
+        var branch = (DefaultMutableTreeNode) node.getParent();
+        assertSame(SingleRootClassModelPanel.ConfigurationSection.SUBCLASSES, branch.getUserObject());
+        assertSame(nodeFor(root, base), branch.getParent());
+        assertFalse(SingleRootClassModelPanel.isConfigurable(branch.getUserObject()));
+    }
 
     @Test void consecutiveExplicitRenamesUpdateTheSelectedClassNode() {
         GeneratedProjectModel project = new GeneratedProjectModel();

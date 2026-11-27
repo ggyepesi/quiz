@@ -76,7 +76,10 @@ results.
 
 ## Placement
 
-The project tree contains classes, their declared fields and project-level constructs. The
+The project tree contains classes, their declared fields and project-level constructs. A class
+with a declared base sits in that base's **Subclasses** branch rather than at the top level; an
+imported base appears, read-only, to hold its subclasses, and a class whose base is missing or
+cyclic stays at the top level. Inheritance comes from declarations only, never from instances. The
 **Class settings** and **Field settings** outlines show the selected declaration's sections.
 The project tree supplies the declaration name, so the settings outline begins at the sections.
 

@@ -12,13 +12,18 @@ import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class SingleRootClassModelPanel extends JPanel {
 
     public enum ConfigurationSection {
         VOCABULARIES("Vocabularies / populations"),
         TEXT_SOURCES("Text sources"),
+        SUBCLASSES("Subclasses"),
         USES("Uses");
         private final String label;
         ConfigurationSection(String label) { this.label = label; }
@@ -200,6 +205,11 @@ public class SingleRootClassModelPanel extends JPanel {
 
             if (selDomain) {
                 selectNode(rootTreeNode);
+            } else if (selSection == ConfigurationSection.SUBCLASSES) {
+                selectClassByName(selClassName);
+                var owner = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
+                var branch = findNodeForUserObject(owner, ConfigurationSection.SUBCLASSES);
+                if (branch != null) selectNode(branch);
             } else if (selSection != null) {
                 selectSection(selSection);
             } else if (selSelectionName != null) {
@@ -241,7 +251,7 @@ public class SingleRootClassModelPanel extends JPanel {
         if (selected instanceof GeneratedClassModel c) {
             return c.className();
         }
-        if (selected instanceof GeneratedFieldModel) {
+        if (selected instanceof GeneratedFieldModel || selected == ConfigurationSection.SUBCLASSES) {
             javax.swing.tree.TreePath path = tree.getSelectionPath();
             if (path != null && path.getPathCount() >= 2) {
                 Object parent = ((DefaultMutableTreeNode)
@@ -524,6 +534,8 @@ public class SingleRootClassModelPanel extends JPanel {
         DefaultMutableTreeNode projectNode =
                 new DefaultMutableTreeNode(projectModel);
 
+        Map<GeneratedClassModel, DefaultMutableTreeNode> classes = new LinkedHashMap<>();
+        Map<GeneratedClassModel, GeneratedClassModel> declaredBases = new LinkedHashMap<>();
         for (GeneratedClassModel cls : projectModel.classes()) {
             DefaultMutableTreeNode classNode =
                     new DefaultMutableTreeNode(cls);
@@ -539,8 +551,23 @@ public class SingleRootClassModelPanel extends JPanel {
                 classNode.add(fieldNode);
             }
 
-            projectNode.add(classNode);
+            classes.put(cls, classNode);
+            declaredBases.put(cls, projectModel.resolveClass(cls.baseClassId(), cls.baseClassName()));
         }
+        Map<GeneratedClassModel, DefaultMutableTreeNode> branches = new LinkedHashMap<>();
+        classes.forEach((clazz, node) -> {
+            GeneratedClassModel base = declaredBases.get(clazz);
+            if (!classes.containsKey(base) || inheritanceCycleContains(clazz, declaredBases)) {
+                // Invalid declarations remain reachable so the editor can repair them.
+                projectNode.add(node);
+                return;
+            }
+            branches.computeIfAbsent(base, owner -> {
+                var branch = new DefaultMutableTreeNode(ConfigurationSection.SUBCLASSES);
+                classes.get(owner).add(branch);
+                return branch;
+            }).add(node);
+        });
 
         // Always present: this is also how an empty domain creates its FIRST
         // vocabulary now that configuration lives in the tree rather than a header button.
@@ -574,6 +601,15 @@ public class SingleRootClassModelPanel extends JPanel {
         }
 
         return projectNode;
+    }
+
+    private static boolean inheritanceCycleContains(GeneratedClassModel clazz,
+            Map<GeneratedClassModel, GeneratedClassModel> bases) {
+        Set<GeneratedClassModel> seen = new HashSet<>();
+        for (var base = bases.get(clazz); base != null && seen.add(base); base = bases.get(base)) {
+            if (base == clazz) return true;
+        }
+        return false;
     }
 
     private void renameClass() {
@@ -912,7 +948,7 @@ public class SingleRootClassModelPanel extends JPanel {
                     t.append(" : ").append(cls.baseClassName());
                 }
                 if (cls.isImported()) {
-                    t.append("   imported from ").append(cls.importedFrom());
+                    t.append("   imported from ").append(cls.importedFrom()).append(" (read-only)");
                 }
                 t.append("   [").append(MembershipPattern.describe(cls, project)).append(']');
                 setText(t.toString());

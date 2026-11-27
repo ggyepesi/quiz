@@ -127,6 +127,13 @@ members may also be useful as a displayed or grouping field, but that is a separ
 explicit field choice. Applying a population triple must never silently add `type`,
 `target`, or any other field to the class.
 
+## A subclass sits under its declared base
+
+The project tree puts a class under its declared base's **Subclasses** branch, resolved by the
+base's declaration id or name. An imported base is shown, marked read-only, so its subclasses
+have somewhere to sit. The outline never infers inheritance from instances. A class whose base
+is missing or part of a cycle stays at the top level, so the editor can still reach and repair it.
+
 ## Auxiliary windows belong to one open project
 
 Generated instances, statements, graphs, admission evidence, explorer/guide views,
