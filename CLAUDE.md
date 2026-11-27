@@ -227,9 +227,9 @@ construct per thing produced:
    file or an explaining comment states how something works, read it before changing what
    it governs. Diverging is allowed and sometimes right — but it is raised explicitly and
    agreed, never taken quietly in the implementation. Every one of a recent run of UI
-   defects was a design already written down and not read first: `MultiView.layout` says
-   side-by-side is deliberate for simultaneous comparison, while a tabbed owner must
-   register how it reveals a hidden target before navigation focuses that target;
+   defects was a design already written down and not read first: `MultiView` keeps
+   sections side by side unless its owner opts into tabs; a tabbed owner uses the same
+   top-level reveal registry as a group to make the target visible before focusing it;
    the pipeline design says a preview differs by scope and limits and never by dropped
    phases; `bounding-an-entity-end.md` says that construct carries population and never
    structure. *(Trigger: about to change something that has a design note or a comment

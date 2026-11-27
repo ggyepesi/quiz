@@ -2,6 +2,8 @@ package domain.workbench.execution.ui;
 
 import objectview.Viewable;
 import objectview.demo.MultiView;
+import objectview.render.ReferenceRow;
+import objectview.virtual.VirtualizedCardList;
 import org.junit.jupiter.api.Test;
 import wikidata.explore.query.result.ObjectQueryResult;
 
@@ -21,11 +23,8 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <p>The shared context is the point of this layout rather than a detail of it: a
  * reference highlighted in one section lights up in the other only while both render
- * through the same context, and navigation reveals a card by scrolling to it — which a
- * tabbed instance layout defeats, since focusing a card on an inactive tab shows nothing.
- * {@code MultiView.layout} says so in as many words; this test is that comment made to
- * fail. Search hit navigation has its own tabs, but those contain only hit controls,
- * never the instance sections whose shared context this test protects.
+ * through the same context. A small result needs just one page of side-by-side
+ * sections. Search hit navigation has its own tabs, separate from the instance layout.
  */
 class MultiTypeResultSharesOneContextTest {
 
@@ -174,6 +173,32 @@ class MultiTypeResultSharesOneContextTest {
         assertEquals(Set.of("NobelPrize", "LaureatesWithMotivation", "Ceremony"),
                 find(panel, MultiView.class).visibleSectionTitles(),
                 "clearing the result for a project switch resets presentation choices");
+    }
+
+    @Test void showInstancesRendersARealLinkToAnInitiallyUncheckedClass() throws Exception {
+        var person = new OwnerPerson("owner");
+        person.structuredName = new OwnedName("name");
+        var panel = new QueryObjectResultPanel();
+        panel.hiddenClassSections(Set.of("Name"));
+        panel.accept(new ObjectQueryResult(List.of(person, person.structuredName),
+                OwnerPerson.class, "test", List.of("Person", "Name")));
+
+        javax.swing.SwingUtilities.invokeAndWait(() -> {
+            assertEquals(Set.of("Person"), panel.displayedObjectsByType().keySet());
+            var cards = find(panel, VirtualizedCardList.class);
+            assertNotNull(cards);
+            var card = cards.buildIfNeeded(person);
+            assertNotNull(card);
+            var reference = find(card, ReferenceRow.class);
+            assertNotNull(reference, "the ordinary card renderer must not flatten the reference to text");
+            assertTrue(reference.getToolTipText().contains("jump to its card"));
+            reference.setSize(200, 30);
+            var point = new java.awt.Point(80, 12);
+            reference.beginSelection(point);
+            reference.endSelection(point);
+            assertEquals(Set.of("Person", "Name"), panel.displayedObjectsByType().keySet());
+            assertTrue(panel.hiddenClassSections().isEmpty(), "the link updates the same chooser state");
+        });
     }
 
     private static QueryObjectResultPanel panelShowing(List<String> typeOrder)

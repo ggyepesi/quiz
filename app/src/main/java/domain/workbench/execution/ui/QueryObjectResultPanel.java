@@ -46,6 +46,7 @@ public class QueryObjectResultPanel
     private boolean resultActionsEnabled = true;
     /** The sections this panel currently shows, not a selection owned by its caller. */
     private Map<String, List<Viewable>> displayedObjectsByType = Map.of();
+    private int classesPerTab = MultiView.DEFAULT_SECTIONS_PER_TAB;
     /** Presentation state for this result window. It is deliberately neither project
      * data nor instance data. Storing the exceptions means a new class starts visible. */
     private final Set<String> hiddenClassSections = new LinkedHashSet<>();
@@ -59,6 +60,7 @@ public class QueryObjectResultPanel
      *  fields are enumerated from its class schema, never from an instance or the Java
      *  carrier class (WikidataDynamicObject). */
     private domain.DomainModel schemaDomain;
+    private Map<String, Set<String>> unusedSourceFields = Map.of();
 
     public QueryObjectResultPanel() {
         super(new BorderLayout());
@@ -138,6 +140,13 @@ public class QueryObjectResultPanel
      *  {@code null} to use each object's own. */
     public void schemaDomain(domain.DomainModel domain) {
         schemaDomain = domain;
+        unusedSourceFields = domain == null ? Map.of() : UnusedSourceFields.byClass(domain);
+    }
+
+    private Set<String> hiddenFields(String type) {
+        Set<String> hidden = new LinkedHashSet<>(schemaDomain.structuralFields(type));
+        hidden.addAll(unusedSourceFields.getOrDefault(type, Set.of()));
+        return hidden;
     }
 
     /** The explicit group-class presentations for the result currently being shown. */
@@ -344,52 +353,27 @@ public class QueryObjectResultPanel
             showAllInDisplayedObjects(byType);
             return searchPanelView(result);
         }
-        if (peerSections.isEmpty()) return multiView(byType);
-
-        showAllInDisplayedObjects(byType);
-
-        RenderContext context = new RenderContext();
-        if (schemaDomain != null) context.setSchemas(schemaDomain::fieldSchema);
-        context.setInPlaceNavigation(true);
-        java.util.Map<Viewable, java.util.function.Function<Viewable, JComponent>>
-                peerDecorations = new IdentityHashMap<>();
-        peerSections.values().forEach(group -> group.all().forEach(value ->
-                peerDecorations.put(value, group.decoration())));
-        context.setCardDecorator(value -> {
-            var decoration = peerDecorations.get(value);
-            return decoration == null ? cardDecorator.apply(value) : decoration.apply(value);
-        });
-        context.setValueLinker(WikidataLinks.valueLinker());
-        byType.values().forEach(values -> values.forEach(context::addTopLevel));
-
-        JTabbedPane types = new JTabbedPane();
-        for (Map.Entry<String, List<Viewable>> entry : byType.entrySet()) {
-            String name = entry.getKey();
-            List<Viewable> all = entry.getValue();
-            GroupedSection grouped = peerSections.get(name);
-            var group = configuredGroups.get(name);
-            JComponent body = grouped == null
-                    ? (group == null ? browser(all, context, false, null, name)
-                            : new objectview.render.GroupView(group, context))
-                    : groupedBrowser(grouped, context, types);
-            int index = types.getTabCount();
-            types.addTab(sectionTitle(name, all.size()), body);
-            if (grouped == null) all.forEach(value -> context.registerTopLevelRevealer(
-                    value, () -> types.setSelectedIndex(index)));
-        }
-        activeContext = context;
-        return types;
+        return multiView(byType, peerSections);
     }
 
-    /** Existing ordinary multi-class results stay simultaneously visible. */
-    private JComponent multiView(Map<String, List<Viewable>> byType) {
+    private JComponent multiView(Map<String, List<Viewable>> byType,
+                                 Map<String, GroupedSection> peerSections) {
         Set<String> shownClasses = visibleClassesFor(byType.keySet());
         showInDisplayedObjects(byType, shownClasses);
         MultiView multi = new MultiView();
         if (schemaDomain != null) multi.context().setSchemas(schemaDomain::fieldSchema);
-        multi.context().setCardDecorator(cardDecorator);
+        Map<Viewable, java.util.function.Function<Viewable, JComponent>> peerDecorations =
+                new IdentityHashMap<>();
+        peerSections.values().forEach(group -> group.all().forEach(value ->
+                peerDecorations.put(value, group.decoration())));
+        multi.context().setCardDecorator(value -> {
+            var decoration = peerDecorations.get(value);
+            return decoration == null ? cardDecorator.apply(value) : decoration.apply(value);
+        });
         multi.context().setValueLinker(WikidataLinks.valueLinker());
         multi.sectionNoun("Classes");
+        multi.sectionsPerTab(classesPerTab);
+        multi.onSectionsPerTabChanged(count -> classesPerTab = count);
         multi.visibleSections(shownClasses);
         multi.onVisibleSectionsChanged(selected -> {
             hiddenClassSections.removeAll(byType.keySet());
@@ -402,15 +386,19 @@ public class QueryObjectResultPanel
         for (Map.Entry<String, List<Viewable>> entry : byType.entrySet()) {
             List<Viewable> values = entry.getValue();
             if (values.isEmpty()) continue;
+            GroupedSection peer = peerSections.get(entry.getKey());
             objectview.group.ViewableGroup<?> group = configuredGroups.get(entry.getKey());
-            if (group != null) {
-                multi.addSection(entry.getKey(), sectionTitle(entry.getKey(), values.size()),
-                        new objectview.render.GroupView(group, multi.context()), capped(values));
+            if (peer != null) {
+                multi.addDedicatedTab(entry.getKey(), sectionTitle(entry.getKey(), values.size()),
+                        () -> groupedBrowser(peer, multi.context()), capped(values));
+            } else if (group != null) {
+                multi.addWideSection(entry.getKey(), sectionTitle(entry.getKey(), values.size()),
+                        () -> new objectview.render.GroupView(group, multi.context()), capped(values));
             } else if (schemaDomain != null) {
                 String type = entry.getKey();
                 multi.addSection(type, sectionTitle(type, values.size()),
                         values.getFirst().getClass(), capped(values),
-                        schemaDomain.configSample(type), schemaDomain.structuralFields(type),
+                        schemaDomain.configSample(type), hiddenFields(type),
                         schemaDomain.fieldTypes(type), null, null);
             } else {
                 multi.addSection(entry.getKey(), sectionTitle(entry.getKey(), values.size()),
@@ -445,7 +433,7 @@ public class QueryObjectResultPanel
     }
 
     private JComponent groupedBrowser(
-            GroupedSection group, RenderContext context, JTabbedPane owner) {
+            GroupedSection group, RenderContext context) {
         JTabbedPane decisions = new JTabbedPane();
         List<SearchPanel> searches = new ArrayList<>();
         List<SearchableView> shown = new ArrayList<>();
@@ -458,7 +446,7 @@ public class QueryObjectResultPanel
             context.setMultipleSelectionEnabled(true);
         }
         for (Map.Entry<String, List<Viewable>> entry : views) {
-            SearchableView view = browser(entry.getValue(), context, true, group.shapeSample());
+            SearchableView view = decisionBrowser(entry.getValue(), context, group.shapeSample());
             if (view.search() != null) searches.add(view.search());
             shown.add(view);
             decisions.addTab(entry.getKey() + " (" + entry.getValue().size() + ")", view);
@@ -483,10 +471,8 @@ public class QueryObjectResultPanel
         panel.add(decisions, BorderLayout.CENTER);
         // "All" is the canonical card owner for navigation. The decision subtabs are
         // filtered views of those same records, not distinct instances.
-        group.all().forEach(value -> context.registerTopLevelRevealer(value, () -> {
-            owner.setSelectedComponent(panel);
-            decisions.setSelectedIndex(0);
-        }));
+        group.all().forEach(value -> context.registerTopLevelRevealer(value,
+                () -> decisions.setSelectedIndex(0)));
         return panel;
     }
 
@@ -523,39 +509,15 @@ public class QueryObjectResultPanel
         return row;
     }
 
-    private SearchableView browser(
-            List<Viewable> values, RenderContext context, boolean coordinated) {
-        return browser(values, context, coordinated, null);
-    }
-
-    private SearchableView browser(
-            List<Viewable> values, RenderContext context, boolean coordinated,
-            Viewable shapeSample) {
-        return browser(values, context, coordinated, shapeSample, null);
-    }
-
-    /** {@code type}, when known with a schema domain, types the section by its class. */
-    private SearchableView browser(
-            List<Viewable> values, RenderContext context, boolean coordinated,
-            Viewable shapeSample, String type) {
+    private SearchableView decisionBrowser(
+            List<Viewable> values, RenderContext context, Viewable shapeSample) {
         List<Viewable> shown = capped(values);
-        if (schemaDomain != null && type != null && shapeSample == null) {
-            return SearchableView.builder(shown)
-                    .sample(schemaDomain.configSample(type))
-                    .hiddenFields(schemaDomain.structuralFields(type))
-                    .fieldTypes(schemaDomain.fieldTypes(type))
-                    .renderContext(context)
-                    .coordinated(coordinated)
-                    .columns(1)
-                    .emptyMessage("(none)")
-                    .build();
-        }
         Viewable sample = shapeSample == null && !shown.isEmpty()
                 ? shown.getFirst() : shapeSample;
         return SearchableView.builder(shown)
                 .sample(sample)
                 .renderContext(context)
-                .coordinated(coordinated)
+                .coordinated(true)
                 .columns(1)
                 .emptyMessage("(none)")
                 .build();

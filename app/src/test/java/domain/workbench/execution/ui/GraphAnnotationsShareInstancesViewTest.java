@@ -66,6 +66,34 @@ class GraphAnnotationsShareInstancesViewTest {
                 titles(tabs.get(1)));
     }
 
+    @Test void ordinaryClassesArePagedBesideGraphDecisionsInTheSharedView() throws Exception {
+        var order = List.of("Person", "Position", "OfficeHolding", "Name", "Place");
+        List<Viewable> classes = order.stream().<Viewable>map(type -> {
+            var value = new DynamicViewable(type + "-id", type);
+            value.type(type);
+            return value;
+        }).toList();
+        var annotation = annotation("Q2", "Review");
+        QueryObjectResultPanel panel = new QueryObjectResultPanel();
+        panel.acceptGrouped(new ObjectQueryResult(classes, null, "", order), Map.of(
+                "PositionValidity", QueryObjectResultPanel.GroupedSection.of(
+                        List.of(annotation), Map.of("Review", List.of(annotation)))));
+        SwingUtilities.invokeAndWait(() -> {
+            var outer = visibleTabs(panel).stream()
+                    .filter(tabs -> "objectview.sections.tabs".equals(tabs.getName()))
+                    .findFirst().orElseThrow();
+            assertEquals(List.of("Person · Position · OfficeHolding · Name",
+                    "Place", "PositionValidity"), titles(outer));
+
+            assertTrue(panel.activeRenderContext().focusTopLevel(annotation));
+            assertEquals("PositionValidity", outer.getTitleAt(outer.getSelectedIndex()));
+            var decisions = visibleTabs(panel).stream()
+                    .filter(tabs -> tabs != outer).findFirst().orElseThrow();
+            assertEquals(List.of("All (1)", "Review (1)"), titles(decisions));
+            assertEquals(0, decisions.getSelectedIndex());
+        });
+    }
+
     @Test void aLaterResultDoesNotInheritTheLastRunsAnnotationTabs() throws Exception {
         QueryObjectResultPanel panel = new QueryObjectResultPanel();
         panel.acceptGrouped(result(), Map.of("PositionValidity",
