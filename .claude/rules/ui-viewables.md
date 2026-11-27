@@ -108,3 +108,7 @@ Following it checks that class in **Classes shown**, reveals its tab, and focuse
 through the existing navigation registry (#584). Hiding a class still excludes it from the
 shared search until it is shown again. The shared Back action restores the originating tab and scroll position; manual
 tab changes and search-hit navigation do not create a Back entry.
+
+The shared **Show empty fields** control applies to every card view under the same
+multi-instance host, including unchecked classes, nested tabs, group details and
+member cards. All use the same field-presence rule.
