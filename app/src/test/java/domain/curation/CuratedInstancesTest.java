@@ -36,6 +36,30 @@ class CuratedInstancesTest {
                 ((List<?>) created.get("characters")).getFirst());
     }
 
+    /** Reported shape: 439 story → NorseCharacter references were "nothing loaded" while
+     * every one named a loaded NorseDeity or NorseGiant — subclasses of NorseCharacter. */
+    @Test void aReferenceResolvesToALoadedSubclassInstanceButNotToAnUnrelatedClass() {
+        WikidataDynamicObject loki = new WikidataDynamicObject("Q133147", "Loki");
+        loki.type("NorseDeity");
+        WikidataDynamicObject place = new WikidataDynamicObject("Q999", "Place");
+        place.type("NorsePlace");
+        List<WikidataDynamicObject> pool = new ArrayList<>(List.of(loki, place));
+        java.util.Map<String, String> bases = java.util.Map.of(
+                "NorseDeity", "NorseCharacter", "NorseCharacter", "Entity");
+        CuratedInstance story = new CuratedInstance(
+                "NorseStory", "text-passage:abc", "Gylfaginning 33",
+                List.of(CuratedInstance.FieldValue.references("characters", List.of(
+                        new CuratedInstance.Reference("NorseCharacter", "Q133147"),
+                        new CuratedInstance.Reference("NorseCharacter", "Q999")))),
+                null);
+
+        CuratedInstances.Result result = CuratedInstances.apply(pool, List.of(story), bases::get);
+
+        assertEquals(List.of(loki), result.instances().getFirst().get("characters"));
+        assertEquals(List.of("NorseStory text-passage:abc.characters → NorseCharacter Q999"),
+                result.unresolved(), "a NorsePlace is not a NorseCharacter");
+    }
+
     /** The other side: a curated reference to an entity no longer loaded (here the
      * Character was regenerated away) used to add a shell named by its QID and stamped
      * Character, which then served as a member. It stays unresolved and is reported. */

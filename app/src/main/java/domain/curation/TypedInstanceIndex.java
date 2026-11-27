@@ -36,6 +36,36 @@ final class TypedInstanceIndex<T extends Viewable> {
         return byKey.get(new Key(type, id));
     }
 
+    /**
+     * The one loaded instance with {@code id} that is a {@code type}: of that class or,
+     * through the domain's {@code baseType} hierarchy, a subclass of it. A field typed
+     * NorseCharacter accepts a NorseDeity; an unrelated class with the same identifier
+     * is not a match, and two different matching instances are no answer.
+     */
+    T getAssignable(String type, String id, java.util.function.Function<String, String> baseType) {
+        T exact = get(type, id);
+        if (exact != null || type == null || baseType == null) return exact;
+        T match = null;
+        for (T candidate : get(id)) {
+            if (!isA(candidate, type, baseType) || candidate == match) continue;
+            if (match != null) return null;
+            match = candidate;
+        }
+        return match;
+    }
+
+    private static boolean isA(Viewable instance, String type,
+            java.util.function.Function<String, String> baseType) {
+        for (String own : typesOf(instance)) {
+            java.util.Set<String> seen = new java.util.HashSet<>();
+            for (String current = own; current != null && seen.add(current);
+                 current = baseType.apply(current)) {
+                if (current.equals(type)) return true;
+            }
+        }
+        return false;
+    }
+
     List<T> get(String id) {
         return byId.getOrDefault(id, List.of());
     }

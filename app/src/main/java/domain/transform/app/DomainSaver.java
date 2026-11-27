@@ -5,7 +5,10 @@ import domain.persistence.ProjectSaveGuard;
 import dataset.DomainStorage;
 import objectview.Viewable;
 import domain.DomainModel;
+import domain.config.GeneratedProjectModel;
 import domain.transform.ui.DomainWriter;
+import domain.transform.ui.WorkingDomain;
+import domain.runtime.SnapshotFieldGraph;
 import domain.runtime.WikidataDynamicObject;
 import domain.runtime.WikidataDynamicObjectJsonStore;
 
@@ -14,6 +17,7 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 import domain.transform.ui.ProjectBacking;
 
 /**
@@ -165,42 +169,46 @@ public final class DomainSaver implements DomainWriter {
     }
 
     /** Persist only semantic subclasses; projected/joined result classes have no base. */
-    static void addSubclasses(
-            domain.config.GeneratedProjectModel model, DomainModel schema) {
+    static void addSubclasses(GeneratedProjectModel model, DomainModel schema) {
+        addSubclasses(model, schema.types(), schema::baseType,
+                schema instanceof WorkingDomain working ? working : null);
+    }
+
+    static void addSnapshotSubclasses(GeneratedProjectModel model, SnapshotFieldGraph schema) {
+        addSubclasses(model, schema.allTypes(), schema::baseType, null);
+    }
+
+    private static void addSubclasses(GeneratedProjectModel model, List<String> types,
+            Function<String, String> baseType, WorkingDomain working) {
         // A save is one model change. Validate and apply every subclass on a detached copy,
         // then replace the live model only when the whole batch succeeds. Otherwise a late
         // name/role collision can leave earlier subclasses — or the just-created class — in
         // the editor even though Save reports that nothing was saved.
-        domain.config.GeneratedProjectModel candidate = model.copy();
-        addSubclassesInPlace(candidate, schema);
-        model.copyContentsFrom(candidate);
-    }
-
-    private static void addSubclassesInPlace(
-            domain.config.GeneratedProjectModel model, DomainModel schema) {
-        for (String type : schema.types()) {
+        GeneratedProjectModel candidate = model.copy();
+        for (String type : types) {
             if (type == null || type.isBlank()) continue;
-            String base = schema.baseType(type);
-            if (base == null || base.isBlank() || model.findClass(base) == null) continue;
-            domain.config.GeneratedClassModel subclass = model.findClass(type);
+            String base = baseType.apply(type);
+            if (base == null || base.isBlank() || candidate.findClass(base) == null) continue;
+            domain.config.GeneratedClassModel subclass = candidate.findClass(type);
             if (subclass == null) {
                 subclass = new domain.config.GeneratedClassModel(type);
                 subclass.baseClassName(base);
                 subclass.clearIndependentPopulation();
                 domain.config.ClassSourceBindings.synchronize(subclass);
-                model.addClass(subclass);
+                candidate.addClass(subclass);
             }
-            if (schema instanceof domain.transform.ui.WorkingDomain working) {
+            if (working != null) {
                 var saved = working.subclassProducer(type);
                 if (saved instanceof domain.transform.ui.WorkingDomain.SavedSubclassTransformation
                         transformation) {
-                    saveTransformation(model, subclass, transformation);
+                    saveTransformation(candidate, subclass, transformation);
                 } else if (saved
                         instanceof domain.transform.ui.WorkingDomain.SavedManualSubclass manual) {
-                    saveManualSubclass(model, subclass, manual);
+                    saveManualSubclass(candidate, subclass, manual);
                 }
             }
         }
+        model.copyContentsFrom(candidate);
     }
 
     private static void saveTransformation(

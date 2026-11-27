@@ -18,10 +18,23 @@ public final class CuratedInstances {
         }
     }
 
-    /** Adds or refreshes the supplied curated instances. */
+    /** Adds or refreshes the supplied curated instances, resolving references by exact class. */
     public static Result apply(
             List<WikidataDynamicObject> pool,
             Collection<CuratedInstance> instances) {
+        return apply(pool, instances, type -> null);
+    }
+
+    /**
+     * Adds or refreshes the supplied curated instances. A reference to a class resolves to
+     * a loaded instance of that class or of one of its subclasses under the domain's
+     * {@code baseType} hierarchy: a story's NorseCharacter reference names the loaded
+     * NorseDeity, not "nothing loaded".
+     */
+    public static Result apply(
+            List<WikidataDynamicObject> pool,
+            Collection<CuratedInstance> instances,
+            java.util.function.Function<String, String> baseType) {
         if (pool == null || instances == null || instances.isEmpty()) {
             return new Result(List.of(), List.of());
         }
@@ -53,7 +66,7 @@ public final class CuratedInstances {
             for (CuratedInstance.FieldValue field : declaration.fields()) {
                 Object value = field.references().isEmpty()
                         ? field.value()
-                        : references(declaration, field, instancesByType, unresolved);
+                        : references(declaration, field, instancesByType, baseType, unresolved);
                 if (value != null) target.put(field.field(), value);
             }
         }
@@ -68,10 +81,12 @@ public final class CuratedInstances {
     private static List<WikidataDynamicObject> references(
             CuratedInstance declaration, CuratedInstance.FieldValue field,
             TypedInstanceIndex<WikidataDynamicObject> index,
+            java.util.function.Function<String, String> baseType,
             List<String> unresolved) {
         List<WikidataDynamicObject> result = new ArrayList<>();
         for (CuratedInstance.Reference reference : field.references()) {
-            WikidataDynamicObject value = index.get(reference.type(), reference.id());
+            WikidataDynamicObject value =
+                    index.getAssignable(reference.type(), reference.id(), baseType);
             if (value == null) {
                 unresolved.add(declaration.type() + " " + declaration.id() + "."
                         + field.field() + " → " + reference.type() + " " + reference.id());

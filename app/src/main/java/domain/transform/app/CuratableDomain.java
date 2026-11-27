@@ -164,7 +164,7 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
         java.util.List<domain.runtime.WikidataDynamicObject> pool =
                 (java.util.List<domain.runtime.WikidataDynamicObject>) raw;
         domain.curation.CuratedInstances.Result added =
-                domain.curation.CuratedInstances.apply(pool, instances);
+                domain.curation.CuratedInstances.apply(pool, instances, this::baseType);
         for (Viewable value : added.instances()) {
             if (!curatedMemberRoots.contains(value)) curatedMemberRoots.add(value);
         }

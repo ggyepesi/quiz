@@ -1,5 +1,7 @@
 package domain.transform.app;
 
+import domain.compile.transform.BareReferenceCollapse;
+import domain.compile.transform.ProductCompiler;
 import domain.runtime.SnapshotDomain;
 
 import domain.runtime.WikidataDynamicObject;
@@ -8,6 +10,8 @@ import domain.persistence.DatasetRegistry;
 import domain.persistence.ProjectSaveGuard;
 import domain.config.GeneratedProjectModel;
 import domain.config.GeneratedProjectModelStore;
+import domain.config.GeneratedClassModel;
+import domain.curation.CuratedInstances;
 import domain.curation.ManualCuration;
 import dataset.DomainStorage;
 import domain.legacy.LegacyDomains;
@@ -171,23 +175,40 @@ public final class DomainCatalog {
         var loaded = new WikidataDynamicObjectJsonStore()
                 .loadAllWithFieldGraph(snap);
         var pool = loaded.objects();
+        var fieldGraph = loaded.fieldGraph();
+        GeneratedProjectModel effectiveProject = project == null ? null : project.copy();
+        if (effectiveProject != null) {
+            // An older TransformApp snapshot can carry semantic subclasses its saved
+            // model lost. Resolve curation and compile using the same working model.
+            DomainSaver.addSnapshotSubclasses(effectiveProject, fieldGraph);
+        }
+        java.util.function.Function<String, String> baseType = effectiveProject == null
+                ? fieldGraph::baseType
+                : type -> {
+                    GeneratedClassModel declared = effectiveProject.findClass(type);
+                    return declared == null ? null : declared.baseClassName();
+                };
         // Overlay curated / auto-fixed values onto the freshly loaded base data,
         // before compiling — so the sidecar survives regeneration. See domain.curation.
         // Manual values override; generated fills (e.g. <name>.autofix.json from a
         // fallback rule) only fill fields still absent.
         var curation = ManualCuration.forSnapshot(snap, guard);
         List<WikidataDynamicObject> curatedInstances =
-                domain.curation.CuratedInstances.apply(pool, curation.instances()).instances();
+                CuratedInstances.apply(pool, curation.instances(), baseType).instances();
         var autofix = domain.curation.CorrectionsSidecar.source(
                 domain.curation.CorrectionsSidecar.beside(snap, ".autofix.json"));
         domain.curation.Corrections.apply(pool, List.of(curation, autofix));
         // Fold curated duplicates into their primaries (Tanzania ≈ "Tanzania, United
         // Republic of") on the same overlay basis — re-applied every load, no snapshot edit.
-        domain.curation.Merges.apply(
-                pool, curation.merges(), loaded.fieldGraph()::baseType);
+        domain.curation.Merges.apply(pool, curation.merges(), baseType);
 
-        DomainModel base =
-                compile(project, pool, loaded.fieldGraph(), loaded.roleSelections());
+        DomainModel base;
+        if (effectiveProject == null) {
+            base = new SnapshotDomain(pool, fieldGraph, java.util.Set.of(), loaded.roleSelections());
+        } else {
+            BareReferenceCollapse.apply(pool);
+            base = ProductCompiler.compile(effectiveProject, pool, loaded.roleSelections());
+        }
         // Carry the curation store so the workbench can offer a "Curate…" action.
         java.util.List<objectview.viewconfig.DomainGroupRoot> savedGroupRoots =
                 new java.util.ArrayList<>();
@@ -211,25 +232,6 @@ public final class DomainCatalog {
         return new CuratableDomain(
                 base, curation, memberRoots, groupRoots,
                 project == null ? null : model, project, guard);
-    }
-
-    private static DomainModel compile(
-            GeneratedProjectModel model,
-            java.util.List<domain.runtime.WikidataDynamicObject> pool,
-            domain.runtime.SnapshotFieldGraph fieldGraph,
-            java.util.Map<String, java.util.List<domain.runtime.WikidataDynamicObject>>
-                    roleSelections) throws Exception {
-        if (model != null) {
-            var project = model.copy();
-            // A pre-fix TransformApp snapshot can already carry semantic subclasses
-            // that its model save lost. Make them visible in this working session; the
-            // corrected Save model action persists them into the owner.
-            DomainSaver.addSubclasses(project,
-                    new SnapshotDomain(pool, fieldGraph, java.util.Set.of(), roleSelections));
-            return domain.compile.transform.ProductCompiler.compile(
-                    project, pool, roleSelections);
-        }
-        return new SnapshotDomain(pool, fieldGraph, java.util.Set.of(), roleSelections);
     }
 
     /**

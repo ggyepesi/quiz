@@ -1,15 +1,29 @@
 package domain.transform.app;
 
+import dataset.DomainStorage;
+import domain.DomainModel;
+import domain.config.FieldCardinality;
+import domain.config.GeneratedClassModel;
+import domain.config.GeneratedProjectModel;
+import domain.config.GeneratedProjectModelStore;
+import domain.curation.Curatable;
+import domain.curation.CuratedInstance;
+import domain.curation.CuratedInstanceSink;
+import domain.datasource.schema.FieldType;
+import domain.runtime.WikidataDynamicObject;
+import domain.runtime.WikidataDynamicObjectJsonStore;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import domain.persistence.DatasetRegistry;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Quiz sources are saved products. Live/manual domains remain TransformApp inputs,
@@ -17,6 +31,52 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DomainCatalogConfiguredTest {
 
     @TempDir Path temporary;
+
+    @Test void reopeningCurationUsesTheSavedModelsClassHierarchyNotTheOldSnapshot()
+            throws Exception {
+        var snapshot = temporary.resolve("norse.snapshot.json").toFile();
+        var modelFile = temporary.resolve("norse.model.json").toFile();
+        var storage = DomainStorage.in(temporary.toFile());
+
+        var project = new GeneratedProjectModel();
+        project.name("Norse");
+        project.rootClass(new GeneratedClassModel("NorseCharacter"));
+        var deity = new GeneratedClassModel("NorseDeity");
+        project.addClass(deity);
+        var story = new GeneratedClassModel("NorseStory");
+        story.addField("characters", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        story.fields().getLast().entityClassName("NorseCharacter");
+        project.addClass(story);
+        var loki = new WikidataDynamicObject("Q133147", "Loki");
+        loki.type("NorseDeity");
+        new WikidataDynamicObjectJsonStore().saveWithFieldGraph(List.of(loki), snapshot, project);
+
+        // Save the edited configuration without rebuilding the instances.
+        deity.baseClassName("NorseCharacter");
+        new GeneratedProjectModelStore().save(project, modelFile);
+        var opened = DomainCatalog.open(snapshot, modelFile, storage);
+        var curated = new CuratedInstance("NorseStory", "text-passage:abc", "A story about Loki",
+                List.of(CuratedInstance.FieldValue.references("characters",
+                        List.of(new CuratedInstance.Reference("NorseCharacter", "Q133147")))), null);
+        var staged = opened.capability(CuratedInstanceSink.class).materialize(List.of(curated));
+        assertEquals(List.of(), staged.unresolved());
+        assertSame(instance(opened, "Q133147"),
+                ((List<?>) staged.instances().getFirst().get("characters")).getFirst());
+        var sidecar = opened.capability(Curatable.class).curation();
+        sidecar.putInstance(curated);
+        sidecar.save();
+
+        var reopened = DomainCatalog.open(snapshot, modelFile, storage);
+        assertEquals("NorseCharacter", reopened.baseType("NorseDeity"));
+        assertSame(instance(reopened, "Q133147"),
+                ((List<?>) instance(reopened, curated.id()).get("characters")).getFirst(),
+                "reopening the curation must retain the reference to the loaded subclass");
+    }
+
+    private static WikidataDynamicObject instance(DomainModel domain, String id) {
+        return (WikidataDynamicObject) domain.instances().stream()
+                .filter(value -> id.equals(value.getIdentifier())).findFirst().orElseThrow();
+    }
 
     @Test void configuredCatalogContainsOnlyServedSnapshotsThatExist() throws Exception {
         DatasetRegistry registry = new DatasetRegistry();
