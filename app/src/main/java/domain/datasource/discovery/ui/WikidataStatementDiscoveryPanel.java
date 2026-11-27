@@ -9,6 +9,7 @@ import domain.transform.ui.TransformController;
 import domain.runtime.WikidataDynamicObject;
 import domain.workbench.execution.ui.SwingQueryRunner;
 import domain.workbench.execution.ui.SwingQuerySession;
+import domain.workbench.ui.WikidataLabelLookup;
 
 import javax.swing.*;
 import java.awt.*;
@@ -174,6 +175,11 @@ public final class WikidataStatementDiscoveryPanel extends JPanel
         return !runner.isRunning()
                 || process.swing.SwingCancellationConfirmation.requestForVisibleRun(
                         owner, runner::cancel);
+    }
+
+    /** The standalone Discovery window owns label lookup; an embedded tool does not. */
+    void installLabelLookup() {
+        WikidataLabelLookup.install(runner);
     }
 
     @Override public void close() {

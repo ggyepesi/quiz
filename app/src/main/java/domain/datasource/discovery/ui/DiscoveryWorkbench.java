@@ -449,7 +449,7 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
     public static OpenedWindow openWindow(DomainModel domain, String title,
             InitialSelection initialSelection, Component owner, Source source) {
         JFrame frame = new JFrame("Discovery — " + title);
-        DiscoveryWorkbench workbench = new DiscoveryWorkbench(domain, initialSelection);
+        DiscoveryWorkbench workbench = forStandaloneWindow(domain, initialSelection);
         workbench.showSource(source);
         frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         frame.add(workbench);
@@ -467,6 +467,13 @@ public final class DiscoveryWorkbench extends JPanel implements AutoCloseable {
         frame.setLocationRelativeTo(owner);
         frame.setVisible(true);
         return new OpenedWindow(frame, workbench);
+    }
+
+    static DiscoveryWorkbench forStandaloneWindow(
+            DomainModel domain, InitialSelection initialSelection) {
+        DiscoveryWorkbench workbench = new DiscoveryWorkbench(domain, initialSelection);
+        workbench.wikidata.installLabelLookup();
+        return workbench;
     }
 
     public record OpenedWindow(JFrame window, DiscoveryWorkbench workbench) { }

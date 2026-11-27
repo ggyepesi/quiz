@@ -22,6 +22,7 @@ import domain.group.ViewableGroup;
 import domain.transform.pipeline.ui.ViewStepsPanel;
 import domain.curation.ScopeFilter;
 import domain.workbench.execution.ui.SwingQuerySession;
+import domain.workbench.ui.WikidataLabelLookup;
 import wikidata.ui.IdentityChip;
 
 import javax.swing.*;
@@ -2666,6 +2667,9 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
         f.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         TransformWorkbenchPanel panel = new TransformWorkbenchPanel(
                 domain, writer, title, purpose, configurationAction);
+        // Label lookup is process-wide (WikidataLabels is static): installed by the
+        // application window, never by a panel a test can construct on its own.
+        WikidataLabelLookup.install(panel.queries.runner());
         f.add(panel);
         f.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override public void windowClosing(java.awt.event.WindowEvent e) {

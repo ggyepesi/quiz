@@ -215,10 +215,10 @@ public class SwingQueryRunner {
     }
 
     public void cancel() {
-        if (currentWorker != null && !currentWorker.isDone()) {
-            currentWorker.cancel(true);
+        SwingWorker<?, ?> worker = currentWorker;
+        if (worker != null && worker.cancel(true)) {
+            cancelAction.run();
         }
-        cancelAction.run();
     }
 
     public boolean isRunning() {

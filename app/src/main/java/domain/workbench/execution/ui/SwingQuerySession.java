@@ -14,7 +14,6 @@ public final class SwingQuerySession implements AutoCloseable {
 
     private final WorkflowLogWindow logs;
     private final SwingQueryRunner runner;
-    private Runnable cancelRequest = () -> { };
     private Runnable release = () -> { };
 
     public static SwingQuerySession openWorkbench() {
@@ -23,9 +22,6 @@ public final class SwingQuerySession implements AutoCloseable {
         var factory = new wikidata.query.core.QueryFactory(client, new wikidata.api.WikidataApiClient(agent), agent);
         var session = new SwingQuerySession(factory.newContext(
                 java.nio.file.Path.of(aux.Constants.wikidataDataDirectory)));
-        session.cancelRequest = client::cancelCurrentQuery;
-        session.runner.cancelAction(session.cancelRequest);
-        domain.workbench.ui.WikidataLabelLookup.install(session.runner);
         session.release = () -> {
             factory.close();
             client.close();
@@ -46,6 +42,7 @@ public final class SwingQuerySession implements AutoCloseable {
     private SwingQuerySession(QueryContext context, WorkflowLogWindow logs) {
         this.logs = logs;
         runner = new SwingQueryRunner(context, logs);
+        runner.cancelAction(context::cancelActiveWork);
     }
 
     /**
@@ -55,10 +52,7 @@ public final class SwingQuerySession implements AutoCloseable {
      * uncancellable mid-request. It owns no clients; closing it only cancels its own run.
      */
     public SwingQuerySession companion() {
-        var companion = new SwingQuerySession(runner.context(), logs);
-        companion.cancelRequest = cancelRequest;
-        companion.runner.cancelAction(cancelRequest);
-        return companion;
+        return new SwingQuerySession(runner.context(), logs);
     }
 
     public SwingQueryRunner runner() {

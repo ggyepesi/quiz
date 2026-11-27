@@ -1,9 +1,18 @@
 package domain.datasource.discovery.ui;
 
 import domain.DomainModel;
+import domain.transform.app.DomainSaver;
+import domain.transform.discovery.WikidataStatementDiscoveryQuery;
+import domain.transform.ui.TransformController;
+import domain.workbench.execution.ui.SwingQuerySession;
 import objectview.Viewable;
 import org.junit.jupiter.api.Test;
 import domain.runtime.WikidataDynamicObject;
+import wikidata.WikidataSparqlClient;
+import wikidata.query.core.WikidataAccess;
+import wikidata.ui.WikidataLabels;
+import work.LogNode;
+import work.LogStatus;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -12,14 +21,29 @@ import javax.swing.JTree;
 import javax.swing.SwingUtilities;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.TreePath;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Wikipedia and Commons discovery were separate applications, each selecting its own
@@ -28,6 +52,176 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * instances it cannot read rather than refusing them for everyone.
  */
 class DiscoveryWorkbenchTest {
+
+    @Test void standaloneDiscoveryInstallsLabelLookupButConstructingAPanelDoesNot()
+            throws Exception {
+        Field resolver = WikidataLabels.class.getDeclaredField("resolver");
+        resolver.setAccessible(true);
+        var before = new AtomicReference<WikidataLabels.Resolver>();
+        SwingUtilities.invokeAndWait(() -> {
+            try {
+                before.set((WikidataLabels.Resolver) resolver.get(null));
+                WikidataLabels.resolveWith(null);
+                DomainModel model = domain(deity("Q170471", "Maat", "Maat"));
+                try (var panel = workbench(model, null)) {
+                    assertNull(resolver.get(null), "constructing a panel must not change the resolver");
+                }
+                try (var windowContent = DiscoveryWorkbench.forStandaloneWindow(model, null)) {
+                    assertNotNull(resolver.get(null), "standalone Discovery needs its own resolver");
+                }
+            } catch (IllegalAccessException failure) {
+                throw new AssertionError(failure);
+            } finally {
+                WikidataLabels.resolveWith(before.get());
+            }
+        });
+    }
+
+    @Test void statementsShareTheHostLogAndCancelTheirInFlightSparqlRequest()
+            throws Exception {
+        try (var server = new HeldSparqlRequest();
+                var client = new WikidataSparqlClient("QuizTest", 1, server.endpoint());
+                var host = new SwingQuerySession(WikidataAccess.of(client, null).bind())) {
+            var workbench = mountStatements(host);
+            try {
+                var panel = workbench.wikidata();
+                var companion = field(panel, "queries", SwingQuerySession.class);
+                assertSame(host.logs(), companion.logs());
+                assertNotSame(host.runner(), companion.runner());
+                SwingUtilities.invokeAndWait(() -> {
+                    JButton fetch = field(panel, "fetch", JButton.class);
+                    assertTrue(fetch.isEnabled());
+                    fetch.doClick(0);
+                });
+                server.accept();
+                LogNode running = awaitLog(host, batch ->
+                        batch.status() == LogStatus.RUNNING && batch.request().contains("Q170471"));
+                assertTrue(client.isQueryRunning());
+                assertFalse(host.runner().isRunning(), "the statements panel owns this run");
+                SwingUtilities.invokeAndWait(() -> {
+                    assertTrue(field(panel, "cancel", JButton.class).isEnabled());
+                    // This is the button's callback after confirmation; do not open
+                    // the modal confirmation in the headless test.
+                    companion.runner().cancel();
+                });
+                server.assertDisconnected();
+                LogNode cancelled = awaitLog(host, batch -> batch.status() == LogStatus.CANCELLED);
+                assertSame(running, cancelled, "cancel finishes the batch already in Query logs");
+                assertFalse(client.isQueryRunning());
+            } finally {
+                SwingUtilities.invokeAndWait(workbench::close);
+            }
+        }
+    }
+
+    @Test void closingAnIdleStatementsCompanionLeavesTheHostSparqlRequestAlone()
+            throws Exception {
+        try (var server = new HeldSparqlRequest();
+                var client = new WikidataSparqlClient("QuizTest", 1, server.endpoint());
+                var host = new SwingQuerySession(WikidataAccess.of(client, null).bind())) {
+            var workbench = mountStatements(host);
+            var completed = new CountDownLatch(1);
+            var failure = new AtomicReference<Exception>();
+            SwingUtilities.invokeAndWait(() -> host.runner().runOnCompletion(
+                    new WikidataStatementDiscoveryQuery(List.of("Q170471")),
+                    ignored -> completed.countDown(), error -> {
+                        failure.set(error);
+                        completed.countDown();
+                    }, completed::countDown));
+            try {
+                server.accept();
+                awaitLog(host, batch -> batch.status() == LogStatus.RUNNING);
+                SwingUtilities.invokeAndWait(workbench::close);
+                assertTrue(client.isQueryRunning(), "closing an idle companion must not cancel HTTP");
+                server.respond();
+                assertTrue(completed.await(5, TimeUnit.SECONDS));
+                assertNull(failure.get());
+                awaitLog(host, batch -> batch.status() == LogStatus.OK);
+            } finally {
+                SwingUtilities.invokeAndWait(workbench::close);
+            }
+        }
+    }
+
+    private static DiscoveryWorkbench mountStatements(SwingQuerySession host) throws Exception {
+        var mounted = new AtomicReference<DiscoveryWorkbench>();
+        SwingUtilities.invokeAndWait(() -> {
+            var maat = deity("Q170471", "Maat", "Maat");
+            var controller = new TransformController(domain(maat), new DomainSaver());
+            var workbench = new DiscoveryWorkbench(controller,
+                    new domain.workbench.ui.WorkbenchActionResultNavigator(), host);
+            assertTrue(workbench.selection().populate("EgyptianDeity"));
+            assertEquals(0, workbench.selection().seed(List.of(maat), "Test selection"));
+            mounted.set(workbench);
+        });
+        return mounted.get();
+    }
+
+    private static LogNode awaitLog(SwingQuerySession host, Predicate<LogNode> batchCondition)
+            throws Exception {
+        var batch = new AtomicReference<LogNode>();
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        do {
+            SwingUtilities.invokeAndWait(() -> {
+                for (Object value : field(host.logs(), "workflows", List.class)) {
+                    LogNode run = (LogNode) value;
+                    if (!run.title().equals("Fetch every Wikidata statement and qualifier")) continue;
+                    for (LogNode step : run.steps()) {
+                        if (!step.title().equals("Fetch statements and qualifiers in QID batches")) continue;
+                        for (LogNode child : step.steps()) {
+                            if (batchCondition.test(child)) batch.set(child);
+                        }
+                    }
+                }
+            });
+            if (batch.get() != null) return batch.get();
+            Thread.sleep(20);
+        } while (System.nanoTime() < deadline);
+        return fail("The host's Query logs never showed the expected statement batch outcome");
+    }
+
+    /** A loopback HTTP peer that sends nothing until the test releases the request.
+     * Checking EOF proves the transport stopped, not just the Swing worker. */
+    private static final class HeldSparqlRequest implements AutoCloseable {
+        private final ServerSocket server = new ServerSocket(
+                0, 1, InetAddress.getByName("127.0.0.1"));
+        private Socket socket;
+        private BufferedReader input;
+
+        HeldSparqlRequest() throws Exception {
+            server.setSoTimeout(5000);
+        }
+        String endpoint() { return "http://127.0.0.1:" + server.getLocalPort() + "/sparql"; }
+        void accept() throws Exception {
+            socket = server.accept();
+            socket.setSoTimeout(5000);
+            input = new BufferedReader(new InputStreamReader(
+                    socket.getInputStream(), StandardCharsets.US_ASCII));
+            String request = input.readLine();
+            assertNotNull(request);
+            assertTrue(request.startsWith("GET /sparql?") && request.contains("Q170471"), request);
+            String line;
+            while ((line = input.readLine()) != null && !line.isEmpty()) { }
+            assertNotNull(line, "request headers must finish");
+        }
+        void assertDisconnected() throws Exception {
+            assertEquals(-1, input.read(), "the client must close without a server response");
+        }
+        void respond() throws Exception {
+            var body = "{\"head\":{\"vars\":[]},\"results\":{\"bindings\":[]}}";
+            var response = "HTTP/1.1 200 OK\r\nContent-Type: application/sparql-results+json\r\n"
+                    + "Content-Length: " + body.length() + "\r\nConnection: close\r\n\r\n" + body;
+            socket.getOutputStream().write(response.getBytes(StandardCharsets.US_ASCII));
+            socket.getOutputStream().flush();
+        }
+        @Override public void close() throws Exception {
+            try {
+                if (socket != null) socket.close();
+            } finally {
+                server.close();
+            }
+        }
+    }
 
     @Test void aSelectionMadeOnceIsWhatEverySourceReads() throws Exception {
         SwingUtilities.invokeAndWait(() -> {

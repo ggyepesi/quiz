@@ -1,5 +1,7 @@
 package domain.workbench.unified.app;
 
+import domain.workbench.ui.WikidataLabelLookup;
+
 import domain.transform.app.DomainCatalog;
 import domain.DomainModel;
 import domain.transform.ui.DomainNavigator;
@@ -29,6 +31,7 @@ public final class UnifiedWorkbenchApp {
             queries.close();
             throw failure;
         }
+        WikidataLabelLookup.install(queries.runner());
         var frame = new JFrame("Unified Workbench — " + name);
         // Instances get a window of their own, as in ModelBuilder; it belongs to
         // this project's frame and closes with it.
