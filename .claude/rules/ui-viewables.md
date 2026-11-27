@@ -55,8 +55,17 @@ Discovery's results had no search box, because they were a `JTable` rather than 
 - **Keep the painted-row rendering** (drag-to-select text blocks, virtualization for large
   sets). This rule is about WHAT is rendered; that is about HOW. Don't change the card look.
   The text field's **Read full text…** menu opens its exact value in a selectable, scrollable
-  reader without changing the card. Linked passages keep their authored links in the reader;
+  reader without changing the card. In each owning window, the same instance and field opens
+  one reader, titled with the instance and field. Linked passages keep their authored links;
   hovering a link still names its destination, not a different action.
+  An accepted passage may show its configured reference field's unambiguous names as
+  instance links, without changing the stored text or creating references. Such a link uses
+  ordinary card navigation. Following a reader link puts the reader aside without closing
+  it. Back raises it at its previous scroll position; if it was closed, Back resolves the
+  original card by identity.
+  A quiz can opt out of instance links in its prompt or answer text, independently.
+  The shared renderer keeps the words and external URLs; the choice does not change quiz
+  keys, domain data, or any other view.
 
 - **Large inline collections stay on the shared virtualized path too.** Expanding one parent
   must not create one UI component per member. Live appends update only the new suffix and the

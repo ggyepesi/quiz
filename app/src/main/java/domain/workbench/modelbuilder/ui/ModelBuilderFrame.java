@@ -32,6 +32,7 @@ import wikidata.query.core.QueryFactory;
 import wikidata.explore.query.logical.GenerateInstancesQuery;
 import wikidata.explore.query.logical.EnrichInstancesQuery;
 import wikidata.explore.query.logical.RemapInstancesQuery;
+import domain.workbench.execution.GenerationRunState;
 import domain.workbench.execution.ui.BuildProjectWorkflow;
 import domain.workbench.execution.ui.QueryObjectResultPanel;
 import domain.workbench.execution.ui.SwingQueryRunner;
@@ -68,17 +69,9 @@ public class ModelBuilderFrame extends JFrame {
     private final GeneratedProjectModel projectModel =
             GeneratedProjectModel.constellationDemo();
 
-    private GenerationRun lastRun;
-    /** Monotonic identity for windows prepared from {@link #lastRun}. */
-    private long generationRunRevision;
-    /** The accepted run known to be identical to the saved snapshot. A generated or
-     * transformed replacement is intentionally a different object until Save domain succeeds. */
-    private GenerationRun savedGenerationRun;
+    private final GenerationRunState runState = new GenerationRunState();
     private boolean closeWhenIdle;
     private boolean closingApplication;
-    /** Data-side graph execution history; never folded back into the authored model. */
-    private domain.datasource.graph.GraphDiscoveryState graphDiscoveryLedger =
-            domain.datasource.graph.GraphDiscoveryState.EMPTY;
 
     private final SingleRootClassModelPanel classModelPanel =
             new SingleRootClassModelPanel(projectModel);
@@ -98,7 +91,6 @@ public class ModelBuilderFrame extends JFrame {
 
     // Name collisions from the last run (names mapping to >1 entity), shown on
     // demand in their own panel from the instances window.
-    private java.util.List<NameCollision> lastCollisions = java.util.List.of();
     private JFrame nameCollisionsWindow;
     /** The searchable collision list and its selected ordinary instance browser. */
     private NameCollisionInspectionPanel nameCollisionInspection;
@@ -127,11 +119,6 @@ public class ModelBuilderFrame extends JFrame {
     // coordinator the command line runs, reusing every current output.
     private final JButton buildProjectButton =
             new JButton("Build project");
-
-    // One-shot explanation for a generation launched as the continuation of
-    // another workflow (currently graph-frontier expansion).  The next preview
-    // consumes it, so an ordinary button press keeps the ordinary caption.
-    private String pendingGenerationReason = "";
 
     // Re-materialize the LAST download with the current model (no re-fetch) — picks
     // up canonicalization / display-name / mapping edits fast.
@@ -283,7 +270,7 @@ public class ModelBuilderFrame extends JFrame {
         this.sourceWorkbench.selectionEditor(selectionsPanel);
         this.sourceWorkbench.domainStatus(() -> new DomainOverviewPanel.Status(
                 modelFile().isFile(), snapshotFile().isFile(),
-                lastRun == null ? 0 : lastRun.size()));
+                runState.current() == null ? 0 : runState.current().size()));
         this.instancesPanel.onHiddenClassSectionsChanged(
                 this::rememberInstanceClassVisibility);
 
@@ -315,7 +302,8 @@ public class ModelBuilderFrame extends JFrame {
     public void dispose() {
         rememberCurrentDomain();
         closeProjectWindows();
-        replaceGenerationRun(null);
+        runState.replaceProject(null);
+        refreshRunControls();
         queryFactory.close();
         sourceWorkbench.close();
         super.dispose();
@@ -341,9 +329,9 @@ public class ModelBuilderFrame extends JFrame {
         markSaved(null, null);
         projectModel.copyContentsFrom(replacement);
         graphResultsFollowLoadedModel();
-        replaceGenerationRun(null);
-        graphDiscoveryLedger = replacementLedger == null
-                ? domain.datasource.graph.GraphDiscoveryState.EMPTY : replacementLedger;
+        runState.replaceProject(replacementLedger);
+        refreshRunControls();
+        updateNameCollisionsButton();
         instancesPanel.clear();
         instancesPanel.hiddenClassSections(rememberedInstanceClassVisibility());
     }
@@ -371,8 +359,6 @@ public class ModelBuilderFrame extends JFrame {
         closeWindow(graphWindow);
         closeWindow(guideWindow);
         discardNameCollisionInspection();
-        lastCollisions = java.util.List.of();
-        updateNameCollisionsButton();
     }
 
     private static void closeWindow(Window window) {
@@ -559,12 +545,12 @@ public class ModelBuilderFrame extends JFrame {
     /** One window owns the complete generated result: ordinary class instances and
      * every named graph constraint's annotation instances. */
     private void refreshInstancesPanel() {
-        if (lastRun == null) return;
-        ProjectInstancesPresentation.show(instancesPanel, projectModel, lastRun.objectResult(),
+        if (runState.current() == null) return;
+        ProjectInstancesPresentation.show(instancesPanel, projectModel, runState.current().objectResult(),
                 graphResults.all(), result -> GraphResultPresentation.review(result,
                         java.util.List.of(new QueryObjectResultPanel.GroupAction(
                                 "Apply accepted instances", () -> applyGraphResultFromInstances(result))),
-                        () -> savedGenerationRun = null));
+                        runState::markUnsaved));
     }
 
     private void applyGraphResultFromInstances(GraphDiscoveryResultStore.Artifact result) {
@@ -595,7 +581,7 @@ public class ModelBuilderFrame extends JFrame {
     /** Accepted identities of applied additive graph results not generated yet. */
     private java.util.Map<String, java.util.List<String>> pendingGraphPopulationAdditions() {
         return graphResults.pendingPopulationAcquisitions(
-                lastRun == null ? java.util.List.of() : lastRun.dynamicObjects());
+                runState.current() == null ? java.util.List.of() : runState.current().dynamicObjects());
     }
 
     private void updateCreatePopulationSelectionButton() {
@@ -782,7 +768,7 @@ public class ModelBuilderFrame extends JFrame {
         java.util.Map<String, String> labels = new java.util.concurrent.ConcurrentHashMap<>();
         // The reachable graph can be large. Warm the optional label cache away from
         // the EDT; until it is ready the picker safely displays the QID fallback.
-        GenerationRun labelRun = lastRun;
+        GenerationRun labelRun = runState.current();
         if (labelRun != null && labelRun.dynamicObjects() != null) {
             new SwingWorker<Void, Void>() {
                 @Override protected Void doInBackground() {
@@ -864,7 +850,7 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     private String instancesTitle() {
-        return instancesTitle(lastRun, projectModel);
+        return instancesTitle(runState.current(), projectModel);
     }
 
     static String instancesTitle(GenerationRun run, GeneratedProjectModel model) {
@@ -952,8 +938,8 @@ public class ModelBuilderFrame extends JFrame {
 
         sourceWorkbench.setQueryRunner(queryRunner);
         sourceWorkbench.setProcessRunner(processRunner);
-        sourceWorkbench.graphInstances(() -> lastRun == null
-                ? List.of() : lastRun.instances());
+        sourceWorkbench.graphInstances(() -> runState.current() == null
+                ? List.of() : runState.current().instances());
         sourceWorkbench.onGraphResult(this::applyGraphResult);
         sourceWorkbench.afterGraphResultApplied(this::showInstancesWindow);
         sourceWorkbench.log(logWindow::info);
@@ -1064,8 +1050,7 @@ public class ModelBuilderFrame extends JFrame {
             if (processRunner.isRunning() || queryRunner.isRunning()) {
                 return;
             }
-            String generationReason = pendingGenerationReason;
-            pendingGenerationReason = "";
+            String generationReason = runState.takeGenerationReason();
             try {
                 sourceWorkbench.applyEdits();
                 // Per-class depth (saved on each class) is used; sync the
@@ -1089,7 +1074,7 @@ public class ModelBuilderFrame extends JFrame {
                 }
                 GeneratedProjectModel snapshot = projectModel.copy();
                 domain.build.WikidataGraphDiscoveryState
-                        .applyExpansionLedger(snapshot, graphDiscoveryLedger);
+                        .applyExpansionLedger(snapshot, runState.graphLedger());
                 domain.build.CompiledPipelineRun compiledRun =
                         domain.build.CompiledPipelineRun.compile(
                                 domain.build.PipelineRequest
@@ -1232,7 +1217,7 @@ public class ModelBuilderFrame extends JFrame {
             if (processRunner.isRunning() || queryRunner.isRunning()) return;
             try {
                     sourceWorkbench.applyEdits();
-                    if (lastRun == null) {
+                    if (runState.current() == null) {
                         warnNothingToGenerate(
                                 "Nothing to remap yet — run Generate domain (or "
                                         + "instances) first.");
@@ -1245,25 +1230,25 @@ public class ModelBuilderFrame extends JFrame {
                     var operationSettings =
                             new domain.build.GenerationExecutionSettings();
                     domain.build.RemapScope replayableScope =
-                            domain.build.RemapScope.of(lastRun);
+                            domain.build.RemapScope.of(runState.current());
                     domain.build.CompiledPipelineRun compiledRun =
                             domain.build.CompiledPipelineRun.compile(
                                     domain.build.PipelineRequest.remap(
-                                            snapshot, lastRun.remapCheckpoint(
-                                                    graphDiscoveryLedger)));
+                                            snapshot, runState.current().remapCheckpoint(
+                                                    runState.graphLedger())));
                     var pipeline = domain.build.GenerateDomainPipeline
                             .configuredRemap(compiledRun,
-                            java.util.List.of(lastRun.dynamicObjects().size()
+                            java.util.List.of(runState.current().dynamicObjects().size()
                                     + " existing objects", snapshot.classes().size()
                                     + " configured classes"),
                             replayableScope.retransform());
                     // The remap knows what it can replay; it says so rather than
                     // leaving the host to guess from the operation's name.
                     domain.build.RemapScope replayable =
-                            domain.build.RemapScope.of(lastRun);
+                            domain.build.RemapScope.of(runState.current());
                     startGenerationOperation(
                             "Remap domain", "Preview local model changes without downloading data.",
-                            "remap", new RemapInstancesQuery(lastRun, compiledRun,
+                            "remap", new RemapInstancesQuery(runState.current(), compiledRun,
                                     domain.build.RunSteps.of(pipeline)),
                             pipeline,
                             snapshot, operationSettings, false, true,
@@ -1281,7 +1266,7 @@ public class ModelBuilderFrame extends JFrame {
             if (processRunner.isRunning() || queryRunner.isRunning()) return;
             try {
                     sourceWorkbench.applyEdits();
-                    if (lastRun == null) {
+                    if (runState.current() == null) {
                         warnNothingToGenerate(
                                 "Nothing to enrich yet — run Generate domain (or "
                                         + "instances) first.");
@@ -1295,16 +1280,16 @@ public class ModelBuilderFrame extends JFrame {
                     domain.build.CompiledPipelineRun compiledRun =
                             domain.build.CompiledPipelineRun.compile(
                                     domain.build.PipelineRequest.enrich(
-                                            snapshot, lastRun.checkpoint(
-                                                    graphDiscoveryLedger)));
+                                            snapshot, runState.current().checkpoint(
+                                                    runState.graphLedger())));
                     var pipeline = domain.build.GenerateDomainPipeline
                             .configuredEnrich(
-                                    compiledRun, enrichmentDetails(snapshot, lastRun));
+                                    compiledRun, enrichmentDetails(snapshot, runState.current()));
                     startGenerationOperation(
                             "Enrich domain",
                             "Add newly declared values to the existing population without rediscovery.",
                             "enrich", new EnrichInstancesQuery(
-                                    lastRun, compiledRun, operationSettings,
+                                    runState.current(), compiledRun, operationSettings,
                                     domain.build.RunSteps.of(pipeline)),
                             pipeline,
                             snapshot, operationSettings, true, true,
@@ -1399,11 +1384,11 @@ public class ModelBuilderFrame extends JFrame {
      *  — asked of the pool as it stands, so the plan can state it without running. */
     private java.util.List<domain.build.RuleEffects.Effect> ruleEffects(
             GeneratedProjectModel snapshot) {
-        if (lastRun == null || lastRun.dynamicObjects() == null) {
+        if (runState.current() == null || runState.current().dynamicObjects() == null) {
             return java.util.List.of();
         }
         return domain.build.RuleEffects.of(
-                snapshot, lastRun.dynamicObjects());
+                snapshot, runState.current().dynamicObjects());
     }
 
     /** A rendered explanation of one rule bucket, before its instance cards. */
@@ -1503,7 +1488,7 @@ public class ModelBuilderFrame extends JFrame {
         domain.transform.DynamicViewable summary = new domain.transform.DynamicViewable(
                 title.toLowerCase(java.util.Locale.ROOT).replace(' ', '-'), snapshot.name());
         summary.type("Domain operation");
-        summary.put("Existing objects", lastRun == null ? 0 : lastRun.size());
+        summary.put("Existing objects", runState.current() == null ? 0 : runState.current().size());
         summary.put("Classes", snapshot.classes().size());
         // Whether reification runs is a property of the operation, and the caller that
         // builds the operation knows it. Deciding it here by matching the phase id
@@ -1591,7 +1576,7 @@ public class ModelBuilderFrame extends JFrame {
         java.util.List<String> unsaved = new java.util.ArrayList<>();
         if (openModelFile == null) unsaved.add("the project has never been saved");
         else if (hasUnsavedChanges()) unsaved.add("the configuration has unsaved changes");
-        if (hasUnsavedGeneratedInstances()) {
+        if (runState.hasUnsavedInstances()) {
             unsaved.add("the instances or graph decisions are not saved");
         }
         String kind = projectModel.isModel() ? "model" : "domain";
@@ -1737,7 +1722,7 @@ public class ModelBuilderFrame extends JFrame {
     private void applyGraphResult(GraphDiscoveryResultStore.Artifact artifact) throws Exception {
         domain.build.GraphApplication.Outcome outcome =
                 domain.build.GraphApplication.apply(
-                        artifact, projectModel, lastRun);
+                        artifact, projectModel, runState.current());
         if (outcome instanceof domain.build.GraphApplication.AwaitingDecision waiting) {
             logWindow.info(waiting.message() + "\n");
             throw new IllegalStateException(waiting.message());
@@ -1750,22 +1735,16 @@ public class ModelBuilderFrame extends JFrame {
 
     private void acceptGenerationRun(GenerationRun run, boolean alreadySaved) {
         SwingUtilities.invokeLater(() -> {
-            domain.datasource.graph.GraphDiscoveryState previousGraph = graphDiscoveryLedger;
-            // Closes the runtime this run supersedes — unless the incoming run carries it,
-            // which is how forgetFetchedDeclaration replaces a run without shutting one
-            // that is still in use.
-            replaceGenerationRun(run);
-            sourceWorkbench.graphInstances(() -> lastRun == null
-                    ? List.of() : lastRun.instances());
-            savedGenerationRun = alreadySaved ? lastRun : null;
+            runState.accept(run, alreadySaved);
+            refreshRunControls();
+            sourceWorkbench.graphInstances(() -> runState.current() == null
+                    ? List.of() : runState.current().instances());
 
             if (run != null) {
-                graphDiscoveryLedger = domain.build.GenerationRuns
-                        .ledgerAfter(previousGraph, run);
                 // Graph state is presentation metadata, like the QID chip: show it in
                 // card titles without inventing stored fields or affecting search/sort.
                 instancesPanel.cardDecorator(new GraphCoverageCardDecorator(
-                        graphDiscoveryState(),
+                        runState.visibleGraphLedger(),
                         domain.build.WikidataGraphExpansionPlan
                                 .compile(run.modelSnapshot()).edges()));
                 // The instances window has one projection: the accepted run plus every
@@ -1798,7 +1777,7 @@ public class ModelBuilderFrame extends JFrame {
                                        + " objects (in memory — use \"" + saveAction
                                        + "\" to persist "
                                        + "to " + snapshotFile().getName() + ").");
-                reportNameCollisions(run);
+                reportNameCollisions();
                 updateGraphFrontierButton();
                 // What the declared expectations found. Silent when they all held, so a
                 // clean run says nothing and a gap is the only thing that speaks up.
@@ -1814,33 +1793,28 @@ public class ModelBuilderFrame extends JFrame {
         });
     }
 
-    private domain.datasource.graph.GraphDiscoveryState graphDiscoveryState() {
-        return lastRun == null
-                ? domain.datasource.graph.GraphDiscoveryState.EMPTY : graphDiscoveryLedger;
-    }
-
     /**
      * Every edge with a reviewable frontier. A statement pattern is persisted in the
      * ledger; a field edge is derived from the model, so both are asked for here and
      * the two callers cannot disagree about which edges exist.
      */
     private java.util.List<domain.datasource.graph.GraphEdgeDefinition> reviewableEdges() {
-        if (lastRun == null) return java.util.List.of();
+        if (runState.current() == null) return java.util.List.of();
         return domain.build.WikidataGraphExpansionPlan
                 .compile(projectModel).edges();
     }
 
     private void updateGraphFrontierButton() {
-        domain.datasource.graph.GraphDiscoveryState state = graphDiscoveryState();
+        domain.datasource.graph.GraphDiscoveryState state = runState.visibleGraphLedger();
         int count = reviewableEdges().stream().mapToInt(
                 edge -> state.frontier(edge).size()).sum();
         graphFrontierButton.setText(count == 0
                 ? "Graph frontier" : "Graph frontier (" + count + ")");
-        graphFrontierButton.setEnabled(lastRun != null && count > 0);
+        graphFrontierButton.setEnabled(runState.current() != null && count > 0);
     }
 
     private void showGraphFrontier() {
-        if (lastRun == null || processRunner.isRunning()
+        if (runState.current() == null || processRunner.isRunning()
                 || querySession.runner().isRunning()) return;
         try {
             sourceWorkbench.applyEdits();
@@ -1849,8 +1823,8 @@ public class ModelBuilderFrame extends JFrame {
             return;
         }
         GraphFrontierWorkflowAction action = new GraphFrontierWorkflowAction(
-                currentRunWorkflowSubject(), graphDiscoveryState(), reviewableEdges(),
-                lastRun.dynamicObjects(),
+                currentRunWorkflowSubject(), runState.visibleGraphLedger(), reviewableEdges(),
+                runState.current().dynamicObjects(),
                 this::applyGraphFrontier, generateDomainButton::doClick);
         process.swing.workflow.SwingProcessWorkflow.start(this, processRunner, action);
     }
@@ -1867,20 +1841,15 @@ public class ModelBuilderFrame extends JFrame {
                 domain.datasource.graph.GraphEdgeDefinition edge = reviewableEdges().stream()
                         .filter(candidate -> candidate.id().equals(decision.patternId()))
                         .findFirst().orElse(null);
-                domain.datasource.graph.GraphDiscoveryState next = graphDiscoveryLedger.queue(
-                        edge, domain.datasource.EntityRef.wikidata(decision.qid()));
-                if (next != graphDiscoveryLedger) {
-                    graphDiscoveryLedger = next;
-                    savedGenerationRun = null;
+                if (runState.queueExpansion(edge, domain.datasource.EntityRef.wikidata(decision.qid()))) {
                     queued++;
                 }
             }
         }
         instancesPanel.cardDecorator(new GraphCoverageCardDecorator(
-                graphDiscoveryLedger, reviewableEdges()));
+                runState.graphLedger(), reviewableEdges()));
         updateGraphFrontierButton();
-        pendingGenerationReason = "Expand " + decisions.size()
-                + " graph-frontier node(s)";
+        runState.explainNextGeneration("Expand " + decisions.size() + " graph-frontier node(s)");
         logWindow.info("Queued " + queued
                 + " graph-frontier node(s) in the snapshot ledger"
                 + (queued == decisions.size() ? "" : " ("
@@ -1888,38 +1857,31 @@ public class ModelBuilderFrame extends JFrame {
                 + "; opening Generate domain preview.");
     }
 
-    /**
-     * The single assignment boundary for the active run. A run owns its generated runtime,
-     * so replacing or clearing it must first release whatever the replacement does not carry.
-     */
     private void replaceGenerationRun(GenerationRun next) {
-        GenerationRun previous = lastRun;
-        lastRun = domain.build.GenerationRuns.handOver(lastRun, next);
-        if (previous != lastRun) generationRunRevision++;
-        if (next == null) savedGenerationRun = null;
+        runState.replace(next);
+        refreshRunControls();
+    }
+
+    private void refreshRunControls() {
         updateRunReportButton();
         sourceWorkbench.refreshDomainOverview();
     }
 
     private String currentRunWorkflowSubject() {
-        return runWorkflowSubject(generationRunRevision);
-    }
-
-    static String runWorkflowSubject(long revision) {
-        return "generation-run:" + revision;
+        return runState.workflowSubject();
     }
 
     private void updateRunReportButton() {
-        int decisions = lastRun == null ? 0
-                : lastRun.selfReferenceAudit().ledger().entries().size();
+        int decisions = runState.current() == null ? 0
+                : runState.current().selfReferenceAudit().ledger().entries().size();
         runReportButton.setText(decisions == 0
                 ? "Run report" : "Self-reference decisions (" + decisions + ")");
-        runReportButton.setEnabled(lastRun != null);
+        runReportButton.setEnabled(runState.current() != null);
     }
 
     /** Reopens the durable result account without pretending to execute or apply a run. */
     private void showRunReport() {
-        GenerationRun report = lastRun;
+        GenerationRun report = runState.current();
         if (report == null) return;
         process.ProcessOutcome<GenerationRun> outcome = process.ProcessOutcome.succeeded(
                 report, report.selfReferenceAudit().description());
@@ -1998,20 +1960,13 @@ public class ModelBuilderFrame extends JFrame {
     // Greek myth (and history generally) has many distinct entities sharing a
     // name (5 Agenors, 5 Lycuses, …). Make that explicit after a run: list the
     // names that map to >1 QID, so the user can disambiguate or exclude.
-    private void reportNameCollisions(GenerationRun run) {
+    private void reportNameCollisions() {
         // A collision window is a view of one concrete run. Never leave the previous
         // run's instances visible under the current run's button/count.
         discardNameCollisionInspection();
-        lastCollisions = java.util.List.of();
-        updateNameCollisionsButton();
-        if (run == null || run.dynamicObjects() == null) {
-            return;
-        }
-        // What counts as a collision is NameCollisions'; this frame reports it.
-        java.util.List<domain.build.NameCollisions.ClassCollisions> byClass =
-                domain.build.NameCollisions.detect(
-                        run.dynamicObjects(), run.modelSnapshot());
+        var byClass = runState.refreshNameCollisions();
         if (byClass.isEmpty()) {
+            updateNameCollisionsButton();
             return;
         }
         var ambiguity = domain.build.NameCollisions.Meaning.ENTITY_AMBIGUITY;
@@ -2043,65 +1998,7 @@ public class ModelBuilderFrame extends JFrame {
                 "owned parts whose display name is inherited from their owner",
                 "owned parts", false);
 
-        // Resolve by the complete dynamic identity. A bare QID is not enough: the
-        // same datasource entity may legitimately occur at several owned production
-        // sites. Prefer the materialized typed instance, but retain the exact dynamic
-        // object as the lossless fallback rather than replacing it with a QID shell.
-        java.util.Map<domain.build.NameCollisions.InstanceIdentity,
-                objectview.Viewable> participants = collisionParticipants(run);
-        java.util.List<NameCollision> groups = new java.util.ArrayList<>();
-        for (var classCollisions : entityClasses) {
-            for (var collision : classCollisions.collisions()) {
-                java.util.List<objectview.Viewable> entities = new java.util.ArrayList<>();
-                for (var identity : collision.identities()) {
-                    objectview.Viewable used = participants.get(identity);
-                    if (used != null) entities.add(used);
-                }
-                if (!entities.isEmpty()) {
-                    groups.add(new NameCollision(
-                            classCollisions.className(), collision.name(), entities));
-                }
-            }
-        }
-        lastCollisions = java.util.List.copyOf(groups);
         updateNameCollisionsButton();
-    }
-
-    /** Exact-identity lookup used by collision inspection. The typed instance wins over
-     *  its dynamic carrier; an incompatible same-QID instance is never substituted. */
-    static java.util.Map<domain.build.NameCollisions.InstanceIdentity,
-            objectview.Viewable> collisionParticipants(GenerationRun run) {
-        return run == null ? java.util.Map.of()
-                : collisionParticipants(run.dynamicObjects(), run.instances());
-    }
-
-    static java.util.Map<domain.build.NameCollisions.InstanceIdentity,
-            objectview.Viewable> collisionParticipants(
-            java.util.Collection<? extends objectview.Viewable> dynamicObjects,
-            java.util.Collection<? extends objectview.Viewable> instances) {
-        java.util.Map<domain.build.NameCollisions.InstanceIdentity,
-                objectview.Viewable> found = new java.util.LinkedHashMap<>();
-        if (dynamicObjects != null) {
-            for (objectview.Viewable value : dynamicObjects) {
-                putCollisionParticipant(found, value);
-            }
-        }
-        if (instances != null) {
-            for (objectview.Viewable value : instances) {
-                putCollisionParticipant(found, value);
-            }
-        }
-        return java.util.Collections.unmodifiableMap(found);
-    }
-
-    private static void putCollisionParticipant(
-            java.util.Map<domain.build.NameCollisions.InstanceIdentity,
-                    objectview.Viewable> into,
-            objectview.Viewable value) {
-        if (value == null || value.getIdentifier() == null
-                || value.getIdentifier().isBlank()) return;
-        into.put(new domain.build.NameCollisions.InstanceIdentity(
-                value.identityTypeName(), value.getIdentifier()), value);
     }
 
     private void reportSharedLabels(
@@ -2142,14 +2039,14 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     private void updateNameCollisionsButton() {
-        int n = lastCollisions.size();
+        int n = runState.nameCollisions().size();
         nameCollisionsButton.setText(
                 n == 0 ? "Name collisions" : "Name collisions (" + n + ")");
         nameCollisionsButton.setEnabled(n > 0);
     }
 
     private void showNameCollisions() {
-        if (lastCollisions.isEmpty()) {
+        if (runState.nameCollisions().isEmpty()) {
             return;
         }
         if (nameCollisionsWindow != null && nameCollisionsWindow.isDisplayable()) {
@@ -2160,7 +2057,7 @@ public class ModelBuilderFrame extends JFrame {
         context.setInPlaceNavigation(true);
         context.setValueLinker(wikidata.ui.WikidataLinks.valueLinker());
         if (nameCollisionInspection != null) nameCollisionInspection.close();
-        nameCollisionInspection = new NameCollisionInspectionPanel(lastCollisions, context);
+        nameCollisionInspection = new NameCollisionInspectionPanel(runState.nameCollisions(), context);
 
         if (nameCollisionsWindow == null || !nameCollisionsWindow.isDisplayable()) {
             nameCollisionsWindow = new JFrame("Name collisions");
@@ -2272,14 +2169,14 @@ public class ModelBuilderFrame extends JFrame {
      *  skipped even where Wikidata had no answer — so refreshing VALUES is an explicit
      *  act, per field, rather than a flag on the whole run. */
     private void forgetFetchedDeclaration(String declarationKey) {
-        if (lastRun == null || declarationKey == null || declarationKey.isBlank()) {
+        if (runState.current() == null || declarationKey == null || declarationKey.isBlank()) {
             return;
         }
         List<domain.runtime.LoadedDeclaration> kept =
-                lastRun.loadedDeclarations().stream()
+                runState.current().loadedDeclarations().stream()
                         .filter(d -> !declarationKey.equals(d.key()))
                         .toList();
-        if (kept.size() == lastRun.loadedDeclarations().size()) {
+        if (kept.size() == runState.current().loadedDeclarations().size()) {
             logWindow.info(declarationKey + " has not been fetched in this run — "
                     + "the next Enrich loads it anyway.");
             return;
@@ -2288,12 +2185,12 @@ public class ModelBuilderFrame extends JFrame {
         // not un-run the rules this run already ran, so their audits carry over —
         // rebuilding without them would quietly report that nothing had been evaluated.
         replaceGenerationRun(new GenerationRun(
-                lastRun.modelSnapshot(), lastRun.depth(), lastRun.plan(),
-                lastRun.dynamicObjects(), lastRun.runtime(), lastRun.instances(),
-                lastRun.remapState(), kept, lastRun.quality(), lastRun.fieldCoverage(),
-                lastRun.selfReferenceAudit(), lastRun.ownedCompositionAudit(),
-                lastRun.kindClassificationAudit(), lastRun.projectionAudit())
-                .producedLike(lastRun));
+                runState.current().modelSnapshot(), runState.current().depth(), runState.current().plan(),
+                runState.current().dynamicObjects(), runState.current().runtime(), runState.current().instances(),
+                runState.current().remapState(), kept, runState.current().quality(), runState.current().fieldCoverage(),
+                runState.current().selfReferenceAudit(), runState.current().ownedCompositionAudit(),
+                runState.current().kindClassificationAudit(), runState.current().projectionAudit())
+                .producedLike(runState.current()));
         logWindow.info("Will re-fetch " + declarationKey + " on the next Enrich.");
     }
 
@@ -2514,11 +2411,11 @@ public class ModelBuilderFrame extends JFrame {
      * before Save.
      */
     private void restampRenamedInstances() {
-        if (lastRun == null) return;
+        if (runState.current() == null) return;
         try {
             GenerationRun renamed =
-                    domain.build.GenerationRuns.renamedTo(lastRun, projectModel);
-            if (renamed != lastRun) replaceGenerationRun(renamed);
+                    domain.build.GenerationRuns.renamedTo(runState.current(), projectModel);
+            if (renamed != runState.current()) replaceGenerationRun(renamed);
         } catch (Exception error) {
             reportGenerationError(error);
         }
@@ -2561,8 +2458,8 @@ public class ModelBuilderFrame extends JFrame {
         generateButton.setEnabled(!locked);
         generateDomainButton.setEnabled(!locked);
         buildProjectButton.setEnabled(!locked);
-        remapButton.setEnabled(!locked && lastRun != null);
-        enrichButton.setEnabled(!locked && lastRun != null);
+        remapButton.setEnabled(!locked && runState.current() != null);
+        enrichButton.setEnabled(!locked && runState.current() != null);
         // Read-only, not switched off: a disabled JFrame ignores every event including
         // its own close button, so a window opened before a 25-minute generation could
         // neither be used nor dismissed.
@@ -2718,9 +2615,6 @@ public class ModelBuilderFrame extends JFrame {
         return saved.isBlank() || now.isBlank() || !now.equals(saved);
     }
 
-    private boolean hasUnsavedGeneratedInstances() {
-        return lastRun != null && lastRun != savedGenerationRun;
-    }
 
     /** Closing is an explicit decision whenever it would stop work or lose memory-only data. */
     private void requestApplicationClose() {
@@ -2738,7 +2632,7 @@ public class ModelBuilderFrame extends JFrame {
         }
         ModelBuilderCloseGuard.State state = new ModelBuilderCloseGuard.State(
                 hasUnsavedChanges(),
-                hasUnsavedGeneratedInstances() ? lastRun.size() : 0,
+                runState.unsavedInstanceCount(),
                 running);
         switch (ModelBuilderCloseGuard.ask(this, state)) {
             case KEEP_OPEN -> { }
@@ -3226,7 +3120,7 @@ public class ModelBuilderFrame extends JFrame {
     private void installSavedInstances(File file,
                                        domain.build.ProjectLoad.Loaded loaded,
                                        boolean revealInstances) {
-        graphDiscoveryLedger = loaded.projection().graphDiscovery();
+        runState.restoreGraphLedger(loaded.projection().graphDiscovery());
         graphResults.restore(loaded.projection().objects(), this::logInfo);
         acceptGenerationRun(loaded.run(), true);
         if (revealInstances) showInstancesWindow();
@@ -3436,9 +3330,9 @@ public class ModelBuilderFrame extends JFrame {
             // The run owns the exact immutable model that produced its objects, so it
             // can still be saved as a consistent model/rules/snapshot triple without
             // consulting the broken live editor.
-            if (lastRun == null || lastRun.modelSnapshot() == null
-                    || lastRun.dynamicObjects() == null
-                    || lastRun.dynamicObjects().isEmpty()) {
+            if (runState.current() == null || runState.current().modelSnapshot() == null
+                    || runState.current().dynamicObjects() == null
+                    || runState.current().dynamicObjects().isEmpty()) {
                 reportGenerationError(brokenRuntime);
                 return false;
             }
@@ -3452,7 +3346,7 @@ public class ModelBuilderFrame extends JFrame {
                     "Recover completed generation",
                     JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
             if (recover != JOptionPane.OK_OPTION) return false;
-            modelToSave = lastRun.modelSnapshot();
+            modelToSave = runState.current().modelSnapshot();
             recoverCompletedRun = true;
         }
         if (!recoverCompletedRun) {
@@ -3470,12 +3364,12 @@ public class ModelBuilderFrame extends JFrame {
         try {
             save = domain.build.ProjectSave.plan(
                     new domain.build.ProjectSave.Input(modelToSave,
-                            lastRun == null ? null : new domain.build.ProjectSave.Run(
-                                    lastRun.dynamicObjects(), lastRun.loadedDeclarations(),
-                                    lastRun.selfReferenceAudit().ledger(),
-                                    lastRun.modelSnapshot(),
-                                    lastRun.generatedFromSignature()),
-                            graphDiscoveryLedger, graphResults.all()),
+                            runState.current() == null ? null : new domain.build.ProjectSave.Run(
+                                    runState.current().dynamicObjects(), runState.current().loadedDeclarations(),
+                                    runState.current().selfReferenceAudit().ledger(),
+                                    runState.current().modelSnapshot(),
+                                    runState.current().generatedFromSignature()),
+                            runState.graphLedger(), graphResults.all()),
                     storage, guard);
         } catch (Exception unreadableSnapshot) {
             reportGenerationError(unreadableSnapshot);
@@ -3515,7 +3409,7 @@ public class ModelBuilderFrame extends JFrame {
             sourceWorkbench.refreshDomainOverview();
             // What is on disk is now what is open, so switching away asks nothing.
             markSaved(modelFile(), guard);
-            savedGenerationRun = lastRun;
+            runState.markSaved();
             logWindow.info("Saved " + projectKind + " \"" + projectModel.name()
                     + "\":\n" + report);
 
@@ -3557,16 +3451,16 @@ public class ModelBuilderFrame extends JFrame {
         String source;
         String title;
 
-        boolean runMatchesClass = lastRun != null && lastRun.runtime() != null
-                && lastRun.modelSnapshot() != null
-                && lastRun.modelSnapshot().rootClass().className().equals(cls.className());
+        boolean runMatchesClass = runState.current() != null && runState.current().runtime() != null
+                && runState.current().modelSnapshot() != null
+                && runState.current().modelSnapshot().rootClass().className().equals(cls.className());
         boolean modelUnchanged = runMatchesClass
                 && modelSignature(projectModel)
-                .equals(modelSignature(lastRun.modelSnapshot()));
+                .equals(modelSignature(runState.current().modelSnapshot()));
 
         if (modelUnchanged) {
-            source = lastRun.runtime().source();
-            title = lastRun.runtime().qualifiedClassName();
+            source = runState.current().runtime().source();
+            title = runState.current().runtime().qualifiedClassName();
         } else {
             GeneratedViewableSourceGenerator gen =
                     new GeneratedViewableSourceGenerator(

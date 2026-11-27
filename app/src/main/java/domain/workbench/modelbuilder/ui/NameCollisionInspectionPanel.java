@@ -1,5 +1,7 @@
 package domain.workbench.modelbuilder.ui;
 
+import domain.workbench.execution.NameCollision;
+
 import objectview.Viewable;
 import objectview.render.RenderContext;
 import objectview.render.RenderingMode;

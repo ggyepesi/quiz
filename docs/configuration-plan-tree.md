@@ -361,12 +361,15 @@ their bounded selection. **Datasource** shows the configured acquisition plan, f
 and evidence recipes. **Build** holds project builds, loading saved instances and graph runs and
 review. Each uses the shared action/result navigator, and a result stays under its action
 without switching the reader's active tab. Opening a source, an action, or a result does not
-run a request. **Datasource** initially shows the field acquisition plan. In **Transform**,
+run a request. **Datasource** initially shows the selected field's acquisition plan. The
+selected-field branch is provider-neutral: the plan and each evidence recipe name the actual
+sources. The configuration and action areas start at about equal height; drag the divider or
+use its arrows to give an action more room. In **Transform**,
 **Open Transform…** opens the shared project's filter-group and population-preview actions
 in a resizable window. Closing that window hides it; reopening preserves the selection and
 results. Closing the project closes the Transform window too.
 
-Under **Datasource → Wikidata → Load the current configured field**, the displayed plan and the run share the prepared
+Under **Datasource → Selected field → Field values**, the displayed plan and the run share the prepared
 value steps for the selected field, including production-site overrides. The action uses
 Enrich's claim batches and external field-acquisition families. The current loaded class members,
 or the cards explicitly selected in that view, are the write targets. Other loaded objects can
@@ -374,7 +377,7 @@ still supply dependencies, such as eligible descendants for an inherited count o
 endpoints. The action requires a compatible field in the loaded instance schema.
 Acquired references must resolve to compatible loaded instances for acceptance.
 
-Under **Datasource → Wikipedia → Configured field evidence**, each applied recipe for the selected field
+Under **Datasource → Selected field → Configured field evidence**, each applied recipe for the selected field
 appears as its own action. Selecting a recipe opens its instance cards. Its **Find** button
 confirms the scope and runs the existing evidence review used by DataSourceApp. Applied recipes
 appear immediately. If resolving an unapplied edit

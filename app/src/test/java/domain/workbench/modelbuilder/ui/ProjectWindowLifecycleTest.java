@@ -57,12 +57,6 @@ class ProjectWindowLifecycleTest {
                 "the synchronized editor must use the version read with the saved build");
     }
 
-    @Test void preparedRunWindowsHaveARunSpecificSubject() {
-        assertEquals("generation-run:4", ModelBuilderFrame.runWorkflowSubject(4));
-        assertFalse(ModelBuilderFrame.runWorkflowSubject(4)
-                .equals(ModelBuilderFrame.runWorkflowSubject(5)));
-    }
-
     private static int occurrences(String value, String sought) {
         int count = 0;
         for (int at = 0; (at = value.indexOf(sought, at)) >= 0; at += sought.length()) {

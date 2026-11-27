@@ -8,6 +8,7 @@ import objectview.field.FieldPath;
 import objectview.field.FieldRef;
 import objectview.field.FieldSchema;
 import objectview.field.FieldSet;
+import objectview.field.LinkedTextSequence;
 import objectview.plan.LiteralPaths;
 import objectview.plan.TypeShape;
 import objectview.plan.ViewConfigDesugar;
@@ -571,6 +572,11 @@ public final class ViewableKeyExtractor {
         }
         if (value instanceof Viewable viewable) {
             return safeName(viewable);
+        }
+        // Links are presentation metadata. Freshly projected runs and plain strings
+        // with the same words are the same text key; contentObject retains the runs.
+        if (value instanceof LinkedTextSequence linked) {
+            return linked.text();
         }
         if (value instanceof Collection<?> collection) {
             List<Object> out = new ArrayList<>();

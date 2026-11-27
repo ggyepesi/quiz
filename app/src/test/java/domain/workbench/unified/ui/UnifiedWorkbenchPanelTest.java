@@ -59,6 +59,7 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JTabbedPane;
+import javax.swing.JSplitPane;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
@@ -973,16 +974,18 @@ class UnifiedWorkbenchPanelTest {
                             selectAction(workbench, action);
                         });
                 var datasource = navigatorIn(tabs, "Datasource");
-                assertEquals("Wikidata", actionNode(datasource, "Load the current configured field")
-                        .getParent().toString());
+                for (String child : List.of("Field acquisition plan", "Field values", "Configured field evidence")) {
+                    assertEquals("Selected field", actionNode(datasource, child).getParent().toString());
+                }
+                assertNull(actionNode(datasource, "Wikidata"), "field plans are not owned by a provider");
                 assertNull(actionNode(datasource, "Fetch statements and qualifiers"));
-                assertNull(actionNode(discovery, "Load the current configured field"));
+                assertNull(actionNode(discovery, "Field values"));
                 var build = navigatorIn(tabs, "Build");
                 assertEquals("Project", actionNode(build, "Build project").getParent().toString());
                 assertNull(actionNode(build, "Preview population"));
 
                 selectAction(workbench, "Find membership types");
-                selectAction(workbench, "Load the current configured field");
+                selectAction(workbench, "Field values");
                 tabs.setSelectedComponent(discovery);
                 assertEquals("Find membership types", discovery.tree().getLastSelectedPathComponent().toString());
                 assertTrue(opened.domain().capability(ProjectBacking.class).unsavedModelChanges().isEmpty());
@@ -1013,17 +1016,25 @@ class UnifiedWorkbenchPanelTest {
         });
     }
 
-    /** The configuration editors ask for over 600 px; on a laptop-height window that used
-     *  to win the split and squeeze Load instances and Build out of sight. */
-    @Test void theActionsKeepTheirRoomInAShortWindow() throws Exception {
+    @Test void datasourceHasRoomInitiallyAndKeepsTheReadersDivider() throws Exception {
         var opened = open();
         SwingUtilities.invokeAndWait(() -> {
             try (var workbench = new UnifiedWorkbenchPanel(opened.domain())) {
                 workbench.setSize(900, 600);
                 layoutTree(workbench);
                 var actions = actionTabs(workbench);
-                assertTrue(actions.getHeight() >= UnifiedWorkbenchPanel.ACTIONS_MINIMUM_HEIGHT,
-                        "actions are " + actions.getHeight() + " px tall");
+                var workspace = (JSplitPane) actions.getParent();
+                int expectedHeight = (workspace.getHeight() - workspace.getDividerSize()) / 2;
+                assertTrue(actions.getHeight() >= expectedHeight - 5,
+                        "Datasource initially gets about half the work area: " + actions.getHeight());
+                assertTrue(workspace.isOneTouchExpandable());
+                assertTrue(actions.getHeight() >= UnifiedWorkbenchPanel.ACTIONS_MINIMUM_HEIGHT);
+                workspace.setDividerLocation(175);
+                actions.setSelectedIndex(actions.indexOfTab("Build"));
+                layoutTree(workbench);
+                actions.setSelectedIndex(actions.indexOfTab("Datasource"));
+                layoutTree(workbench);
+                assertEquals(175, workspace.getDividerLocation(), "switching tabs keeps the reader's split");
             }
         });
     }

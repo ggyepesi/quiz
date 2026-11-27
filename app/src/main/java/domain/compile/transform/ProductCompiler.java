@@ -11,6 +11,7 @@ import domain.datasource.schema.FieldType;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedFieldModel;
 import domain.config.GeneratedProjectModel;
+import domain.enrichment.TextPassageLinks;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -144,6 +145,7 @@ public final class ProductCompiler {
         // Keeping them out of dynamicFieldValues() prevents a derived provenance link
         // from becoming a second persisted domain-data path.
         materializeConfiguredInstanceFields(model, modeledPool);
+        TextPassageLinks.install(model, modeledPool);
 
         ProductSchema schema = classSchemas.withMembers(memberList);
         // Give every instance of a class the SAME field order (its ProductClass

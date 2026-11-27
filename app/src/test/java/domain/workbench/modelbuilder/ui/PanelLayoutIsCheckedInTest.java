@@ -193,7 +193,7 @@ class PanelLayoutIsCheckedInTest {
                 describe(actual, "Unified Workbench / Field source and acquisition plan", unified);
                 var tabs = find(unified, JTabbedPane.class,
                         pane -> "unified.action-tabs".equals(pane.getName()));
-                selectAction(tabs, "Datasource", "Load the current configured field");
+                selectAction(tabs, "Datasource", "Field values");
                 describe(actual, "Unified Workbench / Load field values", unified);
 
                 find(unified, SingleRootClassModelPanel.class).selectClass(output);

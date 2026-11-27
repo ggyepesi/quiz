@@ -757,7 +757,7 @@ public final class ViewableJson {
             if (object.linkedCaption() == null) return null;
             return object.linkedCaption().parts().stream()
                     .map(part -> new ViewableView.LinkPart(
-                            part.text(), part.linked() ? part.url() : null))
+                            part.text(), part.url().isBlank() ? null : part.url()))
                     .toList();
         }
 
@@ -786,7 +786,7 @@ public final class ViewableJson {
             return ViewableView.Field.linkedText(name, linked.text(),
                     linked.parts().stream()
                             .map(part -> new ViewableView.LinkPart(part.text(),
-                                    part.linked() ? part.url() : null))
+                                    part.url().isBlank() ? null : part.url()))
                             .toList());
         }
         String media = mediaUrl(owner, name, value);

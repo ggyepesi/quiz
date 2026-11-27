@@ -529,6 +529,16 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         viewFields = null;
     }
 
+    /** Read a view-only value from the current stored fields, without writing it to the pool. */
+    public void runtimeFieldProjection(String field,
+            java.util.function.Function<Map<String, Object>, Object> projection) {
+        if (runtimeFields == null) runtimeFields = new LinkedHashMap<>();
+        runtimeFields.put(field, new RuntimeProjection(projection));
+        viewFields = null;
+    }
+
+    private record RuntimeProjection(java.util.function.Function<Map<String, Object>, Object> read) { }
+
     @Override public FieldSchema dynamicFieldSchema() { return dynamicFieldSchema; }
 
     public void dynamicFieldSchema(FieldSchema schema) { this.dynamicFieldSchema = schema; }
@@ -546,16 +556,25 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         }
 
         @Override public Object get(Object key) {
-            return runtime.containsKey(key) ? runtime.get(key) : stored.get(key);
+            Object value = runtime.containsKey(key) ? runtime.get(key) : stored.get(key);
+            return value instanceof RuntimeProjection projection ? projection.read().apply(stored) : value;
         }
 
         @Override public boolean containsKey(Object key) {
-            return runtime.containsKey(key) || stored.containsKey(key);
+            Object view = runtime.get(key);
+            return view instanceof RuntimeProjection ? stored.containsKey(key)
+                    : runtime.containsKey(key) || stored.containsKey(key);
         }
 
         @Override public java.util.Set<Entry<String, Object>> entrySet() {
             Map<String, Object> merged = new LinkedHashMap<>(stored);
-            merged.putAll(runtime);
+            runtime.forEach((key, value) -> {
+                if (value instanceof RuntimeProjection) {
+                    if (stored.containsKey(key)) merged.put(key, get(key));
+                } else {
+                    merged.put(key, value);
+                }
+            });
             return java.util.Collections.unmodifiableMap(merged).entrySet();
         }
     }

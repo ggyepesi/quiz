@@ -1,4 +1,4 @@
-package domain.workbench.modelbuilder.ui;
+package domain.workbench.execution;
 
 import objectview.Viewable;
 import objectview.ViewableAdapter;
@@ -14,7 +14,7 @@ import java.util.List;
  * collision list searchable and sortable; the hidden members are the actual generated
  * instances shown in the adjacent instance browser after selection.
  */
-final class NameCollision extends ViewableAdapter {
+public final class NameCollision extends ViewableAdapter {
 
     private static final String TYPE = "NameCollision";
     @Hidden
@@ -29,7 +29,7 @@ final class NameCollision extends ViewableAdapter {
     @Hidden
     private final List<Viewable> entities;
 
-    NameCollision(String className, String name, Collection<? extends Viewable> entities) {
+    public NameCollision(String className, String name, Collection<? extends Viewable> entities) {
         this.className = text(className);
         this.name = text(name);
         this.identifier = key(this.className, this.name);
@@ -37,10 +37,10 @@ final class NameCollision extends ViewableAdapter {
         this.instances = this.entities.size();
     }
 
-    String name() { return name; }
-    String className() { return className; }
-    int instances() { return instances; }
-    List<Viewable> entities() { return entities; }
+    public String name() { return name; }
+    public String className() { return className; }
+    public int instances() { return instances; }
+    public List<Viewable> entities() { return entities; }
 
     @Override public String getIdentifier() { return identifier; }
     @Override public String getDisplayName() { return name; }

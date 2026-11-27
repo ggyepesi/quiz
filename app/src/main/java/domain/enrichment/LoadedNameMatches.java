@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -48,21 +49,27 @@ public final class LoadedNameMatches {
 
     private record Name(Viewable candidate, String phrase) { }
 
+    private record Identity(String type, String identifier) {
+        static Identity of(Viewable value) {
+            return new Identity(value.identityTypeName(), value.getIdentifier());
+        }
+    }
+
     private final Map<String, List<Name>> byFirstWord;
 
     private LoadedNameMatches(Map<String, List<Name>> byFirstWord) {
         this.byFirstWord = byFirstWord;
     }
 
-    /** Indexes every candidate under each of its names; identity is the candidate's id. */
+    /** Indexes every candidate under each of its names, keyed by complete typed identity. */
     public static LoadedNameMatches of(Collection<? extends Viewable> candidates,
             Function<Viewable, List<String>> names) {
-        Map<String, Viewable> unique = new LinkedHashMap<>();
+        Map<Identity, Viewable> unique = new LinkedHashMap<>();
         if (candidates != null) {
             for (Viewable candidate : candidates) {
                 if (candidate == null || candidate.getIdentifier() == null
                         || candidate.getIdentifier().isBlank()) continue;
-                unique.putIfAbsent(candidate.getIdentifier(), candidate);
+                unique.putIfAbsent(Identity.of(candidate), candidate);
             }
         }
         Map<String, List<Name>> index = new LinkedHashMap<>();
@@ -107,10 +114,21 @@ public final class LoadedNameMatches {
     }
 
     public Result find(String text, List<Skip> skipped) {
-        if (text == null || text.isBlank() || byFirstWord.isEmpty()) {
-            return new Result(List.of(), List.of());
-        }
-        Map<String, Hit> hits = new LinkedHashMap<>();
+        Map<Identity, Hit> unique = new LinkedHashMap<>();
+        var ambiguous = scan(text, skipped,
+                hit -> unique.putIfAbsent(Identity.of(hit.candidate()), hit));
+        return new Result(List.copyOf(unique.values()), ambiguous);
+    }
+
+    /** The same matches as discovery, but every occurrence is needed to render links. */
+    public List<Hit> occurrences(String text) {
+        List<Hit> hits = new ArrayList<>();
+        scan(text, List.of(), hits::add);
+        return List.copyOf(hits);
+    }
+
+    private List<Ambiguity> scan(String text, List<Skip> skipped, Consumer<Hit> hits) {
+        if (text == null || text.isBlank() || byFirstWord.isEmpty()) return List.of();
         Map<String, Ambiguity> ambiguous = new LinkedHashMap<>();
         for (int start = 0; start < text.length();) {
             if (!Character.isLetterOrDigit(text.charAt(start))
@@ -126,13 +144,17 @@ public final class LoadedNameMatches {
             }
             List<Name> names = byFirstWord.getOrDefault(
                     text.substring(start, end).toLowerCase(Locale.ROOT), List.of());
+            if (names.isEmpty()) {
+                start = end;
+                continue;
+            }
+            Set<String> examined = new LinkedHashSet<>();
             for (Name name : names) {
                 String phrase = name.phrase();
-                if (!occursAt(text, start, phrase)) continue;
+                if (!occursAt(text, start, phrase) || !examined.add(phrase.toLowerCase(Locale.ROOT))) continue;
                 List<Viewable> carriers = carriers(names, phrase);
                 if (carriers.size() == 1) {
-                    hits.putIfAbsent(name.candidate().getIdentifier(),
-                            new Hit(name.candidate(), phrase, start));
+                    hits.accept(new Hit(carriers.getFirst(), phrase, start));
                 } else {
                     ambiguous.putIfAbsent(phrase.toLowerCase(Locale.ROOT),
                             new Ambiguity(phrase, start, carriers));
@@ -140,14 +162,14 @@ public final class LoadedNameMatches {
             }
             start = end;
         }
-        return new Result(List.copyOf(hits.values()), List.copyOf(ambiguous.values()));
+        return List.copyOf(ambiguous.values());
     }
 
     private static List<Viewable> carriers(List<Name> names, String phrase) {
-        Map<String, Viewable> carriers = new LinkedHashMap<>();
+        Map<Identity, Viewable> carriers = new LinkedHashMap<>();
         for (Name name : names) {
             if (name.phrase().equalsIgnoreCase(phrase)) {
-                carriers.putIfAbsent(name.candidate().getIdentifier(), name.candidate());
+                carriers.putIfAbsent(Identity.of(name.candidate()), name.candidate());
             }
         }
         return List.copyOf(carriers.values());

@@ -364,6 +364,8 @@ public class QuizFactory {
         queryEditorPanel.setLayout(new BoxLayout(queryEditorPanel, BoxLayout.Y_AXIS));
         queryEditorPanel.setBorder(BorderFactory.createTitledBorder("Query fields"));
         queryEditorPanel.add(new JScrollPane(queryEditor));
+        JCheckBox hideQueryLinks = hideInstanceLinksChoice();
+        queryEditorPanel.add(hideQueryLinks);
         JLabel categoryFieldNotice = new JLabel();
         categoryFieldNotice.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
         categoryFieldNotice.setVisible(false);
@@ -380,6 +382,9 @@ public class QuizFactory {
         answerEditorPanel.setLayout(new BoxLayout(answerEditorPanel, BoxLayout.Y_AXIS));
         answerEditorPanel.setBorder(BorderFactory.createTitledBorder("Answer fields"));
         answerEditorPanel.add(new JScrollPane(answerEditor));
+        JCheckBox hideAnswerLinks = hideInstanceLinksChoice();
+        hideAnswerLinks.setEnabled(false);
+        answerEditorPanel.add(hideAnswerLinks);
 
         JSplitPane configSplit = new JSplitPane(
                 JSplitPane.HORIZONTAL_SPLIT,
@@ -405,7 +410,8 @@ public class QuizFactory {
         ButtonGroup group = new ButtonGroup();
 
         JButton createQuizButton = getCreateQuizButton(
-                group, queryEditor, answerEditor, categoryFieldNotice);
+                group, queryEditor, answerEditor, categoryFieldNotice,
+                hideQueryLinks, hideAnswerLinks);
 
         JFrame frame = new JFrame("Quiz - " + domainName + " - " + type);
         frame.setLayout(new BoxLayout(frame.getContentPane(), BoxLayout.Y_AXIS));
@@ -422,6 +428,7 @@ public class QuizFactory {
                 radioButton.setToolTipText(unavailable);
             }
             radioButton.addActionListener(event -> {
+                hideAnswerLinks.setEnabled(type.requiresDisjointQuestionAndAnswerFields());
                 updateCategoryFieldExclusion(group, queryEditor, categoryFieldNotice);
                 // Choosing a type that needs disjoint fields resolves an existing
                 // overlap in favour of the answer, the smaller deliberate choice.
@@ -452,6 +459,13 @@ public class QuizFactory {
         frame.setVisible(true);
 
         return frame;
+    }
+
+    private static JCheckBox hideInstanceLinksChoice() {
+        JCheckBox choice = new JCheckBox("Hide links to instances");
+        choice.setToolTipText("Keep the words and external links, but make instance mentions"
+                + " non-clickable on this side of the quiz.");
+        return choice;
     }
 
     static String quizTypeUnavailableReason(
@@ -512,7 +526,9 @@ public class QuizFactory {
     private JButton getCreateQuizButton(ButtonGroup group,
                                         ViewConfigEditor queryEditor,
                                         ViewConfigEditor answerEditor,
-                                        JLabel categoryFieldNotice) {
+                                        JLabel categoryFieldNotice,
+                                        JCheckBox hideQueryLinks,
+                                        JCheckBox hideAnswerLinks) {
         JButton createQuizButton = new JButton("Create quiz");
         createQuizButton.addActionListener(e -> {
             if (group.getSelection() == null) {
@@ -528,6 +544,10 @@ public class QuizFactory {
 
             ViewConfig queryConfig = queryEditor.getConfig().copy();
             ViewConfig answerConfig = answerEditor.getConfig().copy();
+            if (hideQueryLinks.isSelected()) queryConfig.instanceTextLinksVisible(false);
+            if (hideAnswerLinks.isEnabled() && hideAnswerLinks.isSelected()) {
+                answerConfig.instanceTextLinksVisible(false);
+            }
 
             QuizAnswerType answerType = QuizAnswerType.valueOf(
                     group.getSelection().getActionCommand());

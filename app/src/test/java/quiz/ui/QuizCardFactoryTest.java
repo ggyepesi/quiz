@@ -1,15 +1,26 @@
 package quiz.ui;
 
+import objectview.ViewableAdapter;
+import objectview.field.FieldPath;
+import objectview.field.FieldSet;
+import objectview.field.LinkedTextSequence;
+import objectview.render.TextRow;
 import objectview.viewconfig.ViewConfig;
 import org.junit.jupiter.api.Test;
-import objectview.ViewableAdapter;
+import quiz.data.ViewableKeyExtractor;
 
+import javax.swing.SwingUtilities;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.event.MouseEvent;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class QuizCardFactoryTest {
@@ -105,6 +116,75 @@ class QuizCardFactoryTest {
         assertTrue(option.useQuizContext());
         assertFalse(pairAnswer.fill());
         assertFalse(pairAnswer.useQuizContext());
+    }
+
+    @Test
+    void pairingCanHideOnlyPromptInstanceLinksWithoutChangingContentOrAnswers() throws Exception {
+        var passage = new Passage(item);
+        ViewConfig selection = ViewConfig.leaf();
+        selection.addField("passage", ViewConfig.leaf());
+        ViewConfig hidden = selection.copy().instanceTextLinksVisible(false);
+        var extractor = new ViewableKeyExtractor();
+        var paths = extractor.paths(passage, selection);
+        var key = extractor.combinations(passage, paths).getFirst();
+        assertEquals(List.of(passage.passage.text()), key);
+        assertEquals(paths, extractor.paths(passage, hidden));
+        assertEquals(key, extractor.combinations(passage, hidden).getFirst());
+
+        var prompt = extractor.contentObject(passage, hidden, paths, key);
+        var answer = extractor.contentObject(passage, selection, paths, key);
+        SwingUtilities.invokeAndWait(() -> {
+            var promptCard = factory.create(
+                    prompt.object(), prompt.viewConfig(), QuizCardRole.PAIR_PROMPT);
+            var answerCard = factory.create(
+                    answer.object(), answer.viewConfig(), QuizCardRole.PAIR_ANSWER);
+            TextRow promptRow = passageRow(promptCard);
+            TextRow answerRow = passageRow(answerCard);
+            assertNotNull(promptRow);
+            assertNotNull(answerRow);
+            assertTrue(promptRow.matchesRenderedText(List.of(passage.passage.text()), true));
+            assertEquals(passage.passage.urls(), promptRow.linkedUrls());
+            assertFalse(hasTooltip(promptRow, "Item"));
+            assertTrue(hasTooltip(answerRow, "Item"));
+            assertSame(passage.passage, FieldSet.of(prompt.object()).read("passage"));
+            assertSame(item, passage.passage.linkedPartAt(0).reference());
+        });
+    }
+
+    private static TextRow passageRow(Component component) {
+        if (component instanceof TextRow row && row.represents(FieldPath.of("passage"))) return row;
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                TextRow row = passageRow(child);
+                if (row != null) return row;
+            }
+        }
+        return null;
+    }
+
+    private static boolean hasTooltip(TextRow row, String destination) {
+        row.setSize(360, 40);
+        for (int y = 0; y < row.getHeight(); y++) {
+            for (int x = 0; x < row.getWidth(); x++) {
+                if (destination.equals(row.getToolTipText(new MouseEvent(row,
+                        MouseEvent.MOUSE_MOVED, 0, 0, x, y, 0, false)))) return true;
+            }
+        }
+        return false;
+    }
+
+    private static final class Passage extends ViewableAdapter {
+        private final LinkedTextSequence passage;
+
+        private Passage(Item character) {
+            passage = LinkedTextSequence.of(
+                    LinkedTextSequence.reference("Item", character),
+                    LinkedTextSequence.text(" in "),
+                    LinkedTextSequence.link("the source", "https://example.test/passage"));
+        }
+
+        @Override public String getIdentifier() { return "passage"; }
+        @Override public String getDisplayName() { return "Passage"; }
     }
 
     private static ViewConfig configWithNestedField() {

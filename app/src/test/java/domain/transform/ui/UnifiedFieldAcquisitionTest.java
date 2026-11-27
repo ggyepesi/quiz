@@ -688,7 +688,7 @@ class UnifiedFieldAcquisitionTest {
         var field = backing.projectModel().rootClass().fields().getFirst();
         find(panel, SingleRootClassModelPanel.class, item -> true).selectField(field);
         var actions = openDatasourceTab(panel);
-        selectAction(actions, "Load the current configured field");
+        selectAction(actions, "Field values");
         return find(actions, ValidationPanel.class, item -> true);
     }
 

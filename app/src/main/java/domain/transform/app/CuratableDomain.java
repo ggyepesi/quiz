@@ -4,6 +4,7 @@ import objectview.Viewable;
 import domain.curation.Curatable;
 import domain.curation.CuratedInstances;
 import domain.curation.ManualCuration;
+import domain.enrichment.TextPassageLinks;
 import domain.runtime.WikidataDynamicObject;
 import domain.DelegatingDomainModel;
 import domain.DomainField;
@@ -180,6 +181,7 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
             if (!curatedMemberRoots.contains(value)) curatedMemberRoots.add(value);
         }
         CuratedInstances.attachSchemas(added.instances(), this::fieldSchema);
+        TextPassageLinks.install(workingModel, added.instances());
         return added;
     }
 

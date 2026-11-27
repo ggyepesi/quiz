@@ -5,42 +5,17 @@ import objectview.ViewableAdapter;
 import objectview.render.RenderContext;
 import objectview.render.RenderingMode;
 import org.junit.jupiter.api.Test;
-import domain.runtime.WikidataDynamicObject;
-import domain.build.NameCollisions;
+import domain.workbench.execution.NameCollision;
 
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.swing.SwingUtilities;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 
 class NameCollisionInspectionTest {
-
-    @Test void participantResolutionUsesTypeAndIdentifierTogether() {
-        WikidataDynamicObject constellation = dynamic(
-                "Q1", "Constellation", "Gladii Electorales Saxonici");
-        WikidataDynamicObject discovery = dynamic(
-                "Q1", "Discovery@Constellation.discovery",
-                "Gladii Electorales Saxonici");
-        StubViewable typedConstellation = new StubViewable(
-                "Q1", "Constellation", "Gladii Electorales Saxonici");
-
-        Map<NameCollisions.InstanceIdentity, Viewable> participants =
-                ModelBuilderFrame.collisionParticipants(
-                        List.of(constellation, discovery), List.of(typedConstellation));
-
-        assertSame(typedConstellation, participants.get(
-                new NameCollisions.InstanceIdentity("Constellation", "Q1")),
-                "the materialized instance replaces only its exact dynamic carrier");
-        assertSame(discovery, participants.get(
-                new NameCollisions.InstanceIdentity(
-                        "Discovery@Constellation.discovery", "Q1")),
-                "a same-QID instance of another logical type must not be substituted");
-    }
 
     @Test void collisionRowContainsTheActualInstancesRatherThanCaptionShells() {
         StubViewable first = new StubViewable(
@@ -86,16 +61,6 @@ class NameCollisionInspectionTest {
         } finally {
             SwingUtilities.invokeAndWait(panel.get()::close);
         }
-    }
-
-    private static WikidataDynamicObject dynamic(
-            String id, String typeKey, String label) {
-        WikidataDynamicObject value = new WikidataDynamicObject(id, label);
-        String type = typeKey.contains("@")
-                ? typeKey.substring(0, typeKey.indexOf('@')) : typeKey;
-        value.type(type);
-        value.typeKey(typeKey);
-        return value;
     }
 
     private static final class StubViewable extends ViewableAdapter {

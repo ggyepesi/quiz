@@ -31,7 +31,7 @@ class ModelBuilderCloseGuardTest {
         assertTrue(source.contains("setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE)"));
         assertTrue(source.contains("requestApplicationClose();"));
         assertTrue(closeBody.contains("sourceWorkbench.applyEdits();"));
-        assertTrue(closeBody.contains("hasUnsavedGeneratedInstances() ? lastRun.size() : 0"));
+        assertTrue(closeBody.contains("runState.unsavedInstanceCount()"));
         assertTrue(closeBody.contains("querySession.runner().cancel();"));
         assertTrue(closeBody.contains("processRunner.cancel();"));
     }

@@ -192,15 +192,12 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                 "membership-types", "Find membership types", membershipDiscovery, null);
 
         var datasourceActions = new WorkbenchActionResultNavigator();
-        var wikidata = datasourceActions.addSource(DiscoveryWorkbench.Source.WIKIDATA.id(),
-                DiscoveryWorkbench.Source.WIKIDATA.title(), null);
-        var acquisition = datasourceActions.addAction(wikidata, "field-acquisition-plan", "Field acquisition plan",
-                new JScrollPane(planText), null);
-        var load = datasourceActions.addAction(wikidata, "field-values",
-                "Load the current configured field", acquisitionDetail, null);
-        var wikipedia = datasourceActions.addSource(DiscoveryWorkbench.Source.WIKIPEDIA.id(),
-                DiscoveryWorkbench.Source.WIKIPEDIA.title(), null);
-        evidenceActions = new ConfiguredFieldEvidenceActions(datasourceActions, wikipedia, "field-evidence",
+        var selectedFieldSource = datasourceActions.addSource("selected-field", "Selected field", null);
+        var acquisition = datasourceActions.addAction(selectedFieldSource,
+                "field-acquisition-plan", "Field acquisition plan", new JScrollPane(planText), null);
+        var load = datasourceActions.addAction(selectedFieldSource, "field-values",
+                "Field values", acquisitionDetail, null);
+        evidenceActions = new ConfiguredFieldEvidenceActions(datasourceActions, selectedFieldSource, "field-evidence",
                 this::evidencePanel);
         refreshEvidence();
         var logs = new JButton("Query logs…");
@@ -313,8 +310,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         actionTabs.addTab("Transform", transformLauncher());
         actionTabs.setSelectedComponent(datasourceActions);
         actionTabs.setMinimumSize(new Dimension(0, ACTIONS_MINIMUM_HEIGHT));
-        workspace = new JSplitPane(JSplitPane.VERTICAL_SPLIT, configuration, actionTabs);
-        workspace.setResizeWeight(0.72);
+        workspace = aux.SplitPaneUtils.vertical(configuration, actionTabs, 0.5);
         add(workspace, BorderLayout.CENTER);
 
         var footer = new JPanel(new WrapLayout(FlowLayout.RIGHT, 5, 5));
@@ -323,6 +319,15 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         footer.add(save);
         add(footer, BorderLayout.SOUTH);
         updateSave();
+    }
+
+    @Override public void doLayout() {
+        super.doLayout();
+        // Preferred sizes of the configuration editors must not set the initial split.
+        // After the first real layout the divider belongs to the reader.
+        if (workspace.getDividerLocation() < 0 && workspace.getHeight() > workspace.getDividerSize()) {
+            workspace.setDividerLocation(workspace.getResizeWeight());
+        }
     }
 
     private static boolean isActionOrResult(WorkbenchActionResultNavigator.Action action,
