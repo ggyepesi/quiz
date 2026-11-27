@@ -306,15 +306,20 @@ construct per thing produced:
    Workbenches render available operations through shared action components. An entry delegates
    to the operation's existing acquisition/execution process, logging and result/review
    presentation; an application may supply the current scope, but must not copy the fetch or
-   invent another result path. An action-heavy workbench uses the neutral shared
-   source/context → explicit action → latest result-view navigator. Selection stays separate;
-   the action's existing component and result-view deck stay on the right, but its horizontal
-   tab strip is hidden. Result nodes mirror those exact views and are the one visible result
-   navigator. Selecting a
-   source, action or result only reveals it — it never executes the action. Workflow nodes are
-   not domain `ViewableGroup`s and carry no domain membership semantics. DataSourceApp is the
-   first consumer; configuration, transform and other action-heavy workbenches reuse the same
-   navigator rather than rebuilding its tree.
+   invent another result path. Action-heavy work areas reuse the neutral shared
+   source/context → explicit action → latest result-view navigator. A host may put distinct
+   work areas in separate tabs or a project-owned tool window rather than combine them in one
+   tree. In the Unified Workbench, Discovery and Datasource are separate work areas, Build has
+   its own tab, and the Transform tab opens the Transform window. DataSourceApp keeps discovery
+   and configured acquisition in one work area. A provider heading may appear in more than one
+   work area as navigation context; it is not another provider definition or another route to
+   the same action and result.
+
+   Selection stays separate; the action's existing component and result-view deck stay on the
+   right, but the deck's horizontal tab strip is hidden. The result nodes under the producing
+   action mirror those exact views and are the only visible navigation for that result. Selecting
+   a source, action or result only reveals it — it never executes the action. Workflow nodes are
+   not domain `ViewableGroup`s and carry no domain membership semantics.
 
    Save and Load are concepts, not local button implementations. Every save/load entry
    point uses the shared persistence confirmation UI and names the domain, instances,

@@ -55,6 +55,7 @@ import work.WorkflowRecorder;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JTabbedPane;
@@ -69,6 +70,7 @@ import java.awt.Container;
 import java.awt.Rectangle;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -82,6 +84,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -482,7 +485,7 @@ class UnifiedWorkbenchPanelTest {
                 var workbench = new UnifiedWorkbenchPanel(domain);
                 panel.set(workbench);
                 selectAction(workbench, "Filter groups");
-                var filters = find(workbench, FilterGroupsPanel.class, unused -> true);
+                var filters = find(workbench.transformView(), FilterGroupsPanel.class, unused -> true);
                 var oldOutline = find(filters, GroupMembersView.class, unused -> true);
                 find(filters, ViewConfigEditor.class, unused -> true)
                         .setSelectedPath(FieldPath.of("holderCount"));
@@ -498,9 +501,9 @@ class UnifiedWorkbenchPanelTest {
                 assertEquals("Has holders", newOutline.groups().selectedGroup().getDisplayName());
                 assertNull(working.findClass("PositionsWithHolders"),
                         "making a group does not declare a class");
-                find(workbench, JTextField.class, field -> "transform.outputClass".equals(field.getName()))
+                find(filters, JTextField.class, field -> "transform.outputClass".equals(field.getName()))
                         .setText("PositionsWithHolders");
-                find(workbench, JButton.class, button -> "Create transformed class".equals(button.getText()))
+                find(filters, JButton.class, button -> "Create transformed class".equals(button.getText()))
                         .doClick();
                 var output = working.findClass("PositionsWithHolders");
                 assertTrue(output.materializedByTransformation());
@@ -513,7 +516,7 @@ class UnifiedWorkbenchPanelTest {
                 var tree = find(workbench, SingleRootClassModelPanel.class, unused -> true);
                 assertSame(output, tree.selectedUserObject());
                 selectAction(workbench, "Preview population");
-                find(workbench, JButton.class, button -> "Preview population".equals(button.getText())).doClick();
+                find(workbench.transformView(), JButton.class, button -> "Preview population".equals(button.getText())).doClick();
             });
             var workbench = panel.get();
             await(() -> actionNode(workbench, "Matching instances (1)") != null,
@@ -638,8 +641,8 @@ class UnifiedWorkbenchPanelTest {
             find(editor, JButton.class, button -> "Remove filter".equals(button.getText())).doClick();
 
             selectAction(workbench, "Preview population");
-            var preview = find(workbench, JButton.class, button -> "Preview population".equals(button.getText()));
-            results.set(find(workbench, WorkbenchResultViews.class,
+            var preview = find(workbench.transformView(), JButton.class, button -> "Preview population".equals(button.getText()));
+            results.set(find(workbench.transformView(), WorkbenchResultViews.class,
                     tabs -> "transform.preview.results".equals(tabs.getName())));
             workbench.unappliedDecision((construct, action) -> process.swing.Dialogs.UnappliedEdits.STAY);
             preview.doClick();
@@ -687,6 +690,8 @@ class UnifiedWorkbenchPanelTest {
                 find(workbench, JButton.class, button -> "Execute".equals(button.getText())).doClick();
                 assertFalse(find(workbench, JButton.class, button -> "Save domain…".equals(button.getText()))
                         .isEnabled());
+                var tabs = actionTabs(workbench);
+                tabs.setSelectedIndex(tabs.indexOfTab("Discovery"));
             });
             await(() -> find(workbench, JButton.class, button -> "Save domain…".equals(button.getText()))
                     .isEnabled(), "build did not finish");
@@ -698,6 +703,9 @@ class UnifiedWorkbenchPanelTest {
                         .filter(message -> message.contains("Results") || message.contains("Process failed"))
                         .toList();
                 assertTrue(actionNode(workbench, "Instances (3)") != null, () -> report + "\n" + messages);
+                var tabs = actionTabs(workbench);
+                assertEquals("Discovery", tabs.getTitleAt(tabs.getSelectedIndex()),
+                        "a completed build must not switch the active action tab");
                 // A build refreshes the one instances view without opening its window, as
                 // ModelBuilder does; its result offers Show instances instead of a copy.
                 assertEquals(List.of(false), shown.stream().map(UnifiedWorkbenchPanel.InstancesShown::reveal).toList());
@@ -778,7 +786,7 @@ class UnifiedWorkbenchPanelTest {
             find(workbench, JLabel.class, label -> "Loading instances…".equals(label.getText()));
             assertTrue(loadStatus(workbench).startsWith("Loading " + modelFile));
             assertTrue(loadStatus(workbench).contains(curation.getPath()));
-            assertFalse(find(workbench, JButton.class, b -> "Cancel preview".equals(b.getText())).isEnabled());
+            assertFalse(find(workbench.transformView(), JButton.class, b -> "Cancel preview".equals(b.getText())).isEnabled());
         });
         try {
             var workbench = panel.get();
@@ -942,23 +950,65 @@ class UnifiedWorkbenchPanelTest {
         return find(workbench, JTextArea.class, status -> "load.instances.status".equals(status.getName())).getText();
     }
 
-    @Test void theUnifiedNavigatorMountsTheSharedDiscoveryActionsWithoutRunningThem() throws Exception {
+    @Test void theActionTabsSeparateInspectionFromConfiguredAcquisitionAndBuild() throws Exception {
         var opened = open();
         SwingUtilities.invokeAndWait(() -> {
             try (var workbench = new UnifiedWorkbenchPanel(opened.domain())) {
+                var tabs = actionTabs(workbench);
+                assertEquals(List.of("Discovery", "Build", "Datasource", "Transform"),
+                        java.util.stream.IntStream.range(0, tabs.getTabCount())
+                                .mapToObj(tabs::getTitleAt).toList());
+                assertEquals("Datasource", tabs.getTitleAt(tabs.getSelectedIndex()),
+                        "the applied field acquisition plan is still visible by default");
+                var discovery = navigatorIn(tabs, "Discovery");
                 Map.of(
                         "Analyze retained articles", "Wikipedia",
                         "Fetch selected articles", "Wikipedia",
                         "Fetch structured depictions", "Commons",
                         "Read article views", "Wikipedia pageviews",
                         "Fetch statements and qualifiers", "Wikidata",
-                        "Load the current configured field", "Wikidata")
+                        "Find membership types", "Wikidata")
                         .forEach((action, source) -> {
-                            assertEquals(source, actionNode(workbench, action).getParent().toString());
+                            assertEquals(source, actionNode(discovery, action).getParent().toString());
                             selectAction(workbench, action);
                         });
-                assertNull(actionNode(workbench, "Datasources"));
+                var datasource = navigatorIn(tabs, "Datasource");
+                assertEquals("Wikidata", actionNode(datasource, "Load the current configured field")
+                        .getParent().toString());
+                assertNull(actionNode(datasource, "Fetch statements and qualifiers"));
+                assertNull(actionNode(discovery, "Load the current configured field"));
+                var build = navigatorIn(tabs, "Build");
+                assertEquals("Project", actionNode(build, "Build project").getParent().toString());
+                assertNull(actionNode(build, "Preview population"));
+
+                selectAction(workbench, "Find membership types");
+                selectAction(workbench, "Load the current configured field");
+                tabs.setSelectedComponent(discovery);
+                assertEquals("Find membership types", discovery.tree().getLastSelectedPathComponent().toString());
                 assertTrue(opened.domain().capability(ProjectBacking.class).unsavedModelChanges().isEmpty());
+            }
+        });
+    }
+
+    @Test void openingTransformUsesTheSeparateViewAndKeepsItsSelection() throws Exception {
+        var opened = open();
+        SwingUtilities.invokeAndWait(() -> {
+            try (var workbench = new UnifiedWorkbenchPanel(opened.domain())) {
+                var tabs = actionTabs(workbench);
+                var launcher = tabs.getComponentAt(tabs.indexOfTab("Transform"));
+                tabs.setSelectedComponent(launcher);
+                var navigator = (WorkbenchActionResultNavigator) workbench.transformView();
+                assertNull(navigator.getParent(), "the crowded editor is not embedded below configuration");
+                var reveals = new ArrayList<JComponent>();
+                workbench.onTransformShown(() -> reveals.add(workbench.transformView()));
+                var open = find(launcher, JButton.class, button -> "Open Transform…".equals(button.getText()));
+                open.doClick();
+                var groups = actionNode(navigator, "Filter groups");
+                navigator.tree().setSelectionPath(new TreePath(groups.getPath()));
+                open.doClick();
+                assertEquals(List.of(navigator, navigator), reveals);
+                assertSame(groups, navigator.tree().getLastSelectedPathComponent());
+                assertNotNull(find(navigator, FilterGroupsPanel.class, unused -> true));
             }
         });
     }
@@ -971,7 +1021,7 @@ class UnifiedWorkbenchPanelTest {
             try (var workbench = new UnifiedWorkbenchPanel(opened.domain())) {
                 workbench.setSize(900, 600);
                 layoutTree(workbench);
-                var actions = find(workbench, WorkbenchActionResultNavigator.class, unused -> true);
+                var actions = actionTabs(workbench);
                 assertTrue(actions.getHeight() >= UnifiedWorkbenchPanel.ACTIONS_MINIMUM_HEIGHT,
                         "actions are " + actions.getHeight() + " px tall");
             }
@@ -1041,19 +1091,41 @@ class UnifiedWorkbenchPanelTest {
                 .anyMatch(value -> value instanceof GeneratedFieldModel f && field.equals(f.name()));
     }
 
+    private static JTabbedPane actionTabs(UnifiedWorkbenchPanel workbench) {
+        return find(workbench, JTabbedPane.class, tabs -> "unified.action-tabs".equals(tabs.getName()));
+    }
+
+    private static WorkbenchActionResultNavigator navigatorIn(JTabbedPane tabs, String title) {
+        return (WorkbenchActionResultNavigator) tabs.getComponentAt(tabs.indexOfTab(title));
+    }
+
+    private static Stream<WorkbenchActionResultNavigator> actionNavigators(UnifiedWorkbenchPanel workbench) {
+        return Stream.concat(Arrays.stream(actionTabs(workbench).getComponents())
+                .filter(WorkbenchActionResultNavigator.class::isInstance)
+                .map(WorkbenchActionResultNavigator.class::cast),
+                Stream.of((WorkbenchActionResultNavigator) workbench.transformView()));
+    }
+
     private static DefaultMutableTreeNode actionNode(UnifiedWorkbenchPanel workbench, String caption) {
-        var tree = find(workbench, WorkbenchActionResultNavigator.class, unused -> true).tree();
-        var rootNode = (DefaultMutableTreeNode) tree.getModel().getRoot();
+        return actionNavigators(workbench).map(navigator -> actionNode(navigator, caption))
+                .filter(java.util.Objects::nonNull).findFirst().orElse(null);
+    }
+
+    private static DefaultMutableTreeNode actionNode(WorkbenchActionResultNavigator navigator, String caption) {
+        var rootNode = (DefaultMutableTreeNode) navigator.tree().getModel().getRoot();
         return java.util.Collections.list(rootNode.depthFirstEnumeration()).stream()
                 .map(DefaultMutableTreeNode.class::cast)
                 .filter(node -> caption.equals(node.toString())).findFirst().orElse(null);
     }
 
     private static void selectAction(UnifiedWorkbenchPanel workbench, String caption) {
-        var tree = find(workbench, WorkbenchActionResultNavigator.class, unused -> true).tree();
-        var node = actionNode(workbench, caption);
-        assertTrue(node != null, "missing action or result " + caption);
-        tree.setSelectionPath(new TreePath(node.getPath()));
+        var navigator = actionNavigators(workbench)
+                .filter(candidate -> actionNode(candidate, caption) != null)
+                .findFirst().orElseThrow(() -> new AssertionError("missing action or result " + caption));
+        var tabs = actionTabs(workbench);
+        tabs.setSelectedComponent(navigator == workbench.transformView()
+                ? tabs.getComponentAt(tabs.indexOfTab("Transform")) : navigator);
+        navigator.tree().setSelectionPath(new TreePath(actionNode(navigator, caption).getPath()));
     }
 
     @Test void theSharedBuildEditorSavesTheOrderUsedByTheNextPlan() throws Exception {

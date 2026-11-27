@@ -82,7 +82,9 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private final SwingQuerySession queries;
     private ProjectConfigurationPanel configuration;
     private TransformController transform;
-    private final WorkbenchActionResultNavigator actions = new WorkbenchActionResultNavigator();
+    private final WorkbenchActionResultNavigator buildActions = new WorkbenchActionResultNavigator();
+    private final WorkbenchActionResultNavigator transformActions = new WorkbenchActionResultNavigator();
+    private Runnable showTransform = () -> { };
     private final DiscoveryWorkbench discovery;
     private final SubclassDiscoveryPanel membershipDiscovery = new SubclassDiscoveryPanel(false);
     private final WorkbenchActionResultNavigator.Action previewAction;
@@ -183,23 +185,29 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         planText.setLineWrap(true);
         planText.setWrapStyleWord(true);
 
-        discovery = new DiscoveryWorkbench(transform, actions, queries);
-        var source = discovery.contextSource(DiscoveryWorkbench.Source.WIKIDATA);
-        var acquisition = actions.addAction(source, "field-acquisition-plan", "Field acquisition plan",
-                new JScrollPane(planText), null);
-        var load = discovery.addContextAction(DiscoveryWorkbench.Source.WIKIDATA,
-                "field-values", "Load the current configured field", acquisitionDetail, null);
+        var discoveryActions = new WorkbenchActionResultNavigator();
+        discovery = new DiscoveryWorkbench(transform, discoveryActions, queries);
         membershipDiscovery.setQueryRunner(queries.runner());
-        actions.addAction(source, "membership-types", "Find membership types", membershipDiscovery, null);
-        evidenceActions = new ConfiguredFieldEvidenceActions(actions,
-                discovery.contextSource(DiscoveryWorkbench.Source.WIKIPEDIA), "field-evidence",
+        discoveryActions.addAction(discovery.contextSource(DiscoveryWorkbench.Source.WIKIDATA),
+                "membership-types", "Find membership types", membershipDiscovery, null);
+
+        var datasourceActions = new WorkbenchActionResultNavigator();
+        var wikidata = datasourceActions.addSource(DiscoveryWorkbench.Source.WIKIDATA.id(),
+                DiscoveryWorkbench.Source.WIKIDATA.title(), null);
+        var acquisition = datasourceActions.addAction(wikidata, "field-acquisition-plan", "Field acquisition plan",
+                new JScrollPane(planText), null);
+        var load = datasourceActions.addAction(wikidata, "field-values",
+                "Load the current configured field", acquisitionDetail, null);
+        var wikipedia = datasourceActions.addSource(DiscoveryWorkbench.Source.WIKIPEDIA.id(),
+                DiscoveryWorkbench.Source.WIKIPEDIA.title(), null);
+        evidenceActions = new ConfiguredFieldEvidenceActions(datasourceActions, wikipedia, "field-evidence",
                 this::evidencePanel);
         refreshEvidence();
         var logs = new JButton("Query logs…");
         logs.addActionListener(event -> queries.showLogs(this));
         acquisitionDetail.add(acquisitionValues, BorderLayout.CENTER);
-        var transformSource = actions.addSource("transform", "Transform", null);
-        filterGroupsAction = actions.addAction(transformSource, "filter-groups", "Filter groups",
+        var transformSource = transformActions.addSource("transform", "Transform", null);
+        filterGroupsAction = transformActions.addAction(transformSource, "filter-groups", "Filter groups",
                 filterGroupsDetail, this::showFilterGroups);
         var previewDetail = new JPanel(new BorderLayout());
         var previewTools = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -211,7 +219,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         previewDetail.add(previewTools, BorderLayout.NORTH);
         previewResults.setName("transform.preview.results");
         previewDetail.add(previewResults, BorderLayout.CENTER);
-        previewAction = actions.addAction(transformSource, "preview-population", "Preview population",
+        previewAction = transformActions.addAction(transformSource, "preview-population", "Preview population",
                 previewDetail, null);
         preview.addActionListener(event -> previewPopulation());
         queries.runner().onRunningChanged(running -> {
@@ -222,7 +230,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                 updateSave();
             }
         });
-        var projectActions = actions.addSource("project", "Project", null);
+        var projectActions = buildActions.addSource("project", "Project", null);
         var loadInstancesTools = new JPanel(new FlowLayout(FlowLayout.LEFT));
         loadInstancesTools.add(loadInstances);
         loadInstancesTools.add(cancelLoadInstances);
@@ -243,11 +251,11 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         loadInstancesDetail.add(loadInstancesHeader, BorderLayout.NORTH);
         SwingCancellationConfirmation.wire(cancelLoadInstances, this,
                 () -> loadingInstances && queries.runner().isRunning(), queries.runner()::cancel);
-        loadInstancesAction = actions.addAction(projectActions, "load-instances", "Load instances",
+        loadInstancesAction = buildActions.addAction(projectActions, "load-instances", "Load instances",
                 loadInstancesDetail, null);
         loadInstances.addActionListener(event -> loadSavedInstances());
-        buildAction = actions.addAction(projectActions, "build-project", "Build project", buildDetail, null);
-        graphRunAction = actions.addAction(projectActions, "run-graph", "Run graph", graphRunDetail, null);
+        buildAction = buildActions.addAction(projectActions, "build-project", "Build project", buildDetail, null);
+        graphRunAction = buildActions.addAction(projectActions, "run-graph", "Run graph", graphRunDetail, null);
         planGraph.addActionListener(event -> planGraphRun());
         graphReview = new GraphDecisionReviewPanel(project,
                 () -> !busy() && configuration.resolveUnappliedEdits("loading graph annotations"),
@@ -255,7 +263,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                     configuration.setEditingEnabled(!loading);
                     updateSave();
                 }, queries::info, this::updateSave);
-        graphReviewAction = actions.addAction(graphRunAction, "review-graph-decisions",
+        graphReviewAction = buildActions.addAction(graphRunAction, "review-graph-decisions",
                 "Review graph decisions", graphReview, null);
         planBuild.addActionListener(event -> planBuild());
         editBuild.addActionListener(event -> configuration.selectConstruct(project.projectModel()));
@@ -271,30 +279,41 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         });
         resetBuild("");
         resetGraphRun("");
-        actions.setSelectionListener(selection -> {
+        datasourceActions.setSelectionListener(selection -> {
             loadActionSelected = load.id().equals(selection.id());
-            filterGroupsSelected = filterGroupsAction.id().equals(selection.id());
-            previewActionSelected = previewAction.id().source().equals(selection.id().source())
-                    && previewAction.id().action().equals(selection.id().action());
-            buildActionSelected = buildAction.id().source().equals(selection.id().source())
-                    && buildAction.id().action().equals(selection.id().action());
-            loadInstancesActionSelected = loadInstancesAction.id().source().equals(selection.id().source())
-                    && loadInstancesAction.id().action().equals(selection.id().action());
-            if (loadInstancesActionSelected && !loadingInstances) showLoadInstancesReadiness();
-            graphRunActionSelected = graphRunAction.id().source().equals(selection.id().source())
-                    && graphRunAction.id().action().equals(selection.id().action());
             if (loadActionSelected) refreshAcquisition();
         });
-        actions.expandSources();
-        actions.selectAction(acquisition);
+        transformActions.setSelectionListener(selection -> {
+            filterGroupsSelected = filterGroupsAction.id().equals(selection.id());
+            previewActionSelected = isActionOrResult(previewAction, selection);
+        });
+        buildActions.setSelectionListener(selection -> {
+            buildActionSelected = isActionOrResult(buildAction, selection);
+            loadInstancesActionSelected = isActionOrResult(loadInstancesAction, selection);
+            if (loadInstancesActionSelected && !loadingInstances) showLoadInstancesReadiness();
+            graphRunActionSelected = isActionOrResult(graphRunAction, selection);
+        });
+        for (var navigator : List.of(discoveryActions, buildActions, datasourceActions, transformActions)) {
+            navigator.expandSources();
+        }
+        datasourceActions.selectAction(acquisition);
+        buildActions.selectAction(buildAction);
+        transformActions.selectAction(previewAction);
         compilePlan();
         configuration = projectConfiguration();
         discovery.selection().addHost(new BoundedInstanceSelection.Host() {
             @Override public void selectionChanged(String reason) { }
             @Override public void updateActions() { updateSave(); }
         });
-        actions.setMinimumSize(new Dimension(0, ACTIONS_MINIMUM_HEIGHT));
-        workspace = new JSplitPane(JSplitPane.VERTICAL_SPLIT, configuration, actions);
+        var actionTabs = new JTabbedPane();
+        actionTabs.setName("unified.action-tabs");
+        actionTabs.addTab("Discovery", discoveryActions);
+        actionTabs.addTab("Build", buildActions);
+        actionTabs.addTab("Datasource", datasourceActions);
+        actionTabs.addTab("Transform", transformLauncher());
+        actionTabs.setSelectedComponent(datasourceActions);
+        actionTabs.setMinimumSize(new Dimension(0, ACTIONS_MINIMUM_HEIGHT));
+        workspace = new JSplitPane(JSplitPane.VERTICAL_SPLIT, configuration, actionTabs);
         workspace.setResizeWeight(0.72);
         add(workspace, BorderLayout.CENTER);
 
@@ -304,6 +323,32 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         footer.add(save);
         add(footer, BorderLayout.SOUTH);
         updateSave();
+    }
+
+    private static boolean isActionOrResult(WorkbenchActionResultNavigator.Action action,
+            WorkbenchActionResultNavigator.Selection selection) {
+        return action.id().source().equals(selection.id().source())
+                && action.id().action().equals(selection.id().action());
+    }
+
+    private JComponent transformLauncher() {
+        JPanel launcher = new JPanel(new BorderLayout());
+        JPanel controls = new JPanel(new WrapLayout(FlowLayout.LEFT, 6, 4));
+        JButton open = new JButton("Open Transform…");
+        open.addActionListener(event -> showTransform.run());
+        controls.add(open);
+        controls.add(new JLabel("Filter groups and preview populations in a separate window."));
+        launcher.add(controls, BorderLayout.NORTH);
+        return launcher;
+    }
+
+    public void onTransformShown(Runnable listener) {
+        showTransform = Objects.requireNonNull(listener);
+    }
+
+    /** The same view is reused when the host hides and reopens the window. */
+    public JComponent transformView() {
+        return transformActions;
     }
 
     private ProjectConfigurationPanel projectConfiguration() {
@@ -325,8 +370,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
 
     private void resetGraphRun(String message) {
         graphPlanOpen = false;
-        if (graphRunActionSelected) actions.selectAction(graphRunAction);
-        actions.clearResults(graphRunAction);
+        if (graphRunActionSelected) buildActions.selectAction(graphRunAction);
+        buildActions.clearResults(graphRunAction);
         graphRunStatus.setText(message.isBlank() ? (canRunGraph()
                 ? "Plan " + selectedClass.className() + " with its configured start input."
                 : "Select a configured local graph class.") : message);
@@ -351,7 +396,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                                     + saveVerb + " writes " + file.getPath() + ".",
                             () -> graphReview.previousForRun(graph),
                             artifact -> graphReview.keepRun(graph, artifact),
-                            () -> actions.selectAction(graphReviewAction)));
+                            () -> buildActions.selectAction(graphReviewAction)));
             graphPlanOpen = true;
             SwingProcessWorkflow.embed(graphRunner, action, new SwingProcessWorkflow.Embedded(
                     graphRunDetail, () -> {
@@ -362,7 +407,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                                 action.pipeline(), project.projectName(), file.getAbsoluteFile().getParentFile().toPath());
                         return true;
                     }, () -> resetGraphRun(""), WorkbenchResultViews::new,
-                    tabs -> actions.publishResults(graphRunAction, tabs, 0, graphRunActionSelected)));
+                    tabs -> buildActions.publishResults(graphRunAction, tabs, 0, graphRunActionSelected)));
         } catch (Exception failure) {
             resetGraphRun("Could not plan " + graph.className() + ": " + failure.getMessage());
         }
@@ -372,8 +417,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         buildPlanOpen = false;
         builtDomain = null;
         graphAwaitingReview = null;
-        if (buildActionSelected) actions.selectAction(buildAction);
-        actions.clearResults(buildAction);
+        if (buildActionSelected) buildActions.selectAction(buildAction);
+        buildActions.clearResults(buildAction);
         buildStatus.setText(message.isBlank() ? buildPlanPrompt() : message);
         var start = new JPanel(new FlowLayout(FlowLayout.LEFT));
         start.add(planBuild);
@@ -655,7 +700,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                 }
                 configuration.selectConstruct(current);
                 if (configuration.selectedConstruct() != current) return;
-                actions.selectAction(graphReviewAction);
+                buildActions.selectAction(graphReviewAction);
                 graphReview.loadAnnotations();
             });
             detail.add(review);
@@ -673,7 +718,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                     + project.snapshotFile().getPath()));
             tabs.addTab("Instances (" + built.memberRoots().size() + ")", detail);
         }
-        actions.publishResults(buildAction, tabs, 0, buildActionSelected);
+        buildActions.publishResults(buildAction, tabs, 0, buildActionSelected);
     }
 
     private boolean busy() {
@@ -730,8 +775,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
 
     private void clearPreviewResults() {
         if (previewResults.getTabCount() == 0) return;
-        if (previewActionSelected) actions.selectAction(previewAction);
-        actions.clearResults(previewAction);
+        if (previewActionSelected) transformActions.selectAction(previewAction);
+        transformActions.clearResults(previewAction);
         previewResults.removeAll();
     }
 
@@ -761,7 +806,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         previewStatus.setText(result.members().size() + " of " + result.examined()
                 + " loaded " + input + " instances match.");
         previewResults.addTab("Matching instances (" + result.members().size() + ")", view);
-        actions.publishResults(previewAction, previewResults, 0, previewActionSelected);
+        transformActions.publishResults(previewAction, previewResults, 0, previewActionSelected);
     }
 
     private void finishPreview() {

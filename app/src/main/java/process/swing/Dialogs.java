@@ -237,10 +237,19 @@ public final class Dialogs {
      * can stage changes must use this boundary.
      */
     public static JDialog reviewDialog(Component parent, String title) {
-        Window dialogOwner = owner(parent);
-        JDialog dialog = new JDialog(dialogOwner, title, reviewModality());
-        raiseOnOpen(dialog);
+        return ownedDialog(owner(parent), title, reviewModality());
+    }
+
+    /** A reusable modeless tool belongs to the project window, not whichever of its
+     * transient dialogs happens to have focus when the tool first opens. */
+    public static JDialog workbenchToolWindow(Window workbench, String title) {
+        JDialog dialog = ownedDialog(workbench, title, Dialog.ModalityType.MODELESS);
+        dialog.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
         return dialog;
+    }
+
+    private static JDialog ownedDialog(Window owner, String title, Dialog.ModalityType modality) {
+        return raiseOnOpen(new JDialog(owner, title, modality));
     }
 
     static Dialog.ModalityType reviewModality() {

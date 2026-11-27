@@ -85,13 +85,13 @@ The project tree supplies the declaration name, so the settings outline begins a
 
 ```text
 Project tree | Class or Field settings | selected settings editor
-Actions and results (Unified Workbench)
+Discovery | Build | Datasource | Transform (Unified Workbench)
 ```
 
 Configuration sections do not become grandchildren of every field in the main tree; doing so
 would swamp project navigation with fields × slots × steps. The local tree is rebuilt from the
 current construct draft and uses the same projection in ModelBuilderApp and the unified workbench.
-Membership discovery is in Actions and results in the Unified Workbench and Explorer tools in
+Membership discovery is in **Discovery** in the Unified Workbench and Explorer tools in
 ModelBuilder. Selecting a discovery action exposes its controls. A run starts from its button.
 
 ## Configuration node contract
@@ -355,11 +355,18 @@ Selecting a field or reading its plan sends no datasource requests.
 Leaving, saving or closing over unapplied edits asks first, as described under
 [One draft and one Apply](#one-draft-and-one-apply).
 
-Unified Workbench mounts the same datasource actions as DataSourceApp in its action tree.
-**Datasource instance selection** supplies the shared bounded selection for source discovery.
-Opening a source, an action, or a result does not run a request.
+The Unified Workbench keeps four action tabs below the shared configuration. **Discovery** uses
+the same source exploration actions as DataSourceApp; **Datasource instance selection** supplies
+their bounded selection. **Datasource** shows the configured acquisition plan, field loading
+and evidence recipes. **Build** holds project builds, loading saved instances and graph runs and
+review. Each uses the shared action/result navigator, and a result stays under its action
+without switching the reader's active tab. Opening a source, an action, or a result does not
+run a request. **Datasource** initially shows the field acquisition plan. In **Transform**,
+**Open Transform…** opens the shared project's filter-group and population-preview actions
+in a resizable window. Closing that window hides it; reopening preserves the selection and
+results. Closing the project closes the Transform window too.
 
-Under **Wikidata → Load the current configured field**, the displayed plan and the run share the prepared
+Under **Datasource → Wikidata → Load the current configured field**, the displayed plan and the run share the prepared
 value steps for the selected field, including production-site overrides. The action uses
 Enrich's claim batches and external field-acquisition families. The current loaded class members,
 or the cards explicitly selected in that view, are the write targets. Other loaded objects can
@@ -367,7 +374,7 @@ still supply dependencies, such as eligible descendants for an inherited count o
 endpoints. The action requires a compatible field in the loaded instance schema.
 Acquired references must resolve to compatible loaded instances for acceptance.
 
-Under **Wikipedia → Configured field evidence**, each applied recipe for the selected field
+Under **Datasource → Wikipedia → Configured field evidence**, each applied recipe for the selected field
 appears as its own action. Selecting a recipe opens its instance cards. Its **Find** button
 confirms the scope and runs the existing evidence review used by DataSourceApp. Applied recipes
 appear immediately. If resolving an unapplied edit
@@ -385,7 +392,7 @@ supplied each value. Accepting results updates the cards and writes the project'
 **Save model** or **Save domain** writes the applied configuration to `.model.json` through the
 shared save guard. Reopening shows the saved recipe and the accepted values with their provenance.
 
-To create a transformed class from a loaded project, open **Transform → Filter groups**.
+To create a transformed class from a loaded project, open **Transform → Open Transform…**, then select **Filter groups**.
 Choose the input class and field, set the condition, and use **Add filter group** to see the
 matching instances. Select that filter group, enter the output class name, and use
 **Create transformed class**. The open configuration gains the class, its ordered filter
@@ -397,24 +404,24 @@ build can refresh a snapshot produced under an older model. Creating the class d
 add or reorder build steps.
 
 For a transformed class, select **Population: transformation** to edit its ordered filters. Then
-choose **Transform → Preview population** in **Actions and results**. The explicit preview checks
+choose **Preview population** in the Transform window. The explicit preview checks
 the loaded input instances with the same membership and filter evaluator as **Build project**, and
 shows the matching instance cards and the count examined. Preview makes no datasource requests and
 writes no files. **Save model** or **Save domain** writes the applied recipe to `.model.json`.
 In the project overview, the **Build** list is the same ordered editor as in ModelBuilder.
-**Project → Build project → Edit build steps** opens that overview. Add, remove and move actions
+**Build → Project → Build project → Edit build steps** opens that overview. Add, remove and move actions
 update the working model. **Generate project**, **Apply graph decisions** and **Run transformation**
 can be added again after upstream steps change their inputs. Each occurrence has its own declaration
 ID. The other operations are offered once per target, and **Save project** is offered once.
 **Save model/domain** writes the order to `.model.json`.
 
-Under **Project → Build project**, **Plan build** shows the saved steps and the files the build
+Under **Build → Project → Build project**, **Plan build** shows the saved steps and the files the build
 may read or write. Save configuration changes before building. **Execute** uses the same
 build, progress view and report as ModelBuilder. A completed build reloads its saved model and
 snapshot into the open workbench before publishing **Instances**, **Steps** and **Files written**
 in the action tree. The results are for inspection.
 
-**Project → Load instances** reads the saved project snapshot and opens the shared
+**Build → Project → Load instances** reads the saved project snapshot and opens the shared
 instances viewer in a separate window. It does not put the instances in the action pane.
 A completed build refreshes that same viewer without opening it, as ModelBuilder does; its
 **Instances** result offers **Show instances** rather than a second copy of the cards. The
@@ -423,7 +430,7 @@ raises the existing viewer without resetting it. The window includes configured 
 the saved graph annotations, partitioned as in ModelBuilder. Use **Review graph decisions**
 to edit annotations.
 
-Select a local graph class and open **Project → Run graph** to run that graph on its own.
+Select a local graph class and open **Build → Project → Run graph** to run that graph on its own.
 **Plan graph run** shows ModelBuilder's traversal diagram and scope. **Execute** uses that
 plan's loaded class instances or configured population and the shared graph cache and query.
 The result has the same candidate cards and manual decisions as ModelBuilder. **Keep
@@ -433,7 +440,7 @@ to the output population.
 
 When a build stops for a graph decision in the open project, its **Graph decisions** result
 offers to load the waiting graph's annotations for review. You can also select a local graph class and open
-**Project → Run graph → Review graph decisions** directly, without running the graph.
+**Build → Project → Run graph → Review graph decisions** directly, without running the graph.
 **Load graph annotations** reads the displayed
 `.graph.snapshot.json` file. The review uses ModelBuilder's candidate cards and the
 **All**, **Accepted**, **Review** and **Rejected** tabs. Accepting, rejecting or clearing a

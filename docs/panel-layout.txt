@@ -1107,8 +1107,9 @@ subjects from Person
   combo: 2 item(s)
   button: Examples…
   button: Apply field source
-  box: Actions and results
-  plan: Position.holderCount Statement property Property: P1082
+  tabs: [Discovery, Build, Datasource, Transform] (selected: Datasource)
+    box: Actions and results
+    plan: Position.holderCount Statement property Property: P1082
   button: Query logs…
   button: Save domain…
 
@@ -1160,12 +1161,13 @@ subjects from Person
   combo: 2 item(s)
   button: Examples…
   button: Apply field source
-  box: Actions and results
-  label: Position.holderCount needs instances built with its current field definition.
+  tabs: [Discovery, Build, Datasource, Transform] (selected: Datasource)
+    box: Actions and results
+    label: Position.holderCount needs instances built with its current field definition.
   button: Query logs…
   button: Save domain…
 
-== Unified Workbench / Edit transformation and preview population ==
+== Unified Workbench / Edit transformation ==
   box: Project
   label: Class kind:
   combo: 5 item(s)  (disabled)
@@ -1188,12 +1190,17 @@ subjects from Person
   button: Apply transformation  (disabled)
   button: Discard changes  (disabled)
   label: Select a filter to edit it, or add a filter to the transformation.
+  tabs: [Discovery, Build, Datasource, Transform] (selected: Transform)
+    button: Open Transform…
+    label: Filter groups and preview populations in a separate window.
+  button: Query logs…
+  button: Save domain…
+
+== Transform window / Preview population ==
   box: Actions and results
   button: Preview population
   button: Cancel preview  (disabled)
   label: Check loaded Position instances for SelectedPosition.
-  button: Query logs…
-  button: Save domain…
 
 == Unified Workbench / Build project ==
   box: Project
@@ -1218,10 +1225,11 @@ subjects from Person
   button: Apply transformation  (disabled)
   button: Discard changes  (disabled)
   label: Select a filter to edit it, or add a filter to the transformation.
-  box: Actions and results
-  button: Plan build
-  button: Edit build steps
-  label: Plan the saved build of positions.model.json
+  tabs: [Discovery, Build, Datasource, Transform] (selected: Build)
+    box: Actions and results
+    button: Plan build
+    button: Edit build steps
+    label: Plan the saved build of positions.model.json
   button: Query logs…
   button: Save domain…
 
@@ -1256,10 +1264,11 @@ subjects from Person
     label: Available:
     combo: 4 item(s)
   label: Select a class, field, or vocabulary below the domain to configure it.
-  box: Actions and results
-  button: Plan build
-  button: Edit build steps
-  label: Plan the saved build of positions.model.json
+  tabs: [Discovery, Build, Datasource, Transform] (selected: Build)
+    box: Actions and results
+    button: Plan build
+    button: Edit build steps
+    label: Plan the saved build of positions.model.json
   button: Query logs…
   button: Save domain…
 
@@ -1294,8 +1303,9 @@ subjects from Person
     label: Available:
     combo: 4 item(s)
   label: Select a class, field, or vocabulary below the domain to configure it.
-  box: Actions and results
-  label: Select a graph class to review its decisions.
+  tabs: [Discovery, Build, Datasource, Transform] (selected: Build)
+    box: Actions and results
+    label: Select a graph class to review its decisions.
   button: Query logs…
   button: Save domain…
 
@@ -1330,9 +1340,10 @@ subjects from Person
     label: Available:
     combo: 4 item(s)
   label: Select a class, field, or vocabulary below the domain to configure it.
-  box: Actions and results
-  button: Plan graph run  (disabled)
-  label: Select a configured local graph class.
+  tabs: [Discovery, Build, Datasource, Transform] (selected: Build)
+    box: Actions and results
+    button: Plan graph run  (disabled)
+    label: Select a configured local graph class.
   button: Query logs…
   button: Save domain…
 
@@ -1367,10 +1378,11 @@ subjects from Person
     label: Available:
     combo: 4 item(s)
   label: Select a class, field, or vocabulary below the domain to configure it.
-  box: Actions and results
-  button: Load instances
-  button: Cancel load  (disabled)
-  button: Show instances  (disabled)
-  label: No saved instances in positions.snapshot.json. Build the project first.
+  tabs: [Discovery, Build, Datasource, Transform] (selected: Build)
+    box: Actions and results
+    button: Load instances
+    button: Cancel load  (disabled)
+    button: Show instances  (disabled)
+    label: No saved instances in positions.snapshot.json. Build the project first.
   button: Query logs…
   button: Save domain…

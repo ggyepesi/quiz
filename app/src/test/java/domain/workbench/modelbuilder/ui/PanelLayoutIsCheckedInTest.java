@@ -19,6 +19,7 @@ import domain.transform.ui.WorkbenchPurpose;
 import domain.transform.ui.ProjectBacking;
 import domain.workbench.configuration.ui.ProjectConfigurationPanel;
 import domain.workbench.unified.ui.UnifiedWorkbenchPanel;
+import domain.workbench.ui.WorkbenchActionResultNavigator;
 
 import javax.swing.AbstractButton;
 import javax.swing.JComboBox;
@@ -29,11 +30,16 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.border.TitledBorder;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.TreePath;
 import java.awt.Component;
 import java.awt.Container;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Collections;
+import java.util.function.Predicate;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -185,63 +191,45 @@ class PanelLayoutIsCheckedInTest {
                 var editor = find(unified, FieldSourcePanel.class);
                 editor.selectConfigurationDetail(FieldConfigurationProjection.PRIMARY);
                 describe(actual, "Unified Workbench / Field source and acquisition plan", unified);
-                var tree = find(unified, domain.workbench.ui.WorkbenchActionResultNavigator.class).tree();
-                var root = (javax.swing.tree.DefaultMutableTreeNode) tree.getModel().getRoot();
-                for (var nodes = root.depthFirstEnumeration(); nodes.hasMoreElements();) {
-                    var node = (javax.swing.tree.DefaultMutableTreeNode) nodes.nextElement();
-                    if ("Load the current configured field".equals(node.toString())) {
-                        tree.setSelectionPath(new javax.swing.tree.TreePath(node.getPath()));
-                        break;
-                    }
-                }
+                var tabs = find(unified, JTabbedPane.class,
+                        pane -> "unified.action-tabs".equals(pane.getName()));
+                selectAction(tabs, "Datasource", "Load the current configured field");
                 describe(actual, "Unified Workbench / Load field values", unified);
+
                 find(unified, SingleRootClassModelPanel.class).selectClass(output);
                 find(unified, ClassSourcePanel.class).configurationEditor().tree()
                         .selectDetail(ClassConfigurationProjection.TRANSFORMATION);
-                for (var nodes = root.depthFirstEnumeration(); nodes.hasMoreElements();) {
-                    var node = (javax.swing.tree.DefaultMutableTreeNode) nodes.nextElement();
-                    if ("Preview population".equals(node.toString())) {
-                        tree.setSelectionPath(new javax.swing.tree.TreePath(node.getPath()));
-                        break;
-                    }
-                }
-                describe(actual, "Unified Workbench / Edit transformation and preview population", unified);
-                for (var nodes = root.depthFirstEnumeration(); nodes.hasMoreElements();) {
-                    var node = (javax.swing.tree.DefaultMutableTreeNode) nodes.nextElement();
-                    if ("Build project".equals(node.toString())) {
-                        tree.setSelectionPath(new javax.swing.tree.TreePath(node.getPath()));
-                        break;
-                    }
-                }
+                tabs.setSelectedIndex(tabs.indexOfTab("Transform"));
+                describe(actual, "Unified Workbench / Edit transformation", unified);
+                var transformWindow = (WorkbenchActionResultNavigator) unified.transformView();
+                selectAction(transformWindow, "Preview population");
+                describe(actual, "Transform window / Preview population", transformWindow);
+
+                selectAction(tabs, "Build", "Build project");
                 describe(actual, "Unified Workbench / Build project", unified);
                 find(unified, SingleRootClassModelPanel.class).selectConstruct(backing.projectModel());
                 describe(actual, "Unified Workbench / Edit build steps", unified);
-                for (var nodes = root.depthFirstEnumeration(); nodes.hasMoreElements();) {
-                    var node = (javax.swing.tree.DefaultMutableTreeNode) nodes.nextElement();
-                    if ("Review graph decisions".equals(node.toString())) {
-                        tree.setSelectionPath(new javax.swing.tree.TreePath(node.getPath()));
-                        break;
-                    }
+                for (String action : List.of("Review graph decisions", "Run graph", "Load instances")) {
+                    selectAction(tabs, "Build", action);
+                    describe(actual, "Unified Workbench / " + action, unified);
                 }
-                describe(actual, "Unified Workbench / Review graph decisions", unified);
-                for (var nodes = root.depthFirstEnumeration(); nodes.hasMoreElements();) {
-                    var node = (javax.swing.tree.DefaultMutableTreeNode) nodes.nextElement();
-                    if ("Run graph".equals(node.toString())) {
-                        tree.setSelectionPath(new javax.swing.tree.TreePath(node.getPath()));
-                        break;
-                    }
-                }
-                describe(actual, "Unified Workbench / Run graph", unified);
-                for (var nodes = root.depthFirstEnumeration(); nodes.hasMoreElements();) {
-                    var node = (javax.swing.tree.DefaultMutableTreeNode) nodes.nextElement();
-                    if ("Load instances".equals(node.toString())) {
-                        tree.setSelectionPath(new javax.swing.tree.TreePath(node.getPath()));
-                        break;
-                    }
-                }
-                describe(actual, "Unified Workbench / Load instances", unified);
             }
         });
+    }
+
+    private static void selectAction(JTabbedPane tabs, String title, String action) {
+        tabs.setSelectedIndex(tabs.indexOfTab(title));
+        selectAction((WorkbenchActionResultNavigator) tabs.getSelectedComponent(), action);
+    }
+
+    private static void selectAction(WorkbenchActionResultNavigator navigator, String caption) {
+        var tree = navigator.tree();
+        var root = (DefaultMutableTreeNode) tree.getModel().getRoot();
+        var node = Collections.list(root.depthFirstEnumeration()).stream()
+                .map(DefaultMutableTreeNode.class::cast)
+                .filter(candidate -> caption.equals(candidate.toString()))
+                .findFirst().orElseThrow(() -> new AssertionError("Missing action " + caption));
+        tree.setSelectionPath(new TreePath(node.getPath()));
     }
 
     // --- the walk ---
@@ -341,6 +329,10 @@ class PanelLayoutIsCheckedInTest {
                     ? "plan: " + plain(area.getText()).replaceAll("\\s+", " ")
                     : "textarea";
         }
+        if (component instanceof JTabbedPane tabs && "unified.action-tabs".equals(tabs.getName())) {
+            return "tabs: " + IntStream.range(0, tabs.getTabCount()).mapToObj(tabs::getTitleAt)
+                    .toList() + " (selected: " + tabs.getTitleAt(tabs.getSelectedIndex()) + ")";
+        }
         if (component instanceof JList<?>) return "list";
         return null;
     }
@@ -355,10 +347,14 @@ class PanelLayoutIsCheckedInTest {
     }
 
     private static <T extends Component> T find(Container root, Class<T> type) {
+        return find(root, type, ignored -> true);
+    }
+
+    private static <T extends Component> T find(Container root, Class<T> type, Predicate<T> match) {
         for (Component child : root.getComponents()) {
-            if (type.isInstance(child)) return type.cast(child);
+            if (type.isInstance(child) && match.test(type.cast(child))) return type.cast(child);
             if (child instanceof Container nested) {
-                T found = find(nested, type);
+                T found = find(nested, type, match);
                 if (found != null) return found;
             }
         }

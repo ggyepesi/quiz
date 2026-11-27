@@ -54,6 +54,9 @@ Discovery's results had no search box, because they were a `JTable` rather than 
 
 - **Keep the painted-row rendering** (drag-to-select text blocks, virtualization for large
   sets). This rule is about WHAT is rendered; that is about HOW. Don't change the card look.
+  The text field's **Read full text…** menu opens its exact value in a selectable, scrollable
+  reader without changing the card. Linked passages keep their authored links in the reader;
+  hovering a link still names its destination, not a different action.
 
 - **Large inline collections stay on the shared virtualized path too.** Expanding one parent
   must not create one UI component per member. Live appends update only the new suffix and the

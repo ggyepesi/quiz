@@ -53,6 +53,7 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -293,9 +294,9 @@ class UnifiedFieldAcquisitionTest {
                 var model = opened.capability(ProjectBacking.class).projectModel();
                 find(panel, SingleRootClassModelPanel.class, item -> true)
                         .selectField(model.rootClass().fields().getFirst());
-                var actions = find(panel, WorkbenchActionResultNavigator.class, item -> true);
+                var actions = openDatasourceTab(panel);
                 selectAction(actions, WikipediaEvidenceRecipes.describe(mentions));
-                var evidence = find(panel, ValidationPanel.class, item -> true);
+                var evidence = find(actions, ValidationPanel.class, item -> true);
                 evidence.acquisitionConfirmation((title, plan) -> {
                     prompts.incrementAndGet();
                     return true;
@@ -370,7 +371,7 @@ class UnifiedFieldAcquisitionTest {
                 var model = opened.capability(ProjectBacking.class).projectModel();
                 find(panel, SingleRootClassModelPanel.class, item -> true)
                         .selectField(model.rootClass().fields().getFirst());
-                var actions = find(panel, WorkbenchActionResultNavigator.class, item -> true);
+                var actions = openDatasourceTab(panel);
                 var outline = find(panel, ConfigurationTreePanel.class, tree -> tree.nodes().stream()
                         .anyMatch(node -> node.bindingSite() != null
                                 && node.bindingSite().binding().recipe().equals(infobox.recipe())));
@@ -386,7 +387,7 @@ class UnifiedFieldAcquisitionTest {
                 var group = (DefaultMutableTreeNode) action.getParentPath().getLastPathComponent();
                 assertEquals(2, group.getChildCount());
                 assertEquals("Infobox row links — Rendered.Consort", group.getFirstChild().toString());
-                var evidence = find(panel, ValidationPanel.class, item -> true);
+                var evidence = find(actions, ValidationPanel.class, item -> true);
                 evidence.acquisitionConfirmation((title, plan) -> {
                     prompts.incrementAndGet();
                     assertTrue(plan.contains(WikipediaEvidenceRecipes.describe(mentions)), plan);
@@ -686,8 +687,17 @@ class UnifiedFieldAcquisitionTest {
     private static ValidationPanel openLoadAction(UnifiedWorkbenchPanel panel, ProjectBacking backing) {
         var field = backing.projectModel().rootClass().fields().getFirst();
         find(panel, SingleRootClassModelPanel.class, item -> true).selectField(field);
-        selectAction(find(panel, WorkbenchActionResultNavigator.class, item -> true), "Load the current configured field");
-        return find(panel, ValidationPanel.class, item -> true);
+        var actions = openDatasourceTab(panel);
+        selectAction(actions, "Load the current configured field");
+        return find(actions, ValidationPanel.class, item -> true);
+    }
+
+    private static WorkbenchActionResultNavigator openDatasourceTab(UnifiedWorkbenchPanel workbench) {
+        var tabs = find(workbench, JTabbedPane.class, pane -> "unified.action-tabs".equals(pane.getName()));
+        int datasource = tabs.indexOfTab("Datasource");
+        assertTrue(datasource >= 0, "The workbench must offer the Datasource tab");
+        tabs.setSelectedIndex(datasource);
+        return (WorkbenchActionResultNavigator) tabs.getSelectedComponent();
     }
 
     private static JTextField propertyInput(UnifiedWorkbenchPanel panel) {
