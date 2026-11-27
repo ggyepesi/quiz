@@ -2,6 +2,7 @@ package domain.transform.app;
 
 import dataset.DomainStorage;
 import domain.DomainModel;
+import domain.build.GraphDiscoveryResultStore;
 import domain.config.FieldCardinality;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedProjectModel;
@@ -12,8 +13,11 @@ import domain.curation.CuratedInstanceSink;
 import domain.datasource.schema.FieldType;
 import domain.runtime.WikidataDynamicObject;
 import domain.runtime.WikidataDynamicObjectJsonStore;
+import domain.runtime.SnapshotDomain;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import domain.persistence.DatasetRegistry;
 
 import java.nio.file.Files;
@@ -43,25 +47,39 @@ class DomainCatalogConfiguredTest {
         project.rootClass(new GeneratedClassModel("NorseCharacter"));
         var deity = new GeneratedClassModel("NorseDeity");
         project.addClass(deity);
+        var work = new GeneratedClassModel("NorseLiteraryWork");
+        project.addClass(work);
+        var event = new GeneratedClassModel("MythologicalEvent");
+        event.addField("work", FieldType.ENTITY, FieldCardinality.COLLECTION);
+        event.fields().getLast().entityClassName("NorseLiteraryWork");
+        project.addClass(event);
         var story = new GeneratedClassModel("NorseStory");
+        story.baseClassName("MythologicalEvent");
         story.addField("characters", FieldType.ENTITY, FieldCardinality.COLLECTION);
         story.fields().getLast().entityClassName("NorseCharacter");
         project.addClass(story);
         var loki = new WikidataDynamicObject("Q133147", "Loki");
         loki.type("NorseDeity");
-        new WikidataDynamicObjectJsonStore().saveWithFieldGraph(List.of(loki), snapshot, project);
+        var edda = new WikidataDynamicObject("Q205882", "Prose Edda");
+        edda.type("NorseLiteraryWork");
+        new WikidataDynamicObjectJsonStore().saveWithFieldGraph(List.of(loki, edda), snapshot, project);
 
-        // Save the edited configuration without rebuilding the instances.
+        // Save the edited subclass and field cardinality without rebuilding the instances.
         deity.baseClassName("NorseCharacter");
+        event.fields().getLast().cardinality(FieldCardinality.SINGLE);
         new GeneratedProjectModelStore().save(project, modelFile);
         var opened = DomainCatalog.open(snapshot, modelFile, storage);
         var curated = new CuratedInstance("NorseStory", "text-passage:abc", "A story about Loki",
-                List.of(CuratedInstance.FieldValue.references("characters",
-                        List.of(new CuratedInstance.Reference("NorseCharacter", "Q133147")))), null);
+                List.of(
+                        CuratedInstance.FieldValue.references("work",
+                                List.of(new CuratedInstance.Reference(
+                                        "NorseLiteraryWork", "Q205882"))),
+                        CuratedInstance.FieldValue.references("characters",
+                                List.of(new CuratedInstance.Reference("NorseCharacter", "Q133147")))),
+                null);
         var staged = opened.capability(CuratedInstanceSink.class).materialize(List.of(curated));
         assertEquals(List.of(), staged.unresolved());
-        assertSame(instance(opened, "Q133147"),
-                ((List<?>) staged.instances().getFirst().get("characters")).getFirst());
+        assertStoryReferences(opened, staged.instances().getFirst());
         assertTrue(fieldNames(staged.instances().getFirst()).contains("characters"),
                 "a staged story lists its class's fields, not only provenance");
         var sidecar = opened.capability(Curatable.class).curation();
@@ -70,17 +88,25 @@ class DomainCatalogConfiguredTest {
 
         var reopened = DomainCatalog.open(snapshot, modelFile, storage);
         assertEquals("NorseCharacter", reopened.baseType("NorseDeity"));
-        assertSame(instance(reopened, "Q133147"),
-                ((List<?>) instance(reopened, curated.id()).get("characters")).getFirst(),
-                "reopening the curation must retain the reference to the loaded subclass");
+        assertStoryReferences(reopened, instance(reopened, curated.id()));
         assertTrue(fieldNames(instance(reopened, curated.id())).contains("characters"),
                 "a reopened curated story lists its class's fields, not only provenance");
+    }
+
+    private static void assertStoryReferences(DomainModel domain, WikidataDynamicObject story) {
+        assertSame(instance(domain, "Q205882"), story.get("work"),
+                "the inherited single field must hold the work itself, not a one-item list");
+        assertEquals(List.of(instance(domain, "Q133147")), story.get("characters"),
+                "a one-member collection must stay a list and resolve to the loaded subclass");
     }
 
     /** Reported shape: the instances window showed every class's cards with only the
      * Java carrier's provenance fields, because each section was typed by the class
      * WikidataDynamicObject rather than by its model class's schema. */
-    @Test void theInstancesWindowTypesEachClassSectionByItsClassSchema() throws Exception {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void theInstancesWindowTypesEachClassSectionByItsClassSchema(boolean besideGraph)
+            throws Exception {
         var snapshot = temporary.resolve("norse.snapshot.json").toFile();
         var modelFile = temporary.resolve("norse.model.json").toFile();
         var project = new GeneratedProjectModel();
@@ -95,11 +121,18 @@ class DomainCatalogConfiguredTest {
         new GeneratedProjectModelStore().save(project, modelFile);
         DomainModel opened = DomainCatalog.open(snapshot, modelFile, DomainStorage.in(temporary.toFile()));
         var viewer = new domain.workbench.execution.ui.QueryObjectResultPanel();
+        var graph = new WikidataDynamicObject("Q2", "An annotated instance");
+        graph.type("StoryGraph");
+        var graphArtifacts = besideGraph ? List.of(new GraphDiscoveryResultStore.Artifact(
+                project.name(), "StoryGraph", "NorseStory", List.of(graph), List.of(),
+                new SnapshotDomain(List.of(graph)))) : List.<GraphDiscoveryResultStore.Artifact>of();
 
         javax.swing.SwingUtilities.invokeAndWait(() ->
                 domain.workbench.modelbuilder.ui.ProjectInstancesPresentation.showSaved(
-                        viewer, project, opened, List.of()));
+                        viewer, project, opened, graphArtifacts));
         javax.swing.SwingUtilities.invokeAndWait(() -> { });
+        assertEquals(besideGraph, viewer.displayedObjectsByType().containsKey("StoryGraph"),
+                "exercise the graph-side layout rather than just the ordinary layout twice");
 
         var fields = new java.util.ArrayList<java.util.Set<String>>();
         javax.swing.SwingUtilities.invokeAndWait(() -> collectViewFields(viewer, fields));
@@ -107,6 +140,19 @@ class DomainCatalogConfiguredTest {
                 "the NorseStory section offers its class field, not only provenance: " + fields);
         assertTrue(!fields.getFirst().contains("dynamicFields"),
                 "the Java carrier's own fields are not the class's fields: " + fields);
+        var names = new java.util.ArrayList<String>();
+        javax.swing.SwingUtilities.invokeAndWait(() -> collectSectionNames(viewer, names));
+        assertEquals("NorseStory", names.getFirst(),
+                "the ordinary class section keeps its logical name in both layouts");
+    }
+
+    private static void collectSectionNames(java.awt.Container root, List<String> out) {
+        for (var child : root.getComponents()) {
+            if (child instanceof objectview.view.SearchableView view && view.search() != null) {
+                out.add(view.search().sectionTypeName());
+            }
+            if (child instanceof java.awt.Container container) collectSectionNames(container, out);
+        }
     }
 
     private static void collectViewFields(java.awt.Container root,
