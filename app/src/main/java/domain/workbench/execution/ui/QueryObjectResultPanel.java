@@ -55,9 +55,10 @@ public class QueryObjectResultPanel
     private java.util.function.Function<Viewable, JComponent> cardDecorator =
             ignored -> null;
     private Map<String, objectview.group.ViewableGroup<?>> configuredGroups = Map.of();
-    /** The domain's class schemas; when set, every card and section reads its fields from
-     *  its class, not from whichever instance happens to come first. */
-    private java.util.function.Function<String, objectview.field.FieldSchema> schemas;
+    /** The domain whose class schemas type the shown sections; when set, each section's
+     *  fields are enumerated from its class schema, never from an instance or the Java
+     *  carrier class (WikidataDynamicObject). */
+    private domain.DomainModel schemaDomain;
 
     public QueryObjectResultPanel() {
         super(new BorderLayout());
@@ -133,10 +134,10 @@ public class QueryObjectResultPanel
         return button;
     }
 
-    /** The class schemas the shown instances are rendered with (one domain schema for
-     *  both the section and each card), or {@code null} to use each object's own. */
-    public void schemas(java.util.function.Function<String, objectview.field.FieldSchema> byType) {
-        schemas = byType;
+    /** The domain whose class schemas the shown instances are rendered with, or
+     *  {@code null} to use each object's own. */
+    public void schemaDomain(domain.DomainModel domain) {
+        schemaDomain = domain;
     }
 
     /** The explicit group-class presentations for the result currently being shown. */
@@ -348,7 +349,7 @@ public class QueryObjectResultPanel
         showAllInDisplayedObjects(byType);
 
         RenderContext context = new RenderContext();
-        if (schemas != null) context.setSchemas(schemas);
+        if (schemaDomain != null) context.setSchemas(schemaDomain::fieldSchema);
         context.setInPlaceNavigation(true);
         java.util.Map<Viewable, java.util.function.Function<Viewable, JComponent>>
                 peerDecorations = new IdentityHashMap<>();
@@ -368,7 +369,7 @@ public class QueryObjectResultPanel
             GroupedSection grouped = peerSections.get(name);
             var group = configuredGroups.get(name);
             JComponent body = grouped == null
-                    ? (group == null ? browser(all, context, false)
+                    ? (group == null ? browser(all, context, false, null, name)
                             : new objectview.render.GroupView(group, context))
                     : groupedBrowser(grouped, context, types);
             int index = types.getTabCount();
@@ -385,7 +386,7 @@ public class QueryObjectResultPanel
         Set<String> shownClasses = visibleClassesFor(byType.keySet());
         showInDisplayedObjects(byType, shownClasses);
         MultiView multi = new MultiView();
-        if (schemas != null) multi.context().setSchemas(schemas);
+        if (schemaDomain != null) multi.context().setSchemas(schemaDomain::fieldSchema);
         multi.context().setCardDecorator(cardDecorator);
         multi.context().setValueLinker(WikidataLinks.valueLinker());
         multi.sectionNoun("Classes");
@@ -405,6 +406,12 @@ public class QueryObjectResultPanel
             if (group != null) {
                 multi.addSection(entry.getKey(), sectionTitle(entry.getKey(), values.size()),
                         new objectview.render.GroupView(group, multi.context()), capped(values));
+            } else if (schemaDomain != null) {
+                String type = entry.getKey();
+                multi.addSection(type, sectionTitle(type, values.size()),
+                        values.getFirst().getClass(), capped(values),
+                        schemaDomain.configSample(type), schemaDomain.structuralFields(type),
+                        schemaDomain.fieldTypes(type), null, null);
             } else {
                 multi.addSection(entry.getKey(), sectionTitle(entry.getKey(), values.size()),
                         values.getFirst().getClass(), capped(values));
@@ -524,7 +531,25 @@ public class QueryObjectResultPanel
     private SearchableView browser(
             List<Viewable> values, RenderContext context, boolean coordinated,
             Viewable shapeSample) {
+        return browser(values, context, coordinated, shapeSample, null);
+    }
+
+    /** {@code type}, when known with a schema domain, types the section by its class. */
+    private SearchableView browser(
+            List<Viewable> values, RenderContext context, boolean coordinated,
+            Viewable shapeSample, String type) {
         List<Viewable> shown = capped(values);
+        if (schemaDomain != null && type != null && shapeSample == null) {
+            return SearchableView.builder(shown)
+                    .sample(schemaDomain.configSample(type))
+                    .hiddenFields(schemaDomain.structuralFields(type))
+                    .fieldTypes(schemaDomain.fieldTypes(type))
+                    .renderContext(context)
+                    .coordinated(coordinated)
+                    .columns(1)
+                    .emptyMessage("(none)")
+                    .build();
+        }
         Viewable sample = shapeSample == null && !shown.isEmpty()
                 ? shown.getFirst() : shapeSample;
         return SearchableView.builder(shown)

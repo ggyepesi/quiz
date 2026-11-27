@@ -77,6 +77,48 @@ class DomainCatalogConfiguredTest {
                 "a reopened curated story lists its class's fields, not only provenance");
     }
 
+    /** Reported shape: the instances window showed every class's cards with only the
+     * Java carrier's provenance fields, because each section was typed by the class
+     * WikidataDynamicObject rather than by its model class's schema. */
+    @Test void theInstancesWindowTypesEachClassSectionByItsClassSchema() throws Exception {
+        var snapshot = temporary.resolve("norse.snapshot.json").toFile();
+        var modelFile = temporary.resolve("norse.model.json").toFile();
+        var project = new GeneratedProjectModel();
+        project.name("Norse");
+        var story = new GeneratedClassModel("NorseStory");
+        story.addField("text", FieldType.TEXT, FieldCardinality.SINGLE);
+        project.rootClass(story);
+        var saga = new WikidataDynamicObject("Q1", "Gylfaginning I");
+        saga.type("NorseStory");
+        saga.put("text", "King Gylfi ruled the land.");
+        new WikidataDynamicObjectJsonStore().saveWithFieldGraph(List.of(saga), snapshot, project);
+        new GeneratedProjectModelStore().save(project, modelFile);
+        DomainModel opened = DomainCatalog.open(snapshot, modelFile, DomainStorage.in(temporary.toFile()));
+        var viewer = new domain.workbench.execution.ui.QueryObjectResultPanel();
+
+        javax.swing.SwingUtilities.invokeAndWait(() ->
+                domain.workbench.modelbuilder.ui.ProjectInstancesPresentation.showSaved(
+                        viewer, project, opened, List.of()));
+        javax.swing.SwingUtilities.invokeAndWait(() -> { });
+
+        var fields = new java.util.ArrayList<java.util.Set<String>>();
+        javax.swing.SwingUtilities.invokeAndWait(() -> collectViewFields(viewer, fields));
+        assertTrue(!fields.isEmpty() && fields.getFirst().contains("text"),
+                "the NorseStory section offers its class field, not only provenance: " + fields);
+        assertTrue(!fields.getFirst().contains("dynamicFields"),
+                "the Java carrier's own fields are not the class's fields: " + fields);
+    }
+
+    private static void collectViewFields(java.awt.Container root,
+            List<java.util.Set<String>> out) {
+        for (var child : root.getComponents()) {
+            if (child instanceof objectview.view.SearchableView view && view.search() != null) {
+                out.add(view.search().getViewConfig().getFields().keySet());
+            }
+            if (child instanceof java.awt.Container container) collectViewFields(container, out);
+        }
+    }
+
     private static List<String> fieldNames(WikidataDynamicObject instance) {
         return instance.dynamicFieldSchema() == null ? List.of()
                 : instance.dynamicFieldSchema().fields().stream()
