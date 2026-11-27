@@ -53,6 +53,7 @@ class TextSourceEditingTest {
         project.addClass(story);
         story.addField("title", FieldType.TEXT, FieldCardinality.SINGLE);
         story.addField("text", FieldType.TEXT, FieldCardinality.SINGLE);
+        story.addField("part", FieldType.TEXT, FieldCardinality.SINGLE);
         story.addField("work", FieldType.ENTITY, FieldCardinality.SINGLE).entityClassName("Work");
         story.addField("characters", FieldType.ENTITY, FieldCardinality.COLLECTION)
                 .entityClassName("Character");
@@ -87,20 +88,23 @@ class TextSourceEditingTest {
         boxes.get(0).setSelectedItem("text");
         boxes.get(1).setSelectedItem("work");
         boxes.get(2).setSelectedItem("title");
-        boxes.get(3).setSelectedItem("characters");
+        boxes.get(3).setSelectedItem("part");
+        boxes.get(4).setSelectedItem("characters");
         button(panel, "Apply field source").doClick();
 
         var binding = FieldSourceBindings.bindings(stories, SourceBindingSlot.CANDIDATE_EVIDENCE).getFirst();
         var spec = WikipediaDatasourceProvider.textPassageInstances(binding);
         assertEquals(List.of(text.declarationId()), spec.textSources());
-        assertEquals(List.of("text", "work", "title", "characters"),
-                List.of(spec.textField(), spec.sourceField(), spec.titleField(), spec.referencesField()));
+        assertEquals(List.of("text", "work", "title", "part", "characters"),
+                List.of(spec.textField(), spec.sourceField(), spec.titleField(), spec.partField(),
+                        spec.referencesField()));
 
         FieldSourcePanel reopened = new FieldSourcePanel();
         reopened.setProjectModel(project);
         reopened.edit(stories);
         assertEquals(List.of(text.declarationId()), reopened.textPassageSources().chosen());
-        assertEquals("characters", reopened.textPassageFieldBoxes().get(3).getSelectedItem());
+        assertEquals("part", reopened.textPassageFieldBoxes().get(3).getSelectedItem());
+        assertEquals("characters", reopened.textPassageFieldBoxes().get(4).getSelectedItem());
     }
 
     @Test void aTextSourceTheProjectLacksIsShownAsMissingRatherThanBlank() {

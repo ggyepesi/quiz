@@ -717,6 +717,8 @@ subjects from Person
   combo: 2 item(s)
   label: Title goes into:
   combo: 3 item(s)
+  label: Part of the work goes into:
+  combo: 3 item(s)
   label: Named instances go into:
   combo: 2 item(s)
   button: Examples…

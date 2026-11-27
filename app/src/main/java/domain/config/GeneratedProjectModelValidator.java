@@ -267,6 +267,15 @@ public final class GeneratedProjectModelValidator {
                                 + "' must be one Text value."));
                     }
                 }
+                if (!spec.partField().isBlank()) {
+                    GeneratedFieldModel part = declared.apply(spec.partField());
+                    if (part == null || part.type() != FieldType.TEXT
+                            || part.cardinality() != FieldCardinality.SINGLE) {
+                        problems.add(Problem.error(where, "Passage part target '"
+                                + target.className() + "." + spec.partField()
+                                + "' must be one Text value."));
+                    }
+                }
                 if (!spec.referencesField().isBlank()) {
                     GeneratedFieldModel named = declared.apply(spec.referencesField());
                     if (named == null || named.type() != FieldType.ENTITY

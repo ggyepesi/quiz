@@ -77,6 +77,7 @@ class TextPassageInstanceEvidenceProviderTest {
                                 WikipediaDatasourceProvider.PASSAGE_TEXT_FIELD, "text",
                                 WikipediaDatasourceProvider.PASSAGE_SOURCE_FIELD, "work",
                                 WikipediaDatasourceProvider.PASSAGE_TITLE_FIELD, "title",
+                                WikipediaDatasourceProvider.PASSAGE_PART_FIELD, "part",
                                 WikipediaDatasourceProvider.PASSAGE_REFERENCES_FIELD, "characters"))));
     }
 
@@ -117,6 +118,12 @@ class TextPassageInstanceEvidenceProviderTest {
                 .anyMatch(warning -> warning.startsWith("\"Vili\" names 2 loaded instances")));
         assertEquals(3, proposal.fields().size(), "each story is offered for the work's stories field");
         assertFalse(stories.getFirst().source().recordUrl().isBlank());
+        // The part of the work a chapter is in is stored as an ordinary field, so a view can
+        // group the chapters under Gylfaginning; it is not read back from provenance or title.
+        assertEquals(List.of("Gylfaginning", "Gylfaginning", "Gylfaginning"), stories.stream()
+                .map(story -> story.fields().stream()
+                        .filter(field -> "part".equals(field.field())).findFirst().orElseThrow()
+                        .value()).toList());
     }
 
     @Test void aTextSourceTheRecipeDoesNotNameIsNotRead() throws Exception {

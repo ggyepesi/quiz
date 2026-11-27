@@ -72,6 +72,7 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     public static final String FAMILY_TEXT_PASSAGE_INSTANCES = "mediawiki-text-passage-instances";
     public static final String TEXT_SOURCES = "textSources";
     public static final String PASSAGE_TITLE_FIELD = "passageTitleField";
+    public static final String PASSAGE_PART_FIELD = "passagePartField";
     public static final String PASSAGE_REFERENCES_FIELD = "passageReferencesField";
     public static final int MAX_ARTICLE_PASSAGES = 40;
     public static final int MAX_ARTICLE_PASSAGE_CHARACTERS = 20_000;
@@ -629,6 +630,10 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
                     new ParameterDescriptor(PASSAGE_TITLE_FIELD, "Title field",
                             ParameterDescriptor.Kind.TEXT, false, "", List.of(),
                             "Optional text field that receives page, chapter and first words"),
+                    new ParameterDescriptor(PASSAGE_PART_FIELD, "Part field",
+                            ParameterDescriptor.Kind.TEXT, false, "", List.of(),
+                            "Optional text field that receives the part of the work the "
+                                    + "passage is in: its page's last title segment"),
                     new ParameterDescriptor(PASSAGE_REFERENCES_FIELD, "Named instances field",
                             ParameterDescriptor.Kind.TEXT, false, "", List.of(),
                             "Optional reference list that receives loaded instances the "
@@ -645,16 +650,16 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
                 references.add(ModelConfigurationReference.textSourceReference(
                         id, "text source", TEXT_SOURCES, true));
             }
-            for (var field : List.of(
-                    java.util.Map.entry(spec.textField(), "passage text field"),
-                    java.util.Map.entry(spec.sourceField(), "source instance field"),
-                    java.util.Map.entry(spec.titleField(), "passage title field"),
-                    java.util.Map.entry(spec.referencesField(), "named instances field"))) {
-                if (!field.getKey().isBlank()) {
+            record Target(String field, String label, boolean required) { }
+            for (var target : List.of(
+                    new Target(spec.textField(), "passage text field", true),
+                    new Target(spec.sourceField(), "source instance field", true),
+                    new Target(spec.titleField(), "passage title field", false),
+                    new Target(spec.partField(), "passage part field", false),
+                    new Target(spec.referencesField(), "named instances field", false))) {
+                if (!target.field().isBlank()) {
                     references.add(ModelConfigurationReference.bindingTargetField(
-                            field.getKey(), field.getValue(),
-                            !field.getValue().startsWith("passage title")
-                                    && !field.getValue().startsWith("named")));
+                            target.field(), target.label(), target.required()));
                 }
             }
             return List.copyOf(references);
@@ -682,12 +687,14 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
     /** The text sources the recipe reads, by declaration id, and the target-class fields. */
     public record TextPassageInstanceSpec(
             List<String> textSources,
-            String textField, String sourceField, String titleField, String referencesField) {
+            String textField, String sourceField, String titleField, String partField,
+            String referencesField) {
         public TextPassageInstanceSpec {
             textSources = textSources == null ? List.of() : List.copyOf(textSources);
             textField = textField == null ? "" : textField.trim();
             sourceField = sourceField == null ? "" : sourceField.trim();
             titleField = titleField == null ? "" : titleField.trim();
+            partField = partField == null ? "" : partField.trim();
             referencesField = referencesField == null ? "" : referencesField.trim();
         }
         public boolean configured() {
@@ -709,7 +716,7 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         if (binding == null || binding.recipe() == null
                 || !ID.equals(binding.recipe().providerId())
                 || !TEXT_PASSAGE_INSTANCES.equals(binding.recipe().operationId())) {
-            return new TextPassageInstanceSpec(List.of(), "", "", "", "");
+            return new TextPassageInstanceSpec(List.of(), "", "", "", "", "");
         }
         var recipe = binding.recipe();
         List<String> ids = new ArrayList<>();
@@ -719,7 +726,8 @@ public final class WikipediaDatasourceProvider implements DatasourceProvider {
         }
         return new TextPassageInstanceSpec(ids,
                 recipe.parameter(PASSAGE_TEXT_FIELD), recipe.parameter(PASSAGE_SOURCE_FIELD),
-                recipe.parameter(PASSAGE_TITLE_FIELD), recipe.parameter(PASSAGE_REFERENCES_FIELD));
+                recipe.parameter(PASSAGE_TITLE_FIELD), recipe.parameter(PASSAGE_PART_FIELD),
+                recipe.parameter(PASSAGE_REFERENCES_FIELD));
     }
 
     public record ArticlePassageInstanceSpec(String textField, String sourceField) {

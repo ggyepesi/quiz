@@ -164,6 +164,10 @@ public final class TextPassageInstanceEvidenceProvider implements EnrichmentProv
                         if (!spec.titleField().isBlank()) {
                             values.add(EnrichmentProposal.InstanceField.literal(spec.titleField(), label));
                         }
+                        if (!spec.partField().isBlank()) {
+                            values.add(EnrichmentProposal.InstanceField.literal(
+                                    spec.partField(), part(title)));
+                        }
                         if (!spec.referencesField().isBlank() && !namedType.isBlank()
                                 && !matches.hits().isEmpty()) {
                             values.add(EnrichmentProposal.InstanceField.references(spec.referencesField(),
@@ -218,9 +222,14 @@ public final class TextPassageInstanceEvidenceProvider implements EnrichmentProv
         }
     }
 
-    /** The page's last title part, the division label and the passage's first words. */
+    /** The part of the work a page holds: its last title segment ("…/Gylfaginning"). */
+    static String part(String page) {
+        return page.contains("/") ? page.substring(page.lastIndexOf('/') + 1) : page;
+    }
+
+    /** The page's part, the division label and the passage's first words. */
     static String label(String page, TextPassages.Passage passage) {
-        String part = page.contains("/") ? page.substring(page.lastIndexOf('/') + 1) : page;
+        String part = part(page);
         String text = passage.text().replaceFirst("^" + java.util.regex.Pattern.quote(passage.label())
                 + "\\.\\s*", "").replace('\n', ' ').trim();
         int sentence = text.indexOf(". ");

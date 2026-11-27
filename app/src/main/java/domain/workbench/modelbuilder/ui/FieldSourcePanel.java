@@ -87,6 +87,7 @@ public class FieldSourcePanel extends JPanel {
     private final JComboBox<String> textPassageTextFieldBox = new JComboBox<>();
     private final JComboBox<String> textPassageSourceFieldBox = new JComboBox<>();
     private final JComboBox<String> textPassageTitleFieldBox = new JComboBox<>();
+    private final JComboBox<String> textPassagePartFieldBox = new JComboBox<>();
     private final JComboBox<String> textPassageNamedFieldBox = new JComboBox<>();
     private final JButton examplesButton = new JButton("Examples…");
     private final JLabel applyStatusLabel = new JLabel(" ");
@@ -117,6 +118,7 @@ public class FieldSourcePanel extends JPanel {
     private FormRow textPassageTextFieldRow;
     private FormRow textPassageSourceFieldRow;
     private FormRow textPassageTitleFieldRow;
+    private FormRow textPassagePartFieldRow;
     private FormRow textPassageNamedFieldRow;
     private FormRow passageSourceFieldRow;
     private FormRow passageBlockKindRow;
@@ -803,7 +805,7 @@ public class FieldSourcePanel extends JPanel {
 
     java.util.List<JComboBox<String>> textPassageFieldBoxes() {
         return java.util.List.of(textPassageTextFieldBox, textPassageSourceFieldBox,
-                textPassageTitleFieldBox, textPassageNamedFieldBox);
+                textPassageTitleFieldBox, textPassagePartFieldBox, textPassageNamedFieldBox);
     }
 
     void addCandidateEvidenceRecipe(String label) {
@@ -1255,7 +1257,30 @@ public class FieldSourcePanel extends JPanel {
         refreshTextPassageDestinations(selected == null ? "" : selected.textField(),
                 selected == null ? "" : selected.sourceField(),
                 selected == null ? "" : selected.titleField(),
+                selected == null ? "" : selected.partField(),
                 selected == null ? "" : selected.referencesField());
+    }
+
+    /** The part mapping is written only when chosen: a recipe saved before it existed has
+     *  no such key, and opening and saving it must not add one (EditorRoundTripGuardTest). */
+    private java.util.Map<String, String> textPassageParameters() {
+        var parameters = new java.util.LinkedHashMap<String, String>();
+        parameters.put(domain.datasource.wikipedia.WikipediaDatasourceProvider.TEXT_SOURCES,
+                String.join(" | ", textPassageSources.chosen()));
+        parameters.put(domain.datasource.wikipedia.WikipediaDatasourceProvider.PASSAGE_TEXT_FIELD,
+                selectedText(textPassageTextFieldBox));
+        parameters.put(domain.datasource.wikipedia.WikipediaDatasourceProvider.PASSAGE_SOURCE_FIELD,
+                selectedText(textPassageSourceFieldBox));
+        parameters.put(domain.datasource.wikipedia.WikipediaDatasourceProvider.PASSAGE_TITLE_FIELD,
+                selectedText(textPassageTitleFieldBox));
+        String part = selectedText(textPassagePartFieldBox);
+        if (!part.isBlank()) {
+            parameters.put(domain.datasource.wikipedia.WikipediaDatasourceProvider.PASSAGE_PART_FIELD,
+                    part);
+        }
+        parameters.put(domain.datasource.wikipedia.WikipediaDatasourceProvider.PASSAGE_REFERENCES_FIELD,
+                selectedText(textPassageNamedFieldBox));
+        return parameters;
     }
 
     private void refreshTextPassageDestinations() {
@@ -1263,11 +1288,12 @@ public class FieldSourcePanel extends JPanel {
                 != CandidateEvidenceChoice.TEXT_PASSAGE_INSTANCES) return;
         refreshTextPassageDestinations(selectedText(textPassageTextFieldBox),
                 selectedText(textPassageSourceFieldBox), selectedText(textPassageTitleFieldBox),
-                selectedText(textPassageNamedFieldBox));
+                selectedText(textPassagePartFieldBox), selectedText(textPassageNamedFieldBox));
     }
 
     private void refreshTextPassageDestinations(
-            String textField, String sourceField, String titleField, String namedField) {
+            String textField, String sourceField, String titleField, String partField,
+            String namedField) {
         FieldDefinition definition = fieldDefinitionPanel.definition();
         GeneratedClassModel target = definition == null || projectModel == null
                 ? null : projectModel.findClass(definition.entityClassName());
@@ -1297,6 +1323,7 @@ public class FieldSourcePanel extends JPanel {
         showDestinationChoices(textPassageTextFieldBox, textFields, textField);
         showDestinationChoices(textPassageSourceFieldBox, sourceFields, sourceField);
         showDestinationChoices(textPassageTitleFieldBox, textFields, titleField);
+        showDestinationChoices(textPassagePartFieldBox, textFields, partField);
         showDestinationChoices(textPassageNamedFieldBox, namedFields, namedField);
     }
 
@@ -1483,6 +1510,7 @@ public class FieldSourcePanel extends JPanel {
         applicable(textPassageTextFieldRow, textPassages);
         applicable(textPassageSourceFieldRow, textPassages);
         applicable(textPassageTitleFieldRow, textPassages);
+        applicable(textPassagePartFieldRow, textPassages);
         applicable(textPassageNamedFieldRow, textPassages);
         textPassageSources.setEditingEnabled(referenceCollection);
         passageTextFieldBox.setEnabled(referenceCollection);
@@ -1539,18 +1567,7 @@ public class FieldSourcePanel extends JPanel {
                                 .PASSAGE_SOURCE_FIELD,
                         selectedText(passageSourceFieldBox))
                 : selected == CandidateEvidenceChoice.TEXT_PASSAGE_INSTANCES
-                ? java.util.Map.of(
-                        domain.datasource.wikipedia.WikipediaDatasourceProvider.TEXT_SOURCES,
-                        String.join(" | ", textPassageSources.chosen()),
-                        domain.datasource.wikipedia.WikipediaDatasourceProvider.PASSAGE_TEXT_FIELD,
-                        selectedText(textPassageTextFieldBox),
-                        domain.datasource.wikipedia.WikipediaDatasourceProvider.PASSAGE_SOURCE_FIELD,
-                        selectedText(textPassageSourceFieldBox),
-                        domain.datasource.wikipedia.WikipediaDatasourceProvider.PASSAGE_TITLE_FIELD,
-                        selectedText(textPassageTitleFieldBox),
-                        domain.datasource.wikipedia.WikipediaDatasourceProvider
-                                .PASSAGE_REFERENCES_FIELD,
-                        selectedText(textPassageNamedFieldBox))
+                ? textPassageParameters()
                 : selected == CandidateEvidenceChoice.ARTICLE_PASSAGES
                 ? "ALL".equals(selectedText(passageBlockKindBox))
                         ? java.util.Map.of()
@@ -1934,6 +1951,8 @@ public class FieldSourcePanel extends JPanel {
                 "Source work goes into:", textPassageSourceFieldBox);
         textPassageTitleFieldRow = FormRow.add(form, c, y++,
                 "Title goes into:", textPassageTitleFieldBox);
+        textPassagePartFieldRow = FormRow.add(form, c, y++,
+                "Part of the work goes into:", textPassagePartFieldBox);
         textPassageNamedFieldRow = FormRow.add(form, c, y++,
                 "Named instances go into:", textPassageNamedFieldBox);
         assignRows(detailForRow, evidenceStart, y, FieldConfigurationProjection.EVIDENCE);
