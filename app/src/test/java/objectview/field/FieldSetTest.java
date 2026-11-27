@@ -98,7 +98,7 @@ class FieldSetTest {
 
         Map<String, FieldRef> f = byName(FieldSet.of(wdo, schema));
 
-        assertEquals(6, f.size(),
+        assertEquals(7, f.size(),
                 "schema fields plus datasource evidence and the display-name contract field");
         assertEquals(FieldRole.PROVENANCE, f.get("wikidataSource").role());
         assertEquals(FieldRole.PROVENANCE, f.get("wikidataStatements").role());
@@ -131,7 +131,7 @@ class FieldSetTest {
         dynamic.put("cast", new WikidataDynamicObject("Q2", "Actor"));
         dynamic.put("unexpected", "kept");
         FieldSet dynamicSet = FieldSet.of(dynamic, schema);
-        assertEquals(List.of("cast", "unexpected", "wikidataSource",
+        assertEquals(List.of("cast", "unexpected", "acceptedSource", "wikidataSource",
                         "wikidataStatements", "wikidataRelationRouteMatches",
                         ViewableContractFieldSet.DISPLAY_KEY),
                 dynamicSet.fields().stream().map(FieldRef::name).toList());
@@ -148,7 +148,7 @@ class FieldSetTest {
         WikidataDynamicObject wdo = new WikidataDynamicObject("Q1", "N");
         Map<String, FieldRef> f = byName(FieldSet.of(wdo, pc.asFieldSchema()));
 
-        assertEquals(7, f.size(),
+        assertEquals(8, f.size(),
                 "model fields plus datasource evidence and the display-name contract field");
         assertEquals(FieldRole.PROVENANCE, f.get("wikidataSource").role());
         assertEquals(FieldRole.PROVENANCE, f.get("wikidataStatements").role());

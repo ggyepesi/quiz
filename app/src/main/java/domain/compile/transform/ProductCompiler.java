@@ -54,6 +54,24 @@ public final class ProductCompiler {
     public static ProductDomain compile(
             GeneratedProjectModel model, List<WikidataDynamicObject> pool,
             Map<String, ? extends List<? extends Viewable>> persistedRoleSelections) {
+        return compile(model, pool, persistedRoleSelections, classSchemas(model));
+    }
+
+    /** Compile declarations before reading or changing instance values. */
+    public static ProductSchema classSchemas(GeneratedProjectModel model) {
+        List<ProductClass> classes = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        for (GeneratedClassModel c : model.classes()) {
+            if (c != null && seen.add(c.className())) classes.add(compileClass(model, c));
+        }
+        return new ProductSchema(classes, List.of());
+    }
+
+    /** Use the same compiled declarations that curation read before materializing the pool. */
+    public static ProductDomain compile(
+            GeneratedProjectModel model, List<WikidataDynamicObject> pool,
+            Map<String, ? extends List<? extends Viewable>> persistedRoleSelections,
+            ProductSchema classSchemas) {
         // A modeled entity field is a typed boundary. Enforce it again at the serving
         // boundary as well as at generation finalization: an older or externally supplied
         // snapshot must not turn an unstamped or incompatible QID into a dead reference.
@@ -127,16 +145,7 @@ public final class ProductCompiler {
         // from becoming a second persisted domain-data path.
         materializeConfiguredInstanceFields(model, modeledPool);
 
-        List<ProductClass> classes = new ArrayList<>();
-        Set<String> seen = new LinkedHashSet<>();
-        for (GeneratedClassModel c : model.classes()) {
-            if (c == null || !seen.add(c.className())) {
-                continue;
-            }
-            classes.add(compileClass(model, c, pool));
-        }
-
-        ProductSchema schema = new ProductSchema(classes, memberList);
+        ProductSchema schema = classSchemas.withMembers(memberList);
         // Give every instance of a class the SAME field order (its ProductClass
         // order), so cards read consistently instead of each entity's raw
         // extraction-insertion order.
@@ -211,8 +220,7 @@ public final class ProductCompiler {
     }
 
     private static ProductClass compileClass(GeneratedProjectModel model,
-                                             GeneratedClassModel c,
-                                             List<WikidataDynamicObject> pool) {
+                                             GeneratedClassModel c) {
         List<ProductField> fields = new ArrayList<>();
         Set<String> names = new LinkedHashSet<>();
         for (GeneratedFieldModel f : c.effectiveFields(model)) {

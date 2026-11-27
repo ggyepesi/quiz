@@ -1,5 +1,7 @@
 package domain.transform.app;
 
+import objectview.field.FieldSchema;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -44,6 +46,15 @@ public final class ProductSchema {
 
     public ProductClass get(String className) {
         return byName.get(className);
+    }
+
+    public FieldSchema fieldSchema(String className) {
+        ProductClass declaration = get(className);
+        return declaration == null ? null : declaration.asFieldSchema();
+    }
+
+    public ProductSchema withMembers(List<String> members) {
+        return new ProductSchema(List.copyOf(byName.values()), members);
     }
 
     /** The non-structural fields of a class — what the pickers/operations see. */

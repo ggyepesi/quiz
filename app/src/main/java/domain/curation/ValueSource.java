@@ -2,7 +2,9 @@ package domain.curation;
 
 import domain.datasource.SourceRef;
 import domain.datasource.evidence.ExtractedClaim;
+import objectview.field.LinkedTextSequence;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -80,6 +82,27 @@ public final class ValueSource {
                 || present(propertyLabel) || present(direction) || present(recordUrl)
                 || !evidence().isEmpty();
     }
+
+    /** Show exactly the accepted record, without constructing a URL from its identifier. */
+    public LinkedTextSequence recordLink() {
+        String provider = text(kind);
+        String record = text(entityId);
+        String url = text(recordUrl);
+        if (provider.isEmpty() && record.isEmpty() && url.isEmpty()) return null;
+        String label = !record.isEmpty() ? record : url;
+        if (!provider.isEmpty()) label = label.isEmpty() ? provider : provider + ": " + label;
+        try {
+            URI uri = URI.create(url);
+            if (uri.getHost() != null && ("https".equalsIgnoreCase(uri.getScheme())
+                    || "http".equalsIgnoreCase(uri.getScheme()))) {
+                return LinkedTextSequence.of(LinkedTextSequence.link(label, url));
+            }
+        } catch (IllegalArgumentException ignored) {
+            // A legacy record can carry a non-URL identifier; display it as text.
+        }
+        return LinkedTextSequence.of(LinkedTextSequence.text(label));
+    }
+
 
     private static boolean present(String value) {
         return value != null && !value.isBlank();

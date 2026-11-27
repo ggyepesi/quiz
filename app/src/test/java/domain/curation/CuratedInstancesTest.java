@@ -8,9 +8,36 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /** Accepted proposed instances become ordinary typed members of the existing object graph. */
 class CuratedInstancesTest {
+
+    @Test void aSingleReferenceDoesNotPickOneOfSeveralSavedIdentities() {
+        var work = new WikidataDynamicObject("Q205882", "Prose Edda");
+        work.type("Work");
+        var source = new ValueSource("Wikisource (English)", "Prose Edda", "",
+                "https://en.wikisource.org/wiki/Prose_Edda");
+        var story = new CuratedInstance("Story", "story:1", "A story",
+                List.of(CuratedInstance.FieldValue.references("work", List.of(
+                        new CuratedInstance.Reference("Work", "Q205882"),
+                        new CuratedInstance.Reference("Work", "Q999")))), source);
+        var pool = new ArrayList<>(List.of(work));
+
+        var result = CuratedInstances.apply(pool, List.of(story), type -> null,
+                type -> () -> List.of(objectview.field.FieldRef.of("work",
+                        objectview.field.FieldKind.REFERENCE, "Work", true, false, false)));
+
+        assertNull(result.instances().getFirst().get("work"),
+                "even when only one identity is loaded, do not guess which one was intended");
+        var refusal = result.unresolved().getFirst();
+        org.junit.jupiter.api.Assertions.assertTrue(refusal.ambiguous());
+        assertEquals("story:1", refusal.instance().id());
+        assertEquals(List.of("Q205882", "Q999"), refusal.targets().stream()
+                .map(target -> target.reference().id()).toList());
+        assertSame(work, refusal.targets().getFirst().loaded());
+        assertNull(refusal.targets().getLast().loaded());
+    }
 
     @Test void aReviewedEpisodeRetainsItsTextAndTypedCharacterReference() {
         WikidataDynamicObject achilles = new WikidataDynamicObject("Q41746", "Achilles");
@@ -56,8 +83,8 @@ class CuratedInstancesTest {
         CuratedInstances.Result result = CuratedInstances.apply(pool, List.of(story), bases::get);
 
         assertEquals(List.of(loki), result.instances().getFirst().get("characters"));
-        assertEquals(List.of("NorseStory text-passage:abc.characters → NorseCharacter Q999"),
-                result.unresolved(), "a NorsePlace is not a NorseCharacter");
+        assertEquals("Q999", result.unresolved().getFirst().targets().getFirst().reference().id(),
+                "a NorsePlace is not a NorseCharacter");
     }
 
     /** The other side: a curated reference to an entity no longer loaded (here the
@@ -75,7 +102,9 @@ class CuratedInstancesTest {
 
         assertEquals(1, pool.size(), "only the curated Episode enters the pool");
         assertEquals(null, result.instances().getFirst().get("characters"));
-        assertEquals(List.of("Episode wikipedia-passage:abc.characters → Character Q41746"),
-                result.unresolved());
+        var refusal = result.unresolved().getFirst();
+        org.junit.jupiter.api.Assertions.assertFalse(refusal.ambiguous());
+        assertEquals("characters", refusal.fieldLabel());
+        assertNull(refusal.targets().getFirst().loaded());
     }
 }

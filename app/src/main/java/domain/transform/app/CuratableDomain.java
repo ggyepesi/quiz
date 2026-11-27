@@ -2,12 +2,15 @@ package domain.transform.app;
 
 import objectview.Viewable;
 import domain.curation.Curatable;
+import domain.curation.CuratedInstances;
 import domain.curation.ManualCuration;
+import domain.runtime.WikidataDynamicObject;
 import domain.DelegatingDomainModel;
 import domain.DomainField;
 import domain.DomainModel;
 import domain.transform.ui.SchemaView;
 import objectview.field.FieldSchema;
+import objectview.field.FieldRef;
 import objectview.viewconfig.FieldTypeSource;
 
 import javax.swing.JComponent;
@@ -118,9 +121,14 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
     @Override public List<String> servedTypes() { return base.servedTypes(); }
     @Override public String baseType(String type) { return base.baseType(type); }
     @Override public FieldSchema fieldSchema(String type) {
+        return fieldSchemaWithCuration(type, base.fieldSchema(type), curation);
+    }
+
+    /** The same effective fields are needed before replay and by the opened domain. */
+    static FieldSchema fieldSchemaWithCuration(
+            String type, FieldSchema inherited, ManualCuration curation) {
         java.util.Map<String, objectview.field.FieldRef> combined =
                 new java.util.LinkedHashMap<>();
-        FieldSchema inherited = base.fieldSchema(type);
         if (inherited != null) {
             for (objectview.field.FieldRef field : inherited.fields()) {
                 combined.put(field.name(), field);
@@ -130,6 +138,10 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
             if (java.util.Objects.equals(type, declaration.type())) {
                 combined.put(declaration.name(), declaration.fieldRef());
             }
+        }
+        if (inherited != null) {
+            FieldRef source = WikidataDynamicObject.acceptedSourceField();
+            combined.putIfAbsent(source.name(), source);
         }
         List<objectview.field.FieldRef> immutable = List.copyOf(combined.values());
         return () -> immutable;
@@ -163,14 +175,14 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
         @SuppressWarnings("unchecked")
         java.util.List<domain.runtime.WikidataDynamicObject> pool =
                 (java.util.List<domain.runtime.WikidataDynamicObject>) raw;
-        domain.curation.CuratedInstances.Result added =
-                domain.curation.CuratedInstances.apply(pool, instances, this::baseType);
-        domain.curation.CuratedInstances.attachSchemas(added.instances(), this::fieldSchema);
+        var added = CuratedInstances.apply(pool, instances, this::baseType, this::fieldSchema);
         for (Viewable value : added.instances()) {
             if (!curatedMemberRoots.contains(value)) curatedMemberRoots.add(value);
         }
+        CuratedInstances.attachSchemas(added.instances(), this::fieldSchema);
         return added;
     }
+
     @Override public List<String> selectionNames() {
         java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>(base.selectionNames());
         names.addAll(editedPopulationMembers.keySet());

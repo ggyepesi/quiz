@@ -10,10 +10,15 @@ import domain.config.GeneratedProjectModelStore;
 import domain.curation.Curatable;
 import domain.curation.CuratedInstance;
 import domain.curation.CuratedInstanceSink;
+import domain.curation.ManualCuration;
 import domain.datasource.schema.FieldType;
 import domain.runtime.WikidataDynamicObject;
 import domain.runtime.WikidataDynamicObjectJsonStore;
 import domain.runtime.SnapshotDomain;
+import domain.workbench.modelbuilder.ui.ProjectInstancesPresentation;
+import objectview.field.FieldRole;
+import objectview.field.FieldSet;
+import objectview.field.LinkedTextSequence;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -128,7 +133,7 @@ class DomainCatalogConfiguredTest {
                 new SnapshotDomain(List.of(graph)))) : List.<GraphDiscoveryResultStore.Artifact>of();
 
         javax.swing.SwingUtilities.invokeAndWait(() ->
-                domain.workbench.modelbuilder.ui.ProjectInstancesPresentation.showSaved(
+                ProjectInstancesPresentation.showSaved(
                         viewer, project, opened, graphArtifacts));
         javax.swing.SwingUtilities.invokeAndWait(() -> { });
         assertEquals(besideGraph, viewer.displayedObjectsByType().containsKey("StoryGraph"),
@@ -174,6 +179,83 @@ class DomainCatalogConfiguredTest {
     private static WikidataDynamicObject instance(DomainModel domain, String id) {
         return (WikidataDynamicObject) domain.instances().stream()
                 .filter(value -> id.equals(value.getIdentifier())).findFirst().orElseThrow();
+    }
+
+    @Test void savedStoriesUseOneStableSourceFieldWithTheExactSavedLinks() throws Exception {
+        var snapshot = temporary.resolve("norse.snapshot.json").toFile();
+        var modelFile = temporary.resolve("norse.model.json").toFile();
+        var project = new GeneratedProjectModel();
+        project.name("Norse");
+        var story = new GeneratedClassModel("NorseStory");
+        story.addField("text", FieldType.TEXT, FieldCardinality.SINGLE);
+        project.rootClass(story);
+        var first = new WikidataDynamicObject("story:first", "An earlier story");
+        first.type("NorseStory");
+        new WikidataDynamicObjectJsonStore().saveWithFieldGraph(List.of(first), snapshot, project);
+        new GeneratedProjectModelStore().save(project, modelFile);
+
+        var proseEdda = new domain.curation.ValueSource("Wikisource (English)", "Prose Edda",
+                "", "https://en.wikisource.org/wiki/Prose_Edda#Gylfaginning");
+        var another = new domain.curation.ValueSource("Other archive", "Record 17",
+                "", "https://example.org/record/17");
+        var sidecar = ManualCuration.forSnapshot(snapshot);
+        sidecar.putInstance(new CuratedInstance("NorseStory", "story:edda", "From the Edda",
+                List.of(), proseEdda));
+        sidecar.putInstance(new CuratedInstance("NorseStory", "story:archive", "From an archive",
+                List.of(), another));
+        sidecar.save();
+
+        var domain = DomainCatalog.open(snapshot, modelFile, DomainStorage.in(temporary.toFile()));
+        var viewer = new domain.workbench.execution.ui.QueryObjectResultPanel();
+        javax.swing.SwingUtilities.invokeAndWait(() ->
+                ProjectInstancesPresentation.showSaved(
+                        viewer, project, domain, List.of()));
+        var fields = new java.util.ArrayList<java.util.Set<String>>();
+        javax.swing.SwingUtilities.invokeAndWait(() -> collectViewFields(viewer, fields));
+        var offered = fields.getFirst();
+        assertTrue(offered.contains("text"), "ordinary declared fields stay visible");
+        assertFalse(offered.contains("wikidataSource"), "unpopulated class provenance is omitted");
+        assertFalse(offered.contains("wikidataStatements"));
+        assertFalse(offered.contains("wikidataRelationRouteMatches"),
+                "carrier-only evidence must not reappear as an empty field");
+        assertTrue(domain.fieldSchema("NorseStory").field("wikidataSource") != null,
+                "the presentation must not remove the field from the actual class schema");
+        var field = WikidataDynamicObject.acceptedSourceField();
+        assertTrue(offered.contains(field.name()), "keep the source even though the first card lacks it");
+        assertEquals("Accepted source", field.label());
+        assertTrue(offered.stream().noneMatch(name -> name.startsWith("@accepted-source:")),
+                "provider names are values, not field keys");
+        for (var entry : java.util.Map.of("story:edda", proseEdda, "story:archive", another).entrySet()) {
+            var source = entry.getValue();
+            var actual = FieldSet.of(instance(domain, entry.getKey()));
+            assertEquals(FieldRole.PROVENANCE, actual.field(field.name()).role());
+            assertEquals("Accepted source", actual.field(field.name()).label());
+            var linked = assertInstanceOf(LinkedTextSequence.class, actual.read(field.name()));
+            assertEquals(source.kind() + ": " + source.entityId(), linked.text());
+            assertEquals(List.of(source.recordUrl()), linked.urls());
+            assertFalse(instance(domain, entry.getKey()).dynamicFieldValues().containsKey(field.name()),
+                    "the sidecar, not the runtime projection, owns the saved source");
+        }
+    }
+
+    @Test void snapshotOnlyReplayAlsoReadsFieldCardinalityFromTheCurationDeclaration() throws Exception {
+        var snapshot = temporary.resolve("norse.snapshot.json").toFile();
+        var work = new WikidataDynamicObject("Q205882", "Prose Edda");
+        work.type("NorseLiteraryWork");
+        var original = new WikidataDynamicObject("story:first", "An earlier story");
+        original.type("NorseStory");
+        new WikidataDynamicObjectJsonStore().saveWithFieldGraph(List.of(work, original), snapshot);
+        var curation = ManualCuration.forSnapshot(snapshot);
+        curation.putFieldDeclaration("NorseStory", objectview.field.FieldRef.described(
+                "work", objectview.field.FieldKind.REFERENCE, objectview.field.FieldKind.REFERENCE,
+                "NorseLiteraryWork", true, false, "NorseLiteraryWork", false, false, false, false, "", true));
+        curation.putInstance(new CuratedInstance("NorseStory", "story:curated", "A story",
+                List.of(CuratedInstance.FieldValue.references("work", List.of(
+                        new CuratedInstance.Reference("NorseLiteraryWork", "Q205882")))), null));
+        curation.save();
+
+        var opened = DomainCatalog.open(snapshot, null, DomainStorage.in(temporary.toFile()));
+        assertSame(instance(opened, "Q205882"), instance(opened, "story:curated").get("work"));
     }
 
     @Test void configuredCatalogContainsOnlyServedSnapshotsThatExist() throws Exception {

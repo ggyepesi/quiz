@@ -355,6 +355,41 @@ class ValidationPanelTest {
         }
     }
 
+    @Test void referenceWarningKeepsTheDifferentReasonsWithoutClaimingTheyAreAllMissing() {
+        var source = new domain.curation.ValueSource("Wikisource (English)", "Prose Edda", "",
+                "https://en.wikisource.org/wiki/Prose_Edda");
+        var story = new domain.curation.CuratedInstance("Story", "story:1", "A story",
+                List.of(), source);
+        var work = new domain.runtime.WikidataDynamicObject("Q205882", "Prose Edda");
+        var ambiguous = new domain.curation.CuratedInstances.Unresolved(story, "work", List.of(
+                new domain.curation.CuratedInstances.Target(
+                        new domain.curation.CuratedInstance.Reference("Work", "Q205882"), work),
+                new domain.curation.CuratedInstances.Target(
+                        new domain.curation.CuratedInstance.Reference("Work", "Q999"), null)), true);
+        var missing = new domain.curation.CuratedInstances.Unresolved(story, "characters", List.of(
+                new domain.curation.CuratedInstances.Target(
+                        new domain.curation.CuratedInstance.Reference("Character", "Q3"), null)),
+                false);
+
+        var line = ValidationPanel.unresolvedLine(ambiguous);
+        assertTrue(line.text().startsWith(
+                "A story · work — expects one target, but the proposal names Prose Edda"), line.text());
+        assertFalse(line.text().contains("story:1"), "no internal identifier is shown");
+        assertEquals(List.of(source.recordUrl(), wikidata.ui.WikidataLinks.url("Q205882"),
+                wikidata.ui.WikidataLinks.url("Q999")), line.urls());
+        assertTrue(ValidationPanel.unresolvedLine(missing).text()
+                .endsWith("— no unique compatible instance is loaded"));
+
+        var warning = ValidationPanel.unresolvedReferencesWarning(List.of(ambiguous, missing));
+        assertEquals("These references on the accepted instances were not applied:",
+                ((javax.swing.JLabel) warning.getComponent(0)).getText());
+        var rows = (java.awt.Container) ((javax.swing.JScrollPane) warning.getComponent(1))
+                .getViewport().getView();
+        assertEquals(2, rows.getComponentCount());
+        assertTrue(rows.getComponent(0) instanceof objectview.render.TextRow);
+        assertTrue(rows.getComponent(1) instanceof objectview.render.TextRow);
+    }
+
     /** Reported: "Stage selected card seemingly does nothing". The review closes as it
      *  accepts, so its own status line was never seen; the workbench now names the
      *  outcome, counted like the review, and says when nothing changed the instances. */

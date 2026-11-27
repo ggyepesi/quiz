@@ -7,6 +7,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import objectview.annotations.Hidden;
 import objectview.field.DynamicFields;
 import objectview.field.FieldSchema;
+import objectview.field.FieldRef;
+import objectview.field.LinkedTextSequence;
+import objectview.field.ReflectionFieldSet;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -36,6 +39,22 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
     private String identifier = "";
     @Hidden
     private String name = "";
+
+    /** Projected from the accepted-instance sidecar, not written into the snapshot. */
+    @objectview.annotations.Label("Accepted source")
+    @objectview.annotations.Role(objectview.field.FieldRole.PROVENANCE)
+    @JsonIgnore
+    private transient LinkedTextSequence acceptedSource;
+
+    public void acceptedSource(LinkedTextSequence value) { acceptedSource = value; }
+    public LinkedTextSequence acceptedSource() { return acceptedSource; }
+
+    public static FieldRef acceptedSourceField() { return AcceptedSourceDeclaration.FIELD; }
+
+    private static final class AcceptedSourceDeclaration {
+        private static final FieldRef FIELD =
+                new ReflectionFieldSet(new WikidataDynamicObject()).field("acceptedSource");
+    }
 
     // Only installed on a staged copy used for field review. A provider reports the
     // source at the point where it supplies the value, even when a fallback writes it.
@@ -751,6 +770,7 @@ public class WikidataDynamicObject extends objectview.ViewableAdapter
         copy.valueObject = valueObject;
         copy.part = part;
         copy.referenceLabel = referenceLabel;
+        copy.acceptedSource = acceptedSource;
         copy.aliases = new ArrayList<>(aliases);
         copy.categoryMemberships = new ArrayList<>(categoryMemberships);
         copy.categoryMembershipsAnswered = categoryMembershipsAnswered;

@@ -24,6 +24,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Function;
+import objectview.field.FieldSchema;
 import domain.DomainModel;
 
 /**
@@ -188,13 +191,19 @@ public final class DomainCatalog {
                     GeneratedClassModel declared = effectiveProject.findClass(type);
                     return declared == null ? null : declared.baseClassName();
                 };
+        ProductSchema compiled = effectiveProject == null
+                ? null : ProductCompiler.classSchemas(effectiveProject);
+        Function<String, FieldSchema> schemas = compiled == null
+                ? type -> fieldGraph.fieldSchema(type, Set.of()) : compiled::fieldSchema;
         // Overlay curated / auto-fixed values onto the freshly loaded base data,
         // before compiling — so the sidecar survives regeneration. See domain.curation.
         // Manual values override; generated fills (e.g. <name>.autofix.json from a
         // fallback rule) only fill fields still absent.
         var curation = ManualCuration.forSnapshot(snap, guard);
         List<WikidataDynamicObject> curatedInstances =
-                CuratedInstances.apply(pool, curation.instances(), baseType).instances();
+                CuratedInstances.apply(pool, curation.instances(), baseType,
+                        type -> CuratableDomain.fieldSchemaWithCuration(
+                                type, schemas.apply(type), curation)).instances();
         var autofix = domain.curation.CorrectionsSidecar.source(
                 domain.curation.CorrectionsSidecar.beside(snap, ".autofix.json"));
         domain.curation.Corrections.apply(pool, List.of(curation, autofix));
@@ -204,12 +213,11 @@ public final class DomainCatalog {
 
         DomainModel base;
         if (effectiveProject == null) {
-            base = new SnapshotDomain(pool, fieldGraph, java.util.Set.of(), loaded.roleSelections());
+            base = new SnapshotDomain(pool, fieldGraph, Set.of(), loaded.roleSelections());
         } else {
             BareReferenceCollapse.apply(pool);
-            base = ProductCompiler.compile(effectiveProject, pool, loaded.roleSelections());
+            base = ProductCompiler.compile(effectiveProject, pool, loaded.roleSelections(), compiled);
         }
-        CuratedInstances.attachSchemas(curatedInstances, base::fieldSchema);
         // Carry the curation store so the workbench can offer a "Curate…" action.
         java.util.List<objectview.viewconfig.DomainGroupRoot> savedGroupRoots =
                 new java.util.ArrayList<>();
@@ -230,9 +238,11 @@ public final class DomainCatalog {
             if (!memberRoots.contains(value)) memberRoots.add(value);
         }
         if (guard != null) guard.check();
-        return new CuratableDomain(
+        var domain = new CuratableDomain(
                 base, curation, memberRoots, groupRoots,
                 project == null ? null : model, project, guard);
+        CuratedInstances.attachSchemas(curatedInstances, domain::fieldSchema);
+        return domain;
     }
 
     /**

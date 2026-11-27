@@ -2291,11 +2291,8 @@ public final class ValidationPanel extends JPanel {
                     EnrichmentDecisionApplier.acceptAndSave(
                             domain, staging, decisions);
             if (!preview.unresolvedReferences().isEmpty()) {
-                Dialogs.showMessage(this,
-                        preview.unresolvedReferences().size()
-                                + " reference(s) of the accepted instances name "
-                                + "nothing loaded, so they were left empty:\n"
-                                + String.join("\n", preview.unresolvedReferences()),
+                Dialogs.showRaisedMessage(this,
+                        unresolvedReferencesWarning(preview.unresolvedReferences()),
                         "Unresolved references", JOptionPane.WARNING_MESSAGE);
             }
             acceptedOutcome.setText(acceptedOutcomeText(decisions, preview, sidecarName()));
@@ -2316,6 +2313,84 @@ public final class ValidationPanel extends JPanel {
     private String sidecarName() {
         ManualCuration curation = curationStore();
         return curation == null || curation.file() == null ? "" : curation.file().getName();
+    }
+
+    static javax.swing.JComponent unresolvedReferencesWarning(
+            List<domain.curation.CuratedInstances.Unresolved> unresolved) {
+        List<objectview.field.LinkedTextSequence> reasons =
+                unresolved.stream().map(ValidationPanel::unresolvedLine).toList();
+        var panel = new JPanel(new java.awt.BorderLayout(0, 6));
+        panel.add(new JLabel("These references on the accepted instances were not applied:"),
+                java.awt.BorderLayout.NORTH);
+        var rows = new JPanel();
+        rows.setLayout(new javax.swing.BoxLayout(rows, javax.swing.BoxLayout.Y_AXIS));
+        for (var reason : reasons) {
+            var row = new objectview.render.TextRow("", FieldPath.ROOT, reason);
+            row.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+            rows.add(row);
+        }
+        var scroll = new JScrollPane(rows);
+        scroll.setPreferredSize(new java.awt.Dimension(700, Math.min(320, 38 + reasons.size() * 40)));
+        panel.add(scroll, java.awt.BorderLayout.CENTER);
+        return panel;
+    }
+
+    /** One unapplied reference, readable: the instance by name (linked to its accepted
+     *  source), the field by its label, each named entity by its label linked to its
+     *  record, and why — never the internal identifiers. */
+    static objectview.field.LinkedTextSequence unresolvedLine(
+            domain.curation.CuratedInstances.Unresolved unresolved) {
+        List<objectview.field.LinkedTextSequence.Part> parts = new ArrayList<>();
+        var instance = unresolved.instance();
+        String url = wikidata.ui.WikidataLinks.url(instance.id());
+        var source = instance.source() == null ? null : instance.source().recordLink();
+        if (url == null && source != null && !source.urls().isEmpty()) url = source.urls().getFirst();
+        String name = instance.displayName();
+        if (name.equals(instance.id()) && !wikidata.ui.WikidataLinks.isId(name)) name = instance.type();
+        parts.add(linkPart(name, url));
+        parts.add(objectview.field.LinkedTextSequence.text(" · " + unresolved.fieldLabel()));
+        if (unresolved.ambiguous()) {
+            parts.add(objectview.field.LinkedTextSequence.text(
+                    " — expects one target, but the proposal names "));
+            for (var target : unresolved.targets()) {
+                if (target != unresolved.targets().getFirst()) {
+                    parts.add(objectview.field.LinkedTextSequence.text(", "));
+                }
+                parts.add(targetPart(target));
+            }
+        } else {
+            parts.add(objectview.field.LinkedTextSequence.text(" → "));
+            parts.add(targetPart(unresolved.targets().getFirst()));
+            parts.add(objectview.field.LinkedTextSequence.text(
+                    " — no unique compatible instance is loaded"));
+        }
+        return objectview.field.LinkedTextSequence.of(
+                parts.toArray(objectview.field.LinkedTextSequence.Part[]::new));
+    }
+
+    private static objectview.field.LinkedTextSequence.Part targetPart(
+            domain.curation.CuratedInstances.Target target) {
+        var reference = target.reference();
+        var value = target.loaded();
+        String url = wikidata.ui.WikidataLinks.url(reference.id());
+        String label = value == null ? null : value.getDisplayName();
+        if ((label == null || label.equals(reference.id())) && url != null) {
+            label = wikidata.ui.WikidataLabels.label(reference.id());
+            if (label == null || label.isBlank()) label = reference.id();
+        }
+        if (label == null || label.isBlank() || (url == null && label.equals(reference.id()))) {
+            label = reference.type();
+        }
+        if (url == null && value != null && value.acceptedSource() != null
+                && !value.acceptedSource().urls().isEmpty()) {
+            url = value.acceptedSource().urls().getFirst();
+        }
+        return linkPart(label, url);
+    }
+
+    private static objectview.field.LinkedTextSequence.Part linkPart(String text, String url) {
+        return url == null ? objectview.field.LinkedTextSequence.text(text)
+                : objectview.field.LinkedTextSequence.link(text, url);
     }
 
     /** Names the domain objects one accepted review created and the file it was saved to

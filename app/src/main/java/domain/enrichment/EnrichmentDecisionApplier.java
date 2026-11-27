@@ -35,7 +35,7 @@ public final class EnrichmentDecisionApplier {
 
     /** Result of one reviewed staging transaction as it appears in the live workbench. */
     public record StagedPreview(int stagedRecords, int appliedValues,
-                                List<String> unresolvedReferences) {
+                                List<domain.curation.CuratedInstances.Unresolved> unresolvedReferences) {
         public StagedPreview {
             unresolvedReferences = unresolvedReferences == null
                     ? List.of() : List.copyOf(unresolvedReferences);
@@ -72,7 +72,7 @@ public final class EnrichmentDecisionApplier {
         }
         Prepared prepared = prepareAll(domain, accepted);
         int staged = stage(staging, prepared);
-        List<String> unresolved = sink == null ? List.of()
+        var unresolved = sink == null ? List.<domain.curation.CuratedInstances.Unresolved>of()
                 : sink.materialize(prepared.instances()).unresolved();
         int applied = Corrections.apply(domain.instances(),
                 List.of(() -> prepared.corrections()));

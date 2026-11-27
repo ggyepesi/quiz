@@ -41,6 +41,11 @@ Object identity is ⟨typeKey, id⟩, not name — that is what stops a State an
 "France" from merging, and it acts at SAVE time. A VALUE object has no id and is inlined; an
 ENTITY has an id, is pooled and referenced. `@Inline` is the explicit opt-in.
 
+An accepted instance exposes its saved record as the stable **Accepted source** provenance
+field. The provider name, record name and exact recorded URL are values, not class-field keys.
+The curation sidecar owns the record; the instance projects it without copying it into the
+generated snapshot or replacing the registered providers' configured identity/source fields.
+
 # Admission is not representation
 
 An evidence rule such as `Person: P31 = Q5` declares non-exclusive membership admission. It

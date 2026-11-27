@@ -59,7 +59,7 @@ public final class Dialogs {
      * second dialog shown immediately after a confirmation can consequently remain
      * behind its owner while blocking that owner.
      */
-    static void showRaisedMessage(
+    public static void showRaisedMessage(
             Component parent, JComponent content, String title, int messageType) {
         Window dialogOwner = owner(parent);
         JOptionPane pane = new JOptionPane(content, messageType,

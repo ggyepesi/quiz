@@ -85,8 +85,7 @@ public final class ProductDomain implements DomainModel, SchemaView {
     }
 
     @Override public FieldSchema fieldSchema(String type) {
-        ProductClass productClass = schema.get(type);
-        return productClass == null ? null : productClass.asFieldSchema();
+        return schema.fieldSchema(type);
     }
 
     @Override public boolean entityOrigin(String type, objectview.field.FieldPath path) {
