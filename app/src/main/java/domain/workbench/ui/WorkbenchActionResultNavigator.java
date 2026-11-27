@@ -106,9 +106,21 @@ public final class WorkbenchActionResultNavigator extends JPanel {
     private boolean synchronizing;
 
     public WorkbenchActionResultNavigator() {
+        this(true);
+    }
+
+    /** The enclosing panel moves this entire navigator; the detail does not move separately. */
+    public static WorkbenchActionResultNavigator withDockedDetail() {
+        return new WorkbenchActionResultNavigator(false);
+    }
+
+    private WorkbenchActionResultNavigator(boolean detachableDetail) {
         super(new BorderLayout());
         setName("workbench.action-result.navigator");
         shell.setSelectionListener(this::revealSelected);
+        // An action's controls and results can be too crowded beside the tree: the reader
+        // may move the detail area to its own window and back (#585).
+        if (detachableDetail) shell.detachableDetail();
         add(shell, BorderLayout.CENTER);
     }
 

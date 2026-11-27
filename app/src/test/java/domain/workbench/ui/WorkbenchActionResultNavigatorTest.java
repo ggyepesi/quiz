@@ -1,7 +1,9 @@
 package domain.workbench.ui;
 
 import org.junit.jupiter.api.Test;
+import process.swing.DetachablePanel;
 
+import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
@@ -15,6 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -48,7 +51,10 @@ class WorkbenchActionResultNavigatorTest {
 
             assertEquals(220, split.getDividerLocation());
             assertEquals(0.0, split.getResizeWeight());
-            assertEquals("workbench.action-result.detail", detail.getName());
+            assertTrue(detail instanceof process.swing.DetachablePanel,
+                    "the detail area can be moved to a window and back (#585)");
+            assertTrue(containsNamed(detail, "workbench.action-result.detail"),
+                    "the action/result deck is the content that moves");
             assertTrue(detail.getMinimumSize().width >= 520,
                     "the rightmost action/result pane must not collapse into a strip");
         });
@@ -110,6 +116,36 @@ class WorkbenchActionResultNavigatorTest {
                             .getChildAt(0);
             assertEquals(0, child(sourceNode, "Analyze retained").getChildCount());
             assertEquals(1, child(sourceNode, "Fetch articles").getChildCount());
+        });
+    }
+
+    @Test void aDetachedTitleFollowsSelectionAndDropsInvalidatedResults() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            var navigator = new WorkbenchActionResultNavigator();
+            var source = navigator.addSource("wikipedia", "Wikipedia", null);
+            var tabs = new WorkbenchResultViews();
+            var action = navigator.addAction(source, "fetch", "Fetch articles", tabs, null);
+            tabs.addTab("Articles", new JLabel("articles"));
+            navigator.publishResults(action, tabs, 0);
+
+            var detail = find(navigator, DetachablePanel.class);
+            try {
+                detail.toWindow();
+                var dialog = (JDialog) SwingUtilities.getWindowAncestor(tabs);
+                assertEquals("Actions and results — Articles", dialog.getTitle());
+
+                navigator.tree().clearSelection();
+                assertEquals("Actions and results", dialog.getTitle());
+
+                navigator.publishResults(action, tabs, 0);
+                assertEquals("Actions and results — Articles", dialog.getTitle());
+                navigator.clearResults(action);
+                assertNull(selected(navigator.tree()));
+                assertEquals("Actions and results", dialog.getTitle(),
+                        "the invalidated result no longer names the window");
+            } finally {
+                detail.backToPanel();
+            }
         });
     }
 
@@ -197,6 +233,14 @@ class WorkbenchActionResultNavigatorTest {
             }
         }
         throw new AssertionError("No " + type.getSimpleName() + " named " + name);
+    }
+
+    private static boolean containsNamed(java.awt.Container root, String name) {
+        for (java.awt.Component child : root.getComponents()) {
+            if (name.equals(child.getName())) return true;
+            if (child instanceof java.awt.Container nested && containsNamed(nested, name)) return true;
+        }
+        return false;
     }
 
     private static <T> T find(java.awt.Container root, Class<T> type) {

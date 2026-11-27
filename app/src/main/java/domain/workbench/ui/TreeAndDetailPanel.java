@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
+import process.swing.DetachablePanel;
 
 /**
  * Neutral tree navigation beside a card of details.
@@ -76,12 +77,15 @@ public final class TreeAndDetailPanel<K> extends JPanel {
     private final IdentityHashMap<Component, DetailCard> detailCards =
             new IdentityHashMap<>();
     private Consumer<Selection<K>> selectionListener = ignored -> { };
+    private final String outlineTitle;
+    private DetachablePanel detachable;
     private int nextCard;
     private boolean replacing;
 
     public TreeAndDetailPanel(String componentNamePrefix, String outlineTitle) {
         super(new BorderLayout());
         String prefix = required(componentNamePrefix, "Component name prefix");
+        this.outlineTitle = required(outlineTitle, "Outline title");
         setName(prefix + ".navigator");
         tree.setName(prefix + ".tree");
         tree.setRootVisible(false);
@@ -115,7 +119,30 @@ public final class TreeAndDetailPanel<K> extends JPanel {
         add(null, id, caption, detail);
     }
 
+    /**
+     * Lets the reader move the detail area to its own window and back (#585). The same
+     * detail component moves; its window is titled with the selected node.
+     */
+    public void detachableDetail() {
+        if (detachable != null) return;
+        detachable = new DetachablePanel(
+                (JComponent) split.getRightComponent(), this::detailTitle);
+        detachable.setMinimumSize(new Dimension(DETAIL_MINIMUM_WIDTH, 0));
+        split.setRightComponent(detachable);
+        split.setDividerLocation(OUTLINE_WIDTH);
+    }
+
+    private String detailTitle() {
+        Object selected = tree.getLastSelectedPathComponent();
+        return selected instanceof DefaultMutableTreeNode node
+                && node.getUserObject() instanceof Item<?> item
+                ? outlineTitle + " — " + item.caption() : outlineTitle;
+    }
+
     void setDetailHeader(JComponent header) {
+        if (detachable != null) {
+            throw new IllegalStateException("Set the detail header before making it detachable");
+        }
         JPanel content = new JPanel(new BorderLayout());
         content.add(header, BorderLayout.NORTH);
         content.add(detailHost, BorderLayout.CENTER);
@@ -133,6 +160,9 @@ public final class TreeAndDetailPanel<K> extends JPanel {
                 && !item.caption().equals(caption)) {
             node.setUserObject(new Item<>(id, caption));
             model.nodeChanged(node);
+            if (detachable != null && Objects.equals(id, selectedId())) {
+                detachable.titleChanged();
+            }
         }
     }
 
@@ -271,6 +301,7 @@ public final class TreeAndDetailPanel<K> extends JPanel {
     }
 
     private void revealDetailOnly() {
+        if (detachable != null) detachable.titleChanged();
         Object selected = tree.getLastSelectedPathComponent();
         if (!(selected instanceof DefaultMutableTreeNode node)
                 || !(node.getUserObject() instanceof Item<?> raw)) {

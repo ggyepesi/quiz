@@ -92,6 +92,7 @@
   button: Show type spec
   button: Show instances
   box: Actions and results
+  button: ⇱ To window
 
 == DATASOURCE field pane - State.name ==
   label: Loading:

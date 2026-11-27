@@ -1111,6 +1111,7 @@ subjects from Person
   button: Apply field source
   tabs: [Discovery, Build, Datasource, Transform] (selected: Datasource)
     box: Actions and results
+    button: ⇱ To window
     plan: Position.holderCount Statement property Property: P1082
   button: Query logs…
   button: Save domain…
@@ -1165,6 +1166,7 @@ subjects from Person
   button: Apply field source
   tabs: [Discovery, Build, Datasource, Transform] (selected: Datasource)
     box: Actions and results
+    button: ⇱ To window
     label: Position.holderCount needs instances built with its current field definition.
   button: Query logs…
   button: Save domain…
@@ -1193,12 +1195,16 @@ subjects from Person
   button: Discard changes  (disabled)
   label: Select a filter to edit it, or add a filter to the transformation.
   tabs: [Discovery, Build, Datasource, Transform] (selected: Transform)
-    button: Open Transform…
-    label: Filter groups and preview populations in a separate window.
+    button: ⇱ To window
+    box: Actions and results
+    button: Preview population
+    button: Cancel preview  (disabled)
+    label: Check loaded Position instances for SelectedPosition.
   button: Query logs…
   button: Save domain…
 
-== Transform window / Preview population ==
+== Unified Workbench / Transform / Preview population ==
+  button: ⇱ To window
   box: Actions and results
   button: Preview population
   button: Cancel preview  (disabled)
@@ -1229,6 +1235,7 @@ subjects from Person
   label: Select a filter to edit it, or add a filter to the transformation.
   tabs: [Discovery, Build, Datasource, Transform] (selected: Build)
     box: Actions and results
+    button: ⇱ To window
     button: Plan build
     button: Edit build steps
     label: Plan the saved build of positions.model.json
@@ -1268,6 +1275,7 @@ subjects from Person
   label: Select a class, field, or vocabulary below the domain to configure it.
   tabs: [Discovery, Build, Datasource, Transform] (selected: Build)
     box: Actions and results
+    button: ⇱ To window
     button: Plan build
     button: Edit build steps
     label: Plan the saved build of positions.model.json
@@ -1307,6 +1315,7 @@ subjects from Person
   label: Select a class, field, or vocabulary below the domain to configure it.
   tabs: [Discovery, Build, Datasource, Transform] (selected: Build)
     box: Actions and results
+    button: ⇱ To window
     label: Select a graph class to review its decisions.
   button: Query logs…
   button: Save domain…
@@ -1344,6 +1353,7 @@ subjects from Person
   label: Select a class, field, or vocabulary below the domain to configure it.
   tabs: [Discovery, Build, Datasource, Transform] (selected: Build)
     box: Actions and results
+    button: ⇱ To window
     button: Plan graph run  (disabled)
     label: Select a configured local graph class.
   button: Query logs…
@@ -1382,6 +1392,7 @@ subjects from Person
   label: Select a class, field, or vocabulary below the domain to configure it.
   tabs: [Discovery, Build, Datasource, Transform] (selected: Build)
     box: Actions and results
+    button: ⇱ To window
     button: Load instances
     button: Cancel load  (disabled)
     button: Show instances  (disabled)

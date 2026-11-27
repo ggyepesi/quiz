@@ -44,6 +44,7 @@ import domain.workbench.modelbuilder.ui.GraphRunWorkflow;
 import domain.workbench.ui.WorkbenchActionResultNavigator;
 import domain.workbench.ui.WorkbenchResultViews;
 import objectview.utils.swing.WrapLayout;
+import process.swing.DetachablePanel;
 import process.swing.Dialogs;
 import process.swing.SwingCancellationConfirmation;
 import process.swing.SwingProcessInputHandler;
@@ -83,8 +84,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private ProjectConfigurationPanel configuration;
     private TransformController transform;
     private final WorkbenchActionResultNavigator buildActions = new WorkbenchActionResultNavigator();
-    private final WorkbenchActionResultNavigator transformActions = new WorkbenchActionResultNavigator();
-    private Runnable showTransform = () -> { };
+    private final WorkbenchActionResultNavigator transformActions =
+            WorkbenchActionResultNavigator.withDockedDetail();
     private final DiscoveryWorkbench discovery;
     private final SubclassDiscoveryPanel membershipDiscovery = new SubclassDiscoveryPanel(false);
     private final WorkbenchActionResultNavigator.Action previewAction;
@@ -307,7 +308,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         actionTabs.addTab("Discovery", discoveryActions);
         actionTabs.addTab("Build", buildActions);
         actionTabs.addTab("Datasource", datasourceActions);
-        actionTabs.addTab("Transform", transformLauncher());
+        actionTabs.addTab("Transform", new DetachablePanel(
+                transformActions, () -> "Transform — " + project.projectName()));
         actionTabs.setSelectedComponent(datasourceActions);
         actionTabs.setMinimumSize(new Dimension(0, ACTIONS_MINIMUM_HEIGHT));
         workspace = aux.SplitPaneUtils.vertical(configuration, actionTabs, 0.5);
@@ -336,22 +338,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                 && action.id().action().equals(selection.id().action());
     }
 
-    private JComponent transformLauncher() {
-        JPanel launcher = new JPanel(new BorderLayout());
-        JPanel controls = new JPanel(new WrapLayout(FlowLayout.LEFT, 6, 4));
-        JButton open = new JButton("Open Transform…");
-        open.addActionListener(event -> showTransform.run());
-        controls.add(open);
-        controls.add(new JLabel("Filter groups and preview populations in a separate window."));
-        launcher.add(controls, BorderLayout.NORTH);
-        return launcher;
-    }
-
-    public void onTransformShown(Runnable listener) {
-        showTransform = Objects.requireNonNull(listener);
-    }
-
-    /** The same view is reused when the host hides and reopens the window. */
+    /** The Transform tab's action/result navigator (filter groups, population preview). */
     public JComponent transformView() {
         return transformActions;
     }

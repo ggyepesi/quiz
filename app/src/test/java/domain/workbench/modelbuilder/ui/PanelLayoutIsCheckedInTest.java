@@ -201,9 +201,10 @@ class PanelLayoutIsCheckedInTest {
                         .selectDetail(ClassConfigurationProjection.TRANSFORMATION);
                 tabs.setSelectedIndex(tabs.indexOfTab("Transform"));
                 describe(actual, "Unified Workbench / Edit transformation", unified);
-                var transformWindow = (WorkbenchActionResultNavigator) unified.transformView();
-                selectAction(transformWindow, "Preview population");
-                describe(actual, "Transform window / Preview population", transformWindow);
+                var transformActions = (WorkbenchActionResultNavigator) unified.transformView();
+                selectAction(transformActions, "Preview population");
+                describe(actual, "Unified Workbench / Transform / Preview population",
+                        (Container) tabs.getSelectedComponent());
 
                 selectAction(tabs, "Build", "Build project");
                 describe(actual, "Unified Workbench / Build project", unified);

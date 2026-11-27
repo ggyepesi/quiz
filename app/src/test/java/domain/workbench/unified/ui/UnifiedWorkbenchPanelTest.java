@@ -45,6 +45,7 @@ import domain.workbench.ui.ConfigurationTreePanel;
 import domain.workbench.ui.WorkbenchActionResultNavigator;
 import domain.workbench.ui.WorkbenchResultViews;
 import objectview.view.SearchableView;
+import process.swing.DetachablePanel;
 import wikidata.FakeWikidataSparqlClient;
 import wikidata.api.WikidataApiClient;
 import wikidata.query.core.WikidataAccess;
@@ -56,6 +57,8 @@ import work.WorkflowRecorder;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JTabbedPane;
@@ -993,25 +996,46 @@ class UnifiedWorkbenchPanelTest {
         });
     }
 
-    @Test void openingTransformUsesTheSeparateViewAndKeepsItsSelection() throws Exception {
+    @Test void theWholeTransformNavigatorMovesWithItsSelectionAndEditor() throws Exception {
         var opened = open();
         SwingUtilities.invokeAndWait(() -> {
             try (var workbench = new UnifiedWorkbenchPanel(opened.domain())) {
+                var owner = new JFrame("Project");
+                owner.setContentPane(workbench);
                 var tabs = actionTabs(workbench);
-                var launcher = tabs.getComponentAt(tabs.indexOfTab("Transform"));
-                tabs.setSelectedComponent(launcher);
                 var navigator = (WorkbenchActionResultNavigator) workbench.transformView();
-                assertNull(navigator.getParent(), "the crowded editor is not embedded below configuration");
-                var reveals = new ArrayList<JComponent>();
-                workbench.onTransformShown(() -> reveals.add(workbench.transformView()));
-                var open = find(launcher, JButton.class, button -> "Open Transform…".equals(button.getText()));
-                open.doClick();
-                var groups = actionNode(navigator, "Filter groups");
-                navigator.tree().setSelectionPath(new TreePath(groups.getPath()));
-                open.doClick();
-                assertEquals(List.of(navigator, navigator), reveals);
-                assertSame(groups, navigator.tree().getLastSelectedPathComponent());
-                assertNotNull(find(navigator, FilterGroupsPanel.class, unused -> true));
+                var detachable = (DetachablePanel) tabs.getComponentAt(tabs.indexOfTab("Transform"));
+                try {
+                    tabs.setSelectedComponent(detachable);
+                    assertTrue(SwingUtilities.isDescendingFrom(navigator, detachable));
+                    var groups = actionNode(navigator, "Filter groups");
+                    var groupsPath = new TreePath(groups.getPath());
+                    navigator.tree().setSelectionPath(groupsPath);
+                    var editor = find(navigator, FilterGroupsPanel.class, unused -> true);
+                    assertEquals(1L, descendants(detachable).filter(component ->
+                            "detachable.toWindow".equals(component.getName())).count());
+
+                    find(detachable, JButton.class, button ->
+                            "detachable.toWindow".equals(button.getName())).doClick(0);
+                    var window = (JDialog) SwingUtilities.getWindowAncestor(navigator.tree());
+                    assertSame(owner, window.getOwner());
+                    assertSame(window, SwingUtilities.getWindowAncestor(editor));
+                    assertEquals(groupsPath, navigator.tree().getSelectionPath());
+
+                    var preview = actionNode(navigator, "Preview population");
+                    var previewPath = new TreePath(preview.getPath());
+                    navigator.tree().setSelectionPath(previewPath);
+                    find(window, JButton.class, button ->
+                            "detachable.window.back".equals(button.getName())).doClick(0);
+                    assertFalse(detachable.isDetached());
+                    assertTrue(SwingUtilities.isDescendingFrom(navigator.tree(), detachable));
+                    assertEquals(previewPath, navigator.tree().getSelectionPath());
+                    navigator.tree().setSelectionPath(groupsPath);
+                    assertSame(editor, find(navigator, FilterGroupsPanel.class, unused -> true));
+                } finally {
+                    detachable.backToPanel();
+                    owner.dispose();
+                }
             }
         });
     }

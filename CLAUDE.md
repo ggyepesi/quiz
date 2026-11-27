@@ -308,9 +308,10 @@ construct per thing produced:
    presentation; an application may supply the current scope, but must not copy the fetch or
    invent another result path. Action-heavy work areas reuse the neutral shared
    source/context → explicit action → latest result-view navigator. A host may put distinct
-   work areas in separate tabs or a project-owned tool window rather than combine them in one
-   tree. In the Unified Workbench, Discovery and Datasource are separate work areas, Build has
-   its own tab, and the Transform tab opens the Transform window. DataSourceApp keeps discovery
+   work areas in separate tabs rather than combine them in one tree; a crowded detail or a whole
+   work area may be moved to a project-owned window and back (`DetachablePanel`, the same
+   component, never a copy). In the Unified Workbench, Discovery, Datasource and Build detach
+   their detail area; Transform detaches its whole tab. DataSourceApp keeps discovery
    and configured acquisition in one work area. A provider heading may appear in more than one
    work area as navigation context; it is not another provider definition or another route to
    the same action and result.

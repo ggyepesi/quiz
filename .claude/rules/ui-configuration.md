@@ -62,6 +62,11 @@ many: section headings counted what a reference walk reached while the title cou
 roots, so a title said sixteen beside a section saying eight. `ObjectQueryResult.byType()`
 is the one traversal; counts and headings both come off it.
 
+A panel too crowded where it is docked is moved, not duplicated: `process.swing.DetachablePanel`
+reparents the same component into a project-owned window and back (#585), so its selection,
+scroll and results survive and the result still has one place. Closing the window returns it;
+its size is remembered for the session only. Don't hand-build another pop-out window.
+
 ## Enablement combines; it never overwrites
 
 `SwingQueryRunner` answers *is something running* and disables every run button; a panel

@@ -364,10 +364,12 @@ without switching the reader's active tab. Opening a source, an action, or a res
 run a request. **Datasource** initially shows the selected field's acquisition plan. The
 selected-field branch is provider-neutral: the plan and each evidence recipe name the actual
 sources. The configuration and action areas start at about equal height; drag the divider or
-use its arrows to give an action more room. In **Transform**,
-**Open Transform…** opens the shared project's filter-group and population-preview actions
-in a resizable window. Closing that window hides it; reopening preserves the selection and
-results. Closing the project closes the Transform window too.
+use its arrows to give an action more room. In **Discovery**, **Datasource**, and **Build**,
+**⇱ To window** moves the detail area to its own window. In **Transform**, it moves the whole
+action and result navigator, so you can switch between filter groups, population preview,
+and results in the detached window. **Back to panel** or closing the window returns the same
+view with its selection, scroll position and results. The window closes with the project,
+and its size is remembered for the session only.
 
 Under **Datasource → Selected field → Field values**, the displayed plan and the run share the prepared
 value steps for the selected field, including production-site overrides. The action uses
@@ -395,7 +397,7 @@ supplied each value. Accepting results updates the cards and writes the project'
 **Save model** or **Save domain** writes the applied configuration to `.model.json` through the
 shared save guard. Reopening shows the saved recipe and the accepted values with their provenance.
 
-To create a transformed class from a loaded project, open **Transform → Open Transform…**, then select **Filter groups**.
+To create a transformed class from a loaded project, open **Transform → Filter groups**.
 Choose the input class and field, set the condition, and use **Add filter group** to see the
 matching instances. Select that filter group, enter the output class name, and use
 **Create transformed class**. The open configuration gains the class, its ordered filter
@@ -407,7 +409,7 @@ build can refresh a snapshot produced under an older model. Creating the class d
 add or reorder build steps.
 
 For a transformed class, select **Population: transformation** to edit its ordered filters. Then
-choose **Preview population** in the Transform window. The explicit preview checks
+choose **Transform → Preview population**. The explicit preview checks
 the loaded input instances with the same membership and filter evaluator as **Build project**, and
 shows the matching instance cards and the count examined. Preview makes no datasource requests and
 writes no files. **Save model** or **Save domain** writes the applied recipe to `.model.json`.
