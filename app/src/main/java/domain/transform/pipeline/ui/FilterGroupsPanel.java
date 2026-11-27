@@ -27,13 +27,15 @@ import java.util.Collection;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /** Compose and inspect temporary filters, then declare their reproducible output. */
 public final class FilterGroupsPanel extends JPanel implements AutoCloseable {
     private final TransformController controller;
     private final BooleanSupplier mayCreate;
     private final Consumer<GeneratedClassModel> created;
-    private final ViewStepsPanel fields;
+    private final TransformFieldPicker fields;
+    private final FilterGroupEditor filter;
     private final JPanel groupsHolder = new JPanel(new BorderLayout());
     private final JTextField className = new JTextField(18);
     private final JButton promote = new JButton("Create transformed class");
@@ -49,9 +51,15 @@ public final class FilterGroupsPanel extends JPanel implements AutoCloseable {
         this.controller = controller;
         this.mayCreate = mayCreate;
         this.created = created;
-        fields = ViewStepsPanel.forFilterGroups(controller, this::showClass,
-                this::addFilter, () -> selection == null ? List.of() : selection.getMembers());
-        var split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, fields, groupsHolder);
+        fields = new TransformFieldPicker(controller,
+                () -> selection == null ? List.of() : selection.getMembers());
+        filter = new FilterGroupEditor(controller, this::addFilter);
+        fields.onChange(() -> filter.edit(fields.currentField()), this::showClass);
+        JPanel editor = new JPanel(new BorderLayout(6, 6));
+        editor.add(fields.classRow(), BorderLayout.NORTH);
+        editor.add(fields.fieldBlock(), BorderLayout.CENTER);
+        editor.add(filter, BorderLayout.SOUTH);
+        var split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, editor, groupsHolder);
         split.setResizeWeight(0.43);
         add(split, BorderLayout.CENTER);
 
@@ -88,7 +96,7 @@ public final class FilterGroupsPanel extends JPanel implements AutoCloseable {
         String type = controller.selectedType();
         RenderContext context = new RenderContext();
         groups = new GroupMembersView(root, group -> {
-            close();
+            disposeMemberView();
             activeMembers = instanceCards(controller, type, group.getMembers(), context);
             return activeMembers;
         }, JSplitPane.HORIZONTAL_SPLIT, false, 0.35, true, context);
@@ -97,7 +105,6 @@ public final class FilterGroupsPanel extends JPanel implements AutoCloseable {
             fields.refreshWorkingSet();
             updateActions();
         });
-        groupsHolder.removeAll();
         groupsHolder.add(groups, BorderLayout.CENTER);
         // Keep the filter's scope and the visible cards in step.
         selection = selected;
@@ -151,7 +158,8 @@ public final class FilterGroupsPanel extends JPanel implements AutoCloseable {
 
     public void editingEnabled(boolean enabled) {
         setEnabled(enabled);
-        fields.filterGroupCreationEnabled(enabled);
+        fields.classSelectionEnabled(enabled);
+        filter.creationEnabled(enabled);
         className.setEditable(enabled);
         updateActions();
     }
@@ -172,7 +180,20 @@ public final class FilterGroupsPanel extends JPanel implements AutoCloseable {
                 .collapsible(true).build();
     }
 
+    public void filterGroupNamePrompt(Supplier<String> prompt) {
+        filter.filterGroupNamePrompt(prompt);
+    }
+
     @Override public void close() {
+        disposeMemberView();
+        if (groups != null) {
+            groups.dispose();
+            groupsHolder.remove(groups);
+            groups = null;
+        }
+    }
+
+    private void disposeMemberView() {
         if (activeMembers != null) {
             activeMembers.dispose();
             activeMembers = null;

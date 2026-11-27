@@ -411,6 +411,12 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
             guard.check();
             if (saved.buildOperations().isEmpty()) {
                 resetBuild("No build steps in " + modelFile.getName() + ". Use Edit build steps, then " + saveVerb + ".");
+                String warnings = BuildProjectWorkflow.missingBuildWarnings(saved);
+                if (!warnings.isBlank()) {
+                    buildDetail.add(Dialogs.wrapped(warnings), BorderLayout.CENTER);
+                    buildDetail.revalidate();
+                    buildDetail.repaint();
+                }
                 return;
             }
             var snapshot = storage.snapshotFile(saved.name());

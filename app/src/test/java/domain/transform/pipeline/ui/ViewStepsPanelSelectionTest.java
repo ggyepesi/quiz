@@ -114,16 +114,15 @@ class ViewStepsPanelSelectionTest {
                 new ReflectionDomain(List.of(new State("France"))), null);
         AtomicReference<String> createdName = new AtomicReference<>();
         AtomicReference<FilterCondition> createdCondition = new AtomicReference<>();
-        ViewStepsPanel panel = new ViewStepsPanel(
-                controller, () -> { }, (name, condition) -> {
-                    createdName.set(name);
-                    createdCondition.set(condition);
-                }, List::of, (field, filter) -> { }, () -> { });
+        FilterGroupEditor editor = new FilterGroupEditor(controller, (name, condition) -> {
+            createdName.set(name);
+            createdCondition.set(condition);
+        });
         FilterCondition condition = new FilterCondition(
                 new DomainField("State", "capitals", false, false),
                 FilterOperator.IS_NOT_EMPTY, null, null);
 
-        panel.createFilterGroup("  My exact group name  ", condition);
+        editor.createFilterGroup("  My exact group name  ", condition);
 
         assertEquals("My exact group name", createdName.get());
         assertEquals(condition, createdCondition.get());

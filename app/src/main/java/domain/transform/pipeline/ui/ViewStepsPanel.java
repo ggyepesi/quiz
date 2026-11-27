@@ -1,27 +1,30 @@
 package domain.transform.pipeline.ui;
 
-import domain.transform.FilterCondition;
-
-import objectview.Viewable;
-import objectview.field.FieldPath;
-import objectview.viewconfig.FieldRow;
-import objectview.viewconfig.FieldTableContributor;
-import objectview.viewconfig.ViewConfig;
-import objectview.viewconfig.ViewConfigEditor;
-import objectview.utils.swing.WrapLayout;
 import domain.DomainField;
-import objectview.field.FieldKind;
 import domain.curation.ScopeFilter;
-import domain.transform.ui.FieldCoverageColumns;
+import domain.transform.FilterCondition;
 import domain.transform.ui.TransformController;
 import domain.transform.ui.WorkbenchPurpose;
+import objectview.Viewable;
+import objectview.utils.swing.WrapLayout;
 
-import javax.swing.*;
-import java.awt.*;
-import java.util.ArrayList;
+import javax.swing.ButtonGroup;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JPanel;
+import javax.swing.JSplitPane;
+import javax.swing.JToggleButton;
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.FlowLayout;
+import java.util.Collection;
 import java.util.List;
-import java.util.Map;
-import domain.DomainSchemas;
+import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 
 public final class ViewStepsPanel extends JPanel {
 
@@ -29,49 +32,27 @@ public final class ViewStepsPanel extends JPanel {
         void viewStepsChanged();
     }
 
-    private final TransformController controller;
     private final Listener listener;
-    private final java.util.function.BiConsumer<String, FilterCondition> filterGroupCreator;
-    // Field selection and value scope are deliberately independent. Selecting a row says
-    // which field subsequent actions refer to; only these explicit All/Missing/Present
-    // controls change the instances shown on the right.
-    private final java.util.function.BiConsumer<DomainField, ScopeFilter> onSelectionChanged;
-    private final java.util.function.Supplier<
-            ? extends java.util.Collection<? extends Viewable>> workingSet;
-    // Declaring a new field acts on the selected class, so its button sits by the Class row.
-    private final Runnable onNewField;
-    private final WorkbenchPurpose purpose;
-    private final boolean filterGroupsOnly;
-    private boolean filterGroupCreationEnabled = true;
-    private java.util.function.Supplier<String> filterGroupName = this::askFilterGroupName;
-
-    private final JComboBox<String> memberTypeCombo = new JComboBox<>();
+    // Selecting a field and filtering shown instances are independent.
+    private final BiConsumer<DomainField, ScopeFilter> onSelectionChanged;
+    private final Supplier<? extends Collection<? extends Viewable>> workingSet;
+    private final TransformFieldPicker fields;
+    private final FilterGroupEditor filter;
     private final JComboBox<String> selectionCombo = new JComboBox<>();
     private final JComboBox<String> secondSelectionCombo = new JComboBox<>();
-    private boolean refreshingTypes;
     private boolean refreshingSchema;
 
-    // The single-select field picker: the shared field-config table in SINGLE mode over
-    // the SHARED config source, so it shows the same fields / order / types as the
-    // search/sort/view editors, with references as an inline collapsible tree. The
-    // chosen DomainField is rebuilt from the selected row's FieldRow.
-    private final ViewConfigEditor fieldPicker;
-    private final FieldCoverageColumns coverageColumns;
     private final JToggleButton allScope = new JToggleButton("All");
     private final JToggleButton missingScope = new JToggleButton("Missing");
     private final JToggleButton presentScope = new JToggleButton("Present");
     private ScopeFilter scopeFilter = ScopeFilter.ALL;
 
-    private final FilterConditionEditor filterCondition;
-    private final JButton addFilterGroup = new JButton("Add filter group");
-
     public ViewStepsPanel(
             TransformController controller,
             Listener listener,
-            java.util.function.BiConsumer<String, FilterCondition> filterGroupCreator,
-            java.util.function.Supplier<
-                    ? extends java.util.Collection<? extends Viewable>> workingSet,
-            java.util.function.BiConsumer<DomainField, ScopeFilter> onSelectionChanged,
+            BiConsumer<String, FilterCondition> filterGroupCreator,
+            Supplier<? extends Collection<? extends Viewable>> workingSet,
+            BiConsumer<DomainField, ScopeFilter> onSelectionChanged,
             Runnable onNewField) {
         this(controller, listener, filterGroupCreator, workingSet,
                 onSelectionChanged, onNewField, WorkbenchPurpose.TRANSFORM);
@@ -80,51 +61,20 @@ public final class ViewStepsPanel extends JPanel {
     public ViewStepsPanel(
             TransformController controller,
             Listener listener,
-            java.util.function.BiConsumer<String, FilterCondition> filterGroupCreator,
-            java.util.function.Supplier<
-                    ? extends java.util.Collection<? extends Viewable>> workingSet,
-            java.util.function.BiConsumer<DomainField, ScopeFilter> onSelectionChanged,
+            BiConsumer<String, FilterCondition> filterGroupCreator,
+            Supplier<? extends Collection<? extends Viewable>> workingSet,
+            BiConsumer<DomainField, ScopeFilter> onSelectionChanged,
             Runnable onNewField,
             WorkbenchPurpose purpose) {
-        this(controller, listener, filterGroupCreator, workingSet,
-                onSelectionChanged, onNewField, purpose, false);
-    }
-
-    public static ViewStepsPanel forFilterGroups(TransformController controller, Listener listener,
-            java.util.function.BiConsumer<String, FilterCondition> creator,
-            java.util.function.Supplier<? extends java.util.Collection<? extends Viewable>> members) {
-        return new ViewStepsPanel(controller, listener, creator, members,
-                null, null, WorkbenchPurpose.TRANSFORM, true);
-    }
-
-    private ViewStepsPanel(TransformController controller, Listener listener,
-            java.util.function.BiConsumer<String, FilterCondition> filterGroupCreator,
-            java.util.function.Supplier<? extends java.util.Collection<? extends Viewable>> workingSet,
-            java.util.function.BiConsumer<DomainField, ScopeFilter> onSelectionChanged,
-            Runnable onNewField, WorkbenchPurpose purpose, boolean filterGroupsOnly) {
-        this.filterGroupsOnly = filterGroupsOnly;
-        this.controller = controller;
         this.listener = listener;
-        this.filterGroupCreator = filterGroupCreator;
         this.workingSet = workingSet == null ? List::of : workingSet;
-        this.onSelectionChanged = onSelectionChanged == null
-                ? (f, s) -> { } : onSelectionChanged;
-        this.onNewField = onNewField == null ? () -> { } : onNewField;
-        this.purpose = purpose == null ? WorkbenchPurpose.TRANSFORM : purpose;
-        filterCondition = new FilterConditionEditor(controller::candidateValueSelection,
-                controller::sampleFieldValue);
-        // The same coverage contributor is used here and in curation. It describes the
-        // current group; it does not decide which part of that group is visible.
-        this.coverageColumns = new FieldCoverageColumns(
-                controller.domain(), controller::selectedType, this.workingSet);
-        this.fieldPicker = new ViewConfigEditor(new ViewConfig(), (Viewable) null,
-                coverageColumns);
+        this.onSelectionChanged = onSelectionChanged == null ? (field, scope) -> { } : onSelectionChanged;
+        boolean transformActions = purpose == null || purpose.showsTransformActions();
+        this.fields = new TransformFieldPicker(controller, this.workingSet);
+        this.filter = transformActions
+                ? new FilterGroupEditor(controller, filterGroupCreator) : null;
 
         setLayout(new BorderLayout(6, 6));
-
-        for (String t : controller.types()) {
-            memberTypeCombo.addItem(t);
-        }
         selectionCombo.addItem("All");
         secondSelectionCombo.addItem("None");
         controller.domain().selectionNames().forEach(selectionCombo::addItem);
@@ -143,44 +93,15 @@ public final class ViewStepsPanel extends JPanel {
         };
         selectionCombo.setRenderer(selectionRenderer);
         secondSelectionCombo.setRenderer(selectionRenderer);
-        memberTypeCombo.setName("view.class");
-
-        memberTypeCombo.addActionListener(e -> {
-            if (refreshingTypes) return;
-            String chosen = (String) memberTypeCombo.getSelectedItem();
-            // A JComboBox fires on re-selecting the value that's already showing;
-            // only a genuine type change should reset the steps (its groups/filters
-            // reference the old class's fields). Re-picking the same class keeps them.
-            if (java.util.Objects.equals(chosen, controller.selectedType())) {
-                return;
-            }
-            controller.selectType(chosen);
-            rebuildFieldTree();
-            fireChanged();
-        });
-
-        add(memberRow(), BorderLayout.NORTH);
-
-        if (filterGroupsOnly) {
-            add(fieldBlock(), BorderLayout.CENTER);
-            add(filterPanel(), BorderLayout.SOUTH);
-        } else if (this.purpose.showsTransformActions()) {
-            JSplitPane split = new JSplitPane(
-                    JSplitPane.VERTICAL_SPLIT,
-                    fieldBlock(),
-                    stepsBlock()
-            );
+        add(memberRow(onNewField), BorderLayout.NORTH);
+        if (filter != null) {
+            JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, fieldBlock(), filter);
             split.setResizeWeight(0.45);
             add(split, BorderLayout.CENTER);
         } else {
             add(fieldBlock(), BorderLayout.CENTER);
         }
 
-        addFilterGroup.setToolTipText(
-                "Make the instances matching this condition a named group");
-        addFilterGroup.setName("filter.addGroup");
-        addFilterGroup.setEnabled(false);
-        addFilterGroup.addActionListener(e -> requestAddFilterGroup());
         ButtonGroup scopeButtons = new ButtonGroup();
         scopeButtons.add(allScope);
         scopeButtons.add(missingScope);
@@ -190,53 +111,37 @@ public final class ViewStepsPanel extends JPanel {
         missingScope.addActionListener(e -> selectScope(ScopeFilter.MISSING));
         presentScope.addActionListener(e -> selectScope(ScopeFilter.PRESENT));
 
-        // Every class opens on its root group (all instances, no steps) — build
-        // groups/filters yourself. Select the first member type to seed the field tree.
-        if (memberTypeCombo.getItemCount() > 0) {
-            controller.selectType((String) memberTypeCombo.getSelectedItem());
-            rebuildFieldTree();
-        }
+        fields.onChange(this::onFieldSelectionChanged, this::fireChanged);
     }
 
     /** Refresh after TransformApp creates a new semantic subclass. */
     public void refreshTypes(String selectedType) {
-        refreshingTypes = true;
-        try {
-            memberTypeCombo.removeAllItems();
-            for (String type : controller.types()) memberTypeCombo.addItem(type);
-            if (selectedType != null) memberTypeCombo.setSelectedItem(selectedType);
-        } finally {
-            refreshingTypes = false;
-        }
-        controller.selectType((String) memberTypeCombo.getSelectedItem());
-        rebuildFieldTree();
+        fields.refreshTypes(selectedType);
     }
 
     /** Rebuild fields when the selected group's explicit type specification changes. */
     public void refreshSchema() {
         refreshingSchema = true;
         try {
-            rebuildFieldTree();
+            fields.refreshFields();
         } finally {
             refreshingSchema = false;
         }
     }
 
-    private JComponent memberRow() {
-        JPanel p = new JPanel(new WrapLayout(FlowLayout.LEFT, 6, 4));
-        p.add(new JLabel("Class:"));
-        p.add(memberTypeCombo);
-        if (!filterGroupsOnly && selectionCombo.getItemCount() > 1) {
+    private JComponent memberRow(Runnable onNewField) {
+        JPanel p = fields.classRow();
+        if (selectionCombo.getItemCount() > 1) {
             p.add(new JLabel("Selection:"));
             p.add(selectionCombo);
             p.add(new JLabel("∩"));
             p.add(secondSelectionCombo);
         }
-        if (!filterGroupsOnly && purpose.showsTransformActions()) {
+        if (filter != null) {
             // "New field…" sits with the class it declares a field on.
             JButton newField = new JButton("New field…");
             newField.setName("transform.newField");
-            newField.addActionListener(e -> onNewField.run());
+            newField.addActionListener(e -> { if (onNewField != null) onNewField.run(); });
             p.add(newField);
         }
         return p;
@@ -259,137 +164,26 @@ public final class ViewStepsPanel extends JPanel {
     }
 
     private JComponent fieldBlock() {
-        JPanel p = new JPanel(new BorderLayout(4, 4));
-        p.setBorder(BorderFactory.createTitledBorder(
-                "Field — pick one (a reference's nested fields are indented below it)"));
-        fieldPicker.setChangeListener(this::onFieldSelectionChanged);
-        p.add(fieldPicker, BorderLayout.CENTER);
+        JPanel p = fields.fieldBlock();
         JPanel scopes = new JPanel(new WrapLayout(FlowLayout.LEFT, 6, 3));
         scopes.add(new JLabel("Show:"));
         scopes.add(allScope);
         scopes.add(missingScope);
         scopes.add(presentScope);
-        if (!filterGroupsOnly) p.add(scopes, BorderLayout.SOUTH);
-        return p;
-    }
-
-    private JComponent stepsBlock() {
-        JPanel p = new JPanel(new BorderLayout(4, 4));
-        p.add(filterPanel(), BorderLayout.CENTER);
-        return p;
-    }
-
-    private JComponent filterPanel() {
-        JPanel p = new JPanel();
-        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
-
-        filterCondition.setAlignmentX(Component.LEFT_ALIGNMENT);
-        p.add(filterCondition);
-
-        // This action needs its own allocated row. As the final item in the condition's
-        // FlowLayout it wrapped at the real left-pane width, but BorderLayout.NORTH kept
-        // only one line of height and clipped the wrapped button completely.
-        JPanel action = new JPanel(new WrapLayout(FlowLayout.LEFT, 6, 3));
-        action.setAlignmentX(Component.LEFT_ALIGNMENT);
-        action.add(addFilterGroup);
-        p.add(action);
+        p.add(scopes, BorderLayout.SOUTH);
         return p;
     }
 
     /** Rebuild the field tree from the current schema — e.g. after a field is declared. */
     public void refreshFields() {
-        rebuildFieldTree();
-    }
-
-    private void rebuildFieldTree() {
-        String type = controller.selectedType();
-        if (type == null) {
-            fieldPicker.setConfigRows(new ViewConfig(), null, null, java.util.Set.of());
-        } else {
-            Viewable sample = controller.configSample(type);
-            fieldPicker.setConfigRows(
-                    sample == null ? new ViewConfig() : ViewConfig.of(sampleClass(sample)),
-                    sample,
-                    controller.fieldTypes(type),
-                    controller.structuralFields(type));
-            // Subclass-aware, like the coverage picker: show a subtype's OWN fields
-            // (e.g. USState.admissionDate) under its heading, so Filter can target them.
-            fieldPicker.setClassBranches(
-                    DomainSchemas.classBranches(controller.domain(), type));
-        }
-        onFieldSelectionChanged();
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Class<? extends Viewable> sampleClass(Viewable q) {
-        return (Class<? extends Viewable>) q.getClass();
-    }
-
-    /** The selected field as a {@link DomainField}. Prefer the domain's authoritative
-     *  shape: a dynamic snapshot row has no reflected {@link java.lang.reflect.Field}, so reconstructing
-     *  it from the row alone misclassifies e.g. {@code Collection<MediaValue>} as one
-     *  MEDIA value and loses the collection-size operators. */
-    private DomainField currentField() {
-        return domainFieldForRow(
-                controller, controller.selectedType(), fieldPicker.selectedRow());
-    }
-
-    static DomainField domainFieldForRow(
-            TransformController controller, String type, FieldRow row) {
-        if (row == null) {
-            return null;
-        }
-
-        // ObjectView keeps subtype branches under a stable synthetic config key. Resolve
-        // that presentation path once at the application boundary: domain operations must
-        // receive the real owning class and its plain field path, never @subtype:... .
-        FieldCoverageColumns.Scoped scoped = FieldCoverageColumns.scoped(type, row.path());
-        String ownerType = scoped == null ? type : scoped.type();
-        FieldPath fieldPath = scoped == null ? row.path() : scoped.path();
-
-        if (controller != null && ownerType != null) {
-            for (DomainField field : controller.fields(ownerType)) {
-                if (field.fieldPath().equals(fieldPath)) {
-                    return field;
-                }
-            }
-        }
-
-        // Fallback for a UI-contributed row not present in the DomainModel.
-        boolean reference = row.nested() != null;
-        java.lang.reflect.Field leaf = row.field();
-        boolean collection = leaf != null
-                && (java.util.Collection.class.isAssignableFrom(leaf.getType())
-                        || java.util.Map.class.isAssignableFrom(leaf.getType()))
-                || isContainerTypeLabel(row.typeLabel());
-        FieldKind kind = collection ? FieldKind.COLLECTION
-                : reference ? FieldKind.REFERENCE
-                : leaf != null ? FieldKind.ofClass(leaf.getType())
-                : FieldKind.ofTypeLabel(row.typeLabel());
-        return new DomainField(ownerType, fieldPath, reference, collection, kind);
-    }
-
-    private static boolean isContainerTypeLabel(String label) {
-        if (label == null) {
-            return false;
-        }
-        String normalized = label.trim();
-        return normalized.equals("Collection")
-                || normalized.startsWith("Collection<")
-                || normalized.equals("List")
-                || normalized.startsWith("List<")
-                || normalized.equals("Set")
-                || normalized.startsWith("Set<")
-                || normalized.equals("Map")
-                || normalized.startsWith("Map<");
+        fields.refreshFields();
     }
 
     /** Re-offer only the operators that fit the checked field's shape, and repopulate
      *  the value picker with that field's candidate values. */
     private void onFieldSelectionChanged() {
-        DomainField f = currentField();
-        if (purpose.showsTransformActions()) filterCondition.edit(f, null);
-        addFilterGroup.setEnabled(filterGroupCreationEnabled && f != null);
+        DomainField f = fields.currentField();
+        if (filter != null) filter.edit(f);
         updateScopeLabels();
         // Rebuilding rows for a newly selected group's explicit TypeSpec is a schema
         // refresh, not a user field/scope edit. Calling the parent here re-enters the
@@ -407,7 +201,7 @@ public final class ViewStepsPanel extends JPanel {
     }
 
     private void selectScope(ScopeFilter selected) {
-        DomainField field = currentField();
+        DomainField field = fields.currentField();
         scopeFilter = selected == null ? ScopeFilter.ALL : selected;
         if (scopeFilter != ScopeFilter.ALL && field == null) {
             scopeFilter = ScopeFilter.ALL;
@@ -422,17 +216,14 @@ public final class ViewStepsPanel extends JPanel {
     /** Recompute coverage after a group switch or in-place curation and refresh the labels
      *  without changing either the selected field or the explicit value scope. */
     public void refreshWorkingSet() {
-        coverageColumns.invalidate();
+        fields.refreshWorkingSet();
         updateScopeLabels();
-        fieldPicker.repaint();
     }
 
     private void updateScopeLabels() {
-        java.util.Collection<? extends Viewable> members = workingSet.get();
+        Collection<? extends Viewable> members = workingSet.get();
         int all = members == null ? 0 : members.size();
-        FieldRow row = fieldPicker.selectedRow();
-        FieldCoverageColumns.Coverage coverage = row == null
-                ? null : coverageColumns.coverage(row.path());
+        var coverage = fields.coverage();
         allScope.setText("All " + all);
         missingScope.setText("Missing " + (coverage == null ? "—" : coverage.missing()));
         presentScope.setText("Present " + (coverage == null ? "—" : coverage.present()));
@@ -440,45 +231,8 @@ public final class ViewStepsPanel extends JPanel {
         presentScope.setEnabled(coverage != null && coverage.eligible() > 0);
     }
 
-    /** Create a named filter group from the rule currently shown in this editor. */
-    public void requestAddFilterGroup() {
-        if (!filterGroupCreationEnabled) return;
-        FilterCondition c = filterCondition.condition();
-        if (c == null) {
-            JOptionPane.showMessageDialog(this, "Select a field first.");
-            return;
-        }
-        createFilterGroup(filterGroupName.get(), c);
-    }
-
-    private String askFilterGroupName() {
-        JTextField name = new JTextField("Filter", 24);
-        name.selectAll();
-        int answer = JOptionPane.showConfirmDialog(this, name,
-                "Name the new filter group", JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE);
-        return answer == JOptionPane.OK_OPTION ? name.getText() : null;
-    }
-
-    public void filterGroupCreationEnabled(boolean enabled) {
-        filterGroupCreationEnabled = enabled;
-        addFilterGroup.setEnabled(enabled && currentField() != null);
-        if (filterGroupsOnly) memberTypeCombo.setEnabled(enabled);
-    }
-
-    /** Hosts normally use the standard name dialog; test hosts can supply a response. */
-    public void filterGroupNamePrompt(java.util.function.Supplier<String> prompt) {
-        filterGroupName = prompt == null ? this::askFilterGroupName : prompt;
-    }
-
-    void createFilterGroup(String name, FilterCondition condition) {
-        if (name == null || name.isBlank() || condition == null
-                || filterGroupCreator == null) return;
-        filterGroupCreator.accept(name.trim(), condition);
-    }
-
     public DomainField selectedDomainField() {
-        return currentField();
+        return fields.currentField();
     }
 
     /** Select a newly-declared field and an explicit initial value scope in the one main
@@ -488,7 +242,7 @@ public final class ViewStepsPanel extends JPanel {
         // programmatic row selection fires its normal change notification.
         scopeFilter = ScopeFilter.ALL;
         allScope.setSelected(true);
-        fieldPicker.setSelectedPath(FieldPath.parse(path));
+        fields.selectField(path);
         selectScope(filter);
     }
 

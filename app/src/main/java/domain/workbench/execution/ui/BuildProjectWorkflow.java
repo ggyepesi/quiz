@@ -4,6 +4,7 @@ import dataset.DomainStorage;
 import domain.build.BuildProcess;
 import domain.build.ProjectBuild;
 import domain.config.GeneratedProjectModel;
+import domain.config.GeneratedProjectModelValidator;
 import domain.persistence.ProjectSaveGuard;
 import domain.transform.DynamicViewable;
 import objectview.Viewable;
@@ -38,6 +39,8 @@ public final class BuildProjectWorkflow {
                 objectview.field.RecordTypes.text("Detail"));
         objectview.field.RecordTypes.declare("File", objectview.field.RecordTypes.text("Path"));
         objectview.field.RecordTypes.declare("Written");
+        objectview.field.RecordTypes.declare("Build warning",
+                objectview.field.RecordTypes.text("Detail"));
     }
 
     public record Loaded<T>(T value, String summary) { }
@@ -68,6 +71,20 @@ public final class BuildProjectWorkflow {
                     card.put("Path", file.getPath());
                     return (Viewable) card;
                 }).toList();
+        var warnings = GeneratedProjectModelValidator.transformationBuildProblems(saved);
+        List<ProcessWorkflowPlan.Tab> tabs = new ArrayList<>();
+        tabs.add(new ProcessWorkflowPlan.Tab("Steps", steps));
+        tabs.add(new ProcessWorkflowPlan.Tab("Files it may read or write", files));
+        if (!warnings.isEmpty()) {
+            List<Viewable> cards = new ArrayList<>();
+            for (var warning : warnings) {
+                var card = card("warning:" + cards.size(), warning.location(), "Build warning");
+                card.put("Detail", warning.message());
+                cards.add(card);
+            }
+            tabs.add(new ProcessWorkflowPlan.Tab("Warnings (" + warnings.size() + ")",
+                    cards, null, null, true));
+        }
         var loaded = new AtomicReference<Loaded<T>>();
         var build = new BuildProcess(saved, storage, guard, new BuildProcess.Completion(reloadTitle,
                 (report, context) -> {
@@ -84,9 +101,9 @@ public final class BuildProjectWorkflow {
                         "Run the saved build of " + modelFile.getPath() + ". The build reuses current "
                                 + "outputs and runs the remaining steps in order. A graph awaiting review, "
                                 + "incomplete generation or a save warning stops the build. Report: "
-                                + storage.buildManifestFile(saved.name()).getPath(),
-                        List.of(new ProcessWorkflowPlan.Tab("Steps", steps),
-                                new ProcessWorkflowPlan.Tab("Files it may read or write", files)));
+                                + storage.buildManifestFile(saved.name()).getPath()
+                                + (warnings.isEmpty() ? "" : ". Review the build warnings below."),
+                        tabs);
             }
             @Override public void afterCompletion(ProcessOutcome<ProjectBuild.Report> outcome) {
                 var reloaded = loaded.getAndSet(null);
@@ -99,6 +116,12 @@ public final class BuildProjectWorkflow {
             }
             @Override public void apply(List<ProjectBuild.Report> ignored) { }
         };
+    }
+
+    /** Warnings also apply to a saved project with no build steps at all. */
+    public static String missingBuildWarnings(GeneratedProjectModel saved) {
+        return String.join("\n", GeneratedProjectModelValidator.transformationBuildProblems(saved)
+                .stream().map(GeneratedProjectModelValidator.Problem::message).toList());
     }
 
     private static DynamicViewable card(String id, String title, String type) {

@@ -40,7 +40,7 @@ class ViewStepsPanelFieldShapeTest {
         // authoritative DomainField must therefore supply collection cardinality.
         FieldRow row = FieldRow.dynamic(
                 "armsVersions", "Collection<WikidataMediaValue>", null);
-        var field = ViewStepsPanel.domainFieldForRow(controller, "State", row);
+        var field = TransformFieldPicker.domainFieldForRow(controller, "State", row);
 
         assertTrue(field.collection());
         assertEquals(FieldKind.COLLECTION, field.kind());
@@ -59,7 +59,7 @@ class ViewStepsPanelFieldShapeTest {
                 "admissionDate", FieldPath.parse(
                         "@subtype:USState.admissionDate"),
                 1, false, "FlexibleDate");
-        var field = ViewStepsPanel.domainFieldForRow(controller, "State", row);
+        var field = TransformFieldPicker.domainFieldForRow(controller, "State", row);
 
         assertEquals("USState", field.type());
         assertEquals("admissionDate", field.field());

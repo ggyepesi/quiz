@@ -11,8 +11,10 @@ import domain.config.ClassConfigurationProjection;
 import domain.config.ClassKind;
 import domain.config.GraphClassSource;
 import domain.config.ClassPopulationMode;
-import domain.curation.ScopeFilter;
-import domain.transform.pipeline.ui.ViewStepsPanel;
+import domain.transform.pipeline.ui.FilterGroupsPanel;
+import objectview.field.FieldPath;
+import objectview.render.GroupMembersView;
+import objectview.viewconfig.ViewConfigEditor;
 import domain.config.FieldCardinality;
 import domain.config.FieldConfigurationProjection;
 import domain.config.FieldSourceType;
@@ -480,15 +482,20 @@ class UnifiedWorkbenchPanelTest {
                 var workbench = new UnifiedWorkbenchPanel(domain);
                 panel.set(workbench);
                 selectAction(workbench, "Filter groups");
-                var filters = find(workbench, ViewStepsPanel.class,
-                        unused -> true);
-                filters.selectField("holderCount", ScopeFilter.ALL);
+                var filters = find(workbench, FilterGroupsPanel.class, unused -> true);
+                var oldOutline = find(filters, GroupMembersView.class, unused -> true);
+                find(filters, ViewConfigEditor.class, unused -> true)
+                        .setSelectedPath(FieldPath.of("holderCount"));
                 find(filters, JComboBox.class, combo -> "filter.operator".equals(combo.getName()))
                         .setSelectedItem(FilterOperator.GREATER_THAN);
                 find(filters, JComboBox.class, combo -> "filter.value".equals(combo.getName()))
                         .getEditor().setItem("0");
                 filters.filterGroupNamePrompt(() -> "Has holders");
                 find(filters, JButton.class, button -> "Add filter group".equals(button.getText())).doClick();
+                assertFalse(oldOutline.selectGroup(oldOutline.groups().getRootGroup(), true),
+                        "rebuilding the outline must dispose the old one");
+                var newOutline = find(filters, GroupMembersView.class, unused -> true);
+                assertEquals("Has holders", newOutline.groups().selectedGroup().getDisplayName());
                 assertNull(working.findClass("PositionsWithHolders"),
                         "making a group does not declare a class");
                 find(workbench, JTextField.class, field -> "transform.outputClass".equals(field.getName()))

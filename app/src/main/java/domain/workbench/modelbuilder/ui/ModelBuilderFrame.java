@@ -32,6 +32,7 @@ import wikidata.query.core.QueryFactory;
 import wikidata.explore.query.logical.GenerateInstancesQuery;
 import wikidata.explore.query.logical.EnrichInstancesQuery;
 import wikidata.explore.query.logical.RemapInstancesQuery;
+import domain.workbench.execution.ui.BuildProjectWorkflow;
 import domain.workbench.execution.ui.QueryObjectResultPanel;
 import domain.workbench.execution.ui.SwingQueryRunner;
 import domain.workbench.execution.ui.SwingQuerySession;
@@ -1615,19 +1616,21 @@ public class ModelBuilderFrame extends JFrame {
             return;
         }
         if (saved.buildOperations().isEmpty()) {
+            String warnings = BuildProjectWorkflow.missingBuildWarnings(saved);
             JOptionPane.showMessageDialog(this, process.swing.Dialogs.wrapped("\"" + saved.name()
                             + "\" has no build. Add its steps under Build in the project "
-                            + "overview, then save the " + kind + "."),
+                            + "overview, then save the " + kind + "."
+                            + (warnings.isBlank() ? "" : "\n\n" + warnings)),
                     "Build project", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         File builtSnapshot = storage.snapshotFile(saved.name());
-        var action = domain.workbench.execution.ui.BuildProjectWorkflow.action(
+        var action = BuildProjectWorkflow.action(
                 saved, modelFile, storage, buildGuard,
                 "Load " + modelFile.getName() + " and " + builtSnapshot.getName(),
                 say -> {
                     BuiltProject read = readBuiltProject(modelFile, say);
-                    return new domain.workbench.execution.ui.BuildProjectWorkflow.Loaded<>(read,
+                    return new BuildProjectWorkflow.Loaded<>(read,
                             read.loaded().run().dynamicObjects().size() + " saved object(s) read; mapped "
                                     + read.loaded().run().instances().size() + " instance(s)");
                 }, read -> synchronizeCompletedBuild(modelFile, read),
