@@ -19,20 +19,16 @@ import domain.compile.codegen.GeneratedViewableRuntime;
 import domain.compile.codegen.GeneratedViewableSourceGenerator;
 import domain.runtime.WikidataDynamicObject;
 import domain.runtime.WikidataDynamicObjectJsonStore;
-import domain.build.GenerationPipeline;
 import domain.build.GenerationRun;
-import domain.build.GenerateDomainProcess;
 import process.ProcessStatus;
 import process.swing.SwingProcessInputHandler;
 import process.swing.SwingProcessRunner;
 import domain.config.*;
 import work.QueryContext;
 import wikidata.query.core.QueryFactory;
-import wikidata.explore.query.logical.GenerateInstancesQuery;
-import wikidata.explore.query.logical.EnrichInstancesQuery;
-import wikidata.explore.query.logical.RemapInstancesQuery;
 import domain.workbench.execution.GenerationRunState;
 import domain.workbench.execution.ui.BuildProjectWorkflow;
+import domain.workbench.execution.ui.GenerationWorkflows;
 import domain.workbench.execution.ui.InstancesWindow;
 import domain.workbench.execution.ui.SwingQueryRunner;
 import domain.workbench.execution.ui.SwingQuerySession;
@@ -84,6 +80,8 @@ public class ModelBuilderFrame extends JFrame {
     private final InstancesWindow instancesWindow = new InstancesWindow(this, projectModel,
             runState, graphResults, this::showGraphFrontier, this::applyGraphResultFromInstances,
             this::modelFile, this::populationCreated);
+    private final GenerationWorkflows generationWorkflows =
+            new GenerationWorkflows(this::acceptGenerationRun, instancesWindow::show);
 
     private final JButton runReportButton =
             new JButton("Run report");
@@ -779,299 +777,35 @@ public class ModelBuilderFrame extends JFrame {
             }
         });
 
-        generateButton.addActionListener(e -> {
-            if (processRunner.isRunning() || queryRunner.isRunning()) return;
-            try {
-                sourceWorkbench.applyEdits();
-                GeneratedProjectModel rooted = modelRootedAtSelected();
-                String problem = membershipProblem(rooted.rootClass());
-                if (problem != null) {
-                    warnNothingToGenerate(problem);
-                    return;
-                }
-                int depth = ((Number) depthSpinner.getValue()).intValue();
-                String className = rooted.rootClass().className();
-                var executionSettings =
-                        new domain.build.GenerationExecutionSettings();
-                var compiledRun = domain.build.CompiledPipelineRun.compile(
-                        domain.build.PipelineRequest.generateClassPreview(
-                                rooted, className, depth));
-                var pipeline = new process.ProcessWorkflowPipeline(java.util.List.of(
-                        new process.ProcessWorkflowPipeline.Phase(
-                                "generate-class", "Generate selected class",
-                                "Discover and materialize the selected class with its "
-                                        + "configured depth and fields.",
-                                java.util.List.of(className, "Depth " + depth))));
-                startGenerationOperation(
-                        "Generate class — " + className,
-                        "Generate the selected class, inspect the result, then explicitly "
-                                + "accept it into the instances view.",
-                        "generate-class",
-                        new GenerateInstancesQuery(compiledRun, executionSettings, depth),
-                        pipeline, rooted, executionSettings, true, false,
-                        scope -> {
-                            scope.put("Selected class", className);
-                            scope.put("Depth", depth);
-                        });
-            } catch (Exception ex) {
-                reportGenerationError(ex);
+        generateButton.addActionListener(e -> startGeneration(() -> {
+            sourceWorkbench.applyEdits();
+            GeneratedProjectModel rooted = modelRootedAtSelected();
+            String problem = membershipProblem(rooted.rootClass());
+            if (problem != null) {
+                warnNothingToGenerate(problem);
+                return null;
             }
-        });
-
-        generateDomainButton.addActionListener(e -> {
-            if (processRunner.isRunning() || queryRunner.isRunning()) {
-                return;
-            }
-            String generationReason = runState.takeGenerationReason();
-            try {
-                sourceWorkbench.applyEdits();
-                // Per-class depth (saved on each class) is used; sync the
-                // active class's spinner value first.
-                GeneratedClassModel active = activeClass();
-                if (active != null) {
-                    active.generationDepth(
-                            ((Number) depthSpinner.getValue()).intValue());
-                }
-                // If NO class can be populated, say so instead of opening an
-                // empty instances panel.
-                java.util.Map<String, java.util.List<String>> graphAdditions =
-                        pendingGraphPopulationAdditions();
-                boolean anyGeneratable = projectModel.classes().stream()
-                                .anyMatch(c -> membershipProblem(c) == null)
-                        || !graphAdditions.isEmpty();
-                if (!anyGeneratable) {
-                    warnNothingToGenerate(membershipProblem(
-                            projectModel.rootClass()));
-                    return;
-                }
-                GeneratedProjectModel snapshot = projectModel.copy();
-                domain.build.WikidataGraphDiscoveryState
-                        .applyExpansionLedger(snapshot, runState.graphLedger());
-                domain.build.CompiledPipelineRun compiledRun =
-                        domain.build.CompiledPipelineRun.compile(
-                                domain.build.PipelineRequest
-                                        .generateDomain(snapshot, graphAdditions));
-                domain.build.GenerationRecoveryStore recovery =
-                        domain.build.GenerationRecoveryStore.in(
-                                storage, snapshot.name());
-                // A recovery graph predates these newly applied population inputs.
-                // Resuming it would materialize the old graph and silently omit them.
-                if (graphAdditions.isEmpty() && recovery.canResume(snapshot)) {
-                    Object[] choices = {"Resume materialization", "Run full generation",
-                            "Cancel"};
-                    int choice = JOptionPane.showOptionDialog(
-                            this,
-                            process.swing.Dialogs.wrapped(
-                            "A finalized graph from the interrupted run is saved at:\n"
-                                    + recovery.snapshotFile().getPath()
-                                    + "\n\nResume materialization loads that file and maps its "
-                                    + "objects. It makes no Wikidata or DBpedia requests.\n"
-                                    + "Run full generation repeats discovery, requests, "
-                                    + "construction, finalization and materialization."),
-                            "Resume generation", JOptionPane.DEFAULT_OPTION,
-                            JOptionPane.QUESTION_MESSAGE, null, choices, choices[0]);
-                    if (choice == 0) {
-                        process.ProcessWorkflowPipeline resumePipeline =
-                                new process.ProcessWorkflowPipeline(java.util.List.of(
-                                        new process.ProcessWorkflowPipeline.Phase(
-                                                domain.build
-                                                        .GenerateDomainPipeline.MATERIALIZE,
-                                                "Resume materialization",
-                                                "Load the finalized recovery graph from "
-                                                        + recovery.snapshotFile().getPath()
-                                                        + " and map it into instances.",
-                                                java.util.List.of(
-                                                        recovery.snapshotFile().getPath()))));
-                        startGenerationOperation(
-                                "Resume materialization",
-                                "Load " + recovery.snapshotFile().getPath()
-                                        + " and materialize its finalized objects without "
-                                        + "repeating remote generation.",
-                                domain.build.GenerateDomainPipeline.MATERIALIZE,
-                                new wikidata.explore.query.logical.RecoverFinalGraphQuery(
-                                        compiledRun, recovery),
-                                resumePipeline, snapshot,
-                                new domain.build.GenerationExecutionSettings(),
-                                false, false,
-                                scope -> scope.put("Recovery file",
-                                        recovery.snapshotFile().getPath()));
-                        return;
-                    }
-                    if (choice != 1) return;
-                }
-                process.ProcessWorkflowPipeline generationPipeline =
-                        domain.build.GenerateDomainPipeline.configured(compiledRun);
-                var executionSettings =
-                        new domain.build.GenerationExecutionSettings();
-                GenerateDomainProcess generation =
-                        new GenerateDomainProcess(
-                                compiledRun, generationPipeline, executionSettings, recovery);
-                java.util.List<objectview.Viewable> classCards = snapshot.classes().stream()
-                        .map(model -> {
-                            domain.transform.DynamicViewable card =
-                                    new domain.transform.DynamicViewable(
-                                            model.className(), model.className());
-                            card.type("Generated class");
-                            card.put("Depth", model.generationDepth());
-                            card.put("Fields", model.fields().size());
-                            java.util.List<String> pending = graphAdditions.get(
-                                    model.className());
-                            if (pending != null && !pending.isEmpty()) {
-                                card.put("Pending QIDs from applied graph results",
-                                        pending.size());
-                            }
-                            return (objectview.Viewable) card;
-                        }).toList();
-                process.swing.workflow.ProcessWorkflowAction<
-                        GenerationRun, GenerationRun> action =
-                        new process.swing.workflow.ProcessWorkflowAction<>() {
-                            @Override public String id() { return "generate-domain"; }
-                            @Override public process.ProcessWorkflowPipeline
-                                    pipeline() { return generationPipeline; }
-                            @Override public javax.swing.JComponent executionSettings() {
-                                return new domain.build.GenerationExecutionSettingsPanel(
-                                        executionSettings);
-                            }
-                            @Override public boolean applyAllowed(
-                                    process.ProcessStatus status) {
-                                return status != process.ProcessStatus.PARTIAL
-                                        || !executionSettings.requireComplete();
-                            }
-                            @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
-                                String title = generationReason.isBlank()
-                                        ? "Generate domain"
-                                        : "Generate domain — " + generationReason;
-                                String description = generationReason.isBlank()
-                                        ? "Generate every configured class into one shared domain snapshot."
-                                        : "Regenerate every configured class after "
-                                        + generationReason.toLowerCase(java.util.Locale.ROOT)
-                                        + ". The selected frontier nodes are now population seeds.";
-                                return new process.swing.workflow.ProcessWorkflowPlan(
-                                        title, description,
-                                        java.util.List.of(
-                                                new process.swing.workflow.ProcessWorkflowPlan.Tab(
-                                                        "Classes", classCards)));
-                            }
-                            @Override public process.Process<GenerationRun> process() {
-                                return generation;
-                            }
-                            @Override public process.swing.workflow.ProcessWorkflowResults<
-                                    GenerationRun> results(
-                                            process.ProcessOutcome<GenerationRun> outcome) {
-                                return runResults("Generate domain", "generation",
-                                        snapshot.name(), outcome.result(), outcome,
-                                        generationPipeline);
-                            }
-                            @Override public void apply(java.util.List<GenerationRun> decisions) {
-                                if (!decisions.isEmpty()) acceptGenerationRun(decisions.get(0));
-                            }
-                            @Override public void afterApply() {
-                                // Applying installs the data while the workflow dialog still
-                                // exists. Reveal the destination only after that dialog closes,
-                                // otherwise its close can steal activation back on macOS.
-                                instancesWindow.show();
-                            }
-                        };
-                logWindow.registerPipeline(
-                        "Generate domain — " + snapshot.name(), generationPipeline,
-                        snapshot.name(),
-                        storage.snapshotFile(snapshot.name()).getParentFile().toPath());
-                process.swing.workflow.SwingProcessWorkflow.start(
-                        this, processRunner, action, this::openPipelineReference);
-            } catch (Exception ex) {
-                reportGenerationError(ex);
-            }
-        });
-
+            return generationWorkflows.generateClass(rooted,
+                    ((Number) depthSpinner.getValue()).intValue(), runState.current());
+        }));
+        generateDomainButton.addActionListener(e -> startGeneration(this::prepareDomainGeneration));
         buildProjectButton.addActionListener(e -> buildProject());
-
-        remapButton.addActionListener(e -> {
-            if (processRunner.isRunning() || queryRunner.isRunning()) return;
-            try {
-                    sourceWorkbench.applyEdits();
-                    if (runState.current() == null) {
-                        warnNothingToGenerate(
-                                "Nothing to remap yet — run Generate domain (or "
-                                        + "instances) first.");
-                        return;
-                    }
-                    // Reuse the last download; re-materialize with the current model
-                    // so canonicalization / display-name edits apply without a
-                    // re-fetch. Valid for local edits (same extraction).
-                    GeneratedProjectModel snapshot = projectModel.copy();
-                    var operationSettings =
-                            new domain.build.GenerationExecutionSettings();
-                    domain.build.RemapScope replayableScope =
-                            domain.build.RemapScope.of(runState.current());
-                    domain.build.CompiledPipelineRun compiledRun =
-                            domain.build.CompiledPipelineRun.compile(
-                                    domain.build.PipelineRequest.remap(
-                                            snapshot, runState.current().remapCheckpoint(
-                                                    runState.graphLedger())));
-                    var pipeline = domain.build.GenerateDomainPipeline
-                            .configuredRemap(compiledRun,
-                            java.util.List.of(runState.current().dynamicObjects().size()
-                                    + " existing objects", snapshot.classes().size()
-                                    + " configured classes"),
-                            replayableScope.retransform());
-                    // The remap knows what it can replay; it says so rather than
-                    // leaving the host to guess from the operation's name.
-                    domain.build.RemapScope replayable =
-                            domain.build.RemapScope.of(runState.current());
-                    startGenerationOperation(
-                            "Remap domain", "Preview local model changes without downloading data.",
-                            "remap", new RemapInstancesQuery(runState.current(), compiledRun,
-                                    domain.build.RunSteps.of(pipeline)),
-                            pipeline,
-                            snapshot, operationSettings, false, true,
-                            scope -> scope.put("Self-reference rule", replayable.retransform()
-                                    ? "Will run during reification; its keep/drop "
-                                            + "decisions are shown in the results"
-                                    : "Will not run — this run has no pre-reification "
-                                            + "pool to replay from"));
-            } catch (Exception ex) {
-                reportGenerationError(ex);
+        remapButton.addActionListener(e -> startGeneration(() -> {
+            sourceWorkbench.applyEdits();
+            if (runState.current() == null) {
+                warnNothingToGenerate("Nothing to remap yet — run Generate domain (or instances) first.");
+                return null;
             }
-        });
-
-        enrichButton.addActionListener(e -> {
-            if (processRunner.isRunning() || queryRunner.isRunning()) return;
-            try {
-                    sourceWorkbench.applyEdits();
-                    if (runState.current() == null) {
-                        warnNothingToGenerate(
-                                "Nothing to enrich yet — run Generate domain (or "
-                                        + "instances) first.");
-                        return;
-                    }
-                    // Additive: a field declared since the download needs its property
-                    // fetched for the entities already here, not a new extraction.
-                    GeneratedProjectModel snapshot = projectModel.copy();
-                    var operationSettings =
-                            new domain.build.GenerationExecutionSettings();
-                    domain.build.CompiledPipelineRun compiledRun =
-                            domain.build.CompiledPipelineRun.compile(
-                                    domain.build.PipelineRequest.enrich(
-                                            snapshot, runState.current().checkpoint(
-                                                    runState.graphLedger())));
-                    var pipeline = domain.build.GenerateDomainPipeline
-                            .configuredEnrich(
-                                    compiledRun, enrichmentDetails(snapshot, runState.current()));
-                    startGenerationOperation(
-                            "Enrich domain",
-                            "Add newly declared values to the existing population without rediscovery.",
-                            "enrich", new EnrichInstancesQuery(
-                                    runState.current(), compiledRun, operationSettings,
-                                    domain.build.RunSteps.of(pipeline)),
-                            pipeline,
-                            snapshot, operationSettings, true, true,
-                            scope -> scope.put("Self-reference rule",
-                                    "Will not run — Enrich adds values without "
-                                            + "reifying statements"));
-            } catch (Exception ex) {
-                reportGenerationError(ex);
+            return generationWorkflows.remap(projectModel, runState.current(), runState.graphLedger());
+        }));
+        enrichButton.addActionListener(e -> startGeneration(() -> {
+            sourceWorkbench.applyEdits();
+            if (runState.current() == null) {
+                warnNothingToGenerate("Nothing to enrich yet — run Generate domain (or instances) first.");
+                return null;
             }
-        });
+            return generationWorkflows.enrich(projectModel, runState.current(), runState.graphLedger());
+        }));
 
         sourceWorkbench.onReloadField(this::forgetFetchedDeclaration);
 
@@ -1134,202 +868,56 @@ public class ModelBuilderFrame extends JFrame {
         refreshProjectKindUi();
     }
 
-    private static java.util.List<String> enrichmentDetails(
-            GeneratedProjectModel snapshot, GenerationRun previous) {
-        java.util.List<String> details = new java.util.ArrayList<>();
-        details.add(previous.dynamicObjects().size() + " existing objects");
-        for (GeneratedClassModel clazz : snapshot.classes()) {
-            java.util.List<String> properties = clazz.fields().stream()
-                    .map(field -> field.mapping() == null
-                            ? "" : field.mapping().propertyPid())
-                    .filter(pid -> pid != null && !pid.isBlank())
-                    .distinct().toList();
-            if (!properties.isEmpty()) {
-                details.add(clazz.className() + " — " + String.join(", ", properties));
-            }
+    private GenerationWorkflows.Action prepareDomainGeneration() {
+        String generationReason = runState.takeGenerationReason();
+        sourceWorkbench.applyEdits();
+        // Per-class depth is saved on each class; sync the active class first.
+        GeneratedClassModel active = activeClass();
+        if (active != null) {
+            active.generationDepth(((Number) depthSpinner.getValue()).intValue());
         }
-        if (details.size() == 1) details.add("No property-backed fields configured");
-        return details;
-    }
-
-    /** What the configured rules account for in the run this operation would start from
-     *  — asked of the pool as it stands, so the plan can state it without running. */
-    private java.util.List<domain.build.RuleEffects.Effect> ruleEffects(
-            GeneratedProjectModel snapshot) {
-        if (runState.current() == null || runState.current().dynamicObjects() == null) {
-            return java.util.List.of();
+        var graphAdditions = pendingGraphPopulationAdditions();
+        boolean anyGeneratable = projectModel.classes().stream()
+                .anyMatch(c -> membershipProblem(c) == null) || !graphAdditions.isEmpty();
+        if (!anyGeneratable) {
+            warnNothingToGenerate(membershipProblem(projectModel.rootClass()));
+            return null;
         }
-        return domain.build.RuleEffects.of(
-                snapshot, runState.current().dynamicObjects());
+        return generationWorkflows.generateDomain(projectModel, runState.graphLedger(), graphAdditions,
+                storage, generationReason, runState.current(), this::chooseGenerationRecovery);
     }
 
-    /** A rendered explanation of one rule bucket, before its instance cards. */
-    private static domain.transform.DynamicViewable ruleEffectSummary(
-            domain.build.RuleEffects.Effect effect,
-            String phase) {
-        domain.transform.DynamicViewable summary = new domain.transform.DynamicViewable(
-                phase + "-rule-" + Integer.toHexString(effect.rule().hashCode()),
-                effect.rule());
-        summary.type("Rule effect");
-        summary.put("Action", effect.detail());
-        summary.put("Instances", effect.size());
-        return summary;
+    private GenerationWorkflows.RecoveryChoice chooseGenerationRecovery(File file) {
+        Object[] choices = {"Resume materialization", "Run full generation", "Cancel"};
+        int choice = JOptionPane.showOptionDialog(this, process.swing.Dialogs.wrapped(
+                "A finalized graph from the interrupted run is saved at:\n"
+                        + file.getPath()
+                        + "\n\nResume materialization loads that file and maps its "
+                        + "objects. It makes no Wikidata or DBpedia requests.\n"
+                        + "Run full generation repeats discovery, requests, "
+                        + "construction, finalization and materialization."),
+                "Resume generation", JOptionPane.DEFAULT_OPTION,
+                JOptionPane.QUESTION_MESSAGE, null, choices, choices[0]);
+        return switch (choice) {
+            case 0 -> GenerationWorkflows.RecoveryChoice.RESUME;
+            case 1 -> GenerationWorkflows.RecoveryChoice.GENERATE;
+            default -> GenerationWorkflows.RecoveryChoice.CANCEL;
+        };
     }
 
-    /**
-     * The results of any run that changes the pool, read the same way: a summary, one
-     * tab per rule that can name what it accounts for, and the whole pool last, labelled
-     * as the context it is rather than as the answer.
-     *
-     * <p>Shared because Generate had its own copy. Two operations presenting their
-     * outcome differently is how a reader learns to distrust both, and it is how the
-     * rule tabs would have reached Remap while the run that actually drops records —
-     * a generation — kept showing 47036 cards and a number.
-     */
-    private process.swing.workflow.ProcessWorkflowResults<GenerationRun> runResults(
-            String title, String phaseId, String domainName,
-            GenerationRun run, process.ProcessOutcome<GenerationRun> outcome,
-            process.ProcessWorkflowPipeline pipeline) {
-        return runResults(title, phaseId, domainName, run, outcome, pipeline, true);
-    }
-
-    private process.swing.workflow.ProcessWorkflowResults<GenerationRun> runResults(
-            String title, String phaseId, String domainName,
-            GenerationRun run, process.ProcessOutcome<GenerationRun> outcome,
-            process.ProcessWorkflowPipeline pipeline, boolean acceptRun) {
-
-        java.util.List<domain.build.RuleEffects.Effect> effects =
-                domain.build.RuleEffects.inPipelineOrder(
-                domain.build.RuleEffects.fromRun(
-                        run.fieldCoverage(), run.selfReferenceAudit(),
-                        run.ownedCompositionAudit(), run.kindClassificationAudit(),
-                        run.projectionAudit()), pipeline);
-
-        domain.transform.DynamicViewable summary = new domain.transform.DynamicViewable(
-                phaseId + "-summary", domainName);
-        summary.type("Generation result");
-        // The pool size is context, not a result: for a Remap it barely moves, so
-        // leading with it says nothing about what the run did.
-        summary.put("What the rules account for",
-                domain.build.RuleEffects.describe(effects));
-        summary.put("Self-reference audit", run.selfReferenceAudit().description());
-        summary.put("Owned composition", run.ownedCompositionAudit().description());
-        summary.put("Kind classification", run.kindClassificationAudit().description());
-        summary.put("Projections", run.projectionAudit().description());
-        summary.put("Objects in the pool", run.size());
-
-        java.util.List<process.swing.workflow.ProcessWorkflowResults.Tab<GenerationRun>>
-                tabs = new java.util.ArrayList<>();
-        tabs.add(new process.swing.workflow.ProcessWorkflowResults.Tab<>(
-                "Summary", java.util.List.of(
-                        new process.swing.workflow.ProcessWorkflowResults.Card<>(
-                                summary, () -> acceptRun ? run : null, acceptRun))));
-        for (domain.build.RuleEffects.Effect effect : effects) {
-            java.util.List<process.swing.workflow.ProcessWorkflowResults.Card<GenerationRun>>
-                    cards = new java.util.ArrayList<>();
-            cards.addAll(instanceCards(effect.instances()));
-            tabs.add(new process.swing.workflow.ProcessWorkflowResults.Tab<>(
-                    effect.phase().label() + " · " + effect.title(), cards));
+    /** The host checks its own edits and busy state, then opens the shared action. */
+    private void startGeneration(java.util.function.Supplier<GenerationWorkflows.Action> prepare) {
+        if (processRunner.isRunning() || querySession.runner().isRunning()) return;
+        try {
+            var action = prepare.get();
+            if (action == null) return;
+            logWindow.registerPipeline(action.logTitle(), action.pipeline(), action.projectName(),
+                    storage.snapshotFile(action.projectName()).getParentFile().toPath());
+            process.swing.workflow.SwingProcessWorkflow.start(
+                    this, processRunner, action, this::openPipelineReference);
+        } catch (Exception ex) {
+            reportGenerationError(ex);
         }
-        tabs.add(new process.swing.workflow.ProcessWorkflowResults.Tab<>(
-                "All objects (" + run.size() + ")", instanceCards(run.instances())));
-        return new process.swing.workflow.ProcessWorkflowResults<>(
-                title + " — results", outcome.summary(), "Accept", tabs);
-    }
-
-    static java.util.List<process.swing.workflow.ProcessWorkflowResults.Card<
-            GenerationRun>> instanceCards(java.util.List<? extends objectview.Viewable> of) {
-        return of.stream()
-                .map(instance -> new process.swing.workflow.ProcessWorkflowResults.Card<
-                        GenerationRun>(instance, () -> null, false,
-                                () -> null))
-                .toList();
-    }
-
-    private void startGenerationOperation(
-            String title, String description, String phaseId,
-            work.Query<GenerationRun> query,
-            process.ProcessWorkflowPipeline pipeline,
-            GeneratedProjectModel snapshot,
-            domain.build.GenerationExecutionSettings executionSettings,
-            boolean networked,
-            boolean showExistingRuleEffects,
-            java.util.function.Consumer<domain.transform.DynamicViewable> describeScope) {
-        var operation = new domain.build.GenerationOperationProcess(
-                title, description, phaseId, query, pipeline, executionSettings, networked);
-        domain.transform.DynamicViewable summary = new domain.transform.DynamicViewable(
-                title.toLowerCase(java.util.Locale.ROOT).replace(' ', '-'), snapshot.name());
-        summary.type("Domain operation");
-        summary.put("Existing objects", runState.current() == null ? 0 : runState.current().size());
-        summary.put("Classes", snapshot.classes().size());
-        // Whether reification runs is a property of the operation, and the caller that
-        // builds the operation knows it. Deciding it here by matching the phase id
-        // against "remap" would infer behaviour from a name — the mistake the model
-        // itself is guarded against — and a rename would silently drop the warning.
-        if (describeScope != null) {
-            describeScope.accept(summary);
-        }
-        process.swing.workflow.ProcessWorkflowAction<GenerationRun, GenerationRun> action =
-                new process.swing.workflow.ProcessWorkflowAction<>() {
-                    @Override public String id() { return phaseId; }
-                    @Override public java.util.function.Function<Object, String> valueLinker() {
-                        return wikidata.ui.WikidataLinks.valueLinker();
-                    }
-                    @Override public process.ProcessWorkflowPipeline pipeline() {
-                        return pipeline;
-                    }
-                    @Override public javax.swing.JComponent executionSettings() {
-                        return new domain.build.GenerationExecutionSettingsPanel(
-                                executionSettings, networked);
-                    }
-                    @Override public boolean applyAllowed(process.ProcessStatus status) {
-                        return status != process.ProcessStatus.PARTIAL
-                                || !executionSettings.requireComplete();
-                    }
-                    @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
-                        // A rule that can say WHICH instances it accounts for gets a tab
-                        // of its own, so the plan states what this run is about to be
-                        // about — the same reading a generation's result already gives,
-                        // where the class is the configuration and the instances are it
-                        // filled in. Evaluated, not applied: nothing here changes a thing.
-                        java.util.List<process.swing.workflow.ProcessWorkflowPlan.Tab> tabs =
-                                new java.util.ArrayList<>();
-                        tabs.add(new process.swing.workflow.ProcessWorkflowPlan.Tab(
-                                "Scope", java.util.List.of(summary)));
-                        if (showExistingRuleEffects) {
-                            for (domain.build.RuleEffects.Effect effect
-                                    : ruleEffects(snapshot)) {
-                                java.util.List<objectview.Viewable> contents =
-                                        new java.util.ArrayList<>();
-                                contents.add(ruleEffectSummary(effect, phaseId + "-plan"));
-                                contents.addAll(effect.instances());
-                                tabs.add(new process.swing.workflow.ProcessWorkflowPlan.Tab(
-                                        effect.title(), contents));
-                            }
-                        }
-                        return new process.swing.workflow.ProcessWorkflowPlan(
-                                title, description, tabs);
-                    }
-                    @Override public process.Process<GenerationRun> process() {
-                        return operation;
-                    }
-                    @Override public process.swing.workflow.ProcessWorkflowResults<GenerationRun>
-                            results(process.ProcessOutcome<GenerationRun> outcome) {
-                        return runResults(title, phaseId, snapshot.name(),
-                                outcome.result(), outcome, pipeline);
-                    }
-                    @Override public void apply(java.util.List<GenerationRun> decisions) {
-                        if (!decisions.isEmpty()) acceptGenerationRun(decisions.get(0));
-                    }
-                    @Override public void afterApply() {
-                        instancesWindow.show();
-                    }
-                };
-        logWindow.registerPipeline(title + " — " + snapshot.name(), pipeline,
-                snapshot.name(),
-                storage.snapshotFile(snapshot.name()).getParentFile().toPath());
-        process.swing.workflow.SwingProcessWorkflow.start(
-                this, processRunner, action, this::openPipelineReference);
     }
 
     /**
@@ -1639,7 +1227,7 @@ public class ModelBuilderFrame extends JFrame {
             }
             @Override public process.swing.workflow.ProcessWorkflowResults<GenerationRun>
                     results(process.ProcessOutcome<GenerationRun> ignored) {
-                return runResults("Run report", "run-report", projectModel.name(),
+                return GenerationWorkflows.runResults("Run report", "run-report", projectModel.name(),
                         report, outcome, null, false);
             }
             @Override public void apply(java.util.List<GenerationRun> decisions) { }

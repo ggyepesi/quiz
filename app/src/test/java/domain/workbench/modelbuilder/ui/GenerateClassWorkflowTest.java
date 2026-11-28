@@ -26,11 +26,14 @@ class GenerateClassWorkflowTest {
                 "Generate class must own an explicit process-workflow action");
         String action = source.substring(start, end);
 
-        assertTrue(action.contains("startGenerationOperation("),
+        assertTrue(action.contains("startGeneration("),
                 "the class run must use the same workflow host as other generation runs");
-        assertTrue(action.contains("new GenerateInstancesQuery(compiledRun, "
-                        + "executionSettings, depth)"),
-                "the settings shown in the plan must be the settings execution consumes");
+        assertTrue(action.contains("generationWorkflows.generateClass("),
+                "ModelBuilder delegates to the shared Generate class workflow");
+        assertTrue(source.contains("generationWorkflows.generateDomain(")
+                        && source.contains("generationWorkflows.remap(")
+                        && source.contains("generationWorkflows.enrich("),
+                "the other buttons also delegate rather than assembling workflows in the frame");
         assertFalse(source.contains("queryRunner.wireButton(\n                generateButton"),
                 "the legacy query dialog must not remain as a second class-generation path");
     }

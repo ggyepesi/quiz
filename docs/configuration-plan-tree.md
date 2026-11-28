@@ -441,6 +441,11 @@ the host still starts graph-frontier workflows, applies graph results and owns c
 changes. This extraction does not change how either workbench loads instances or applies saved
 curation. The Unified Workbench's saved-domain viewer keeps its existing behavior for now (#580).
 
+ModelBuilder's **Generate class**, **Generate domain**, **Remap** and **Enrich** use the shared
+`GenerationWorkflows` actions. They keep their existing plans, execution settings and explicit
+**Accept** step. The frame still settles edits, opens the workflow and installs an accepted
+run. The Unified Workbench does not adopt those actions in this slice (#580).
+
 Select a local graph class and open **Build → Project → Run graph** to run that graph on its own.
 **Plan graph run** shows ModelBuilder's traversal diagram and scope. **Execute** uses that
 plan's loaded class instances or configured population and the shared graph cache and query.

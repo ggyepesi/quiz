@@ -1,4 +1,4 @@
-package domain.workbench.modelbuilder.ui;
+package domain.workbench.execution.ui;
 
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +23,7 @@ class GenerationResultSourceLinkTest {
                         "Q28$67ADCA97-2FF9-43AD-A4DC-0349086680AC",
                         "Q28", "P1411", "Q103916", "Best Actor")));
 
-        var card = ModelBuilderFrame.instanceCards(List.of(statement)).getFirst();
+        var card = GenerationWorkflows.instanceCards(List.of(statement)).getFirst();
 
         assertNull(card.decoration().get());
         assertEquals("Nomination", card.view().getDisplayName());
@@ -226,7 +226,7 @@ class GenerationResultSourceLinkTest {
                 domain.build.GenerationRun.ProjectionAudit.notRun());
         var decision = effects.getFirst().instances().getFirst();
 
-        var card = ModelBuilderFrame.instanceCards(List.of(decision)).getFirst();
+        var card = GenerationWorkflows.instanceCards(List.of(decision)).getFirst();
 
         assertEquals(statement, decision.getIdentifier());
         assertNull(card.decoration().get());
