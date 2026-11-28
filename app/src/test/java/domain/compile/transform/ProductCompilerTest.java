@@ -6,6 +6,8 @@ import domain.DomainField;
 import domain.curation.Correction;
 import domain.curation.Corrections;
 import objectview.field.FieldPath;
+import objectview.field.FieldSet;
+import objectview.media.MediaValueData;
 import objectview.viewconfig.FieldTypeSource;
 import domain.runtime.WikidataDynamicObject;
 import domain.config.FieldCardinality;
@@ -32,6 +34,37 @@ import domain.DomainModel;
  * use their shared declarations, and QID is never a field.
  */
 class ProductCompilerTest {
+
+    @Test void aSingleValuedFieldProjectsItsFirstUsableValueWithoutDiscardingTheSavedList() {
+        var project = new GeneratedProjectModel();
+        var base = project.getOrCreateClass("MythicBeing");
+        base.addField("portrait", FieldType.IMAGE, FieldCardinality.SINGLE);
+        base.addField("artwork", FieldType.IMAGE, FieldCardinality.COLLECTION);
+        base.addField("epithet", FieldType.STRING, FieldCardinality.SINGLE);
+        var deity = project.getOrCreateClass("Deity");
+        deity.baseClassName(base.className());
+        project.rootClass(deity);
+        var entity = new WikidataDynamicObject("Q1", "A deity");
+        entity.type(deity.className());
+        var image = new MediaValueData("First", "https://example.test/first.jpg", false);
+        var other = new MediaValueData("Second", "https://example.test/second.jpg", false);
+        var supplied = List.of("not an image", image, other);
+        entity.put("portrait", supplied);
+        entity.put("artwork", List.of(image, other));
+        entity.put("epithet", List.of("Vanadís", "Mardöll"));
+
+        var domain = ProductCompiler.compile(project, List.of(entity));
+        var fields = FieldSet.of(entity, domain.fieldSchema(deity.className()));
+        assertFalse(fields.field("portrait").collection());
+        assertSame(image, fields.read("portrait"));
+        assertEquals(supplied, entity.dynamicFieldValues().get("portrait"),
+                "the view projection never rewrites the source values");
+        assertEquals(List.of(image, other), fields.read("artwork"),
+                "declared image collections still show every image");
+        assertEquals("Vanadís", fields.read("epithet"),
+                "the rule is the field's declared count, not something special about images");
+        assertEquals(List.of("Vanadís", "Mardöll"), entity.dynamicFieldValues().get("epithet"));
+    }
 
     private static GeneratedProjectModel model() {
         GeneratedProjectModel m = new GeneratedProjectModel();

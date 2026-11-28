@@ -1,6 +1,8 @@
 package domain.compile.transform;
 
 import objectview.Viewable;
+import objectview.field.FieldKind;
+import objectview.field.FieldRef;
 import domain.transform.app.ProductClass;
 import domain.transform.app.ProductDomain;
 import domain.transform.app.ProductField;
@@ -148,6 +150,7 @@ public final class ProductCompiler {
         TextPassageLinks.install(model, modeledPool);
 
         ProductSchema schema = classSchemas.withMembers(memberList);
+        projectSingleValuedFields(modeledPool, schema);
         // Give every instance of a class the SAME field order (its ProductClass
         // order), so cards read consistently instead of each entity's raw
         // extraction-insertion order.
@@ -165,6 +168,34 @@ public final class ProductCompiler {
     private static List<objectview.viewconfig.DomainGroupRoot> configuredGroupRoots(
             GeneratedProjectModel model, List<WikidataDynamicObject> pool) {
         return domain.transform.app.ConfiguredGroups.rootBindings(model, pool);
+    }
+
+    /** The saved pool keeps every value a provider returned, so a field declared single
+     * (an image, a "named after" reference, a text) may hold several. Project each such
+     * field like the generated mapper — the first value of the declared kind, in source
+     * order — without dropping source values from the pool. When no value has the declared
+     * kind (a date kept as text), the first value is shown rather than nothing. */
+    private static void projectSingleValuedFields(List<WikidataDynamicObject> pool, ProductSchema schema) {
+        Map<String, List<FieldRef>> singleByClass = new LinkedHashMap<>();
+        for (WikidataDynamicObject object : pool) {
+            List<FieldRef> single = singleByClass.computeIfAbsent(object.typeName(), type -> {
+                var fields = schema.fieldSchema(type);
+                return fields == null ? List.of() : fields.fields().stream()
+                        .filter(field -> !field.collection() && field.kind() != FieldKind.COLLECTION)
+                        .toList();
+            });
+            for (FieldRef field : single) {
+                String name = field.name();
+                if (!(object.get(name) instanceof Iterable<?>)) continue;
+                object.runtimeFieldProjection(name, stored -> {
+                    Object values = stored.get(name);
+                    Object declared = FieldCardinality.firstMapped(values,
+                            value -> FieldKind.ofValue(value) == field.kind() ? value : null);
+                    return declared != null ? declared
+                            : FieldCardinality.firstMapped(values, value -> value);
+                });
+            }
+        }
     }
 
     private static void materializeConfiguredInstanceFields(
