@@ -118,8 +118,10 @@ with their divider controls. Other multi-section hosts stay side by side unless 
 A reference to a loaded instance stays clickable even when its class is unchecked.
 Following it checks that class in **Classes shown**, reveals its tab, and focuses the card
 through the existing navigation registry (#584). Hiding a class still excludes it from the
-shared search until it is shown again. The shared Back action restores the originating tab and scroll position; manual
-tab changes and search-hit navigation do not create a Back entry.
+shared search until it is shown again. Instance tabs with search matches get a marker from
+their existing search engines, without re-running the search or changing tabs. Clearing
+the search clears the markers. The shared Back action restores the originating tab and
+scroll position; manual tab changes and search-hit navigation do not create a Back entry.
 
 The shared **Show empty fields** control applies to every card view under the same
 multi-instance host, including unchecked classes, nested tabs, group details and

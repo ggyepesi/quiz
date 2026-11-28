@@ -7,6 +7,7 @@ import objectview.render.RenderContext;
 import objectview.Viewable;
 import objectview.search.MultiSearchBar;
 import objectview.search.SearchPanel;
+import objectview.search.SearchTabMarker;
 import objectview.view.SearchableView;
 import work.QueryResultSink;
 import wikidata.explore.query.result.ObjectQueryResult;
@@ -450,6 +451,7 @@ public class QueryObjectResultPanel
             if (view.search() != null) searches.add(view.search());
             shown.add(view);
             decisions.addTab(entry.getKey() + " (" + entry.getValue().size() + ")", view);
+            if (view.search() != null) SearchTabMarker.follow(decisions, view, view.search());
         }
         JPanel panel = new JPanel(new BorderLayout(0, 4));
         JPanel header = new JPanel();

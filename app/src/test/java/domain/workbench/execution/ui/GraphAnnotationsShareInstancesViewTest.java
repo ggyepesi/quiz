@@ -1,6 +1,7 @@
 package domain.workbench.execution.ui;
 
 import objectview.Viewable;
+import objectview.view.SearchableView;
 import org.junit.jupiter.api.Test;
 import domain.transform.DynamicViewable;
 import domain.runtime.WikidataDynamicObject;
@@ -19,6 +20,8 @@ import javax.swing.JButton;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GraphAnnotationsShareInstancesViewTest {
@@ -64,6 +67,16 @@ class GraphAnnotationsShareInstancesViewTest {
         assertEquals(List.of("Position", "PositionValidity"), titles(tabs.get(0)));
         assertEquals(List.of("All (3)", "Accepted (1)", "Review (1)", "Rejected (1)"),
                 titles(tabs.get(1)));
+        SwingUtilities.invokeAndWait(() -> {
+            var partitionTabs = tabs.get(1);
+            var reviewView = (SearchableView) partitionTabs.getComponentAt(2);
+            reviewView.search().runCoordinatedSearch("Q2");
+            assertNotNull(partitionTabs.getIconAt(2));
+            assertNull(partitionTabs.getIconAt(1));
+            assertEquals(0, partitionTabs.getSelectedIndex(), "a mark must not switch subtabs");
+            reviewView.search().runCoordinatedSearch("");
+            assertNull(partitionTabs.getIconAt(2));
+        });
     }
 
     @Test void ordinaryClassesArePagedBesideGraphDecisionsInTheSharedView() throws Exception {
