@@ -49,11 +49,7 @@ public final class DomainReferenceResolver implements ReferenceResolver {
         if (existing != null) {
             return new Resolved(existing, false);
         }
-        DynamicViewable fresh = new DynamicViewable(
-                qid, label == null || label.isBlank() ? qid : label);
-        if (targetType != null && !targetType.isBlank()) {
-            fresh.type(targetType);
-        }
+        Viewable fresh = DynamicViewable.reference(qid, label, targetType);
         byQid.put(qid, fresh);
         created.put(qid, fresh);
         return new Resolved(fresh, true);

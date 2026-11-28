@@ -5,6 +5,7 @@ import domain.datasource.SourceRef;
 import domain.enrichment.EnrichmentProposal;
 import domain.datasource.evidence.EvidenceFragment;
 import domain.datasource.evidence.ExtractedClaim;
+import domain.transform.DynamicViewable;
 import objectview.Viewable;
 import wikidata.WikidataIds;
 import work.Query;
@@ -389,13 +390,15 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
             Viewable existing = existingEntity(request.currentValue(), entity.qid());
             if (existing == null && categoryRule != null && categoryRule.policy()
                     == domain.config.CategoryCandidatePolicy.EVIDENCE_ONLY) continue;
-            Viewable value = existing;
-            if (value == null) value = new domain.transform.DynamicViewable(
-                    entity.qid(), entity.label().isBlank() ? entity.qid() : entity.label());
             String targetType = request.targetSchema() == null
                     ? null : request.targetSchema().targetType();
-            if (value instanceof domain.transform.DynamicViewable dynamic
-                    && targetType != null && !targetType.isBlank()) dynamic.type(targetType);
+            Viewable value = existing;
+            if (value == null) {
+                value = DynamicViewable.reference(entity.qid(), entity.label(), targetType);
+            } else if (value instanceof DynamicViewable dynamic
+                    && targetType != null && !targetType.isBlank()) {
+                dynamic.type(targetType);
+            }
             String semantic = semanticProperty(request.targetField());
             ExtractedClaim claim = new ExtractedClaim(subjectRef(request), semantic, null,
                     EntityRef.wikidata(entity.qid()),
@@ -467,9 +470,7 @@ public final class WikipediaTextEvidenceProvider implements EnrichmentProvider {
                                                         request.subject().targetId())))),
                                 source, List.of(contentClaim));
                 instances.add(instance);
-                domain.transform.DynamicViewable proposed =
-                        new domain.transform.DynamicViewable(instanceId, label);
-                proposed.type(targetType);
+                Viewable proposed = DynamicViewable.reference(instanceId, label, targetType);
                 ExtractedClaim referenceClaim = new ExtractedClaim(subjectRef(request),
                         semanticProperty(request.targetField()), null,
                         new EntityRef("wikipedia-passage", instanceId), List.of(fragment),

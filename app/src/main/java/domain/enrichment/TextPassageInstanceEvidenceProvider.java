@@ -8,6 +8,7 @@ import domain.datasource.evidence.ExtractedClaim;
 import domain.datasource.evidence.TextPassages;
 import domain.datasource.evidence.WikipediaArticle;
 import domain.datasource.wikipedia.WikipediaDatasourceProvider;
+import domain.transform.DynamicViewable;
 import objectview.Viewable;
 import objectview.field.FieldKind;
 import wikidata.WikidataIds;
@@ -178,8 +179,7 @@ public final class TextPassageInstanceEvidenceProvider implements EnrichmentProv
                         instances.add(new EnrichmentProposal.InstanceCandidate(
                                 "text-passage-instance:" + instanceId, targetType, instanceId, label,
                                 values, source, List.of(content), false));
-                        var proposed = new domain.transform.DynamicViewable(instanceId, label);
-                        proposed.type(targetType);
+                        Viewable proposed = DynamicViewable.reference(instanceId, label, targetType);
                         fields.add(new EnrichmentProposal.FieldCandidate(
                                 "text-passage-reference:" + instanceId, "", request.targetField(),
                                 request.currentValue(), proposed, source,

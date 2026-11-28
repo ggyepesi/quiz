@@ -1,10 +1,15 @@
 package domain.transform;
 
-import objectview.annotations.Hidden;
-import objectview.annotations.DisplayField;
-import objectview.field.DynamicFields;
+import objectview.Viewable;
 import objectview.ViewableAdapter;
+import objectview.annotations.DisplayField;
+import objectview.annotations.Hidden;
+import objectview.field.DynamicFields;
+import objectview.field.FieldSchema;
+import objectview.field.FieldSet;
+import objectview.field.RecordTypes;
 
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -28,6 +33,31 @@ public class DynamicViewable extends ViewableAdapter implements DynamicFields {
         this.name = name == null || name.isBlank() ? this.id : name;
     }
 
+    /** An identity-only reference to a caller-supplied domain type, not a new record type. */
+    public static Viewable reference(String id, String name, String type) {
+        var reference = new DynamicViewable(id, name);
+        reference.type(type);
+        return reference;
+    }
+
+    /** A sample of an already declared record type, filling each field from its first
+     * non-null value so a sparse first row cannot hide the shape of the later rows. */
+    public static Viewable recordSample(String id, String type, Collection<? extends Viewable> rows) {
+        var schema = RecordTypes.schema(type);
+        if (schema == null) throw new IllegalArgumentException("No declared record type: " + type);
+        var sample = new DynamicViewable(id, type);
+        sample.type(type);
+        for (Viewable row : rows) {
+            var fields = FieldSet.of(row);
+            for (var field : schema.fields()) {
+                if (sample.get(field.name()) == null) {
+                    sample.put(field.name(), fields.read(field.name()));
+                }
+            }
+        }
+        return sample;
+    }
+
     @Override public String getIdentifier() { return id; }
     @Override public String getDisplayName() { return name; }
 
@@ -47,10 +77,10 @@ public class DynamicViewable extends ViewableAdapter implements DynamicFields {
 
     @Override public Map<String, Object> dynamicFieldValues() { return fields; }
 
-    /** Its type's declared fields ({@link objectview.field.RecordTypes}): what fields a
+    /** Its type's declared fields ({@link RecordTypes}): what fields a
      * record has is its producer's statement, never read off the values it holds. */
-    @Override public objectview.field.FieldSchema dynamicFieldSchema() {
-        return objectview.field.RecordTypes.schema(typeName());
+    @Override public FieldSchema dynamicFieldSchema() {
+        return RecordTypes.schema(typeName());
     }
 
     @Override public boolean equals(Object o) {

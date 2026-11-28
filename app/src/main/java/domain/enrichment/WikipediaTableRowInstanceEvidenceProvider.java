@@ -8,6 +8,7 @@ import domain.datasource.evidence.ExtractedClaim;
 import domain.datasource.evidence.WikipediaArticle;
 import domain.datasource.wikipedia.WikipediaDatasourceProvider;
 import domain.datasource.wikipedia.WikipediaTableRows;
+import domain.transform.DynamicViewable;
 import objectview.Viewable;
 import objectview.field.FieldKind;
 import wikidata.WikidataIds;
@@ -188,10 +189,7 @@ public final class WikipediaTableRowInstanceEvidenceProvider
                                 instanceId, label, instanceFields, source,
                                 List.of(contentClaim), true));
                         proposedRowInstances++;
-                        domain.transform.DynamicViewable rowInstance =
-                                new domain.transform.DynamicViewable(instanceId, label);
-                        rowInstance.type(spec.targetClass());
-                        proposed = rowInstance;
+                        proposed = DynamicViewable.reference(instanceId, label, spec.targetClass());
                         proposedEntity = new EntityRef("wikipedia-table-row", instanceId);
                         evidenceMethod = "reviewed Wikipedia table-row instance";
                         rationale = "The configured table row creates this typed instance; "

@@ -3,6 +3,7 @@ package domain.transform.ui;
 import domain.curation.FieldRulePromoter;
 import domain.datasource.api.SourceBinding;
 import domain.datasource.api.SourceBindingSlot;
+import domain.transform.DynamicViewable;
 
 import domain.datasource.schema.FieldType;
 import domain.datasource.discovery.ui.DiscoveryWorkbench;
@@ -1546,19 +1547,7 @@ public final class TransformWorkbenchPanel extends JPanel implements AutoCloseab
     /** One shape carrier per report kind, so Findings exposes both one-sided-edge
      * fields and population-boundary fields instead of whichever row happened first. */
     private static Viewable relationSample(String type, List<Viewable> values) {
-        domain.transform.DynamicViewable sample = new domain.transform.DynamicViewable(
-                "__relation_shape__:" + type, type);
-        sample.type(type);
-        for (Viewable value : values) {
-            objectview.field.FieldSet fields = objectview.field.FieldSet.of(value);
-            for (objectview.field.FieldRef field : fields.fields()) {
-                Object fieldValue = fields.read(field.name());
-                if (sample.get(field.name()) == null && fieldValue != null) {
-                    sample.put(field.name(), fieldValue);
-                }
-            }
-        }
-        return sample;
+        return DynamicViewable.recordSample("__relation_shape__:" + type, type, values);
     }
 
     private static String relationTabName(String type) {

@@ -1,12 +1,15 @@
 package domain.transform;
 
 import objectview.Viewable;
+import objectview.field.FieldSet;
+import objectview.field.RecordTypes;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -17,6 +20,26 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * this report supplies measurements and the original instances that explain them.
  */
 class RelationProfileRowsTest {
+
+    @Test void sampleOfDeclaredFindingsIncludesFieldsFilledOnlyByLaterRows() {
+        String type = "SampleRelationFinding";
+        RecordTypes.declare(type, RecordTypes.reference("to"), RecordTypes.reference("member"));
+        var edge = new DynamicViewable("edge", "One-sided edge");
+        edge.type(type);
+        var outside = office("outside", "Outside the population");
+        edge.put("to", outside);
+        edge.put("undeclared", "not a field of a finding");
+        var chain = new DynamicViewable("chain", "Member with an open chain");
+        chain.type(type);
+        var member = office("member", "Member");
+        chain.put("member", member);
+
+        var sample = DynamicViewable.recordSample("sample", type, List.of(edge, chain));
+        var fields = FieldSet.of(sample);
+        assertEquals(outside, fields.read("to"));
+        assertEquals(member, fields.read("member"));
+        assertNull(fields.field("undeclared"));
+    }
 
     @Test void aBranchingRelationSaysNoEndCanNameTheComponent() {
         DynamicViewable surviving = office("survivor", "Spanish ambassador to the Reich");

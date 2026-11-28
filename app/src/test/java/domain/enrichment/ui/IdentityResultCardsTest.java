@@ -1,5 +1,6 @@
 package domain.enrichment.ui;
 
+import objectview.field.FieldSet;
 import org.junit.jupiter.api.Test;
 import process.swing.workflow.ProcessWorkflowResults;
 import domain.enrichment.ResolveIdentitiesDecision;
@@ -11,6 +12,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -39,6 +41,19 @@ class IdentityResultCardsTest {
                 results.tabs().stream().map(ProcessWorkflowResults.Tab::title).toList());
         assertEquals(List.of(1, 1, 1),
                 results.tabs().stream().map(tab -> tab.cards().size()).toList());
+    }
+
+    @Test void eachOutcomeDeclaresItsVisibleFields() {
+        var results = IdentityResultCards.of(RESULT, "");
+        var candidateCounts = List.of(1, 2, 0);
+        for (int i = 0; i < results.tabs().size(); i++) {
+            var tab = results.tabs().get(i);
+            var fields = FieldSet.of(tab.cards().getFirst().view());
+            assertNotNull(fields.field("Outcome"));
+            assertNotNull(fields.field("Candidates"));
+            assertEquals(tab.title(), fields.read("Outcome"));
+            assertEquals(candidateCounts.get(i), fields.read("Candidates"));
+        }
     }
 
     @Test void onlyTheConfidentCardIsBulkSafe() {
