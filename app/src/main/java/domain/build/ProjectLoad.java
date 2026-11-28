@@ -14,6 +14,7 @@ import domain.config.ConstructInventory;
 import domain.config.GeneratedProjectModel;
 import domain.compile.transform.Canonicalization;
 import domain.compile.transform.DescriptiveVocabularyBuild;
+import domain.compile.transform.PoolCopy;
 import domain.compile.transform.SelfReferenceLedger;
 
 import java.io.File;
@@ -42,7 +43,18 @@ public final class ProjectLoad {
     public record Projection(File file, List<WikidataDynamicObject> objects,
                              List<LoadedDeclaration> loadedDeclarations,
                              GraphDiscoveryState graphDiscovery,
-                             SelfReferenceLedger selfReferences) { }
+                             SelfReferenceLedger selfReferences,
+                             Map<String, String> renames) {
+        /** The same projected graph, independently owned by another consumer. */
+        public Projection detached() {
+            return new Projection(file, PoolCopy.deepCopy(objects), loadedDeclarations,
+                    graphDiscovery, selfReferences, renames);
+        }
+
+        public String currentClass(String savedClass) {
+            return renames.getOrDefault(savedClass, savedClass);
+        }
+    }
 
     /** A loaded run, the projection it came from, and a warning when the snapshot was
      *  generated from a different model than the one it is mapped through. */
@@ -64,7 +76,7 @@ public final class ProjectLoad {
         return new WikidataDynamicObjectJsonStore().loadAllWithFieldGraph(snapshot);
     }
 
-    /** Project the decoded graph, using a detached pool when the snapshot also feeds a curated view. */
+    /** Project the decoded instance records; snapshot-owned presentation records can stay separate. */
     public static Projection project(GeneratedProjectModel model, DomainStorage storage,
                                      File snapshot, LoadedSnapshot saved,
                                      List<WikidataDynamicObject> objects) throws Exception {
@@ -77,7 +89,7 @@ public final class ProjectLoad {
         GenerationRuns.renameClasses(objects, renames);
         return new Projection(snapshot, inventory.retractRemovedClaims(objects),
                 GenerationRuns.renamedDeclarations(saved.loadedDeclarations(), renames),
-                saved.graphDiscovery(), saved.selfReferences());
+                saved.graphDiscovery(), saved.selfReferences(), renames);
     }
 
     /**

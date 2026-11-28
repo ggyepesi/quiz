@@ -1,6 +1,7 @@
 package domain.transform.app;
 
 import dataset.DomainStorage;
+import domain.build.GenerationRuns;
 import domain.build.ProjectLoad;
 import domain.build.ProjectSave;
 import domain.config.FieldCardinality;
@@ -11,7 +12,12 @@ import domain.curation.ManualCuration;
 import domain.datasource.schema.FieldType;
 import domain.runtime.WikidataDynamicObject;
 import domain.runtime.WikidataDynamicObjectJsonStore;
+import domain.runtime.WikidataDynamicObjectJsonStore.GroupRootBinding;
+import domain.runtime.SnapshotDomain;
+import domain.transform.EditableGroup;
 import domain.transform.ui.ProjectBacking;
+import objectview.Viewable;
+import objectview.viewconfig.DomainGroupRoot;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -20,10 +26,63 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProjectRunCurationTest {
     @TempDir Path temporary;
+
+    @Test void aClassRenameProjectsBothViewsAndKeepsItsSavedGroup() throws Exception {
+        var storage = DomainStorage.in(temporary.toFile());
+        var model = new GeneratedProjectModel();
+        model.name("Example");
+        model.rootClass().className("Character");
+        model.rootClass().seedQids().add("Q1");
+        model.rootClass().addField("description", FieldType.TEXT, FieldCardinality.SINGLE);
+        var one = character("Q1", "One", "Generated description");
+        ProjectSave.plan(new ProjectSave.Input(model,
+                new ProjectSave.Run(List.of(one), List.of(), null, model.copy()),
+                null, List.of()), storage).write();
+        var snapshot = storage.snapshotFile(model.name());
+        var modelFile = storage.modelFile(model.name());
+
+        var group = new EditableGroup("Selected characters");
+        group.replaceMembers(List.of(one));
+        var schema = new SnapshotDomain(List.of(one));
+        var converted = ViewableToWdo.convertDomain(List.of(one),
+                List.of(new DomainGroupRoot("Character", group)), schema);
+        new WikidataDynamicObjectJsonStore().saveWithGroupRootBindings(converted.memberRoots(),
+                converted.groupRootBindings().stream()
+                        .map(binding -> new GroupRootBinding(binding.memberType(), binding.root())).toList(),
+                snapshot, schema);
+
+        var curation = ManualCuration.forSnapshot(snapshot);
+        curation.put("Q1", "description", "Accepted description");
+        curation.save();
+        model.renameClass("Character", "Person");
+        new GeneratedProjectModelStore().save(model, modelFile);
+
+        var opened = DomainCatalog.openRun(snapshot, modelFile, storage, ignored -> { });
+        var run = opened.loaded().run();
+        try {
+            assertEquals(List.of("Person"), run.instances().stream().map(Viewable::typeName).toList());
+            var view = opened.domain();
+            assertEquals(List.of("Person"), view.memberRoots().stream().map(Viewable::typeName).toList());
+            var viewed = view.memberRoots().iterator().next();
+            assertNotSame(run.dynamicObjects().getFirst(), viewed);
+            assertEquals("Accepted description", value(view.memberRoots(), "Q1"));
+            assertEquals("Generated description", value(run.dynamicObjects(), "Q1"));
+            var binding = view.groupRootBindings().getFirst();
+            assertEquals("Person", binding.memberType());
+            assertEquals("Selected characters", binding.root().getDisplayName());
+            assertSame(viewed, binding.root().getMembers().iterator().next());
+            assertEquals("Character", new WikidataDynamicObjectJsonStore().load(snapshot).getFirst().typeName(),
+                    "opening a renamed model never rewrites its snapshot");
+        } finally {
+            GenerationRuns.handOver(run, null);
+        }
+    }
 
     @Test void savingAnAcceptedRunNeverMakesItsCurationPermanent() throws Exception {
         var storage = DomainStorage.in(temporary.toFile());

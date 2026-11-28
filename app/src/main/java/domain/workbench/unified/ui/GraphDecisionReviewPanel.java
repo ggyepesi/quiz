@@ -29,7 +29,7 @@ final class GraphDecisionReviewPanel extends JPanel {
     private final Set<GeneratedClassModel> edited = new LinkedHashSet<>();
     private final Consumer<Boolean> onLoading;
     private final Consumer<String> report;
-    private final Runnable onEdit;
+    private final Runnable annotationsChanged;
     private final BooleanSupplier beforeLoad;
     private ProjectBacking project;
     private GraphResults results;
@@ -38,12 +38,12 @@ final class GraphDecisionReviewPanel extends JPanel {
     private boolean enabled = true;
 
     GraphDecisionReviewPanel(ProjectBacking project, BooleanSupplier beforeLoad,
-            Consumer<Boolean> onLoading, Consumer<String> report, Runnable onEdit) {
+            Consumer<Boolean> onLoading, Consumer<String> report, Runnable annotationsChanged) {
         super(new BorderLayout(0, 4));
         this.beforeLoad = beforeLoad;
         this.onLoading = onLoading;
         this.report = report;
-        this.onEdit = onEdit;
+        this.annotationsChanged = annotationsChanged;
         var tools = new JPanel(new FlowLayout(FlowLayout.LEFT));
         tools.add(load);
         tools.add(status);
@@ -138,6 +138,7 @@ final class GraphDecisionReviewPanel extends JPanel {
                     } else {
                         showResult(graph, artifact);
                     }
+                    if (artifact != null && graphResults == results) annotationsChanged.run();
                 } catch (Exception failure) {
                     graphResults.invalidate(graph);
                     var cause = failure.getCause() == null ? failure : failure.getCause();
@@ -194,7 +195,7 @@ final class GraphDecisionReviewPanel extends JPanel {
     private void markEdited(GeneratedClassModel graph, String change) {
         edited.add(graph);
         project.recordModelChange(change);
-        onEdit.run();
+        annotationsChanged.run();
     }
 
     private void updateStatus(GraphDiscoveryResultStore.Artifact artifact) {

@@ -78,8 +78,12 @@ public final class DomainCatalog {
 
     /** The same project catalog, with the saved run available to an execution workbench. */
     public static List<DomainEntry> runBacked() {
-        return savedProjects(DomainStorage.inDefaultLocation(), true, (snapshot, model, storage) -> {
-            var opened = openRun(snapshot, model, storage, ignored -> { });
+        return runBacked(DomainStorage.inDefaultLocation());
+    }
+
+    public static List<DomainEntry> runBacked(DomainStorage storage) {
+        return savedProjects(storage, true, (snapshot, model, location) -> {
+            var opened = openRun(snapshot, model, location, ignored -> { });
             var run = new SavedRun(opened.loaded());
             return new DelegatingDomainModel(opened.domain()) {
                 @Override public <T extends DomainCapability> T capability(Class<T> type) {
@@ -228,13 +232,17 @@ public final class DomainCatalog {
         var saved = ProjectLoad.read(snap);
         var effective = project == null ? null : project.copy();
         if (effective != null) DomainSaver.addSnapshotSubclasses(effective, saved.fieldGraph());
-        var loaded = runLog == null ? null : ProjectLoad.materialize(effective, storage,
-                ProjectLoad.project(effective, storage, snap, saved, PoolCopy.deepCopy(saved.objects())),
-                runLog);
-        // The decoded graph belongs to the curated domain; working-run and Save
-        // consumers receive a separate graph before any edits are applied here.
+        // Authored group records are snapshot presentation data, not instances of a
+        // project class. Project their ordinary members with the rest of the instance
+        // pool, but retain the group records for the inspection view.
+        var projected = effective == null ? null : ProjectLoad.project(effective, storage, snap, saved,
+                saved.objects().stream().filter(value -> !DynamicViewableGroup.isGroup(value)).toList());
+        var loaded = runLog == null ? null
+                : ProjectLoad.materialize(effective, storage, projected.detached(), runLog);
+        Function<String, String> currentClass = projected == null ? Function.identity() : projected::currentClass;
+        // Both views start with the same class claims. Only the inspection copy gets curation.
         var domain = materialize(snap, model, project, effective, guard,
-                new ArrayList<>(saved.objects()), saved, ManualCuration.forSnapshot(snap, guard));
+                new ArrayList<>(saved.objects()), saved, currentClass, ManualCuration.forSnapshot(snap, guard));
         if (guard != null) guard.check();
         return new OpenedRun(domain, loaded);
     }
@@ -248,7 +256,7 @@ public final class DomainCatalog {
     public static DomainModel inspectRun(File snapshot, GeneratedProjectModel model,
             GenerationRun run) {
         return materialize(snapshot, null, null, model, null,
-                PoolCopy.deepCopy(run.dynamicObjects()), null,
+                PoolCopy.deepCopy(run.dynamicObjects()), null, Function.identity(),
                 ManualCuration.forSnapshot(snapshot, null));
     }
 
@@ -257,7 +265,7 @@ public final class DomainCatalog {
         var snapshot = project.snapshotFile();
         var view = materialize(snapshot, project.modelFile(), project.projectModel(),
                 run.modelSnapshot(), project.saveGuard(), PoolCopy.deepCopy(run.dynamicObjects()), null,
-                ManualCuration.forSnapshot(snapshot, project.saveGuard()));
+                Function.identity(), ManualCuration.forSnapshot(snapshot, project.saveGuard()));
         if (project instanceof CuratableDomain previous) view.carryWorkingChanges(previous);
         else project.unsavedModelChanges().forEach(view::recordModelChange);
         return view;
@@ -265,7 +273,8 @@ public final class DomainCatalog {
 
     private static CuratableDomain materialize(File snap, File model, GeneratedProjectModel project,
             GeneratedProjectModel effectiveProject, ProjectSaveGuard guard,
-            List<WikidataDynamicObject> pool, LoadedSnapshot loaded, ManualCuration curation) {
+            List<WikidataDynamicObject> pool, LoadedSnapshot loaded, Function<String, String> currentClass,
+            ManualCuration curation) {
         var fieldGraph = loaded == null ? null : loaded.fieldGraph();
         var roleSelections = loaded == null ? java.util.Map.<String, List<WikidataDynamicObject>>of()
                 : loaded.roleSelections();
@@ -308,7 +317,7 @@ public final class DomainCatalog {
             objectview.group.ViewableGroup<?> root =
                     DynamicViewableGroup.adapt(binding.root());
             if (root != null) savedGroupRoots.add(
-                    new objectview.viewconfig.DomainGroupRoot(binding.memberType(), root));
+                    new objectview.viewconfig.DomainGroupRoot(currentClass.apply(binding.memberType()), root));
         });
         // A saved TransformApp root holds only what was authored there; the model's
         // configured groups are rebuilt from this load's instances and added beside it.
@@ -321,7 +330,8 @@ public final class DomainCatalog {
             var admitted = java.util.Collections.newSetFromMap(
                     new java.util.IdentityHashMap<WikidataDynamicObject, Boolean>());
             admitted.addAll(pool);
-            loaded.memberRoots().stream().filter(admitted::contains).forEach(memberRoots::add);
+            loaded.memberRoots().stream().filter(admitted::contains)
+                    .filter(WikidataDynamicObject::hasTypeStamp).forEach(memberRoots::add);
         }
         for (WikidataDynamicObject value : curatedInstances) {
             if (!memberRoots.contains(value)) memberRoots.add(value);

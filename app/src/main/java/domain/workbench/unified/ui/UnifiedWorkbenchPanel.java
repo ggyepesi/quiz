@@ -109,7 +109,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private final JPanel loadInstancesDetail = new JPanel(new BorderLayout());
     private final JButton loadInstances = new JButton("Load instances");
     private final JButton showLoadedInstances = new JButton("Show instances");
-    /** The instances in the instances window, whichever of Load and Build put them there. */
+    /** The domain available to Show instances, including the run loaded when opening a project. */
     private DomainModel shownInstances;
     private boolean instancesReady;
     private final JButton cancelLoadInstances = new JButton("Cancel load");
@@ -281,7 +281,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                 loading -> {
                     configuration.setEditingEnabled(!loading);
                     updateSave();
-                }, queries::info, this::updateSave);
+                }, queries::info, this::graphAnnotationsChanged);
         graphReviewAction = buildActions.addAction(graphRunAction, "review-graph-decisions",
                 "Review graph decisions", graphReview, null);
         instancesWindow = new InstancesWindow(this, project.projectModel(), runState,
@@ -303,6 +303,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
             runState.restoreGraphLedger(loaded.projection().graphDiscovery());
             runState.accept(loaded.run(), true);
             runState.refreshNameCollisions();
+            setInstanceDomain(domain);
             if (loaded.stale()) queries.info(loaded.staleWarning());
         }
         runSection = new RunSection(new RunSection.Actions(
@@ -805,26 +806,39 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         instancesShown = listener;
     }
 
-    private void updateInstances(DomainModel instances, boolean reveal) {
+    private void setInstanceDomain(DomainModel instances) {
         shownInstances = instances;
         showLoadedInstances.setEnabled(true);
         instancesWindow.instanceDomain(instances);
-        instancesWindow.refreshRun();
-        instancesReady = true;
+        instancesReady = false;
+    }
+
+    private void updateInstances(DomainModel instances, boolean reveal) {
+        setInstanceDomain(instances);
+        refreshInstancesView();
         revealInstances(reveal);
     }
 
+    private void refreshInstancesView() {
+        instancesWindow.refreshRun();
+        instancesReady = true;
+    }
+
+    private void graphAnnotationsChanged() {
+        // An already-built view reads the very same held annotations as graph review.
+        // Leave a not-yet-shown view deferred until Show instances.
+        if (instancesReady) refreshInstancesView();
+        updateSave();
+    }
+
     private void revealInstances(boolean reveal) {
+        if (reveal && !instancesReady) refreshInstancesView();
         if (instancesShown != null && shownInstances != null) {
             instancesShown.accept(new InstancesShown(
                     "Saved instances (" + shownInstances.memberRoots().size() + ") — "
                             + project.snapshotFile().getName(), reveal));
         }
         if (reveal && instancesShown == null) {
-            if (!instancesReady) {
-                instancesWindow.refreshRun();
-                instancesReady = true;
-            }
             instancesWindow.reveal();
         }
     }

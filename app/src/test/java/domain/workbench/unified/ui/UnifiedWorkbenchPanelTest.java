@@ -147,6 +147,7 @@ class UnifiedWorkbenchPanelTest {
             }
         };
         var panel = new AtomicReference<UnifiedWorkbenchPanel>();
+        var previousCard = new AtomicReference<objectview.Viewable>();
         SwingUtilities.invokeAndWait(() -> {
             var workbench = new UnifiedWorkbenchPanel(opened,
                     new SwingQuerySession(WikidataAccess.of(new FakeWikidataSparqlClient(), api).bind()));
@@ -177,6 +178,13 @@ class UnifiedWorkbenchPanelTest {
                     "closing the run left the previous saved graph available");
             assertEquals(beforeGraph, Files.readString(graphFile.toPath()));
             SwingUtilities.invokeAndWait(() -> {
+                workbench.onInstancesShown(ignored -> { });
+                startLoadingInstances(workbench);
+            });
+            await(() -> workbench.instancesView().displayedObjectsByType().containsKey(graph.className()),
+                    "the instances window initially shows the previously saved graph");
+            SwingUtilities.invokeAndWait(() -> {
+                previousCard.set(workbench.instancesView().displayedObjectsByType().get(graph.className()).getFirst());
                 selectAction(workbench, "Run graph");
                 find(workbench, JButton.class, b -> "Plan graph run".equals(b.getText())).doClick();
                 find(workbench, JButton.class, b -> "Execute".equals(b.getText())).doClick();
@@ -185,8 +193,13 @@ class UnifiedWorkbenchPanelTest {
             SwingUtilities.invokeAndWait(() -> {
                 assertTrue(actionNode(workbench, "Accepted — 1 total (1)") != null);
                 find(workbench, JButton.class, b -> "Keep annotations".equals(b.getText())).doClick();
-                assertEquals(List.of("Graph annotations for PositionGraph"), backing.unsavedModelChanges());
             });
+            await(() -> workbench.instancesView().displayedObjectsByType()
+                            .getOrDefault(graph.className(), List.of()).stream()
+                            .anyMatch(card -> card != previousCard.get()),
+                    "keeping a new graph must replace the old cards in the already-rendered instances window");
+            SwingUtilities.invokeAndWait(() -> find(workbench, JLabel.class,
+                    label -> "Graph annotations have unsaved changes".equals(label.getText())));
             assertEquals(beforeGraph, Files.readString(graphFile.toPath()),
                     "keeping the annotations changes only the open project");
             SwingUtilities.invokeAndWait(() ->
@@ -207,6 +220,32 @@ class UnifiedWorkbenchPanelTest {
     private static boolean hasButton(Component panel, String caption) {
         return descendants(panel).filter(JButton.class::isInstance).map(JButton.class::cast)
                 .anyMatch(button -> caption.equals(button.getText()));
+    }
+
+    @Test void openingAnExecutionProjectMakesItsInstancesAvailableWithoutAnotherLoad() throws Exception {
+        var saved = open();
+        var storage = DomainStorage.in(root.toFile());
+        var domain = DomainCatalog.runBacked(storage).getFirst().opener().open();
+        var holder = new AtomicReference<UnifiedWorkbenchPanel>();
+        var shown = new AtomicReference<UnifiedWorkbenchPanel.InstancesShown>();
+        SwingUtilities.invokeAndWait(() -> holder.set(new UnifiedWorkbenchPanel(domain)));
+        var workbench = holder.get();
+        try {
+            SwingUtilities.invokeAndWait(() -> {
+                workbench.onInstancesShown(shown::set);
+                selectAction(workbench, "Load instances");
+                var show = find(workbench, JButton.class, button -> "load.instances.show".equals(button.getName()));
+                assertTrue(show.isEnabled(), "the navigator already loaded the saved run");
+                show.doClick(0);
+            });
+            await(() -> workbench.instancesView().displayedObjectsByType().containsKey("EgyptianDeity"),
+                    "Show instances did not render the run that opened with the project");
+            assertEquals(new UnifiedWorkbenchPanel.InstancesShown(
+                    "Saved instances (1) — " + storage.snapshotFile(saved.working().name()).getName(), true),
+                    shown.get());
+        } finally {
+            SwingUtilities.invokeAndWait(workbench::close);
+        }
     }
 
     private static GeneratedProjectModel positionGraphProject() {
