@@ -435,22 +435,19 @@ raises the existing viewer without resetting it. The window includes configured 
 the saved graph annotations, partitioned as in ModelBuilder. Use **Review graph decisions**
 to edit annotations.
 
-ModelBuilder's **Show instances** window, toolbar and editable graph tabs use the shared
-run-backed `InstancesWindow`. It presents the accepted run and the project's graph results;
-the host still starts graph-frontier workflows, applies graph results and owns configuration
-changes. This extraction does not change how either workbench loads instances or applies saved
-curation. The Unified Workbench's saved-domain viewer keeps its existing behavior for now (#580).
+ModelBuilder mounts `RunSection` below the class tree; Unified Workbench mounts it on **Build**.
+Both use `GenerationWorkflows` for **Generate class**, **Generate domain**, **Remap** and
+**Enrich**, including their plans, execution settings and explicit **Accept** step. Both use
+the run-backed `InstancesWindow` for ordinary instances, the toolbar and graph decisions.
+The host still settles drafts, starts the workflow and installs the accepted run. ModelBuilder's
+separate Activity row is unchanged.
 
-ModelBuilder's **Generate class**, **Generate domain**, **Remap** and **Enrich** use the shared
-`GenerationWorkflows` actions. They keep their existing plans, execution settings and explicit
-**Accept** step. The frame still settles edits, opens the workflow and installs an accepted
-run. The Unified Workbench does not adopt those actions in this slice (#580).
-
-ModelBuilder mounts the shared `RunSection` below the class tree. It keeps the existing
-generation, reuse and inspection rows, per-class Depth control, and run-button states.
-The host still supplies the selected class, run and action callbacks. The separate Activity
-row, instance loader and curation are unchanged; adoption in the Unified Workbench follows
-in #580.
+`ProjectLoad` reads and projects the saved snapshot to the execution run. Opening a project in
+Unified Workbench also builds its curated inspection domain from that same read. Generate, Load,
+Remap and Enrich keep their raw run for subsequent execution and Save; saved corrections, merges,
+and accepted instances appear only in the inspection domain. That domain uses the same curation
+application as the saved-domain catalog. Removing a sidecar entry therefore removes its effect
+on the next load even if the project was saved in the meantime (#580).
 
 Select a local graph class and open **Build → Project → Run graph** to run that graph on its own.
 **Plan graph run** shows ModelBuilder's traversal diagram and scope. **Execute** uses that

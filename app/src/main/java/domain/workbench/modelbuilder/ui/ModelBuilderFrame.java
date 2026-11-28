@@ -3,6 +3,8 @@ package domain.workbench.modelbuilder.ui;
 import domain.persistence.ProjectSaveGuard;
 
 import domain.build.GraphResults;
+import domain.DomainModel;
+import domain.transform.app.DomainCatalog;
 
 import domain.build.GraphDiscoveryResultStore;
 
@@ -741,13 +743,13 @@ public class ModelBuilderFrame extends JFrame {
 
     private GenerationWorkflows.Action prepareClassGeneration() {
         sourceWorkbench.applyEdits();
-        GeneratedProjectModel rooted = modelRootedAtSelected();
-        String problem = membershipProblem(rooted.rootClass());
+        GeneratedClassModel selected = activeClass();
+        String problem = GenerationWorkflows.membershipProblem(projectModel, selected);
         if (problem != null) {
             warnNothingToGenerate(problem);
             return null;
         }
-        return generationWorkflows.generateClass(rooted, runSection.depth(), runState.current());
+        return generationWorkflows.generateClass(projectModel, selected, runSection.depth(), runState.current());
     }
 
     private GenerationWorkflows.Action prepareRemap() {
@@ -775,31 +777,13 @@ public class ModelBuilderFrame extends JFrame {
         storeGenerationDepth(runSection.depth());
         var graphAdditions = pendingGraphPopulationAdditions();
         boolean anyGeneratable = projectModel.classes().stream()
-                .anyMatch(c -> membershipProblem(c) == null) || !graphAdditions.isEmpty();
+                .anyMatch(c -> GenerationWorkflows.membershipProblem(projectModel, c) == null) || !graphAdditions.isEmpty();
         if (!anyGeneratable) {
-            warnNothingToGenerate(membershipProblem(projectModel.rootClass()));
+            warnNothingToGenerate(GenerationWorkflows.membershipProblem(projectModel, projectModel.rootClass()));
             return null;
         }
         return generationWorkflows.generateDomain(projectModel, runState.graphLedger(), graphAdditions,
-                storage, generationReason, runState.current(), this::chooseGenerationRecovery);
-    }
-
-    private GenerationWorkflows.RecoveryChoice chooseGenerationRecovery(File file) {
-        Object[] choices = {"Resume materialization", "Run full generation", "Cancel"};
-        int choice = JOptionPane.showOptionDialog(this, process.swing.Dialogs.wrapped(
-                "A finalized graph from the interrupted run is saved at:\n"
-                        + file.getPath()
-                        + "\n\nResume materialization loads that file and maps its "
-                        + "objects. It makes no Wikidata or DBpedia requests.\n"
-                        + "Run full generation repeats discovery, requests, "
-                        + "construction, finalization and materialization."),
-                "Resume generation", JOptionPane.DEFAULT_OPTION,
-                JOptionPane.QUESTION_MESSAGE, null, choices, choices[0]);
-        return switch (choice) {
-            case 0 -> GenerationWorkflows.RecoveryChoice.RESUME;
-            case 1 -> GenerationWorkflows.RecoveryChoice.GENERATE;
-            default -> GenerationWorkflows.RecoveryChoice.CANCEL;
-        };
+                storage, generationReason, runState.current(), file -> GenerationWorkflows.chooseRecovery(this, file));
     }
 
     /** The host checks its own edits and busy state, then opens the shared action. */
@@ -997,8 +981,10 @@ public class ModelBuilderFrame extends JFrame {
             sourceWorkbench.graphInstances(() -> runState.current() == null
                     ? List.of() : runState.current().instances());
 
+            instancesWindow.instanceDomain(null);
             instancesWindow.refreshRun();
             if (run != null) {
+                inspectCuration(run);
                 // Generation runs on a COPY of the model, so a descriptive vocabulary
                 // built from the loaded data (e.g. NomineeType, WorkGenre) lands on
                 // that copy and is otherwise lost. Fold the built values back into the
@@ -1034,6 +1020,29 @@ public class ModelBuilderFrame extends JFrame {
                 logWindow.info(domain.build.RunAudits.report(run));
             }
         });
+    }
+
+    private void inspectCuration(GenerationRun run) {
+        File snapshot = snapshotBesideModel(openModelFile);
+        if (snapshot == null) snapshot = snapshotFile();
+        if (!DomainCatalog.hasCuration(snapshot)) return;
+        File source = snapshot;
+        new SwingWorker<DomainModel, Void>() {
+            @Override protected DomainModel doInBackground() {
+                return DomainCatalog.inspectRun(source, run.modelSnapshot(), run);
+            }
+
+            @Override protected void done() {
+                if (runState.current() != run) return;
+                try {
+                    instancesWindow.instanceDomain(get());
+                    instancesWindow.refreshRun();
+                } catch (Exception failure) {
+                    logWindow.info("Could not apply curation beside " + source.getPath()
+                            + ": " + failure.getMessage() + "\n");
+                }
+            }
+        }.execute();
     }
 
     private void showGraphFrontier() {
@@ -1092,36 +1101,9 @@ public class ModelBuilderFrame extends JFrame {
         return runState.workflowSubject();
     }
 
-    /** Reopens the durable result account without pretending to execute or apply a run. */
     private void showRunReport() {
-        GenerationRun report = runState.current();
-        if (report == null) return;
-        process.ProcessOutcome<GenerationRun> outcome = process.ProcessOutcome.succeeded(
-                report, report.selfReferenceAudit().description());
-        String reportSubject = currentRunWorkflowSubject();
-        process.swing.workflow.PreparedProcessWorkflowAction<GenerationRun, GenerationRun>
-                action = new process.swing.workflow.PreparedProcessWorkflowAction<>() {
-            @Override public String id() { return "run-report"; }
-            @Override public String subject() { return reportSubject; }
-            @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
-                return new process.swing.workflow.ProcessWorkflowPlan(
-                        "Run report", "Inspect the decisions retained with this run.",
-                        java.util.List.of());
-            }
-            @Override public process.ProcessOutcome<GenerationRun> preparedOutcome() {
-                return outcome;
-            }
-            @Override public boolean applyAllowed(process.ProcessStatus status) {
-                return false;
-            }
-            @Override public process.swing.workflow.ProcessWorkflowResults<GenerationRun>
-                    results(process.ProcessOutcome<GenerationRun> ignored) {
-                return GenerationWorkflows.runResults("Run report", "run-report", projectModel.name(),
-                        report, outcome, null, false);
-            }
-            @Override public void apply(java.util.List<GenerationRun> decisions) { }
-        };
-        process.swing.workflow.SwingProcessWorkflow.start(this, processRunner, action);
+        GenerationWorkflows.showReport(this, processRunner, projectModel.name(),
+                runState.workflowSubject(), runState.current());
     }
 
     /** Fold vocabularies BUILT during generation (from a referenced field's loaded
@@ -1255,48 +1237,6 @@ public class ModelBuilderFrame extends JFrame {
     // QIDs, or an explicit seed-QID set — same rule as GenerateDomainQuery. The
     // message is specific: a set relation with a blank target is the common trap
     // (e.g. P1411 "nominated for" with no award to point at).
-    private String membershipProblem(GeneratedClassModel c) {
-        if (c == null) {
-            return "No class selected.";
-        }
-        if (c.isImported()) {
-            var input = domain.build.PopulationSourceExecution.resolve(
-                    projectModel, c, null);
-            if (input.available()) return null;
-            return "Class \"" + c.className() + "\" is imported from model \""
-                    + c.importedFrom() + "\" and contributes configuration only. "
-                    + "Generate it in that model; Generate domain here materializes "
-                    + "only the exact members of a saved population referenced by "
-                    + "this project.";
-        }
-        // A statement class is populated by reification (its subjects come from a
-        // source class or are discovered), not by a membership query — so it needs
-        // no membership target. GenerateDomainQuery reifies it regardless.
-        if (c.reifiesStatements()) {
-            return null;
-        }
-        if (domain.config.MembershipPattern.of(c, projectModel)
-                == domain.config.MembershipPattern.OWNED_COMPONENT) {
-            return "Class \"" + c.className() + "\" is produced through "
-                    + domain.config.MembershipPattern.describe(c, projectModel)
-                    + ". Use Generate domain; it has no independent query.";
-        }
-        EntityBound membership = c.effectiveMembership(projectModel);
-        if (!membership.qids().isEmpty() || membership.qualifierCondition() != null
-                || !c.seedQids().isEmpty()) {
-            return null;
-        }
-        String rel = membership.relationPid();
-        if (domain.config.MembershipPattern.relational(rel)) {
-            return "Class \"" + c.className() + "\" has relation property " + rel
-                    + " but no objects. Set the objects the relation points at "
-                    + "(e.g. the award), or add Seed QIDs.";
-        }
-        return "Class \"" + c.className() + "\" has no membership objects and no Seed "
-                + "QIDs — nothing to generate. Set the objects its property points at, "
-                + "or add Seed QIDs.";
-    }
-
     private GeneratedClassModel classByName(String name) {
         if (name == null) {
             return null;
@@ -2415,23 +2355,6 @@ public class ModelBuilderFrame extends JFrame {
         if (c != null) c.generationDepth(depth);
     }
 
-    // A detached copy of the project rooted at the selected class, so Generate/
-    // Show source/Show rule tree target whatever class is selected — not always
-    // the root. (Child-object types are derived from field configs, so the
-    // single rooted class compiles and generates standalone.)
-    private GeneratedProjectModel modelRootedAtSelected() {
-        GeneratedProjectModel sub = projectModel.copy();
-        String target = activeClass().className();
-        for (GeneratedClassModel c : sub.classes()) {
-            if (c.className().equals(target)) {
-                if (c != sub.rootClass()) {
-                    sub.rootClass(c);
-                }
-                break;
-            }
-        }
-        return sub;
-    }
 
     // Where a domain's files live is dataset.DomainStorage's business; this frame only says
     // which domain it is currently editing. The layout — "Constellations" ->

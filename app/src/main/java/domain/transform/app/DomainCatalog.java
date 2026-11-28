@@ -1,6 +1,12 @@
 package domain.transform.app;
 
+import domain.DomainCapability;
+import domain.DelegatingDomainModel;
+import domain.build.GenerationRun;
+import domain.curation.CorrectionsSidecar;
+import domain.build.ProjectLoad;
 import domain.compile.transform.BareReferenceCollapse;
+import domain.compile.transform.PoolCopy;
 import domain.compile.transform.ProductCompiler;
 import domain.runtime.SnapshotDomain;
 
@@ -18,12 +24,13 @@ import domain.legacy.LegacyDomains;
 import domain.transform.ui.DomainEntry;
 import domain.transform.ui.ProjectBacking;
 import domain.transform.ui.ReflectionDomain;
-import domain.runtime.WikidataDynamicObjectJsonStore;
+import domain.runtime.WikidataDynamicObjectJsonStore.LoadedSnapshot;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import objectview.field.FieldSchema;
@@ -69,13 +76,38 @@ public final class DomainCatalog {
         return savedProjects(storage, true);
     }
 
+    /** The same project catalog, with the saved run available to an execution workbench. */
+    public static List<DomainEntry> runBacked() {
+        return savedProjects(DomainStorage.inDefaultLocation(), true, (snapshot, model, storage) -> {
+            var opened = openRun(snapshot, model, storage, ignored -> { });
+            var run = new SavedRun(opened.loaded());
+            return new DelegatingDomainModel(opened.domain()) {
+                @Override public <T extends DomainCapability> T capability(Class<T> type) {
+                    return type == SavedRun.class ? type.cast(run) : super.capability(type);
+                }
+            };
+        });
+    }
+
+    public record SavedRun(ProjectLoad.Loaded loaded) implements DomainCapability { }
+
+    @FunctionalInterface
+    private interface ProjectOpener {
+        DomainModel open(File snapshot, File model, DomainStorage storage) throws Exception;
+    }
+
     private static List<DomainEntry> savedProjects(DomainStorage storage, boolean modelBackedOnly) {
+        return savedProjects(storage, modelBackedOnly, DomainCatalog::open);
+    }
+
+    private static List<DomainEntry> savedProjects(DomainStorage storage, boolean modelBackedOnly,
+            ProjectOpener opener) {
         List<DomainEntry> out = new ArrayList<>(
-                registered(DatasetRegistry.load(storage.registryFile()), false, modelBackedOnly, storage));
+                registered(DatasetRegistry.load(storage.registryFile()), false, modelBackedOnly, storage, opener));
         java.util.Set<String> registeredNames = out.stream().map(DomainEntry::name)
                 .collect(java.util.stream.Collectors.toSet());
         out.addAll(unregisteredProjects(storage, registeredNames,
-                name -> DomainSaver.destination(storage, name)));
+                name -> DomainSaver.destination(storage, name), opener));
         return out;
     }
 
@@ -83,12 +115,12 @@ public final class DomainCatalog {
      * forced without replacing the user's real datasets.json. */
     static List<DomainEntry> registered(
             DatasetRegistry registry, boolean servedOnly) {
-        return registered(registry, servedOnly, false, DomainStorage.inDefaultLocation());
+        return registered(registry, servedOnly, false, DomainStorage.inDefaultLocation(), DomainCatalog::open);
     }
 
     private static List<DomainEntry> registered(
             DatasetRegistry registry, boolean servedOnly, boolean modelBackedOnly,
-            DomainStorage storage) {
+            DomainStorage storage, ProjectOpener opener) {
         List<DomainEntry> out = new ArrayList<>();
         List<DatasetRegistry.Dataset> saved = registry == null
                 ? List.of() : registry.datasets().stream()
@@ -142,7 +174,7 @@ public final class DomainCatalog {
                         "Load domain \"" + d.name() + "\", its instances and saved model from "
                                 + snap.getPath() + (model.isFile()
                                 ? " and " + model.getPath() : "") + ".",
-                        () -> open(selectedSnapshot, selectedModel, storage)));
+                        () -> opener.open(selectedSnapshot, selectedModel, storage)));
             }
             consumed.add(d);
         }
@@ -167,6 +199,21 @@ public final class DomainCatalog {
      */
     public static DomainModel open(File snap, File model, DomainStorage storage)
             throws Exception {
+        return openSaved(snap, model, storage, null).domain();
+    }
+
+    /** Read both presentations of one snapshot: the raw execution run and the curated
+     * working domain. Curation never owns the graph later saved or enriched by the run. */
+    public record OpenedRun(DomainModel domain, ProjectLoad.Loaded loaded) { }
+
+    public static OpenedRun openRun(File snapshot, File model, DomainStorage storage,
+            java.util.function.Consumer<String> log) throws Exception {
+        Objects.requireNonNull(log);
+        return openSaved(snapshot, model, storage, log);
+    }
+
+    private static OpenedRun openSaved(File snap, File model, DomainStorage storage,
+            java.util.function.Consumer<String> runLog) throws Exception {
         ProjectSaveGuard guard = null;
         GeneratedProjectModel project = null;
         if (model != null && model.isFile()) {
@@ -175,16 +222,53 @@ public final class DomainCatalog {
                     CuratableDomain.snapshotBeside(model), ManualCuration.fileForSnapshot(snap));
             project = new GeneratedProjectModelStore().load(model);
         }
-        var loaded = new WikidataDynamicObjectJsonStore()
-                .loadAllWithFieldGraph(snap);
-        var pool = loaded.objects();
-        var fieldGraph = loaded.fieldGraph();
-        GeneratedProjectModel effectiveProject = project == null ? null : project.copy();
-        if (effectiveProject != null) {
-            // An older TransformApp snapshot can carry semantic subclasses its saved
-            // model lost. Resolve curation and compile using the same working model.
-            DomainSaver.addSnapshotSubclasses(effectiveProject, fieldGraph);
+        if (runLog != null && project == null) {
+            throw new IOException("No saved model at " + model);
         }
+        var saved = ProjectLoad.read(snap);
+        var effective = project == null ? null : project.copy();
+        if (effective != null) DomainSaver.addSnapshotSubclasses(effective, saved.fieldGraph());
+        var loaded = runLog == null ? null : ProjectLoad.materialize(effective, storage,
+                ProjectLoad.project(effective, storage, snap, saved, PoolCopy.deepCopy(saved.objects())),
+                runLog);
+        // The decoded graph belongs to the curated domain; working-run and Save
+        // consumers receive a separate graph before any edits are applied here.
+        var domain = materialize(snap, model, project, effective, guard,
+                new ArrayList<>(saved.objects()), saved, ManualCuration.forSnapshot(snap, guard));
+        if (guard != null) guard.check();
+        return new OpenedRun(domain, loaded);
+    }
+
+    public static boolean hasCuration(File snapshot) {
+        return ManualCuration.fileForSnapshot(snapshot).isFile()
+                || CorrectionsSidecar.beside(snapshot, ".autofix.json").isFile();
+    }
+
+    /** Apply the same presentation overlay to a newly accepted run, not its raw pool. */
+    public static DomainModel inspectRun(File snapshot, GeneratedProjectModel model,
+            GenerationRun run) {
+        return materialize(snapshot, null, null, model, null,
+                PoolCopy.deepCopy(run.dynamicObjects()), null,
+                ManualCuration.forSnapshot(snapshot, null));
+    }
+
+    /** The accepted run takes over the workbench's data but not its working configuration. */
+    public static DomainModel inspectWorkingRun(ProjectBacking project, GenerationRun run) {
+        var snapshot = project.snapshotFile();
+        var view = materialize(snapshot, project.modelFile(), project.projectModel(),
+                run.modelSnapshot(), project.saveGuard(), PoolCopy.deepCopy(run.dynamicObjects()), null,
+                ManualCuration.forSnapshot(snapshot, project.saveGuard()));
+        if (project instanceof CuratableDomain previous) view.carryWorkingChanges(previous);
+        else project.unsavedModelChanges().forEach(view::recordModelChange);
+        return view;
+    }
+
+    private static CuratableDomain materialize(File snap, File model, GeneratedProjectModel project,
+            GeneratedProjectModel effectiveProject, ProjectSaveGuard guard,
+            List<WikidataDynamicObject> pool, LoadedSnapshot loaded, ManualCuration curation) {
+        var fieldGraph = loaded == null ? null : loaded.fieldGraph();
+        var roleSelections = loaded == null ? java.util.Map.<String, List<WikidataDynamicObject>>of()
+                : loaded.roleSelections();
         java.util.function.Function<String, String> baseType = effectiveProject == null
                 ? fieldGraph::baseType
                 : type -> {
@@ -199,7 +283,6 @@ public final class DomainCatalog {
         // before compiling — so the sidecar survives regeneration. See domain.curation.
         // Manual values override; generated fills (e.g. <name>.autofix.json from a
         // fallback rule) only fill fields still absent.
-        var curation = ManualCuration.forSnapshot(snap, guard);
         List<WikidataDynamicObject> curatedInstances =
                 CuratedInstances.apply(pool, curation.instances(), baseType,
                         type -> CuratableDomain.fieldSchemaWithCuration(
@@ -213,15 +296,15 @@ public final class DomainCatalog {
 
         DomainModel base;
         if (effectiveProject == null) {
-            base = new SnapshotDomain(pool, fieldGraph, Set.of(), loaded.roleSelections());
+            base = new SnapshotDomain(pool, fieldGraph, Set.of(), roleSelections);
         } else {
             BareReferenceCollapse.apply(pool);
-            base = ProductCompiler.compile(effectiveProject, pool, loaded.roleSelections(), compiled);
+            base = ProductCompiler.compile(effectiveProject, pool, roleSelections, compiled);
         }
         // Carry the curation store so the workbench can offer a "Curate…" action.
         java.util.List<objectview.viewconfig.DomainGroupRoot> savedGroupRoots =
                 new java.util.ArrayList<>();
-        loaded.groupRootBindings().forEach(binding -> {
+        if (loaded != null) loaded.groupRootBindings().forEach(binding -> {
             objectview.group.ViewableGroup<?> root =
                     DynamicViewableGroup.adapt(binding.root());
             if (root != null) savedGroupRoots.add(
@@ -233,11 +316,16 @@ public final class DomainCatalog {
                 ConfiguredGroups.combine(
                         base.groupRootBindings(), savedGroupRoots);
         java.util.List<objectview.Viewable> memberRoots = new java.util.ArrayList<>();
-        memberRoots.addAll(loaded.memberRoots());
+        if (loaded == null) memberRoots.addAll(base.memberRoots());
+        else {
+            var admitted = java.util.Collections.newSetFromMap(
+                    new java.util.IdentityHashMap<WikidataDynamicObject, Boolean>());
+            admitted.addAll(pool);
+            loaded.memberRoots().stream().filter(admitted::contains).forEach(memberRoots::add);
+        }
         for (WikidataDynamicObject value : curatedInstances) {
             if (!memberRoots.contains(value)) memberRoots.add(value);
         }
-        if (guard != null) guard.check();
         var domain = new CuratableDomain(
                 base, curation, memberRoots, groupRoots,
                 project == null ? null : model, project, guard);
@@ -263,6 +351,11 @@ public final class DomainCatalog {
     static List<DomainEntry> unregisteredProjects(
             dataset.DomainStorage storage, java.util.Set<String> already,
             java.util.function.Function<String, File> exportFor) {
+        return unregisteredProjects(storage, already, exportFor, DomainCatalog::open);
+    }
+
+    private static List<DomainEntry> unregisteredProjects(DomainStorage storage,
+            Set<String> already, Function<String, File> exportFor, ProjectOpener opener) {
         List<DomainEntry> out = new ArrayList<>();
         for (String name : storage.modelBackedNames()) {
             if (already.contains(name)) continue;
@@ -274,7 +367,7 @@ public final class DomainCatalog {
             out.add(new DomainEntry(name, "generated",
                     "Load domain \"" + name + "\", its instances and saved model from "
                             + snapshot.getPath() + " and " + model.getPath() + ".",
-                    () -> open(snapshot, model, storage)));
+                    () -> opener.open(snapshot, model, storage)));
         }
         return out;
     }

@@ -1,5 +1,6 @@
 package domain.workbench.execution.ui;
 
+import domain.DomainModel;
 import domain.build.GenerationRun;
 import domain.build.GraphDiscoveryResultStore;
 import domain.build.GraphResults;
@@ -51,9 +52,10 @@ import java.util.stream.Collectors;
  */
 public final class InstancesWindow implements AutoCloseable {
     private final Component dialogParent;
-    private final GeneratedProjectModel model;
+    private GeneratedProjectModel model;
     private final GenerationRunState runState;
-    private final GraphResults graphResults;
+    private GraphResults graphResults;
+    private DomainModel instanceDomain;
     private final Runnable openGraphFrontier;
     private final Consumer<GraphDiscoveryResultStore.Artifact> applyGraphResult;
     private final Supplier<File> modelFile;
@@ -101,8 +103,23 @@ public final class InstancesWindow implements AutoCloseable {
         nameCollisionsChanged();
     }
 
+    public QueryObjectResultPanel view() { return instances; }
+
+    public void useProject(GeneratedProjectModel model, GraphResults results) {
+        this.model = model;
+        this.graphResults = results;
+    }
+
+    /** An optional version of the run's instances with the accepted curation applied. */
+    public void instanceDomain(DomainModel domain) { instanceDomain = domain; }
+
     public void show() {
         refresh();
+        reveal();
+    }
+
+    /** Raise the already refreshed view without rebuilding its cards or resetting search. */
+    public void reveal() {
         if (window == null) window = create(instances, toolbar);
         refreshTitle();
         SwingWindowActivation.showAndFocus(window);
@@ -111,29 +128,37 @@ public final class InstancesWindow implements AutoCloseable {
     /** Reproject the current run when the configuration or graph results change. */
     public void refresh() {
         GenerationRun run = runState.current();
-        if (run == null) return;
+        if (run == null && instanceDomain == null) return;
         // The window has one projection: the accepted run plus every graph result still
         // owned by its named graph class. Sending the run on its own would remove valid
         // annotation tabs after Generate, Load or Enrich.
-        ProjectInstancesPresentation.show(instances, model, run.objectResult(), graphResults.all(),
-                result -> GraphResultPresentation.review(result, List.of(
+        var graphs = graphResults == null ? List.<GraphDiscoveryResultStore.Artifact>of() : graphResults.all();
+        java.util.function.Function<GraphDiscoveryResultStore.Artifact, QueryObjectResultPanel.GroupedSection>
+                review = result -> GraphResultPresentation.review(result, List.of(
                         new QueryObjectResultPanel.GroupAction("Apply accepted instances",
-                                () -> applyGraphResult.accept(result))), runState::markUnsaved));
+                                () -> applyGraphResult.accept(result))), runState::markUnsaved);
+        if (instanceDomain != null) {
+            ProjectInstancesPresentation.showSaved(instances, model, instanceDomain, graphs, review);
+        } else {
+            ProjectInstancesPresentation.show(instances, model, run.objectResult(), graphs, review);
+        }
     }
 
     /** An accepted run can arrive after Show instances has already opened the frame. */
     public void refreshRun() {
         GenerationRun run = runState.current();
         if (run == null) {
-            instances.clear();
+            instances.cardDecorator(null);
         } else {
             // Graph state is presentation metadata, like the QID chip: card titles show it
             // without stored fields or any effect on search/sort. The fresh run's coverage
             // uses its snapshot, not the next edited plan.
             instances.cardDecorator(new GraphCoverageCardDecorator(runState.visibleGraphLedger(),
                     WikidataGraphExpansionPlan.compile(run.modelSnapshot()).edges()));
-            refresh();
         }
+        if (run != null || instanceDomain != null) refresh();
+        else instances.clear();
+        nameCollisionsChanged();
         updateGraphFrontierButton();
         refreshTitle();
     }
@@ -141,7 +166,11 @@ public final class InstancesWindow implements AutoCloseable {
     private void refreshTitle() {
         if (window == null) return;
         String title = instancesTitle(runState.current(), model);
-        String annotations = graphResults.all().stream()
+        if (runState.current() == null && instanceDomain != null) {
+            title = "Instances (" + instanceDomain.memberRoots().size() + ") — " + model.name();
+        }
+        String annotations = (graphResults == null ? List.<GraphDiscoveryResultStore.Artifact>of()
+                : graphResults.all()).stream()
                 .map(result -> result.type() + " " + result.instances().size())
                 .collect(Collectors.joining(", "));
         window.setTitle(annotations.isBlank() ? title : title + " · graph annotations: " + annotations);
@@ -157,6 +186,7 @@ public final class InstancesWindow implements AutoCloseable {
 
     /** Called after the host replaces the project and restores its view preferences. */
     public void reset(Collection<String> hiddenClasses) {
+        instanceDomain = null;
         nameCollisionsChanged();
         instances.clear();
         instances.hiddenClassSections(hiddenClasses);

@@ -19,6 +19,7 @@ public final class ProjectInstancesPresentation {
     public static void show(QueryObjectResultPanel viewer, GeneratedProjectModel model,
             ObjectQueryResult result, Collection<GraphDiscoveryResultStore.Artifact> graphs,
             Function<GraphDiscoveryResultStore.Artifact, QueryObjectResultPanel.GroupedSection> review) {
+        viewer.schemaDomain(null);
         viewer.configuredGroups(ConfiguredGroups.presentationBindings(model, result.objects()));
         viewer.acceptGrouped(new ObjectQueryResult(
                 ConstructInventory.of(model).visibleInstances(result.objects()), result.primaryClass(),
@@ -27,10 +28,17 @@ public final class ProjectInstancesPresentation {
 
     public static void showSaved(QueryObjectResultPanel viewer, GeneratedProjectModel model,
             DomainModel domain, Collection<GraphDiscoveryResultStore.Artifact> graphs) {
+        showSaved(viewer, model, domain, graphs,
+                graph -> GraphResultPresentation.review(graph, java.util.List.of(), null));
+    }
+
+    public static void showSaved(QueryObjectResultPanel viewer, GeneratedProjectModel model,
+            DomainModel domain, Collection<GraphDiscoveryResultStore.Artifact> graphs,
+            Function<GraphDiscoveryResultStore.Artifact, QueryObjectResultPanel.GroupedSection> review) {
         viewer.configuredGroups(ConfiguredGroups.presentationBindings(model, domain.instances()));
         viewer.schemaDomain(domain);
         viewer.acceptSavedRoots(ConstructInventory.of(model).visibleInstances(domain.memberRoots()),
-                sections(graphs, graph -> GraphResultPresentation.review(graph, java.util.List.of(), null)));
+                sections(graphs, review));
     }
 
     private static Map<String, QueryObjectResultPanel.GroupedSection> sections(

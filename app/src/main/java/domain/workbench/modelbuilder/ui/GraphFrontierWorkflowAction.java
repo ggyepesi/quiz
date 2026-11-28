@@ -21,11 +21,11 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 /** Shared workflow plug-in for reviewing and choosing graph-frontier nodes. */
-final class GraphFrontierWorkflowAction
+public final class GraphFrontierWorkflowAction
         implements PreparedProcessWorkflowAction<GraphDiscoveryState,
         GraphFrontierWorkflowAction.Decision> {
 
-    record Decision(String patternId, String targetClass, String qid) { }
+    public record Decision(String patternId, String targetClass, String qid) { }
 
     private final GraphDiscoveryState state;
     private final String subject;
@@ -40,7 +40,7 @@ final class GraphFrontierWorkflowAction
      *  caller supplies the current set instead of the ledger remembering it. */
     private final List<domain.datasource.graph.GraphEdgeDefinition> edges;
 
-    GraphFrontierWorkflowAction(String subject,
+    public GraphFrontierWorkflowAction(String subject,
                                 GraphDiscoveryState state,
                                 List<domain.datasource.graph.GraphEdgeDefinition> edges,
                                 Collection<WikidataDynamicObject> objects,

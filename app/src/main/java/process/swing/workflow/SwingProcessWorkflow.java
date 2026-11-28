@@ -83,6 +83,13 @@ public final class SwingProcessWorkflow {
     public static <R, D> JFrame start(
             Component owner, SwingProcessRunner runner, ProcessWorkflowAction<R, D> action,
             Consumer<ModelReference> navigateReference) {
+        return start(owner, runner, action, navigateReference, () -> true);
+    }
+
+    /** A windowed plan can recheck its host and the inputs it was prepared with at Execute. */
+    public static <R, D> JFrame start(
+            Component owner, SwingProcessRunner runner, ProcessWorkflowAction<R, D> action,
+            Consumer<ModelReference> navigateReference, BooleanSupplier beforeExecute) {
         Window ownerWindow = SwingUtilities.getWindowAncestor(owner);
         JFrame existing = existingWorkflow(ownerWindow, action.id(), action.subject());
         if (existing != null) {
@@ -94,7 +101,7 @@ public final class SwingProcessWorkflow {
                 return SwingWindowActivation.showAndFocus(existing);
             }
         }
-        Session<R, D> session = new Session<>(owner, runner, action, navigateReference, null);
+        Session<R, D> session = new Session<>(owner, runner, action, navigateReference, beforeExecute, null);
         ProcessOutcome<R> prepared = action.preparedOutcome();
         if (prepared == null) session.showPlan();
         else session.review(prepared);
@@ -107,7 +114,7 @@ public final class SwingProcessWorkflow {
 
     public static <R, D> void embed(SwingProcessRunner runner,
             ProcessWorkflowAction<R, D> action, Embedded host) {
-        Session<R, D> session = new Session<>(host.view(), runner, action, null, host);
+        Session<R, D> session = new Session<>(host.view(), runner, action, null, host.beforeExecute(), host);
         ProcessOutcome<R> prepared = action.preparedOutcome();
         if (prepared == null) session.showPlan();
         else session.review(prepared);
@@ -186,12 +193,14 @@ public final class SwingProcessWorkflow {
         final ProcessWorkflowPipeline pipeline;
         final ProcessWorkflowPipelinePanel pipelinePanel;
         final Embedded embedded;
+        final BooleanSupplier beforeExecute;
         boolean reviewingPrepared;
 
         Session(Component owner, SwingProcessRunner runner, ProcessWorkflowAction<R, D> action,
-                Consumer<ModelReference> navigateReference, Embedded embedded) {
+                Consumer<ModelReference> navigateReference, BooleanSupplier beforeExecute, Embedded embedded) {
             this.owner = owner; this.runner = runner; this.action = action;
             this.embedded = embedded;
+            this.beforeExecute = beforeExecute;
             this.pipeline = action.pipeline();
             this.pipelinePanel = pipeline == null ? null
                     : new ProcessWorkflowPipelinePanel(pipeline);
@@ -269,7 +278,7 @@ public final class SwingProcessWorkflow {
 
         void execute() {
             if (!action.plan().executable() || runner.isRunning()
-                    || (embedded != null && !embedded.beforeExecute().getAsBoolean())) return;
+                    || !beforeExecute.getAsBoolean()) return;
             state.execute();
             if (pipeline != null) pipeline.reset();
             JPanel panel = page("2 · Running", action.process().plan().description());

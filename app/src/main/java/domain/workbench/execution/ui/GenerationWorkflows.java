@@ -15,6 +15,9 @@ import domain.build.RuleEffects;
 import domain.build.RunSteps;
 import domain.build.WikidataGraphDiscoveryState;
 import domain.config.GeneratedClassModel;
+import domain.build.PopulationSourceExecution;
+import domain.config.MembershipPattern;
+import domain.config.EntityBound;
 import domain.config.GeneratedProjectModel;
 import domain.datasource.graph.GraphDiscoveryState;
 import domain.transform.DynamicViewable;
@@ -23,6 +26,7 @@ import objectview.field.RecordTypes;
 import process.Process;
 import process.ProcessOutcome;
 import process.ProcessStatus;
+import process.swing.SwingProcessRunner;
 import process.ProcessWorkflowPipeline;
 import process.swing.workflow.ProcessWorkflowAction;
 import process.swing.workflow.ProcessWorkflowPlan;
@@ -85,7 +89,101 @@ public final class GenerationWorkflows {
         this.showInstances = showInstances;
     }
 
-    public Action generateClass(GeneratedProjectModel rooted, int depth, GenerationRun previous) {
+    public static String membershipProblem(GeneratedProjectModel projectModel, GeneratedClassModel c) {
+        if (c == null) {
+            return "No class selected.";
+        }
+        if (c.isImported()) {
+            var input = PopulationSourceExecution.resolve(
+                    projectModel, c, null);
+            if (input.available()) return null;
+            return "Class \"" + c.className() + "\" is imported from model \""
+                    + c.importedFrom() + "\" and contributes configuration only. "
+                    + "Generate it in that model; Generate domain here materializes "
+                    + "only the exact members of a saved population referenced by "
+                    + "this project.";
+        }
+        // A statement class is populated by reification (its subjects come from a
+        // source class or are discovered), not by a membership query — so it needs
+        // no membership target. GenerateDomainQuery reifies it regardless.
+        if (c.reifiesStatements()) {
+            return null;
+        }
+        if (MembershipPattern.of(c, projectModel)
+                == MembershipPattern.OWNED_COMPONENT) {
+            return "Class \"" + c.className() + "\" is produced through "
+                    + MembershipPattern.describe(c, projectModel)
+                    + ". Use Generate domain; it has no independent query.";
+        }
+        EntityBound membership = c.effectiveMembership(projectModel);
+        if (!membership.qids().isEmpty() || membership.qualifierCondition() != null
+                || !c.seedQids().isEmpty()) {
+            return null;
+        }
+        String rel = membership.relationPid();
+        if (MembershipPattern.relational(rel)) {
+            return "Class \"" + c.className() + "\" has relation property " + rel
+                    + " but no objects. Set the objects the relation points at "
+                    + "(e.g. the award), or add Seed QIDs.";
+        }
+        return "Class \"" + c.className() + "\" has no membership objects and no Seed "
+                + "QIDs — nothing to generate. Set the objects its property points at, "
+                + "or add Seed QIDs.";
+    }
+
+    public static RecoveryChoice chooseRecovery(java.awt.Component owner, File file) {
+        Object[] choices = {"Resume materialization", "Run full generation", "Cancel"};
+        int choice = javax.swing.JOptionPane.showOptionDialog(owner, process.swing.Dialogs.wrapped(
+                "A finalized graph from the interrupted run is saved at:\n"
+                        + file.getPath()
+                        + "\n\nResume materialization loads that file and maps its "
+                        + "objects. It makes no Wikidata or DBpedia requests.\n"
+                        + "Run full generation repeats discovery, requests, "
+                        + "construction, finalization and materialization."),
+                "Resume generation", javax.swing.JOptionPane.DEFAULT_OPTION,
+                javax.swing.JOptionPane.QUESTION_MESSAGE, null, choices, choices[0]);
+        return switch (choice) {
+            case 0 -> RecoveryChoice.RESUME;
+            case 1 -> RecoveryChoice.GENERATE;
+            default -> RecoveryChoice.CANCEL;
+        };
+    }
+
+    /** Reopens the durable result account without pretending to execute or apply a run. */
+    public static void showReport(java.awt.Component owner, SwingProcessRunner runner,
+            String projectName, String reportSubject, GenerationRun report) {
+        if (report == null) return;
+        process.ProcessOutcome<GenerationRun> outcome = process.ProcessOutcome.succeeded(
+                report, report.selfReferenceAudit().description());
+        process.swing.workflow.PreparedProcessWorkflowAction<GenerationRun, GenerationRun>
+                action = new process.swing.workflow.PreparedProcessWorkflowAction<>() {
+            @Override public String id() { return "run-report"; }
+            @Override public String subject() { return reportSubject; }
+            @Override public process.swing.workflow.ProcessWorkflowPlan plan() {
+                return new process.swing.workflow.ProcessWorkflowPlan(
+                        "Run report", "Inspect the decisions retained with this run.",
+                        java.util.List.of());
+            }
+            @Override public process.ProcessOutcome<GenerationRun> preparedOutcome() {
+                return outcome;
+            }
+            @Override public boolean applyAllowed(process.ProcessStatus status) {
+                return false;
+            }
+            @Override public process.swing.workflow.ProcessWorkflowResults<GenerationRun>
+                    results(process.ProcessOutcome<GenerationRun> ignored) {
+                return runResults("Run report", "run-report", projectName,
+                        report, outcome, null, false);
+            }
+            @Override public void apply(java.util.List<GenerationRun> decisions) { }
+        };
+        process.swing.workflow.SwingProcessWorkflow.start(owner, runner, action);
+    }
+
+    /** Generates {@code selected} from a detached copy of {@code model} rooted at that class. */
+    public Action generateClass(GeneratedProjectModel model, GeneratedClassModel selected, int depth,
+            GenerationRun previous) {
+        GeneratedProjectModel rooted = rootedAt(model, selected);
         String className = rooted.rootClass().className();
         var settings = new GenerationExecutionSettings();
         var compiled = CompiledPipelineRun.compile(
@@ -102,6 +200,17 @@ public final class GenerationWorkflows {
                     scope.put("Selected class", className);
                     scope.put("Depth", depth);
                 });
+    }
+
+    /** A detached copy of the project rooted at one of its classes, found by declaration id. */
+    static GeneratedProjectModel rootedAt(GeneratedProjectModel model, GeneratedClassModel selected) {
+        GeneratedProjectModel rooted = model.copy();
+        GeneratedClassModel root = rooted.resolveClass(selected.declarationId(), selected.className());
+        if (root == null) {
+            throw new IllegalArgumentException("Class " + selected.className() + " is not in " + model.name());
+        }
+        if (root != rooted.rootClass()) rooted.rootClass(root);
+        return rooted;
     }
 
     /** Returns no action when the reader cancels the recovery choice. */

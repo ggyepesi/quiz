@@ -9,6 +9,7 @@ import domain.runtime.GenerationLog;
 import domain.runtime.LoadedDeclaration;
 import domain.runtime.WikidataDynamicObject;
 import domain.runtime.WikidataDynamicObjectJsonStore;
+import domain.runtime.WikidataDynamicObjectJsonStore.LoadedSnapshot;
 import domain.config.ConstructInventory;
 import domain.config.GeneratedProjectModel;
 import domain.compile.transform.Canonicalization;
@@ -55,15 +56,26 @@ public final class ProjectLoad {
      */
     public static Projection project(GeneratedProjectModel model, DomainStorage storage,
                                      File snapshot) throws Exception {
+        var saved = read(snapshot);
+        return project(model, storage, snapshot, saved, saved.objects());
+    }
+
+    public static LoadedSnapshot read(File snapshot) throws java.io.IOException {
+        return new WikidataDynamicObjectJsonStore().loadAllWithFieldGraph(snapshot);
+    }
+
+    /** Project the decoded graph, using a detached pool when the snapshot also feeds a curated view. */
+    public static Projection project(GeneratedProjectModel model, DomainStorage storage,
+                                     File snapshot, LoadedSnapshot saved,
+                                     List<WikidataDynamicObject> objects) throws Exception {
         Objects.requireNonNull(model, "model");
         Objects.requireNonNull(storage, "storage");
         Objects.requireNonNull(snapshot, "snapshot");
-        WikidataDynamicObjectJsonStore.LoadedSnapshot saved =
-                new WikidataDynamicObjectJsonStore().loadAllWithFieldGraph(snapshot);
+
         ConstructInventory inventory = ConstructInventory.of(model);
         Map<String, String> renames = inventory.renamesSince(storage.savedInventory(model.name()));
-        GenerationRuns.renameClasses(saved.objects(), renames);
-        return new Projection(snapshot, inventory.retractRemovedClaims(saved.objects()),
+        GenerationRuns.renameClasses(objects, renames);
+        return new Projection(snapshot, inventory.retractRemovedClaims(objects),
                 GenerationRuns.renamedDeclarations(saved.loadedDeclarations(), renames),
                 saved.graphDiscovery(), saved.selfReferences());
     }
@@ -76,9 +88,14 @@ public final class ProjectLoad {
      */
     public static Loaded load(GeneratedProjectModel model, DomainStorage storage, File snapshot,
                               Consumer<String> log) throws Exception {
+        return materialize(model, storage, project(model, storage, snapshot), log);
+    }
+
+    /** Build the editable run from the uncurated projection, without another file read. */
+    public static Loaded materialize(GeneratedProjectModel model, DomainStorage storage,
+                                     Projection projection, Consumer<String> log) throws Exception {
         Consumer<String> say = log == null ? ignored -> { } : log;
-        String stale = staleWarning(model, storage, snapshot);
-        Projection projection = project(model, storage, snapshot);
+        String stale = staleWarning(model, storage, projection.file());
         List<WikidataDynamicObject> objects = projection.objects();
 
         GeneratedProjectModel run = model.copy();

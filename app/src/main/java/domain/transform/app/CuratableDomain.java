@@ -47,7 +47,7 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
      *  Null when there is no model file, or it could not be read. */
     private final domain.config.GeneratedProjectModel workingModel;
     private final ProjectSaveGuard saveGuard;
-    private final Set<String> unsavedModelChanges = new LinkedHashSet<>();
+    private Set<String> unsavedModelChanges = new LinkedHashSet<>();
     private final java.util.Map<String, List<Viewable>> editedPopulationMembers =
             new java.util.LinkedHashMap<>();
 
@@ -108,6 +108,17 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
         } catch (Exception unreadable) {
             return new Backing(null, null);
         }
+    }
+
+    /** A new instance view of the same live project retains its working changes. */
+    void carryWorkingChanges(CuratableDomain previous) {
+        unsavedModelChanges = previous.unsavedModelChanges;
+        previous.editedPopulationMembers.keySet().forEach(name -> {
+            if (workingModel.findSelection(name) instanceof PopulationSelection selection) {
+                editedPopulationMembers.put(name,
+                        PopulationSelections.members(workingModel, selection, instances()));
+            }
+        });
     }
 
     @Override public ManualCuration curation() { return curation; }
@@ -312,6 +323,8 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
         }
     }
 
+    @Override public void modelSaved() { unsavedModelChanges.clear(); }
+
     @Override public void writeProjectModel() throws Exception {
         saveProject(() -> { }, () -> null);
     }
@@ -326,7 +339,7 @@ final class CuratableDomain extends DelegatingDomainModel implements Curatable,
             new GeneratedProjectModelStore().save(workingModel, modelFile);
             return saveSnapshot.run();
         });
-        unsavedModelChanges.clear();
+        modelSaved();
         return result;
     }
 

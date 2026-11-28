@@ -119,6 +119,19 @@ class RunSectionTest {
         });
     }
 
+    @Test void aHostWithItsOwnBuildInstancesAndStatementsActionsGetsNoSecondButton() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            var section = new RunSection(new RunSection.Actions(() -> { }, () -> { }, null,
+                    () -> { }, () -> { }, null, () -> { }, null), ignored -> { });
+            assertEquals(List.of(
+                    List.of("Generate class", "Generate domain", "Depth:", "spinner"),
+                    List.of("Remap (no download)", "Enrich (declared fields)"),
+                    List.of("Run report")),
+                    Arrays.stream(section.getComponents()).map(row -> children(row).stream()
+                            .map(RunSectionTest::label).toList()).toList());
+        });
+    }
+
     @Test void aRunningOperationLocksMutationButStillAllowsTheCurrentRunToBeInspected()
             throws Exception {
         SwingUtilities.invokeAndWait(() -> {

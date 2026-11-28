@@ -17,6 +17,8 @@ import java.util.function.IntConsumer;
  * delegates each explicit action to the host.
  */
 public final class RunSection extends JPanel {
+    /** A null Build project, Show instances or Statements action leaves its button out:
+     *  a host whose own actions already offer it must not show a second route to it. */
     public record Actions(Runnable generateClass, Runnable generateDomain, Runnable buildProject,
                           Runnable remap, Runnable enrich, Runnable showInstances,
                           Runnable showRunReport, Runnable showStatements) { }
@@ -83,7 +85,7 @@ public final class RunSection extends JPanel {
         runRow1.add(generateDomainButton);
         buildProjectButton.setToolTipText("Run the saved build from the project overview: "
                 + "reuse every current output, run the rest, save, and say why each step ran.");
-        runRow1.add(buildProjectButton);
+        if (actions.buildProject() != null) runRow1.add(buildProjectButton);
         runRow1.add(depthLabel);
         runRow1.add(depthSpinner);
 
@@ -101,14 +103,14 @@ public final class RunSection extends JPanel {
         runRowReuse.add(enrichButton);
 
         JPanel runRow2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
-        runRow2.add(showInstancesButton);
+        if (actions.showInstances() != null) runRow2.add(showInstancesButton);
         runReportButton.setToolTipText(
                 "Inspect the kept and dropped self-reference decisions from the last run");
         runRow2.add(runReportButton);
         showStatementsButton.setToolTipText("Sample the selected class and show its "
                                                     + "instances' statements — property → values with qualifiers nested, "
                                                     + "plus coverage badges (example-first field discovery, #91).");
-        runRow2.add(showStatementsButton);
+        if (actions.showStatements() != null) runRow2.add(showStatementsButton);
 
         add(runRow1);
         add(runRowReuse);
@@ -117,15 +119,19 @@ public final class RunSection extends JPanel {
         updateRunReport(null);
         generateButton.addActionListener(event -> actions.generateClass().run());
         generateDomainButton.addActionListener(event -> actions.generateDomain().run());
-        buildProjectButton.addActionListener(event -> actions.buildProject().run());
+        listen(buildProjectButton, actions.buildProject());
         remapButton.addActionListener(event -> actions.remap().run());
         enrichButton.addActionListener(event -> actions.enrich().run());
-        showInstancesButton.addActionListener(event -> actions.showInstances().run());
+        listen(showInstancesButton, actions.showInstances());
         runReportButton.addActionListener(event -> actions.showRunReport().run());
-        showStatementsButton.addActionListener(event -> actions.showStatements().run());
+        listen(showStatementsButton, actions.showStatements());
         depthSpinner.addChangeListener(event -> {
             if (!syncingDepth) depthChanged.accept(depth());
         });
+    }
+
+    private static void listen(JButton button, Runnable action) {
+        if (action != null) button.addActionListener(event -> action.run());
     }
 
     public int depth() {

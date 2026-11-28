@@ -1239,6 +1239,13 @@ subjects from Person
     button: Plan build
     button: Edit build steps
     label: Plan the saved build of positions.model.json
+    button: Generate class
+    button: Generate domain
+    label: Depth:
+    text: [1]
+    button: Remap (no download)  (disabled)
+    button: Enrich (declared fields)  (disabled)
+    button: Run report  (disabled)
   button: Query logs…
   button: Save domain…
 
@@ -1279,6 +1286,13 @@ subjects from Person
     button: Plan build
     button: Edit build steps
     label: Plan the saved build of positions.model.json
+    button: Generate class
+    button: Generate domain
+    label: Depth:
+    text: [1]
+    button: Remap (no download)  (disabled)
+    button: Enrich (declared fields)  (disabled)
+    button: Run report  (disabled)
   button: Query logs…
   button: Save domain…
 
@@ -1317,6 +1331,13 @@ subjects from Person
     box: Actions and results
     button: ⇱ To window
     label: Select a graph class to review its decisions.
+    button: Generate class
+    button: Generate domain
+    label: Depth:
+    text: [1]
+    button: Remap (no download)  (disabled)
+    button: Enrich (declared fields)  (disabled)
+    button: Run report  (disabled)
   button: Query logs…
   button: Save domain…
 
@@ -1356,6 +1377,13 @@ subjects from Person
     button: ⇱ To window
     button: Plan graph run  (disabled)
     label: Select a configured local graph class.
+    button: Generate class
+    button: Generate domain
+    label: Depth:
+    text: [1]
+    button: Remap (no download)  (disabled)
+    button: Enrich (declared fields)  (disabled)
+    button: Run report  (disabled)
   button: Query logs…
   button: Save domain…
 
@@ -1397,5 +1425,12 @@ subjects from Person
     button: Cancel load  (disabled)
     button: Show instances  (disabled)
     label: No saved instances in positions.snapshot.json. Build the project first.
+    button: Generate class
+    button: Generate domain
+    label: Depth:
+    text: [1]
+    button: Remap (no download)  (disabled)
+    button: Enrich (declared fields)  (disabled)
+    button: Run report  (disabled)
   button: Query logs…
   button: Save domain…

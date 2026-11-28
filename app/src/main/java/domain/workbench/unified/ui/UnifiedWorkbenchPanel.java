@@ -3,10 +3,20 @@ package domain.workbench.unified.ui;
 import dataset.DomainStorage;
 import domain.DomainModel;
 import domain.DomainSchemas;
+import domain.build.DomainSave;
+import domain.build.GenerationRun;
+import domain.build.GraphApplication;
+import domain.build.GraphDiscoveryResultStore;
 import domain.build.ProjectBuild;
+import domain.build.ProjectLoad;
+import domain.build.ProjectSave;
+import domain.compile.transform.PoolCopy;
+import domain.workbench.execution.GenerationRunState;
+import domain.workbench.execution.ui.GenerationWorkflows;
+import domain.workbench.execution.ui.InstancesWindow;
+import domain.workbench.execution.ui.RunSection;
 import domain.build.GraphResults;
 import domain.runtime.WikidataDynamicObject;
-import domain.workbench.execution.ui.ProjectInstancesPresentation;
 import domain.compile.transform.TransformationExecution;
 import domain.config.GeneratedClassModel;
 import domain.config.GeneratedFieldModel;
@@ -20,6 +30,7 @@ import domain.config.OwnedFieldSources;
 import domain.curation.CorrectionsSidecar;
 import domain.curation.ManualCuration;
 import domain.datasource.Datasources;
+import domain.datasource.EntityRef;
 import domain.datasource.discovery.ui.DiscoveryWorkbench;
 import domain.transform.ui.BoundedInstanceSelection;
 import domain.transform.pipeline.ui.FilterGroupsPanel;
@@ -100,12 +111,20 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     private final JButton showLoadedInstances = new JButton("Show instances");
     /** The instances in the instances window, whichever of Load and Build put them there. */
     private DomainModel shownInstances;
+    private boolean instancesReady;
     private final JButton cancelLoadInstances = new JButton("Cancel load");
     private final JTextArea loadInstancesStatus = new JTextArea();
     /** The one instances view: Load instances and a completed build both fill it. The
      *  application hosts it in its own window, as ModelBuilder does. */
-    private final QueryObjectResultPanel instancesView = new QueryObjectResultPanel();
-    private Consumer<InstancesShown> instancesShown = ignored -> { };
+    private final GenerationRunState runState = new GenerationRunState();
+    private final InstancesWindow instancesWindow;
+    private final RunSection runSection;
+    private final GenerationWorkflows generationWorkflows;
+    private final SwingProcessRunner generationRunner;
+    private Consumer<InstancesShown> instancesShown;
+    private boolean installingRun;
+    private boolean generating;
+    private String generationStatus = "Running generation";
     private boolean loadingInstances;
     private boolean loadInstancesActionSelected;
     private final WorkbenchActionResultNavigator.Action graphRunAction;
@@ -172,6 +191,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         buildRunner = new SwingProcessRunner(queries.runner().context(), queries.logs(),
                 new SwingProcessInputHandler(this));
         graphRunner = new SwingProcessRunner(queries.runner().context(), queries.logs(),
+                new SwingProcessInputHandler(this));
+        generationRunner = new SwingProcessRunner(queries.runner().context(), queries.logs(),
                 new SwingProcessInputHandler(this));
         transform = new TransformController(domain, null);
         project = Objects.requireNonNull(domain.capability(ProjectBacking.class),
@@ -263,6 +284,53 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                 }, queries::info, this::updateSave);
         graphReviewAction = buildActions.addAction(graphRunAction, "review-graph-decisions",
                 "Review graph decisions", graphReview, null);
+        instancesWindow = new InstancesWindow(this, project.projectModel(), runState,
+                graphReview.results(), this::showGraphFrontier, this::applyGraphResult,
+                () -> project.modelFile(), population -> {
+                    if (busy()) return;
+                    project.projectModel().replaceSelection(population);
+                    project.populationChanged(population);
+                    configuration.showNewConstruct(population);
+                    updateSave();
+                });
+        instancesWindow.instanceDomain(domain);
+        generationWorkflows = new GenerationWorkflows(run -> installAcceptedRun(run, true),
+                () -> { }); // the accepted result is revealed once its curation view is ready
+        var savedRun = domain.capability(DomainCatalog.SavedRun.class);
+        if (savedRun != null) {
+            var loaded = savedRun.loaded();
+            graphReview.results().restore(loaded.projection().objects(), queries::info);
+            runState.restoreGraphLedger(loaded.projection().graphDiscovery());
+            runState.accept(loaded.run(), true);
+            runState.refreshNameCollisions();
+            if (loaded.stale()) queries.info(loaded.staleWarning());
+        }
+        runSection = new RunSection(new RunSection.Actions(
+                () -> startGeneration("generating the selected class", this::generateClass),
+                () -> startGeneration("generating the project", this::generateDomain),
+                // Build project, Show instances and Statements are already this workbench's
+                // own actions (Build → Project, Load instances, Discovery); no second route.
+                null,
+                () -> startGeneration("remapping instances", () -> generationWorkflows.remap(
+                        project.projectModel(), runState.current(), runState.graphLedger())),
+                () -> startGeneration("enriching instances", () -> generationWorkflows.enrich(
+                        project.projectModel(), runState.current(), runState.graphLedger())),
+                null,
+                () -> GenerationWorkflows.showReport(this, generationRunner, project.projectName(),
+                        runState.workflowSubject(), runState.current()),
+                null),
+                depth -> {
+                    var clazz = activeGenerationClass();
+                    if (clazz == null || clazz.isImported()) return;
+                    clazz.generationDepth(depth);
+                    project.recordModelChange("Generation depth for " + clazz.className());
+                    updateSave();
+                });
+        generationRunner.onRunningChanged(running -> {
+            generating = running;
+            configuration.setEditingEnabled(!running);
+            updateSave();
+        });
         planBuild.addActionListener(event -> planBuild());
         editBuild.addActionListener(event -> configuration.selectConstruct(project.projectModel()));
         buildRunner.onRunningChanged(running -> {
@@ -299,6 +367,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         transformActions.selectAction(previewAction);
         compilePlan();
         configuration = projectConfiguration();
+        syncGenerationDepth();
         discovery.selection().addHost(new BoundedInstanceSelection.Host() {
             @Override public void selectionChanged(String reason) { }
             @Override public void updateActions() { updateSave(); }
@@ -306,6 +375,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         var actionTabs = new JTabbedPane();
         actionTabs.setName("unified.action-tabs");
         actionTabs.addTab("Discovery", discoveryActions);
+        buildActions.add(runSection, BorderLayout.NORTH);
         actionTabs.addTab("Build", buildActions);
         actionTabs.addTab("Datasource", datasourceActions);
         actionTabs.addTab("Transform", new DetachablePanel(
@@ -321,6 +391,159 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         footer.add(save);
         add(footer, BorderLayout.SOUTH);
         updateSave();
+    }
+
+    private GeneratedClassModel activeGenerationClass() {
+        var model = project.projectModel();
+        if (selectedField != null) return model.declaringClass(selectedField);
+        return selectedClass == null ? model.rootClass() : selectedClass;
+    }
+
+    private void syncGenerationDepth() {
+        var clazz = activeGenerationClass();
+        if (clazz != null) runSection.syncDepth(clazz.generationDepth());
+    }
+
+    private GenerationWorkflows.Action generateClass() {
+        var live = project.projectModel();
+        var clazz = activeGenerationClass();
+        String problem = GenerationWorkflows.membershipProblem(live, clazz);
+        if (problem != null) {
+            saveStatus.setText(problem);
+            return null;
+        }
+        return generationWorkflows.generateClass(live, clazz, runSection.depth(), runState.current());
+    }
+
+    private GenerationWorkflows.Action generateDomain() {
+        var model = project.projectModel();
+        var results = graphReview.results();
+        var additions = results == null ? Map.<String, List<String>>of()
+                : results.pendingPopulationAcquisitions(runState.current() == null
+                        ? List.of() : runState.current().dynamicObjects());
+        if (additions.isEmpty() && model.classes().stream()
+                .noneMatch(clazz -> GenerationWorkflows.membershipProblem(model, clazz) == null)) {
+            saveStatus.setText(GenerationWorkflows.membershipProblem(model, model.rootClass()));
+            return null;
+        }
+        return generationWorkflows.generateDomain(model, runState.graphLedger(), additions,
+                project.saveGuard().storage(), runState.takeGenerationReason(), runState.current(),
+                file -> GenerationWorkflows.chooseRecovery(this, file));
+    }
+
+    private void startGeneration(String activity,
+            java.util.function.Supplier<GenerationWorkflows.Action> prepare) {
+        if (busy() || !configuration.resolveUnappliedEdits(activity)) return;
+        if (project.saveGuard() == null) {
+            saveStatus.setText("Open a saved project to run generation.");
+            return;
+        }
+        try {
+            var action = prepare.get();
+            if (action == null) return;
+            queries.logs().registerPipeline(action.logTitle(), action.pipeline(), action.projectName(),
+                    project.snapshotFile().getAbsoluteFile().getParentFile().toPath());
+            var plannedProject = project;
+            var plannedSignature = DomainSave.signature(project.projectModel());
+            var plannedSubject = runState.workflowSubject();
+            var plannedLedger = runState.graphLedger();
+            SwingProcessWorkflow.start(this, generationRunner, action, null, () -> {
+                if (busy() || !configuration.resolveUnappliedEdits(activity)) return false;
+                if (project != plannedProject || !plannedSubject.equals(runState.workflowSubject())
+                        || plannedLedger != runState.graphLedger()
+                        || !plannedSignature.equals(DomainSave.signature(project.projectModel()))) {
+                    Dialogs.showMessage(this, "The project or loaded instances changed. Open a new plan.",
+                            "Plan is out of date", JOptionPane.WARNING_MESSAGE);
+                    return false;
+                }
+                generationStatus = action.logTitle();
+                return true;
+            });
+        } catch (Exception failure) {
+            saveStatus.setText("Could not start " + activity + ": " + failure.getMessage());
+        }
+    }
+
+    void installAcceptedRun(GenerationRun run, boolean reveal) {
+        if (busy()) throw new IllegalStateException("Finish the current action before accepting instances.");
+        runState.accept(run, false);
+        installingRun = true;
+        configuration.setEditingEnabled(false);
+        updateSave();
+        var working = project;
+        new SwingWorker<DomainModel, Void>() {
+            @Override protected DomainModel doInBackground() {
+                return DomainCatalog.inspectWorkingRun(working, run);
+            }
+
+            @Override protected void done() {
+                String failure = null;
+                try {
+                    var inspected = get();
+                    domain = inspected;
+                    project = inspected.capability(ProjectBacking.class);
+                    graphReview.useProject(project);
+                    transform.replaceLoadedDomain(inspected);
+                    discardFilterGroups();
+                    if (filterGroupsSelected) showFilterGroups();
+                    discovery.refreshInstances();
+                    valuePanel = null;
+                    evidenceTarget = null;
+                    acquisitionTargetCurrent = false;
+                    refreshEvidence();
+                    if (loadActionSelected) refreshAcquisition();
+                    runState.refreshNameCollisions();
+                    updateInstances(inspected, reveal);
+                } catch (Exception error) {
+                    instancesWindow.instanceDomain(null);
+                    instancesWindow.refreshRun();
+                    failure = "Could not apply curation to the accepted run: " + error.getMessage();
+                    queries.info(failure);
+                } finally {
+                    installingRun = false;
+                    configuration.setEditingEnabled(true);
+                    updateSave();
+                    if (failure != null) saveStatus.setText(failure);
+                }
+            }
+        }.execute();
+    }
+
+    private void showGraphFrontier() {
+        if (busy() || runState.current() == null
+                || !configuration.resolveUnappliedEdits("reviewing the graph frontier")) return;
+        var action = new domain.workbench.modelbuilder.ui.GraphFrontierWorkflowAction(
+                runState.workflowSubject(), runState.visibleGraphLedger(), instancesWindow.reviewableEdges(),
+                runState.current().dynamicObjects(), decisions -> {
+                    var edges = instancesWindow.reviewableEdges();
+                    for (var decision : decisions) edges.stream()
+                            .filter(edge -> edge.id().equals(decision.patternId())).findFirst()
+                            .ifPresent(edge -> runState.queueExpansion(edge,
+                                    EntityRef.wikidata(decision.qid())));
+                    instancesWindow.frontierChanged();
+                    runState.explainNextGeneration("Expand " + decisions.size() + " graph-frontier node(s)");
+                    updateSave();
+                }, runSection::requestDomainGeneration);
+        SwingProcessWorkflow.start(this, generationRunner, action);
+    }
+
+    private void applyGraphResult(GraphDiscoveryResultStore.Artifact artifact) {
+        if (busy() || !configuration.resolveUnappliedEdits("applying graph annotations")
+                || !confirmPersistence.test("Apply accepted instances of " + artifact.type()
+                        + " to " + artifact.outputClass() + "? Save writes "
+                        + project.snapshotFile().getPath() + ".")) return;
+        try {
+            var outcome = GraphApplication.apply(artifact, project.projectModel(), runState.current());
+            if (outcome instanceof GraphApplication.AwaitingDecision waiting) {
+                saveStatus.setText(waiting.message());
+                return;
+            }
+            var applied = (GraphApplication.Applied) outcome;
+            graphReview.results().markApplied(project.projectModel().findClass(artifact.type()), applied.result());
+            installAcceptedRun(applied.run(), true);
+        } catch (Exception failure) {
+            saveStatus.setText("Could not apply graph annotations: " + failure.getMessage());
+        }
     }
 
     @Override public void doLayout() {
@@ -426,6 +649,10 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
 
     private boolean buildReady(String activity) {
         if (busy() || !configuration.resolveUnappliedEdits(activity)) return false;
+        if (runState.hasUnsavedInstances()) {
+            resetBuild("Save the accepted instances before building the saved project.");
+            return false;
+        }
         if (!project.unsavedModelChanges().isEmpty()) {
             resetBuild("Use " + saveVerb + " to write " + savePaths() + " before building.");
             return false;
@@ -523,6 +750,9 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
      */
     private void loadSavedInstances() {
         if (busy() || !configuration.resolveUnappliedEdits("loading instances")) return;
+        if (runState.hasUnsavedInstances()
+                && choice.ask("Load instances", "Loading replaces the unsaved accepted instances.",
+                        new String[] {"Load saved instances", "Stay"}, 1) != 0) return;
         File model = project.modelFile();
         File snapshot = project.snapshotFile();
         if (!project.unsavedModelChanges().isEmpty() || !snapshot.isFile() || !model.isFile()) {
@@ -569,38 +799,46 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
      *  opens when {@code reveal} is set. A build only refreshes it, as in ModelBuilder. */
     public record InstancesShown(String title, boolean reveal) { }
 
-    public QueryObjectResultPanel instancesView() { return instancesView; }
+    public QueryObjectResultPanel instancesView() { return instancesWindow.view(); }
 
     public void onInstancesShown(Consumer<InstancesShown> listener) {
-        instancesShown = listener == null ? ignored -> { } : listener;
+        instancesShown = listener;
     }
 
     private void updateInstances(DomainModel instances, boolean reveal) {
         shownInstances = instances;
         showLoadedInstances.setEnabled(true);
-        var model = project.projectModel();
-        ProjectInstancesPresentation.showSaved(instancesView, model, instances, graphReview.annotations());
+        instancesWindow.instanceDomain(instances);
+        instancesWindow.refreshRun();
+        instancesReady = true;
         revealInstances(reveal);
     }
 
     private void revealInstances(boolean reveal) {
-        if (shownInstances == null) return;
-        instancesShown.accept(new InstancesShown(
-                "Saved instances (" + shownInstances.memberRoots().size() + ") — " + project.snapshotFile().getName(),
-                reveal));
+        if (instancesShown != null && shownInstances != null) {
+            instancesShown.accept(new InstancesShown(
+                    "Saved instances (" + shownInstances.memberRoots().size() + ") — "
+                            + project.snapshotFile().getName(), reveal));
+        }
+        if (reveal && instancesShown == null) {
+            if (!instancesReady) {
+                instancesWindow.refreshRun();
+                instancesReady = true;
+            }
+            instancesWindow.reveal();
+        }
     }
 
-    private record LoadedInstances(DomainModel domain, GraphResults graphs) { }
+    private record LoadedInstances(DomainModel domain, GraphResults graphs, ProjectLoad.Loaded run) { }
 
     private static LoadedInstances readInstances(File model, File snapshot, DomainStorage storage,
             Consumer<String> report) throws Exception {
-        var loaded = DomainCatalog.openProject(snapshot, model, storage);
-        var backing = loaded.capability(ProjectBacking.class);
+        var opened = DomainCatalog.openRun(snapshot, model, storage, report);
+        var backing = opened.domain().capability(ProjectBacking.class);
         var graphs = new GraphResults(backing.projectModel(), storage);
-        graphs.restore(loaded.instances().stream().filter(WikidataDynamicObject.class::isInstance)
-                .map(WikidataDynamicObject.class::cast).toList(), report);
+        graphs.restore(opened.loaded().projection().objects(), report);
         backing.saveGuard().check();
-        return new LoadedInstances(loaded, graphs);
+        return new LoadedInstances(opened.domain(), graphs, opened.loaded());
     }
 
     private record LoadInstances(File model, File snapshot, DomainStorage storage, Consumer<String> report)
@@ -644,6 +882,11 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         domain = loaded;
         project = loadedProject;
         graphReview.reset(project, result.graphs());
+        runState.restoreGraphLedger(result.run().projection().graphDiscovery());
+        runState.accept(result.run().run(), true);
+        if (result.run().stale()) queries.info(result.run().staleWarning());
+        runState.refreshNameCollisions();
+        instancesWindow.useProject(project.projectModel(), result.graphs());
         transform.replaceLoadedDomain(loaded);
         discardFilterGroups();
         if (filterGroupsSelected) showFilterGroups();
@@ -718,7 +961,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     }
 
     private boolean projectBusy() {
-        return saving || loadingValues || loadingInstances || runningEvidence != null || previewing || building
+        return saving || loadingValues || loadingInstances || installingRun || generating
+                || runningEvidence != null || previewing || building
                 || graphReview.isLoading() || runningGraph || queries.runner().isRunning();
     }
 
@@ -732,6 +976,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
             resetGraphRun("");
         }
         fieldSelected(construct instanceof GeneratedFieldModel field ? field : null);
+        syncGenerationDepth();
     }
 
     private void showFilterGroups() {
@@ -1039,14 +1284,20 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
             if (answer == 2) return;
             applyDraft = answer == 0;
         }
-        if (!applyDraft && project.unsavedModelChanges().isEmpty()) {
+        if (!applyDraft && project.unsavedModelChanges().isEmpty() && !runState.hasUnsavedInstances()) {
             if (draft) configuration.discardUnappliedEdits();
             saveStatus.setText("No applied changes to save.");
             return;
         }
         // Cancelling the file confirmation keeps the draft: nothing is applied or
-        // discarded until the save is confirmed.
-        if (!confirmPersistence.test("Save the applied project changes to\n" + savePaths())) return;
+        // discarded until the save is confirmed. Accepted instances are confirmed again
+        // from their save plan, which needs the applied model; when there is no draft to
+        // resolve, that plan's confirmation is the only one, since nothing changes before it.
+        boolean generated = runState.hasUnsavedInstances();
+        if ((!generated || draft) && !confirmPersistence.test(generated
+                ? "Save the accepted instances and project changes to\n" + savePaths()
+                        + "\n" + project.snapshotFile().getPath()
+                : "Save the applied project changes to\n" + savePaths())) return;
         if (applyDraft) {
             // A refused Apply stops here with the draft open and its reason shown.
             if (!configuration.applyUnappliedEdits()) return;
@@ -1070,7 +1321,46 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     boolean saving() { return saving; }
 
     private void startSave(Runnable afterSuccess) {
-        String savedPaths = savePaths();
+        if (!runState.hasUnsavedInstances()) {
+            writeSave(null, afterSuccess);
+            return;
+        }
+        saving = true;
+        blockInput(true);
+        saveStatus.setText("Planning save of " + project.snapshotFile().getPath() + "…");
+        updateSave();
+        new SwingWorker<ProjectSave, Void>() {
+            @Override protected ProjectSave doInBackground() throws Exception {
+                return planGeneratedSave();
+            }
+
+            @Override protected void done() {
+                try {
+                    var generated = get();
+                    var details = new StringBuilder(String.join("\n", generated.planLines()));
+                    for (var warning : generated.warnings()) details.append("\n\n").append(warning.message());
+                    if (!confirmPersistence.test("Save the accepted run and project changes?\n\n" + details)) {
+                        finishSave();
+                        return;
+                    }
+                    writeSave(generated, afterSuccess);
+                } catch (Exception failure) {
+                    finishSave();
+                    Throwable cause = failure.getCause() == null ? failure : failure.getCause();
+                    saveFailure.accept(cause.getMessage());
+                }
+            }
+        }.execute();
+    }
+
+    private void finishSave() {
+        blockInput(false);
+        saving = false;
+        updateSave();
+    }
+
+    private void writeSave(ProjectSave acceptedSave, Runnable afterSuccess) {
+        String savedPaths = acceptedSave == null ? savePaths() : String.join("\n", acceptedSave.planLines());
         boolean savingGraphDecisions = !graphReview.editedFiles().isEmpty();
         saving = true;
         // Keep the reader's place in view; only block input while the file is written.
@@ -1079,7 +1369,11 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         updateSave();
         new SwingWorker<Void, Void>() {
             @Override protected Void doInBackground() throws Exception {
-                saveProject();
+                if (acceptedSave == null) saveProject();
+                else {
+                    // The plan was made from a detached copy of the uncurated run.
+                    acceptedSave.write().report().forEach(queries::info);
+                }
                 return null;
             }
 
@@ -1089,6 +1383,10 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                     get();
                     saved = true;
                     graphReview.saved();
+                    if (acceptedSave != null) {
+                        project.modelSaved();
+                        if (acceptedSave.instances() > 0) runState.markSaved();
+                    }
                     if (buildPlanOpen || savingGraphDecisions) resetBuild("");
                     else buildStatus.setText(buildPlanPrompt());
                     if (afterSuccess == null && showSaveSuccess) {
@@ -1100,13 +1398,22 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
                     // The applied changes stay in memory; only the write failed.
                     saveFailure.accept(cause.getMessage());
                 } finally {
-                    blockInput(false);
-                    saving = false;
-                    updateSave();
+                    finishSave();
                 }
-                if (saved && afterSuccess != null) afterSuccess.run();
+                if (saved && afterSuccess != null
+                        && (acceptedSave == null || acceptedSave.instances() > 0)) afterSuccess.run();
             }
         }.execute();
+    }
+
+    private ProjectSave planGeneratedSave() throws Exception {
+        var run = runState.current();
+        var guard = project.saveGuard();
+        if (run == null || guard == null) throw new IllegalStateException("There is no accepted run to save.");
+        var raw = new ProjectSave.Run(PoolCopy.deepCopy(run.dynamicObjects()), run.loadedDeclarations(),
+                run.selfReferenceAudit().ledger(), run.modelSnapshot(), run.generatedFromSignature());
+        return ProjectSave.plan(new ProjectSave.Input(project.projectModel().copy(), raw,
+                runState.graphLedger(), graphReview.annotations()), guard.storage(), guard);
     }
 
     void saveProject() throws Exception {
@@ -1126,6 +1433,9 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
         // Enabled whenever not saving: unapplied edits can be the only change, and the
         // form cannot announce every keystroke. Save itself says when there is nothing.
         save.setEnabled(!busy());
+        runSection.showProject(project.projectModel().isModel(), project.projectModel().supportsExecution());
+        runSection.setRunLocked(busy(), runState.current() != null);
+        runSection.updateRunReport(runState.current());
         preview.setEnabled(previewInput != null && !busy());
         if (filterGroups != null) filterGroups.editingEnabled(!busy());
         cancelPreview.setEnabled(previewing && queries.runner().isRunning());
@@ -1144,6 +1454,10 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
             saveStatus.setText("Finding and reviewing configured field evidence");
         } else if (previewing) {
             saveStatus.setText("Previewing population for " + selectedClass.className());
+        } else if (installingRun) {
+            saveStatus.setText("Applying saved curation to the accepted instances…");
+        } else if (generating) {
+            saveStatus.setText(generationStatus + " — see Query logs");
         } else if (building) {
             saveStatus.setText("Building " + project.projectName());
         } else if (runningGraph) {
@@ -1154,7 +1468,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
             saveStatus.setText("Finding membership types");
         } else if (!saving) {
             saveStatus.setText(graphReview.editedFiles().isEmpty()
-                    ? dirty ? "Applied configuration has unsaved changes" : " "
+                    ? runState.hasUnsavedInstances() ? "Accepted instances are not saved"
+                            : dirty ? "Applied configuration has unsaved changes" : " "
                     : "Graph annotations have unsaved changes");
         }
     }
@@ -1188,7 +1503,11 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
      * A refused Apply or a failed save keeps the window and the edits open.
      */
     public void requestClose(Runnable closeWindow) {
-        if (saving || graphReview.isLoading()) return;
+        if (saving || installingRun || graphReview.isLoading()) return;
+        if (generating) {
+            SwingCancellationConfirmation.requestForVisibleRun(this, generationRunner::cancel);
+            return;
+        }
         if (!discovery.requestStopRun(this)) return;
         if (building) {
             SwingCancellationConfirmation.requestForVisibleRun(this, buildRunner::cancel);
@@ -1211,7 +1530,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
             return;
         }
         boolean draft = configuration.hasUnappliedEdits();
-        boolean unsaved = !project.unsavedModelChanges().isEmpty();
+        boolean unsaved = !project.unsavedModelChanges().isEmpty() || runState.hasUnsavedInstances();
         if (!draft && !unsaved) {
             closeWindow.run();
             return;
@@ -1229,7 +1548,7 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
             closeWindow.run();
         } else if (answer == 0) {
             if (draft && !configuration.applyUnappliedEdits()) return;
-            if (project.unsavedModelChanges().isEmpty()) {
+            if (project.unsavedModelChanges().isEmpty() && !runState.hasUnsavedInstances()) {
                 closeWindow.run();
                 return;
             }
@@ -1238,6 +1557,8 @@ public final class UnifiedWorkbenchPanel extends JPanel implements AutoCloseable
     }
 
     @Override public void close() {
+        instancesWindow.close();
+        runState.replaceProject(null);
         discardFilterGroups();
         discovery.close();
         configuration.close();

@@ -44,6 +44,9 @@ public interface ProjectBacking extends DomainCapability {
      */
     String modelWriteConflict();
 
+    /** Clears the working model's change report after the project's shared saver writes it. */
+    default void modelSaved() { }
+
     /** Writes just the working model through the same project save guard. */
     void writeProjectModel() throws Exception;
 

@@ -64,6 +64,10 @@ final class GraphDecisionReviewPanel extends JPanel {
         select(null);
     }
 
+    void useProject(ProjectBacking project) { this.project = project; }
+
+    GraphResults results() { return results; }
+
     List<GraphDiscoveryResultStore.Artifact> annotations() {
         return results == null ? List.of() : results.all();
     }

@@ -4,6 +4,7 @@ import dataset.DomainStorage;
 import domain.build.GenerationStepOutputStore;
 import domain.build.GraphDiscoveryResultStore;
 import domain.build.GraphResults;
+import domain.build.ProjectLoad;
 import domain.build.ProjectSave;
 import domain.compile.transform.SelfReferenceLedger;
 import domain.config.BuildOperation;
@@ -40,6 +41,7 @@ import domain.transform.pipeline.ui.TransformationConfigurationEditor;
 import domain.transform.ui.ProjectBacking;
 import domain.workbench.modelbuilder.ui.SingleRootClassModelPanel;
 import domain.workbench.execution.ui.QueryObjectResultPanel;
+import domain.workbench.execution.ui.RunSection;
 import domain.workbench.execution.ui.SwingQuerySession;
 import domain.workbench.ui.ConfigurationTreePanel;
 import domain.workbench.ui.WorkbenchActionResultNavigator;
@@ -810,6 +812,10 @@ class UnifiedWorkbenchPanelTest {
                 assertEquals(List.of("Q1", "Q2"), cards.displayedObjectsByType().get("Position").stream()
                         .map(objectview.Viewable::getIdentifier).sorted().toList());
                 assertTrue(hasField(workbench, "rank"), "the loaded project is read through the saved model");
+                var runControls = find(workbench, RunSection.class, unused -> true);
+                assertTrue(find(runControls, JButton.class, b -> "Remap (no download)".equals(b.getText())).isEnabled());
+                assertTrue(find(runControls, JButton.class, b -> "Enrich (declared fields)".equals(b.getText())).isEnabled());
+                assertTrue(find(runControls, JButton.class, b -> "Run report".equals(b.getText())).isEnabled());
                 assertEquals("2 saved instances loaded from " + snapshot + ".", loadStatus(workbench));
 
                 // Leaving and reselecting Load instances used to show the pre-load text, as
@@ -1114,6 +1120,48 @@ class UnifiedWorkbenchPanelTest {
                     "an unsaved change is never replaced by the files");
         });
         SwingUtilities.invokeAndWait(panel.get()::close);
+    }
+
+    @Test void acceptingAndSavingAWorkingRunWritesRawValuesButShowsCuration() throws Exception {
+        var original = open();
+        var storage = DomainStorage.in(root.toFile());
+        var snapshot = storage.snapshotFile(original.working().name());
+        var curation = ManualCuration.forSnapshot(snapshot);
+        curation.put("Q47534", "symbol", "Accepted symbol");
+        curation.save();
+        var domain = DomainCatalog.openProject(snapshot, original.modelPath().toFile(), storage);
+        var generated = ProjectLoad.load(original.working(), storage, snapshot, ignored -> { }).run();
+        generated.dynamicObjects().getFirst().put("symbol", "Generated symbol");
+        var holder = new AtomicReference<UnifiedWorkbenchPanel>();
+        var confirmation = new AtomicReference<String>();
+        var failure = new AtomicReference<String>();
+        SwingUtilities.invokeAndWait(() -> {
+            var panel = new UnifiedWorkbenchPanel(domain);
+            holder.set(panel);
+            panel.showSaveSuccess(false);
+            panel.saveFailure(failure::set);
+            panel.persistenceConfirmation(message -> { confirmation.set(message); return true; });
+            panel.installAcceptedRun(generated, false);
+        });
+        var panel = holder.get();
+        try {
+            await(() -> panel.instancesView().displayedObjectsByType().containsKey("EgyptianDeity"),
+                    "the accepted run did not appear");
+            SwingUtilities.invokeAndWait(() -> {
+                var deity = panel.instancesView().displayedObjectsByType().get("EgyptianDeity").getFirst();
+                assertEquals("Accepted symbol", objectview.field.FieldSet.of(deity).read("symbol"));
+                find(panel, JButton.class, button -> "Save domain…".equals(button.getText())).doClick(0);
+            });
+            awaitSaved(panel);
+            assertNull(failure.get());
+            assertNotNull(confirmation.get());
+            assertTrue(confirmation.get().contains(snapshot.getPath()));
+            assertEquals("Generated symbol", new domain.runtime.WikidataDynamicObjectJsonStore()
+                    .load(snapshot).getFirst().get("symbol"));
+            assertEquals("Accepted symbol", ManualCuration.forSnapshot(snapshot).corrections().getFirst().value());
+        } finally {
+            SwingUtilities.invokeAndWait(panel::close);
+        }
     }
 
     private static boolean hasField(UnifiedWorkbenchPanel workbench, String field) {

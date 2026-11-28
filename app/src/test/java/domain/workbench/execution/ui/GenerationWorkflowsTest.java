@@ -33,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -51,7 +52,7 @@ class GenerationWorkflowsTest {
             accepted.add(value);
         }, () -> events.add("show"));
 
-        var generateClass = workflows.generateClass(model, 3, run);
+        var generateClass = workflows.generateClass(model, model.rootClass(), 3, run);
         var generateDomain = workflows.generateDomain(model, GraphDiscoveryState.EMPTY,
                 Map.of("Position", List.of("Q2")), DomainStorage.in(directory.toFile()),
                 "Expand 1 graph-frontier node(s)", run, file -> fail("Unexpected recovery prompt"));
@@ -115,9 +116,19 @@ class GenerationWorkflowsTest {
         assertEquals(List.of("accept", "show", "accept", "show", "accept", "show", "accept", "show"), events);
     }
 
+    @Test void generateClassRootsADetachedCopyAtTheSelectedClassByDeclaration() {
+        var model = model();
+        var other = model.getOrCreateClass("Holder");
+        var rooted = GenerationWorkflows.rootedAt(model, other);
+        assertEquals("Holder", rooted.rootClass().className());
+        assertNotSame(other, rooted.rootClass(), "the live class is never generated in place");
+        assertEquals("Position", model.rootClass().className(), "the live project keeps its root");
+    }
+
     @Test void thePlanProcessAndApplyBoundaryAgreeOnTheSavedCompletenessSetting() throws Exception {
+        var projectModel = model();
         var action = new GenerationWorkflows(ignored -> { }, () -> { })
-                .generateClass(model(), 2, null);
+                .generateClass(projectModel, projectModel.rootClass(), 2, null);
         String executionValue = action.process().plan().parameters().get("requireComplete");
         SwingUtilities.invokeAndWait(() -> {
             var complete = Arrays.stream(action.executionSettings().getComponents())
