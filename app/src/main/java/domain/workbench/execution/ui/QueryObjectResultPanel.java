@@ -3,6 +3,7 @@ package domain.workbench.execution.ui;
 import wikidata.ui.WikidataLinks;
 
 import objectview.demo.MultiView;
+import objectview.render.GroupView;
 import objectview.render.RenderContext;
 import objectview.Viewable;
 import objectview.search.MultiSearchBar;
@@ -394,7 +395,11 @@ public class QueryObjectResultPanel
                         () -> groupedBrowser(peer, multi.context()), capped(values));
             } else if (group != null) {
                 multi.addWideSection(entry.getKey(), sectionTitle(entry.getKey(), values.size()),
-                        () -> new objectview.render.GroupView(group, multi.context()), capped(values));
+                        () -> {
+                            GroupView view = new GroupView(group, multi.context());
+                            view.showSelectedGroup();
+                            return view;
+                        }, capped(values));
             } else if (schemaDomain != null) {
                 String type = entry.getKey();
                 multi.addSection(type, sectionTitle(type, values.size()),

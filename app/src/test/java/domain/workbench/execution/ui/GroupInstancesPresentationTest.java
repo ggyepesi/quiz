@@ -71,6 +71,9 @@ class GroupInstancesPresentationTest {
                             && b.getTitle().startsWith("Relic"));
             assertNotNull(groupView);
             assertNotNull(relic);
+            var initialCards = find(groupView, VirtualizedCardList.class, value -> true);
+            assertNotNull(initialCards, "The initial group's members are shown without a click.");
+            assertEquals(List.of(member), initialCards.items());
             assertTrue(Math.abs(groupView.getWidth() - 2 * relic.getWidth()) < 30,
                     "The group section should be about twice the width of an ordinary class.");
 
@@ -134,7 +137,8 @@ class GroupInstancesPresentationTest {
             while (page.getParent() != tabs) page = page.getParent();
             tabs.setSelectedComponent(page);
             layout(panel);
-            var cards = showMembers(panel, group);
+            var cards = find(group, VirtualizedCardList.class, value -> true);
+            assertNotNull(cards, "The NorseGroup tab starts with its root members visible.");
             assertEquals(group.getRootGroup().getMembers().size(), cards.items().size());
             assertTrue(!cards.items().isEmpty(), "Saved Norse groups contain members.");
         });

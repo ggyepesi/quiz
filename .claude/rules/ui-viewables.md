@@ -114,13 +114,14 @@ still an ordinary `SearchableView` and owns the full Search/Sort/View controls f
 
 The instances viewer opts into ObjectView's shared tab layout with four panel slots per
 tab by default. A group takes two slots, keeping its outline and member pane side by side
-with their divider controls. Other multi-section hosts stay side by side unless they opt in.
+with their divider controls. The member pane initially shows the selected root group's instances.
+Other multi-section hosts stay side by side unless they opt in.
 A reference to a loaded instance stays clickable even when its class is unchecked.
 Following it checks that class in **Classes shown**, reveals its tab, and focuses the card
 through the existing navigation registry (#584). Hiding a class still excludes it from the
-shared search until it is shown again. Instance tabs with search matches get a marker from
-their existing search engines, without re-running the search or changing tabs. Clearing
-the search clears the markers. The shared Back action restores the originating tab and
+shared search until it is shown again. Instance tabs and hit-navigation tabs with search matches
+get the same marker from their existing search engines, without re-running the search or changing tabs.
+Clearing the search clears the markers. The shared Back action restores the originating tab and
 scroll position; manual tab changes and search-hit navigation do not create a Back entry.
 
 The shared **Show empty fields** control applies to every card view under the same
