@@ -446,6 +446,12 @@ ModelBuilder's **Generate class**, **Generate domain**, **Remap** and **Enrich**
 **Accept** step. The frame still settles edits, opens the workflow and installs an accepted
 run. The Unified Workbench does not adopt those actions in this slice (#580).
 
+ModelBuilder mounts the shared `RunSection` below the class tree. It keeps the existing
+generation, reuse and inspection rows, per-class Depth control, and run-button states.
+The host still supplies the selected class, run and action callbacks. The separate Activity
+row, instance loader and curation are unchanged; adoption in the Unified Workbench follows
+in #580.
+
 Select a local graph class and open **Build → Project → Run graph** to run that graph on its own.
 **Plan graph run** shows ModelBuilder's traversal diagram and scope. **Execute** uses that
 plan's loaded class instances or configured population and the shared graph cache and query.

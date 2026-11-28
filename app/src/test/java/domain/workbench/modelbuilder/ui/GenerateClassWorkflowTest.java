@@ -20,13 +20,13 @@ class GenerateClassWorkflowTest {
             throws Exception {
         String source = Files.readString(Path.of(
                 "src/main/java/domain/workbench/modelbuilder/ui/ModelBuilderFrame.java"));
-        int start = source.indexOf("generateButton.addActionListener");
-        int end = source.indexOf("generateDomainButton.addActionListener", start);
+        int start = source.indexOf("private GenerationWorkflows.Action prepareClassGeneration()");
+        int end = source.indexOf("\n    private ", start + 1);
         assertTrue(start >= 0 && end > start,
                 "Generate class must own an explicit process-workflow action");
         String action = source.substring(start, end);
 
-        assertTrue(action.contains("startGeneration("),
+        assertTrue(source.contains("() -> startGeneration(this::prepareClassGeneration)"),
                 "the class run must use the same workflow host as other generation runs");
         assertTrue(action.contains("generationWorkflows.generateClass("),
                 "ModelBuilder delegates to the shared Generate class workflow");
@@ -34,7 +34,7 @@ class GenerateClassWorkflowTest {
                         && source.contains("generationWorkflows.remap(")
                         && source.contains("generationWorkflows.enrich("),
                 "the other buttons also delegate rather than assembling workflows in the frame");
-        assertFalse(source.contains("queryRunner.wireButton(\n                generateButton"),
+        assertFalse(source.contains("new GenerateInstancesQuery("),
                 "the legacy query dialog must not remain as a second class-generation path");
     }
 }

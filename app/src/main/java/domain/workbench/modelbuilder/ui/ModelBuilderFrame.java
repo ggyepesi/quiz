@@ -30,6 +30,7 @@ import domain.workbench.execution.GenerationRunState;
 import domain.workbench.execution.ui.BuildProjectWorkflow;
 import domain.workbench.execution.ui.GenerationWorkflows;
 import domain.workbench.execution.ui.InstancesWindow;
+import domain.workbench.execution.ui.RunSection;
 import domain.workbench.execution.ui.SwingQueryRunner;
 import domain.workbench.execution.ui.SwingQuerySession;
 import domain.workbench.execution.ui.WorkflowLogWindow;
@@ -83,40 +84,10 @@ public class ModelBuilderFrame extends JFrame {
     private final GenerationWorkflows generationWorkflows =
             new GenerationWorkflows(this::acceptGenerationRun, instancesWindow::show);
 
-    private final JButton runReportButton =
-            new JButton("Run report");
-
-    private final JButton generateButton =
-            new JButton("Generate class");
-
-    // Generates EVERY class in the domain into one snapshot (each served as its
-    // own type), vs "Generate class" which does the selected class only.
-    private final JButton generateDomainButton =
-            new JButton("Generate domain");
-
-    // Runs the project's saved build (the project overview's Build list) — the same
-    // coordinator the command line runs, reusing every current output.
-    private final JButton buildProjectButton =
-            new JButton("Build project");
-
-    // Re-materialize the LAST download with the current model (no re-fetch) — picks
-    // up canonicalization / display-name / mapping edits fast.
-    private final JButton remapButton =
-            new JButton("Remap (no download)");
-
-    // Fetch what a newly DECLARED field needs, over the entities already downloaded —
-    // additive, so it costs a property sweep rather than a re-extraction.
-    private final JButton enrichButton =
-            new JButton("Enrich (declared fields)");
+    private final RunSection runSection;
 
     private final JButton cancelButton =
             new JButton("Cancel");
-
-    private final JButton showInstancesButton =
-            new JButton("Show instances");
-
-    private final JButton showStatementsButton =
-            new JButton("Statements…");
 
     // Example-first statement view (#91): sample the selected class + show its
     // instances' statements-with-qualifiers, in its own window.
@@ -170,7 +141,6 @@ public class ModelBuilderFrame extends JFrame {
     private final JButton newDomainButton = new JButton("New domain");
     private final JButton renameDomainButton = new JButton("Rename domain");
     private final JButton deleteDomainButton = new JButton("Delete domain");
-    private JPanel runSection;
     /**
      * The model's fingerprint when it was last loaded or saved — what "unchanged" means.
      *
@@ -206,15 +176,6 @@ public class ModelBuilderFrame extends JFrame {
     private final JButton saveEverythingButton =
             new JButton("Save domain");
 
-    // Default 1, not 0: depth 0 silently drops every child-object edge (e.g. a
-    // constellation's stars), which is a recurring "why are there no stars?"
-    // trap. One level of children is the common intent; deeper is opt-in.
-    private final JSpinner depthSpinner =
-            new JSpinner(new SpinnerNumberModel(1, 0, 5, 1));
-    // True while syncing the spinner to the selected class (so the change
-    // listener doesn't write the value straight back).
-    private boolean syncingDepth = false;
-
     private final SwingQuerySession querySession;
     private final WorkflowLogWindow logWindow;
     private final SwingProcessRunner processRunner;
@@ -235,6 +196,13 @@ public class ModelBuilderFrame extends JFrame {
         this.logWindow = querySession.logs();
         this.processRunner = new SwingProcessRunner(
                 queryContext, logWindow, new SwingProcessInputHandler(this));
+        this.runSection = new RunSection(new RunSection.Actions(
+                () -> startGeneration(this::prepareClassGeneration),
+                () -> startGeneration(this::prepareDomainGeneration), this::buildProject,
+                () -> startGeneration(this::prepareRemap), () -> startGeneration(this::prepareEnrich),
+                instancesWindow::show, this::showRunReport,
+                () -> showStatementsWindow(querySession.runner())),
+                this::storeGenerationDepth);
         this.classModelPanel.onModelChanged(this::modelChanged);
         this.selectionsPanel = new SelectionViewerPanel(projectModel, apiClient, client);
         this.selectionsPanel.selections(sourceWorkbench.selections());
@@ -397,61 +365,6 @@ public class ModelBuilderFrame extends JFrame {
         activity.add(openSavedRunButton);
         activity.setAlignmentX(Component.LEFT_ALIGNMENT);
         domainSection.add(activity);
-
-        // Domain-only run section (bottom): generate, reuse and inspect instances.
-        JLabel depthLabel = new JLabel("Depth:");
-        String depthTip = "<html>How many levels of <b>child-object</b> reference "
-                + "edges to follow when generating.<br>"
-                + "0 = just the root class's instances (with scalar and inlined "
-                + "list fields).<br>"
-                + "1+ = also fetch the referenced objects' own fields, "
-                + "recursively, that many levels deep.</html>";
-        depthLabel.setToolTipText(depthTip);
-        depthSpinner.setToolTipText(depthTip);
-
-        // Two rows so nothing overflows (and "Depth" stays visible) in this
-        // narrower panel: generate/depth on top, the result viewers below.
-        generateButton.setToolTipText("Generate the SELECTED class only.");
-        generateDomainButton.setToolTipText("Generate EVERY class in the project "
-                                                    + "into one local snapshot.");
-        JPanel runRow1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
-        runRow1.add(generateButton);
-        runRow1.add(generateDomainButton);
-        buildProjectButton.setToolTipText("Run the saved build from the project overview: "
-                + "reuse every current output, run the rest, save, and say why each step ran.");
-        runRow1.add(buildProjectButton);
-        runRow1.add(depthLabel);
-        runRow1.add(depthSpinner);
-
-        // Reusing what was already downloaded: its own row, and one that stays short.
-        // A FlowLayout row inside this fixed-height GridLayout WRAPS out of sight
-        // rather than growing, so a row that outgrows a narrow window loses buttons.
-        JPanel runRowReuse = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
-        remapButton.setToolTipText("Re-materialize the last download with the "
-                                           + "current model — applies display-name / canonicalization / mapping "
-                                           + "edits without re-fetching from Wikidata.");
-        runRowReuse.add(remapButton);
-        enrichButton.setToolTipText("Load fields declared since the last download — "
-                                           + "fetches only those properties, for the entities already in the pool. "
-                                           + "Remap cannot show a property nobody fetched.");
-        runRowReuse.add(enrichButton);
-
-        JPanel runRow2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
-        runRow2.add(showInstancesButton);
-        runReportButton.setToolTipText(
-                "Inspect the kept and dropped self-reference decisions from the last run");
-        updateRunReportButton();
-        runReportButton.addActionListener(e -> showRunReport());
-        runRow2.add(runReportButton);
-        showStatementsButton.setToolTipText("Sample the selected class and show its "
-                                                    + "instances' statements — property → values with qualifiers nested, "
-                                                    + "plus coverage badges (example-first field discovery, #91).");
-        runRow2.add(showStatementsButton);
-
-        runSection = new JPanel(new GridLayout(0, 1, 0, 0));
-        runSection.add(runRow1);
-        runSection.add(runRowReuse);
-        runSection.add(runRow2);
 
         JPanel panel = new JPanel(new BorderLayout(4, 4));
         panel.add(domainSection, BorderLayout.NORTH);
@@ -768,49 +681,7 @@ public class ModelBuilderFrame extends JFrame {
             }
         });
 
-        // Store depth edits onto the currently-selected class.
-        depthSpinner.addChangeListener(e -> {
-            if (syncingDepth) return;
-            GeneratedClassModel c = activeClass();
-            if (c != null) {
-                c.generationDepth(((Number) depthSpinner.getValue()).intValue());
-            }
-        });
-
-        generateButton.addActionListener(e -> startGeneration(() -> {
-            sourceWorkbench.applyEdits();
-            GeneratedProjectModel rooted = modelRootedAtSelected();
-            String problem = membershipProblem(rooted.rootClass());
-            if (problem != null) {
-                warnNothingToGenerate(problem);
-                return null;
-            }
-            return generationWorkflows.generateClass(rooted,
-                    ((Number) depthSpinner.getValue()).intValue(), runState.current());
-        }));
-        generateDomainButton.addActionListener(e -> startGeneration(this::prepareDomainGeneration));
-        buildProjectButton.addActionListener(e -> buildProject());
-        remapButton.addActionListener(e -> startGeneration(() -> {
-            sourceWorkbench.applyEdits();
-            if (runState.current() == null) {
-                warnNothingToGenerate("Nothing to remap yet — run Generate domain (or instances) first.");
-                return null;
-            }
-            return generationWorkflows.remap(projectModel, runState.current(), runState.graphLedger());
-        }));
-        enrichButton.addActionListener(e -> startGeneration(() -> {
-            sourceWorkbench.applyEdits();
-            if (runState.current() == null) {
-                warnNothingToGenerate("Nothing to enrich yet — run Generate domain (or instances) first.");
-                return null;
-            }
-            return generationWorkflows.enrich(projectModel, runState.current(), runState.graphLedger());
-        }));
-
         sourceWorkbench.onReloadField(this::forgetFetchedDeclaration);
-
-        showInstancesButton.addActionListener(e -> instancesWindow.show());
-        showStatementsButton.addActionListener(e -> showStatementsWindow(queryRunner));
 
         showExplorerButton.addActionListener(e -> showExplorerWindow());
         showGraphButton.addActionListener(e -> showGraphWindow());
@@ -868,14 +739,40 @@ public class ModelBuilderFrame extends JFrame {
         refreshProjectKindUi();
     }
 
+    private GenerationWorkflows.Action prepareClassGeneration() {
+        sourceWorkbench.applyEdits();
+        GeneratedProjectModel rooted = modelRootedAtSelected();
+        String problem = membershipProblem(rooted.rootClass());
+        if (problem != null) {
+            warnNothingToGenerate(problem);
+            return null;
+        }
+        return generationWorkflows.generateClass(rooted, runSection.depth(), runState.current());
+    }
+
+    private GenerationWorkflows.Action prepareRemap() {
+        sourceWorkbench.applyEdits();
+        if (runState.current() == null) {
+            warnNothingToGenerate("Nothing to remap yet — run Generate domain (or instances) first.");
+            return null;
+        }
+        return generationWorkflows.remap(projectModel, runState.current(), runState.graphLedger());
+    }
+
+    private GenerationWorkflows.Action prepareEnrich() {
+        sourceWorkbench.applyEdits();
+        if (runState.current() == null) {
+            warnNothingToGenerate("Nothing to enrich yet — run Generate domain (or instances) first.");
+            return null;
+        }
+        return generationWorkflows.enrich(projectModel, runState.current(), runState.graphLedger());
+    }
+
     private GenerationWorkflows.Action prepareDomainGeneration() {
         String generationReason = runState.takeGenerationReason();
         sourceWorkbench.applyEdits();
         // Per-class depth is saved on each class; sync the active class first.
-        GeneratedClassModel active = activeClass();
-        if (active != null) {
-            active.generationDepth(((Number) depthSpinner.getValue()).intValue());
-        }
+        storeGenerationDepth(runSection.depth());
         var graphAdditions = pendingGraphPopulationAdditions();
         boolean anyGeneratable = projectModel.classes().stream()
                 .anyMatch(c -> membershipProblem(c) == null) || !graphAdditions.isEmpty();
@@ -1151,7 +1048,7 @@ public class ModelBuilderFrame extends JFrame {
         GraphFrontierWorkflowAction action = new GraphFrontierWorkflowAction(
                 currentRunWorkflowSubject(), runState.visibleGraphLedger(), instancesWindow.reviewableEdges(),
                 runState.current().dynamicObjects(),
-                this::applyGraphFrontier, generateDomainButton::doClick);
+                this::applyGraphFrontier, runSection::requestDomainGeneration);
         process.swing.workflow.SwingProcessWorkflow.start(this, processRunner, action);
     }
 
@@ -1187,20 +1084,12 @@ public class ModelBuilderFrame extends JFrame {
     }
 
     private void refreshRunControls() {
-        updateRunReportButton();
+        runSection.updateRunReport(runState.current());
         sourceWorkbench.refreshDomainOverview();
     }
 
     private String currentRunWorkflowSubject() {
         return runState.workflowSubject();
-    }
-
-    private void updateRunReportButton() {
-        int decisions = runState.current() == null ? 0
-                : runState.current().selfReferenceAudit().ledger().entries().size();
-        runReportButton.setText(decisions == 0
-                ? "Run report" : "Self-reference decisions (" + decisions + ")");
-        runReportButton.setEnabled(runState.current() != null);
     }
 
     /** Reopens the durable result account without pretending to execute or apply a run. */
@@ -1720,18 +1609,13 @@ public class ModelBuilderFrame extends JFrame {
         loadProjectButton.setEnabled(!locked);
         loadSavedButton.setEnabled(!locked);
         saveEverythingButton.setEnabled(!locked);
-        depthSpinner.setEnabled(!locked);
         boolean editable = !locked;
         classModelPanel.setEditingEnabled(editable);
         sourceWorkbench.setEditingEnabled(editable);
         showEntityKindsButton.setEnabled(!locked);
         showGuideButton.setEnabled(!locked);
 
-        generateButton.setEnabled(!locked);
-        generateDomainButton.setEnabled(!locked);
-        buildProjectButton.setEnabled(!locked);
-        remapButton.setEnabled(!locked && runState.current() != null);
-        enrichButton.setEnabled(!locked && runState.current() != null);
+        runSection.setRunLocked(locked, runState.current() != null);
         // Read-only, not switched off: a disabled JFrame ignores every event including
         // its own close button, so a window opened before a 25-minute generation could
         // neither be used nor dismissed.
@@ -1752,14 +1636,13 @@ public class ModelBuilderFrame extends JFrame {
         renameDomainButton.setText(model ? "Rename model" : "Rename domain");
         deleteDomainButton.setText(model ? "Delete model" : "Delete domain");
         saveEverythingButton.setText(model ? "Save model" : "Save domain");
-        generateDomainButton.setText(model ? "Generate model instances" : "Generate domain");
         saveEverythingButton.setToolTipText(model
                 ? "Save this model's reusable configuration and generated instances together."
                 : "Save this domain's configuration and generated instances together.");
         // Asked once: for a MODEL this validates the whole project, and this method runs
         // on every edit through sourceWorkbench.afterChange.
         boolean runnable = projectModel.supportsExecution();
-        runSection.setVisible(runnable);
+        runSection.showProject(model, runnable);
         loadSavedButton.setVisible(runnable);
         boolean editable = !configurationLocked;
         renameDomainButton.setEnabled(editable);
@@ -2522,19 +2405,14 @@ public class ModelBuilderFrame extends JFrame {
         return classModelPanel.selectedClassOrRoot();
     }
 
-    // Reflects the active class's saved depth in the spinner without the change
-    // listener writing it straight back.
     private void syncDepthSpinnerToActiveClass() {
         GeneratedClassModel c = activeClass();
-        if (c == null) {
-            return;
-        }
-        syncingDepth = true;
-        try {
-            depthSpinner.setValue(c.generationDepth());
-        } finally {
-            syncingDepth = false;
-        }
+        if (c != null) runSection.syncDepth(c.generationDepth());
+    }
+
+    private void storeGenerationDepth(int depth) {
+        GeneratedClassModel c = activeClass();
+        if (c != null) c.generationDepth(depth);
     }
 
     // A detached copy of the project rooted at the selected class, so Generate/
@@ -2624,10 +2502,7 @@ public class ModelBuilderFrame extends JFrame {
         if (!recoverCompletedRun) {
             // Depth is per-class (saved on each class via the spinner change listener);
             // make sure the active class has the latest spinner value.
-            GeneratedClassModel active = activeClass();
-            if (active != null) {
-                active.generationDepth(((Number) depthSpinner.getValue()).intValue());
-            }
+            storeGenerationDepth(runSection.depth());
             restampRenamedInstances();
         }
 
